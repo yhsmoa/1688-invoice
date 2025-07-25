@@ -159,11 +159,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Supabase에 데이터 저장 (일반 insert 사용)
+    // Supabase에 데이터 저장 (upsert 사용)
     if (invoiceDataArray.length > 0) {
+      console.log(`총 ${invoiceDataArray.length}개의 데이터를 업로드합니다.`);
+      
+      // 기존 데이터와 충돌 시 업데이트할 필드 지정
       const { data, error } = await supabase
         .from('1688_invoice')
-        .insert(invoiceDataArray);
+        .upsert(invoiceDataArray, {
+          onConflict: 'order_number, product_name', // 주문번호와 상품명이 같으면 충돌로 간주
+          ignoreDuplicates: false, // 충돌 시 업데이트
+        });
 
       if (error) {
         console.error('Supabase 저장 오류:', error);
@@ -172,6 +178,8 @@ export async function POST(request: NextRequest) {
           details: error.message
         }, { status: 500 });
       }
+      
+      console.log('Supabase 저장 성공');
     }
 
     return NextResponse.json({ 
