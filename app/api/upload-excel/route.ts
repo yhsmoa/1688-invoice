@@ -163,23 +163,51 @@ export async function POST(request: NextRequest) {
     if (invoiceDataArray.length > 0) {
       console.log(`총 ${invoiceDataArray.length}개의 데이터를 업로드합니다.`);
       
-      // 기존 데이터와 충돌 시 업데이트할 필드 지정
-      const { data, error } = await supabase
-        .from('1688_invoice')
-        .upsert(invoiceDataArray, {
-          onConflict: 'order_number, product_name', // 주문번호와 상품명이 같으면 충돌로 간주
-          ignoreDuplicates: false, // 충돌 시 업데이트
-        });
+      try {
+        // 기존 데이터와 충돌 시 업데이트할 필드 지정
+        const { data, error } = await supabase
+          .from('1688_invoice')
+          .upsert(invoiceDataArray, {
+            onConflict: 'order_number', // 주문번호가 같으면 충돌로 간주 (복합키 제거)
+            ignoreDuplicates: false, // 충돌 시 업데이트
+          });
 
-      if (error) {
-        console.error('Supabase 저장 오류:', error);
-        return NextResponse.json({ 
-          error: 'Supabase 저장 중 오류가 발생했습니다.',
-          details: error.message
-        }, { status: 500 });
+        if (error) {
+          console.error('Supabase 저장 오류:', error);
+          return NextResponse.json({ 
+            error: 'Supabase 저장 중 오류가 발생했습니다.',
+            details: error.message
+          }, { status: 500 });
+        }
+        
+        console.log('Supabase 저장 성공');
+      } catch (upsertError) {
+        console.error('Upsert 처리 중 예외 발생:', upsertError);
+        
+        // 오류 발생 시 일반 insert로 시도
+        console.log('일반 insert로 시도합니다...');
+        try {
+          const { data, error } = await supabase
+            .from('1688_invoice')
+            .insert(invoiceDataArray);
+            
+          if (error) {
+            console.error('Insert 시도 중 오류:', error);
+            return NextResponse.json({ 
+              error: 'Supabase 저장 중 오류가 발생했습니다.',
+              details: error.message
+            }, { status: 500 });
+          }
+          
+          console.log('일반 Insert 성공');
+        } catch (insertError) {
+          console.error('Insert 처리 중 예외 발생:', insertError);
+          return NextResponse.json({ 
+            error: '데이터 저장 중 오류가 발생했습니다.',
+            details: insertError instanceof Error ? insertError.message : 'Unknown error'
+          }, { status: 500 });
+        }
       }
-      
-      console.log('Supabase 저장 성공');
     }
 
     return NextResponse.json({ 
