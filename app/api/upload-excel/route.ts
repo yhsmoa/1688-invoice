@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     let lastPrice = null;
     let lastDeliveryFee = null;
     let lastTotalPrice = null;
+    let lastOrderStatus = null; // J열 이전 값 저장 변수 추가
     
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
       const price = parseNumber(row[5]) ?? lastPrice;
       const deliveryFee = parseNumber(row[6]) ?? lastDeliveryFee;
       const totalPrice = parseNumber(row[8]) ?? lastTotalPrice; // I열
+      const orderStatus = row[9] || lastOrderStatus; // J열도 병합 처리
       const orderDate = excelDateToJSDate(row[10]) || lastOrderDate;
       const paymentDate = excelDateToJSDate(row[11]) || lastPaymentDate;
       const productName = row[18] || lastProductName;
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
           memo: null, // 비워두기
           category: null, // 비워두기
           composition: null, // 비워두기
-          order_status: row[9] || null // J열
+          order_status: orderStatus // J열
         };
         
         invoiceDataArray.push(invoiceItem);
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
         if (row[11]) lastPaymentDate = excelDateToJSDate(row[11]);
         if (row[18]) lastProductName = row[18];
         if (row[24]) lastOfferId = row[24];
+        if (row[9]) lastOrderStatus = row[9]; // J열 이전 값 업데이트
       }
     }
 
