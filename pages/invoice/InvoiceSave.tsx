@@ -312,7 +312,18 @@ const InvoiceSave: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
-        // 데이터 새로고침하여 UI 업데이트
+        // 로컬 상태 즉시 업데이트 (UI 즉시 반영)
+        const updatedInvoiceData = invoiceData.map(item => 
+          item.order_number === orderNumber ? { ...item, img_upload: false } : item
+        );
+        setInvoiceData(updatedInvoiceData);
+        
+        const updatedFilteredData = filteredData.map(item => 
+          item.order_number === orderNumber ? { ...item, img_upload: false } : item
+        );
+        setFilteredData(updatedFilteredData);
+        
+        // 서버에서 최신 데이터 가져오기
         fetchInvoiceData();
       } else {
         alert(result.error || '삭제 중 오류가 발생했습니다.');
@@ -352,7 +363,19 @@ const InvoiceSave: React.FC = () => {
       if (response.ok) {
         console.log('영수증 업로드 성공:', result);
         alert('영수증이 성공적으로 업로드되었습니다.');
-        // 데이터 새로고침하여 UI 업데이트
+        
+        // 로컬 상태 즉시 업데이트 (UI 즉시 반영)
+        const updatedInvoiceData = invoiceData.map(item => 
+          item.order_number === orderNumber ? { ...item, img_upload: true } : item
+        );
+        setInvoiceData(updatedInvoiceData);
+        
+        const updatedFilteredData = filteredData.map(item => 
+          item.order_number === orderNumber ? { ...item, img_upload: true } : item
+        );
+        setFilteredData(updatedFilteredData);
+        
+        // 서버에서 최신 데이터 가져오기
         await fetchInvoiceData();
         console.log('데이터 새로고침 완료');
         
