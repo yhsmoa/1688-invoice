@@ -40,11 +40,16 @@ const parseNumber = (value: any) => {
 };
 
 export async function POST(request: NextRequest) {
+  console.log('Upload Excel API called');
+  
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    
+    console.log('File received:', file?.name, file?.size);
 
     if (!file) {
+      console.log('No file uploaded');
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
