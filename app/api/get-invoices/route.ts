@@ -3,6 +3,8 @@ import { supabase } from '../../../lib/supabase';
 
 export async function GET() {
   try {
+    console.log('GET /api/get-invoices 호출됨');
+    
     // Supabase에서 필요한 컬럼만 명시적으로 선택
     const { data: invoices, error } = await supabase
       .from('1688_invoice')
@@ -39,7 +41,15 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    return NextResponse.json(invoices || []);
+    console.log('조회된 데이터 수:', invoices?.length);
+
+    // 캐시 방지 헤더 추가
+    const response = NextResponse.json(invoices || []);
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('데이터 가져오기 상세 오류:', error);
     return NextResponse.json({ 

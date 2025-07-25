@@ -49,7 +49,13 @@ const InvoiceSave: React.FC = () => {
   const fetchInvoiceData = async () => {
     console.log('fetchInvoiceData 시작');
     try {
-      const response = await fetch('/api/get-invoices');
+      const response = await fetch('/api/get-invoices', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+        cache: 'no-store'
+      });
       console.log('API 응답 상태:', response.ok);
       if (response.ok) {
         const data = await response.json();

@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
       })
       .eq('order_number', orderNumber);
 
+    console.log('Supabase 업데이트 결과:', { data, error, orderNumber, img_upload: true });
+
     if (error) {
       console.error('Supabase 업데이트 오류:', error);
       return NextResponse.json({ 
@@ -72,6 +74,14 @@ export async function POST(request: NextRequest) {
         details: error.message
       }, { status: 500 });
     }
+
+    // 업데이트가 성공했는지 확인
+    const { data: checkData, error: checkError } = await supabase
+      .from('1688_invoice')
+      .select('img_upload, file_extension')
+      .eq('order_number', orderNumber);
+
+    console.log('업데이트 후 확인:', { checkData, checkError });
 
     // Presigned URL 생성 (24시간 유효)
     const getObjectCommand = new GetObjectCommand({
