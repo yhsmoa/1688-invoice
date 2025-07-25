@@ -1,0 +1,46 @@
+.export-match-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.export-match-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.export-match-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.export-match-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.export-match-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+.export-match-content-area {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.export-match-content-area p {
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+  margin: 0;
+} 

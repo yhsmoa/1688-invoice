@@ -1,0 +1,466 @@
+.invoice-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.invoice-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.invoice-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.invoice-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.invoice-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 상태 카드들 */
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.status-card {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+}
+
+.status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.status-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* 엑셀 업로드 섹션 */
+.excel-upload-section {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.excel-upload-btn {
+  padding: 10px 20px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.excel-upload-btn:hover {
+  background-color: #38a169;
+}
+
+.excel-download-btn {
+  padding: 10px 20px;
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.excel-download-btn:hover {
+  background-color: #3182ce;
+}
+
+/* 검색 영역 */
+.search-section {
+  margin-bottom: 20px;
+}
+
+.search-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-dropdown {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-input {
+  flex: 2;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.search-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 테이블 */
+.table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* 영수증 헤더 가운데 정렬 */
+.invoice-table th:last-child {
+  text-align: center;
+}
+
+.invoice-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* 영수증 셀 가운데 정렬 */
+.invoice-table td:last-child {
+  text-align: center;
+}
+
+.empty-data {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+/* 주문번호 텍스트 클릭 스타일 */
+.order-number-text {
+  cursor: pointer;
+  color: inherit !important;
+  font-weight: 600;
+  transition: none;
+}
+
+/* 상품명 텍스트 클릭 스타일 */
+.product-name-text {
+  cursor: pointer;
+  color: inherit !important;
+  transition: none;
+}
+
+/* 영수증 체크박스와 아이콘 스타일 */
+.receipt-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.receipt-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 테이블 체크박스 스타일 */
+.table-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 영수증 첨부 텍스트 스타일 */
+.receipt-attach-text {
+  color: #333;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  display: inline-block;
+}
+
+.receipt-attach-text:hover {
+  color: #666;
+}
+
+/* 영수증 아이콘 스타일 */
+.receipt-icon {
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  text-align: center;
+  display: inline-block;
+  padding: 4px;
+  position: relative;
+}
+
+.receipt-icon:hover {
+  transform: scale(1.2);
+}
+
+.receipt-icon.uploading {
+  cursor: wait;
+  animation: pulse 1.5s infinite;
+}
+
+/* 영수증 아이콘들 컨테이너 */
+.receipt-icons-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 삭제 아이콘 스타일 */
+.delete-icon {
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  text-align: center;
+  display: inline-block;
+  padding: 4px;
+}
+
+.delete-icon:hover {
+  transform: scale(1.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Drawer 스타일 */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  background: white;
+  width: 50%;
+  height: 100vh;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-header {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.drawer-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.drawer-content h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+/* Detail Table */
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.detail-table th,
+.detail-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.detail-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Drawer 내 상품명 표시 스타일 */
+.product-name-display {
+  color: #333;
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Received 입력 필드 */
+.received-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  background: transparent;
+}
+
+.received-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Category 드롭박스 */
+.category-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.category-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Drawer 액션 버튼 영역 */
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* 저장 버튼 */
+.save-btn {
+  padding: 10px 20px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.save-btn:hover {
+  background-color: #38a169;
+} 

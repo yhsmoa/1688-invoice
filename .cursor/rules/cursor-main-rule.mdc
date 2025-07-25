@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+- you are a typescript, supabase, aws expert.
+- you don't need to answer long word when you done my request, you just answer a result in 1~3 sentences
+- you don't work or make except my request. 
+- if you need to delete something like files or script, then you have my accept
+- project's pages almost have 2 type, .tsx, .css, so you have to factoring in each script
+- you don't need make a hard-coding or something.
