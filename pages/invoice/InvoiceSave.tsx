@@ -47,10 +47,14 @@ const InvoiceSave: React.FC = () => {
 
   // 데이터 가져오기
   const fetchInvoiceData = async () => {
+    console.log('fetchInvoiceData 시작');
     try {
       const response = await fetch('/api/get-invoices');
+      console.log('API 응답 상태:', response.ok);
       if (response.ok) {
         const data = await response.json();
+        console.log('받은 데이터 길이:', data.length);
+        console.log('받은 데이터 샘플:', data.slice(0, 2));
         
         // 원본 데이터 저장 (중복 제거 전)
         setOriginalData(data);
@@ -64,8 +68,12 @@ const InvoiceSave: React.FC = () => {
           return acc;
         }, []);
         
+        console.log('중복 제거 후 데이터 길이:', uniqueData.length);
+        console.log('중복 제거 후 샘플:', uniqueData.slice(0, 2));
+        
         setInvoiceData(uniqueData);
         setFilteredData(uniqueData); // 초기에는 모든 데이터 표시
+        console.log('State 업데이트 완료');
       }
     } catch (error) {
       console.error('데이터 가져오기 오류:', error);
@@ -328,6 +336,14 @@ const InvoiceSave: React.FC = () => {
         // 데이터 새로고침하여 UI 업데이트
         await fetchInvoiceData();
         console.log('데이터 새로고침 완료');
+        
+        // 업로드된 주문번호의 상태 확인
+        console.log('업로드된 주문번호:', orderNumber);
+        setTimeout(() => {
+          const updatedItem = filteredData.find(item => item.order_number === orderNumber);
+          console.log('업로드 후 해당 주문의 img_upload 상태:', updatedItem?.img_upload);
+          console.log('업로드 후 해당 주문 전체 정보:', updatedItem);
+        }, 100);
       } else {
         console.error('업로드 실패:', result);
         alert(result.error || '업로드 중 오류가 발생했습니다.');
