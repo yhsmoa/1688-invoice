@@ -66,10 +66,23 @@ const InvoiceSave: React.FC = () => {
         setOriginalData(data);
         
         // order_number로 그룹화하여 중복 제거
+        // img_upload가 true인 항목을 우선적으로 선택
         const uniqueData = data.reduce((acc: InvoiceData[], current: InvoiceData) => {
-          const existingItem = acc.find(item => item.order_number === current.order_number);
-          if (!existingItem) {
+          const existingIndex = acc.findIndex(item => item.order_number === current.order_number);
+          if (existingIndex === -1) {
+            // 첫 번째 항목이면 추가
             acc.push(current);
+          } else {
+            // 이미 존재하는 경우, img_upload가 true인 것을 우선 선택
+            const existing = acc[existingIndex];
+            if (current.img_upload && !existing.img_upload) {
+              // 현재 항목이 img_upload가 true이고 기존 항목이 false면 교체
+              acc[existingIndex] = current;
+            } else if (current.img_upload === existing.img_upload) {
+              // 둘 다 같은 상태면 최신 것으로 교체 (나중에 추가된 것이 더 최신)
+              acc[existingIndex] = current;
+            }
+            // existing이 true이고 current가 false면 기존 것 유지 (변경 없음)
           }
           return acc;
         }, []);
