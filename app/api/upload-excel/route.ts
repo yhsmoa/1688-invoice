@@ -69,71 +69,93 @@ export async function POST(request: NextRequest) {
     const invoiceDataArray: any[] = [];
     
     // 병합된 셀을 처리하기 위한 이전 값 저장
-    let lastOrderNumber = '';
-    let lastSeller = '';
-    let lastProductName = '';
-    let lastOfferId = '';
-    let lastOrderDate = null;
-    let lastPaymentDate = null;
-    let lastPrice = null;
-    let lastDeliveryFee = null;
-    let lastTotalPrice = null;
-    let lastOrderStatus = null; // J열 이전 값 저장 변수 추가
+    let lastValues: { [key: number]: any } = {};
+    
+    // 주요 컬럼 인덱스 정의
+    const COLUMNS = {
+      ORDER_NUMBER: 0,    // A열
+      SELLER: 3,          // D열
+      PRICE: 5,           // F열
+      DELIVERY_FEE: 6,    // G열
+      TOTAL_PRICE: 8,     // I열
+      ORDER_STATUS: 9,    // J열
+      ORDER_DATE: 10,     // K열
+      PAYMENT_DATE: 11,   // L열
+      PRODUCT_NAME: 18,   // S열
+      UNIT_PRICE: 19,     // T열
+      ORDER_QTY: 20,      // U열
+      OFFER_ID: 24,       // Y열
+      DELIVERY_NUMBER: 31 // AF열
+    };
     
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
+      if (!row) continue;
       
-      // 각 셀의 값이 있으면 사용하고, 없으면 이전 값 사용 (병합된 셀 처리)
-      const orderNumber = row[0] || lastOrderNumber;
-      const seller = row[3] || lastSeller;
-      const price = parseNumber(row[5]) ?? lastPrice;
-      const deliveryFee = parseNumber(row[6]) ?? lastDeliveryFee;
-      const totalPrice = parseNumber(row[8]) ?? lastTotalPrice; // I열
-      const orderStatus = row[9] || lastOrderStatus; // J열도 병합 처리
-      const orderDate = excelDateToJSDate(row[10]) || lastOrderDate;
-      const paymentDate = excelDateToJSDate(row[11]) || lastPaymentDate;
-      const productName = row[18] || lastProductName;
-      const offerId = row[24] || lastOfferId;
-      const deliveryNumber = row[31] || null; // 병합 처리하지 않고 각 행의 실제 값만 사용
+      // 각 컬럼에 대해 현재 값이 있으면 사용하고, 없으면 이전 값 사용
+      const getValue = (colIndex: number) => {
+        // 현재 행에 값이 있으면 해당 값 사용
+        if (row[colIndex] !== undefined && row[colIndex] !== null && row[colIndex] !== '') {
+          lastValues[colIndex] = row[colIndex];
+          return row[colIndex];
+        }
+        // 없으면 이전에 저장된 값 사용
+        return lastValues[colIndex];
+      };
+      
+      // 숫자 값 처리
+      const getNumberValue = (colIndex: number) => {
+        const value = getValue(colIndex);
+        return parseNumber(value);
+      };
+      
+      // 날짜 값 처리
+      const getDateValue = (colIndex: number) => {
+        const value = getValue(colIndex);
+        return excelDateToJSDate(value);
+      };
+      
+      // 각 컬럼 값 가져오기
+      const orderNumber = getValue(COLUMNS.ORDER_NUMBER);
+      const seller = getValue(COLUMNS.SELLER);
+      const price = getNumberValue(COLUMNS.PRICE);
+      const deliveryFee = getNumberValue(COLUMNS.DELIVERY_FEE);
+      const totalPrice = getNumberValue(COLUMNS.TOTAL_PRICE);
+      const orderStatus = getValue(COLUMNS.ORDER_STATUS);
+      const orderDate = getDateValue(COLUMNS.ORDER_DATE);
+      const paymentDate = getDateValue(COLUMNS.PAYMENT_DATE);
+      const productName = getValue(COLUMNS.PRODUCT_NAME);
+      const unitPrice = getNumberValue(COLUMNS.UNIT_PRICE);
+      const orderQty = getNumberValue(COLUMNS.ORDER_QTY);
+      const offerId = getValue(COLUMNS.OFFER_ID);
+      const deliveryNumber = getValue(COLUMNS.DELIVERY_NUMBER);
       
       // 현재 행에 실제 데이터가 있는 경우만 처리 (완전히 빈 행 제외)
-      if (orderNumber || row[19] || row[20]) { // 주문번호나 단가, 수량이 있으면 유효한 행으로 간주
+      if (orderNumber || unitPrice || orderQty) {
         const invoiceItem = {
-          order_number: orderNumber, // A열
-          delivery_fee: deliveryFee, // G열
-          delivery_number: deliveryNumber, // AF열
+          order_number: orderNumber,
+          delivery_fee: deliveryFee,
+          delivery_number: deliveryNumber,
           invoice: null, // 비워두기
-          order_date: orderDate, // K열
-          payment_date: paymentDate, // L열
-          price: price, // F열
-          product_name: productName, // S열
-          seller: seller, // D열
-          total_price: totalPrice, // I열
-          order_qty: parseNumber(row[20]), // U열
-          unit_price: parseNumber(row[19]), // T열
-          offer_id: offerId, // Y열
+          order_date: orderDate,
+          payment_date: paymentDate,
+          price: price,
+          product_name: productName,
+          seller: seller,
+          total_price: totalPrice,
+          order_qty: orderQty,
+          unit_price: unitPrice,
+          offer_id: offerId,
           img_upload: false, // 기본값 false
           file_extension: null, // 비워두기
           received_qty: null, // 비워두기
           memo: null, // 비워두기
           category: null, // 비워두기
           composition: null, // 비워두기
-          order_status: orderStatus // J열
+          order_status: orderStatus
         };
         
         invoiceDataArray.push(invoiceItem);
-        
-        // 이전 값 업데이트 (다음 행에서 사용할 수 있도록)
-        if (row[0]) lastOrderNumber = row[0];
-        if (row[3]) lastSeller = row[3];
-        if (row[5] !== undefined && row[5] !== null) lastPrice = parseNumber(row[5]);
-        if (row[6] !== undefined && row[6] !== null) lastDeliveryFee = parseNumber(row[6]);
-        if (row[8] !== undefined && row[8] !== null) lastTotalPrice = parseNumber(row[8]); // I열
-        if (row[10]) lastOrderDate = excelDateToJSDate(row[10]);
-        if (row[11]) lastPaymentDate = excelDateToJSDate(row[11]);
-        if (row[18]) lastProductName = row[18];
-        if (row[24]) lastOfferId = row[24];
-        if (row[9]) lastOrderStatus = row[9]; // J열 이전 값 업데이트
       }
     }
 
