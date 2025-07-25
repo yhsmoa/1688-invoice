@@ -57,15 +57,23 @@ export async function POST(request: NextRequest) {
     await s3Client.send(uploadCommand);
 
     // Supabase에서 해당 주문의 img_upload를 true로 업데이트하고 파일 확장자도 저장
+    // 모든 관련 행을 업데이트
     const { data, error } = await supabase
       .from('1688_invoice')
       .update({ 
         img_upload: true,
         file_extension: fileExtension
       })
-      .eq('order_number', orderNumber);
+      .eq('order_number', orderNumber)
+      .select(); // 업데이트된 행을 반환
 
-    console.log('Supabase 업데이트 결과:', { data, error, orderNumber, img_upload: true });
+    console.log('Supabase 업데이트 결과:', { 
+      data, 
+      error, 
+      orderNumber, 
+      img_upload: true,
+      updatedRows: data?.length 
+    });
 
     if (error) {
       console.error('Supabase 업데이트 오류:', error);
@@ -75,10 +83,19 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // 업데이트가 성공했는지 확인
+    // 업데이트된 행이 있는지 확인
+    if (!data || data.length === 0) {
+      console.error('업데이트된 행이 없습니다. 주문번호:', orderNumber);
+      return NextResponse.json({ 
+        error: '해당 주문번호를 찾을 수 없습니다.',
+        orderNumber: orderNumber
+      }, { status: 404 });
+    }
+
+    // 업데이트가 성공했는지 다시 확인
     const { data: checkData, error: checkError } = await supabase
       .from('1688_invoice')
-      .select('img_upload, file_extension')
+      .select('id, order_number, img_upload, file_extension')
       .eq('order_number', orderNumber);
 
     console.log('업데이트 후 확인:', { checkData, checkError });
