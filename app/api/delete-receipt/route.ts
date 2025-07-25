@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
         img_upload: false,
         file_extension: null 
       })
-      .eq('order_number', orderNumber);
+      .eq('order_number', orderNumber)
+      .select(); // 업데이트된 행을 반환
+
+    console.log('영수증 삭제 업데이트 결과:', { data, error, orderNumber, updatedRows: data?.length });
 
     if (error) {
       console.error('Supabase 업데이트 오류:', error);
