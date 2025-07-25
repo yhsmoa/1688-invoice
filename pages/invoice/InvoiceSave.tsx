@@ -323,9 +323,13 @@ const InvoiceSave: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
+        console.log('영수증 업로드 성공:', result);
+        alert('영수증이 성공적으로 업로드되었습니다.');
         // 데이터 새로고침하여 UI 업데이트
-        fetchInvoiceData();
+        await fetchInvoiceData();
+        console.log('데이터 새로고침 완료');
       } else {
+        console.error('업로드 실패:', result);
         alert(result.error || '업로드 중 오류가 발생했습니다.');
       }
     } catch (error) {
