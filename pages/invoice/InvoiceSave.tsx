@@ -22,6 +22,7 @@ interface InvoiceData {
   order_qty: number | null;
   unit_price: number | null;
   offer_id: string | null;
+  sku_id: string | null; // SKU ID 추가
   img_upload: boolean;
   file_extension: string | null;
   received_qty: number | null;

@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
       UNIT_PRICE: 19,     // T열
       ORDER_QTY: 20,      // U열
       OFFER_ID: 24,       // Y열
+      SKU_ID: 25,         // Z열 (SKU ID 추가)
       DELIVERY_NUMBER: 31 // AF열
     };
     
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
       const unitPrice = getNumberValue(COLUMNS.UNIT_PRICE);
       const orderQty = getNumberValue(COLUMNS.ORDER_QTY);
       const offerId = getValue(COLUMNS.OFFER_ID);
+      const skuId = getValue(COLUMNS.SKU_ID);
       const deliveryNumber = getValue(COLUMNS.DELIVERY_NUMBER);
       
       // 현재 행에 실제 데이터가 있는 경우만 처리 (완전히 빈 행 제외)
@@ -152,7 +154,8 @@ export async function POST(request: NextRequest) {
           memo: null, // 비워두기
           category: null, // 비워두기
           composition: null, // 비워두기
-          order_status: orderStatus
+          order_status: orderStatus,
+          sku_id: skuId
         };
         
         invoiceDataArray.push(invoiceItem);
@@ -168,7 +171,7 @@ export async function POST(request: NextRequest) {
         const { data, error } = await supabase
           .from('1688_invoice')
           .upsert(invoiceDataArray, {
-            onConflict: 'order_number', // 주문번호가 같으면 충돌로 간주 (복합키 제거)
+            onConflict: ['order_number', 'sku_id'], // 주문번호와 SKU ID가 같으면 충돌로 간주
             ignoreDuplicates: false, // 충돌 시 업데이트
           });
 
