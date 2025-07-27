@@ -39,7 +39,8 @@ const parseNumber = (value: any) => {
   return null;
 };
 
-export async function POST(request: NextRequest) {
+// Next.js 14 API 라우트 형식으로 수정
+export const POST = async (request: NextRequest) => {
   console.log('Upload Excel API called');
   
   try {
@@ -89,9 +90,14 @@ export async function POST(request: NextRequest) {
       DELIVERY_NUMBER: 31 // AF열
     };
     
+    console.log('Processing Excel data rows:', dataRows.length);
+    
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
-      if (!row) continue;
+      if (!row) {
+        console.log(`Skipping empty row at index ${i}`);
+        continue;
+      }
       
       // 각 컬럼에 대해 현재 값이 있으면 사용하고, 없으면 이전 값 사용
       const getValue = (colIndex: number) => {
@@ -116,110 +122,100 @@ export async function POST(request: NextRequest) {
         return excelDateToJSDate(value);
       };
       
-      // 각 컬럼 값 가져오기
-      const orderNumber = getValue(COLUMNS.ORDER_NUMBER);
-      const seller = getValue(COLUMNS.SELLER);
-      const price = getNumberValue(COLUMNS.PRICE);
-      const deliveryFee = getNumberValue(COLUMNS.DELIVERY_FEE);
-      const totalPrice = getNumberValue(COLUMNS.TOTAL_PRICE);
-      const orderStatus = getValue(COLUMNS.ORDER_STATUS);
-      const orderDate = getDateValue(COLUMNS.ORDER_DATE);
-      const paymentDate = getDateValue(COLUMNS.PAYMENT_DATE);
-      const productName = getValue(COLUMNS.PRODUCT_NAME);
-      const unitPrice = getNumberValue(COLUMNS.UNIT_PRICE);
-      const orderQty = getNumberValue(COLUMNS.ORDER_QTY);
-      const offerId = getValue(COLUMNS.OFFER_ID);
-      const skuId = getValue(COLUMNS.SKU_ID);
-      const deliveryNumber = getValue(COLUMNS.DELIVERY_NUMBER);
-      
-      // 현재 행에 실제 데이터가 있는 경우만 처리 (완전히 빈 행 제외)
-      if (orderNumber || unitPrice || orderQty) {
-        const invoiceItem = {
-          order_number: orderNumber,
-          delivery_fee: deliveryFee,
-          delivery_number: deliveryNumber,
-          invoice: null, // 비워두기
-          order_date: orderDate,
-          payment_date: paymentDate,
-          price: price,
-          product_name: productName,
-          seller: seller,
-          total_price: totalPrice,
-          order_qty: orderQty,
-          unit_price: unitPrice,
-          offer_id: offerId,
-          img_upload: false, // 기본값 false
-          file_extension: null, // 비워두기
-          received_qty: null, // 비워두기
-          memo: null, // 비워두기
-          category: null, // 비워두기
-          composition: null, // 비워두기
-          order_status: orderStatus,
-          sku_id: skuId
-        };
-        
-        invoiceDataArray.push(invoiceItem);
-      }
-    }
-
-    // Supabase에 데이터 저장 (upsert 사용)
-    if (invoiceDataArray.length > 0) {
-      console.log(`총 ${invoiceDataArray.length}개의 데이터를 업로드합니다.`);
-      
       try {
-        // 기존 데이터와 충돌 시 업데이트할 필드 지정
-        const { data, error } = await supabase
-          .from('1688_invoice')
-          .upsert(invoiceDataArray, {
-            onConflict: ['order_number', 'sku_id'], // 주문번호와 SKU ID가 같으면 충돌로 간주
-            ignoreDuplicates: false, // 충돌 시 업데이트
-          });
-
-        if (error) {
-          console.error('Supabase 저장 오류:', error);
-          return NextResponse.json({ 
-            error: 'Supabase 저장 중 오류가 발생했습니다.',
-            details: error.message
-          }, { status: 500 });
-        }
+        // 각 컬럼 값 가져오기
+        const orderNumber = getValue(COLUMNS.ORDER_NUMBER);
+        const seller = getValue(COLUMNS.SELLER);
+        const price = getNumberValue(COLUMNS.PRICE);
+        const deliveryFee = getNumberValue(COLUMNS.DELIVERY_FEE);
+        const totalPrice = getNumberValue(COLUMNS.TOTAL_PRICE);
+        const orderStatus = getValue(COLUMNS.ORDER_STATUS);
+        const orderDate = getDateValue(COLUMNS.ORDER_DATE);
+        const paymentDate = getDateValue(COLUMNS.PAYMENT_DATE);
+        const productName = getValue(COLUMNS.PRODUCT_NAME);
+        const unitPrice = getNumberValue(COLUMNS.UNIT_PRICE);
+        const orderQty = getNumberValue(COLUMNS.ORDER_QTY);
+        const offerId = getValue(COLUMNS.OFFER_ID);
+        const skuId = getValue(COLUMNS.SKU_ID);
+        const deliveryNumber = getValue(COLUMNS.DELIVERY_NUMBER);
         
-        console.log('Supabase 저장 성공');
-      } catch (upsertError) {
-        console.error('Upsert 처리 중 예외 발생:', upsertError);
-        
-        // 오류 발생 시 일반 insert로 시도
-        console.log('일반 insert로 시도합니다...');
-        try {
-          const { data, error } = await supabase
-            .from('1688_invoice')
-            .insert(invoiceDataArray);
-            
-          if (error) {
-            console.error('Insert 시도 중 오류:', error);
-            return NextResponse.json({ 
-              error: 'Supabase 저장 중 오류가 발생했습니다.',
-              details: error.message
-            }, { status: 500 });
-          }
+        // 현재 행에 실제 데이터가 있는 경우만 처리 (완전히 빈 행 제외)
+        if (orderNumber || unitPrice || orderQty) {
+          const invoiceItem = {
+            order_number: orderNumber,
+            delivery_fee: deliveryFee,
+            delivery_number: deliveryNumber,
+            invoice: null, // 비워두기
+            order_date: orderDate,
+            payment_date: paymentDate,
+            price: price,
+            product_name: productName,
+            seller: seller,
+            total_price: totalPrice,
+            order_qty: orderQty,
+            unit_price: unitPrice,
+            offer_id: offerId,
+            img_upload: false, // 기본값 false
+            file_extension: null, // 비워두기
+            received_qty: null, // 비워두기
+            memo: null, // 비워두기
+            category: null, // 비워두기
+            composition: null, // 비워두기
+            order_status: orderStatus,
+            sku_id: skuId
+          };
           
-          console.log('일반 Insert 성공');
-        } catch (insertError) {
-          console.error('Insert 처리 중 예외 발생:', insertError);
-          return NextResponse.json({ 
-            error: '데이터 저장 중 오류가 발생했습니다.',
-            details: insertError instanceof Error ? insertError.message : 'Unknown error'
-          }, { status: 500 });
+          invoiceDataArray.push(invoiceItem);
         }
+      } catch (rowError) {
+        console.error(`Error processing row ${i}:`, rowError);
       }
     }
 
-    return NextResponse.json({ 
-      message: '엑셀 파일이 성공적으로 업로드되었습니다.',
-      count: invoiceDataArray.length 
-    });
-
+    console.log(`총 ${invoiceDataArray.length}개의 데이터를 업로드합니다.`);
+    
+    // 데이터가 비어있는지 확인
+    if (invoiceDataArray.length === 0) {
+      console.log('No valid data found in Excel file');
+      return NextResponse.json({ 
+        error: '엑셀 파일에 유효한 데이터가 없습니다.' 
+      }, { status: 400 });
+    }
+    
+    // 데이터 저장 시도
+    try {
+      // 일반 insert로 시도
+      console.log('일반 insert로 시도합니다...');
+      const { data, error } = await supabase
+        .from('1688_invoice')
+        .insert(invoiceDataArray);
+        
+      if (error) {
+        console.error('Insert 시도 중 오류:', error);
+        return NextResponse.json({ 
+          error: 'Supabase 저장 중 오류가 발생했습니다.',
+          details: error.message
+        }, { status: 500 });
+      }
+      
+      console.log('일반 Insert 성공');
+      
+      return NextResponse.json({ 
+        message: '엑셀 파일이 성공적으로 업로드되었습니다.',
+        count: invoiceDataArray.length 
+      });
+    } catch (dbError) {
+      console.error('데이터베이스 저장 중 예외 발생:', dbError);
+      return NextResponse.json({ 
+        error: '데이터 저장 중 오류가 발생했습니다.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown error'
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: '업로드 중 오류가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json({ 
+      error: '업로드 중 오류가 발생했습니다.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 
