@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
-export async function GET() {
+// Next.js 14 API 라우트 형식으로 수정
+export const GET = async () => {
   try {
     console.log('GET /api/get-stats 호출됨');
     

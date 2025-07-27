@@ -34,7 +34,11 @@ const IndexPage: React.FC = () => {
   // 통계 데이터 가져오기
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/get-stats', {
+      // 절대 경로 사용
+      const apiUrl = window.location.origin + '/api/get-stats';
+      console.log('API 호출 URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
@@ -42,9 +46,16 @@ const IndexPage: React.FC = () => {
         cache: 'no-store'
       });
       
+      console.log('API 응답 상태:', response.status, response.statusText);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('받은 데이터:', data);
         setStats(data);
+      } else {
+        console.error('API 응답 오류:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('오류 내용:', errorText);
       }
     } catch (error) {
       console.error('통계 데이터 가져오기 오류:', error);
