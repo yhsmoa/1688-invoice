@@ -90,13 +90,46 @@ export const POST = async (request: NextRequest) => {
       DELIVERY_NUMBER: 31 // AF열
     };
     
+    // 병합 셀 처리를 위한 설정
+    const MERGED_COLUMNS = [
+      COLUMNS.ORDER_NUMBER,
+      COLUMNS.SELLER,
+      COLUMNS.ORDER_STATUS,
+      COLUMNS.ORDER_DATE,
+      COLUMNS.PAYMENT_DATE,
+      COLUMNS.OFFER_ID
+    ];
+    
+    // 독립적인 값을 가져야 하는 컬럼 (이전 값을 사용하지 않음)
+    const INDEPENDENT_COLUMNS = [
+      COLUMNS.PRODUCT_NAME,
+      COLUMNS.UNIT_PRICE,
+      COLUMNS.ORDER_QTY,
+      COLUMNS.SKU_ID
+    ];
+    
     console.log('Processing Excel data rows:', dataRows.length);
+    
+    // 새로운 주문 그룹 시작 여부를 확인하는 함수
+    const isNewOrderGroup = (row: any[]) => {
+      // 주문번호가 있으면 새 그룹 시작
+      return row[COLUMNS.ORDER_NUMBER] !== undefined && 
+             row[COLUMNS.ORDER_NUMBER] !== null && 
+             row[COLUMNS.ORDER_NUMBER] !== '';
+    };
     
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       if (!row) {
         console.log(`Skipping empty row at index ${i}`);
         continue;
+      }
+      
+      // 새 주문 그룹이 시작되면 독립적인 값들 초기화
+      if (isNewOrderGroup(row)) {
+        INDEPENDENT_COLUMNS.forEach(col => {
+          delete lastValues[col];
+        });
       }
       
       // 각 컬럼에 대해 현재 값이 있으면 사용하고, 없으면 이전 값 사용
@@ -106,7 +139,13 @@ export const POST = async (request: NextRequest) => {
           lastValues[colIndex] = row[colIndex];
           return row[colIndex];
         }
-        // 없으면 이전에 저장된 값 사용
+        
+        // 병합 컬럼이 아니면 이전 값을 사용하지 않음
+        if (!MERGED_COLUMNS.includes(colIndex)) {
+          return null;
+        }
+        
+        // 병합 컬럼이면 이전에 저장된 값 사용
         return lastValues[colIndex];
       };
       
