@@ -22,6 +22,12 @@ const LeftsideMenu: React.FC = () => {
             </Link>
           </li>
           <li className="menu-item">
+            <Link href="/export-product" className="menu-link">
+              <span className="menu-icon">📤</span>
+              <span className="menu-text">상품 출고</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/invoice" className="menu-link">
               <span className="menu-icon">📄</span>
               <span className="menu-text">영수증 저장</span>
