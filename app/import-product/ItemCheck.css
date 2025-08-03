@@ -1,0 +1,728 @@
+.item-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.item-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.item-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.item-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.item-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 상태 카드들 */
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.status-card {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+}
+
+.status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.status-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* 엑셀 업로드 섹션 */
+.excel-upload-section {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.excel-upload-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.excel-upload-btn:hover {
+  background-color: #45a049;
+}
+
+.excel-download-btn {
+  background-color: #cccccc;
+  color: #666666;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+}
+
+.excel-download-btn.active {
+  background-color: #4CAF50;
+  color: white;
+  cursor: pointer;
+}
+
+.excel-download-btn.active:hover {
+  background-color: #45a049;
+}
+
+.excel-download-btn:hover {
+  background-color: #3182ce;
+}
+
+/* 검색 영역 */
+.search-section {
+  margin-bottom: 20px;
+}
+
+.search-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-dropdown {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-input {
+  flex: 2;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.search-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 테이블 */
+.table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 테이블 스타일 */
+.item-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* 고정 테이블 레이아웃 사용 */
+}
+
+/* 테이블 열 너비 조정 */
+.item-table th:nth-child(1),
+.item-table td:nth-child(1) {
+  width: 40px;
+}
+
+/* 이미지 열 */
+.item-table th:nth-child(2),
+.item-table td:nth-child(2) {
+  width: 80px;
+  position: relative;
+}
+
+/* 글번호 열 */
+.item-table th:nth-child(3),
+.item-table td:nth-child(3) {
+  width: 60px;
+  max-width: 60px;
+}
+
+/* 상품명 열 */
+.item-table th:nth-child(4),
+.item-table td:nth-child(4) {
+  width: 200px;
+  min-width: 200px;
+}
+
+/* 주문옵션 열 */
+.item-table th:nth-child(5),
+.item-table td:nth-child(5) {
+  width: 150px;
+}
+
+/* 개수 열 */
+.item-table th:nth-child(6),
+.item-table td:nth-child(6) {
+  width: 60px;
+  text-align: center;
+}
+
+/* 단가 열 */
+.item-table th:nth-child(7),
+.item-table td:nth-child(7) {
+  width: 60px;
+  text-align: right;
+}
+
+/* 총금액 열 */
+.item-table th:nth-child(8),
+.item-table td:nth-child(8) {
+  width: 60px;
+  text-align: right;
+}
+
+/* 입고, 확인, 취소 열 너비 조정 */
+.item-table th:nth-child(9),
+.item-table td:nth-child(9),
+.item-table th:nth-child(10),
+.item-table td:nth-child(10),
+.item-table th:nth-child(11),
+.item-table td:nth-child(11) {
+  width: 60px;
+  text-align: center;
+}
+
+.item-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* 테이블 셀 내용 처리 */
+.item-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 상품 썸네일 이미지 */
+.product-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  padding: 2px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+/* 이미지 미리보기 */
+.image-preview-container {
+  position: static;
+}
+
+.image-preview {
+  display: none;
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  background-color: white;
+  border: 2px solid #4a90e2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  padding: 10px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.image-preview-container:hover .image-preview {
+  display: block;
+}
+
+.no-image {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: 1px solid #ddd;
+}
+
+/* 상품명 스타일 */
+.product-name {
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* 중국 옵션 스타일 */
+.china-options {
+  text-align: left;
+  line-height: 1.3;
+}
+
+.empty-data {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+/* 주문번호 텍스트 클릭 스타일 */
+.order-number-text {
+  cursor: pointer;
+  color: #333;
+  text-decoration: none;
+  display: block;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-number-text:hover {
+  color: #555;
+}
+
+/* 비고 입력 스타일 */
+.note-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.note-text {
+  cursor: pointer;
+  color: #666;
+}
+
+.note-text:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+/* 테이블 체크박스 스타일 */
+.table-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 상태 배지 스타일 */
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.not-received {
+  background-color: #FED7D7;
+  color: #C53030;
+}
+
+.status-badge.partial {
+  background-color: #FEEBC8;
+  color: #C05621;
+}
+
+.status-badge.received {
+  background-color: #C6F6D5;
+  color: #2F855A;
+}
+
+/* Drawer 스타일 */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  background: white;
+  width: 50%;
+  height: 100vh;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-header {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.drawer-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.drawer-content h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+/* Detail Table */
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.detail-table th,
+.detail-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.detail-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Drawer 내 상품명 표시 스타일 */
+.product-name-display {
+  color: #333;
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Received 입력 필드 */
+.received-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.received-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Category 드롭박스 */
+.category-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.category-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Drawer 액션 버튼 영역 */
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.save-btn {
+  padding: 10px 20px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.save-btn:hover {
+  background-color: #38a169;
+} 
+
+/* 페이지네이션 스타일 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.pagination-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.pagination-button:hover {
+  background-color: #e0e0e0;
+}
+
+.pagination-button:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  margin: 0 10px;
+}
+
+.page-number {
+  width: 35px;
+  height: 35px;
+  margin: 0 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-number:hover {
+  background-color: #f0f0f0;
+}
+
+.page-number.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+} 
+
+/* 액션 버튼 스타일 */
+.action-btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 60px;
+}
+
+.import-btn {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.import-btn:hover {
+  background-color: #3a7bc8;
+}
+
+.confirm-btn {
+  background-color: #38a169;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background-color: #2f8a59;
+}
+
+.cancel-btn {
+  background-color: #e53e3e;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #c53030;
+} 
+
+/* 편집 가능한 셀 스타일 */
+.editable-cell {
+  position: relative;
+  padding: 8px;
+  min-width: 60px;
+  cursor: text;
+  background-color: #fafafa;
+  transition: background-color 0.2s;
+}
+
+.editable-cell:hover {
+  background-color: #f0f0f0;
+}
+
+.cell-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #4a90e2;
+  border-radius: 3px;
+  font-size: 14px;
+  background-color: white;
+  box-shadow: 0 0 3px rgba(74, 144, 226, 0.3);
+  outline: none;
+} 
+
+/* 저장 버튼 섹션 */
+.excel-save-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+  gap: 10px;
+} 
+
+/* 바코드 버튼 스타일 */
+.barcode-btn {
+  background-color: #3182ce;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.barcode-btn:hover {
+  background-color: #2c5282;
+} 

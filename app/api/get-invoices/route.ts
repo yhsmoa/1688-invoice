@@ -1,36 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
-export async function GET() {
+// Next.js 14 API 라우트 형식으로 수정
+export const GET = async () => {
   try {
     console.log('GET /api/get-invoices 호출됨');
     
-    // Supabase에서 필요한 컬럼만 명시적으로 선택
+    // Supabase에서 모든 컬럼 선택 (필드 명시 없이)
     const { data: invoices, error } = await supabase
       .from('1688_invoice')
-      .select(`
-        id,
-        order_number,
-        delivery_fee,
-        delivery_number,
-        invoice,
-        order_date,
-        payment_date,
-        price,
-        product_name,
-        seller,
-        total_price,
-        order_qty,
-        unit_price,
-        offer_id,
-        img_upload,
-        file_extension,
-        received_qty,
-        memo,
-        category,
-        composition,
-        order_status
-      `)
+      .select('*')
       .order('order_date', { ascending: false });
 
     if (error) {

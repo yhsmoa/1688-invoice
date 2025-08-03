@@ -41,17 +41,17 @@ const parseNumber = (value: any) => {
 
 // Next.js 14 API 라우트 형식으로 수정
 export const POST = async (request: NextRequest) => {
-  console.log('Upload Excel API called');
+  console.log('엑셀 파일 업로드 API가 호출되었습니다.');
   
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     
-    console.log('File received:', file?.name, file?.size);
+    console.log('파일 수신:', file?.name, file?.size);
 
     if (!file) {
-      console.log('No file uploaded');
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      console.log('파일이 업로드되지 않았습니다.');
+      return NextResponse.json({ error: '파일이 업로드되지 않았습니다.' }, { status: 400 });
     }
 
     // 파일을 버퍼로 변환
@@ -74,21 +74,47 @@ export const POST = async (request: NextRequest) => {
     
     // 주요 컬럼 인덱스 정의
     const COLUMNS = {
-      ORDER_NUMBER: 0,    // A열
-      SELLER: 3,          // D열
-      PRICE: 5,           // F열
-      DELIVERY_FEE: 6,    // G열
-      TOTAL_PRICE: 8,     // I열
-      ORDER_STATUS: 9,    // J열
-      ORDER_DATE: 10,     // K열
-      PAYMENT_DATE: 11,   // L열
-      PRODUCT_NAME: 18,   // S열
-      UNIT_PRICE: 19,     // T열
-      ORDER_QTY: 20,      // U열
-      OFFER_ID: 24,       // Y열
-      SKU_ID: 25,         // Z열 (SKU ID 추가)
-      DELIVERY_NUMBER: 31 // AF열
+      ORDER_NUMBER: 0,    // A열 - 주문번호
+      SELLER: 3,          // D열 - 판매자
+      PRICE: 5,           // F열 - 가격
+      DELIVERY_FEE: 6,    // G열 - 배송비
+      TOTAL_PRICE: 8,     // I열 - 총 가격
+      ORDER_STATUS: 9,    // J열 - 주문 상태
+      ORDER_DATE: 10,     // K열 - 주문 날짜
+      PAYMENT_DATE: 11,   // L열 - 결제 날짜
+      PRODUCT_NAME: 18,   // S열 - 상품명
+      UNIT_PRICE: 19,     // T열 - 단가
+      ORDER_QTY: 20,      // U열 - 주문 수량
+      OFFER_ID: 24,       // Y열 - 상품 ID
+      SKU_ID: 25,         // Z열 - SKU ID
+      DELIVERY_NUMBER: 31 // AF열 - 송장번호
     };
+    
+    // 운송장 번호 처리를 위한 맵 생성
+    const deliveryNumbersMap = new Map<string, string[]>();
+    
+    // 첫 번째 패스: 운송장 번호 수집
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (!row) continue;
+      
+      const orderNumber = row[COLUMNS.ORDER_NUMBER];
+      const deliveryNumber = row[COLUMNS.DELIVERY_NUMBER];
+      
+      if (orderNumber && deliveryNumber) {
+        if (!deliveryNumbersMap.has(orderNumber)) {
+          deliveryNumbersMap.set(orderNumber, []);
+        }
+        
+        const numbers = deliveryNumbersMap.get(orderNumber)!;
+        // 중복 제거 - 이미 있는 송장번호는 추가하지 않음
+        if (!numbers.includes(deliveryNumber)) {
+          numbers.push(deliveryNumber);
+        }
+      }
+    }
+    
+    console.log('운송장 번호 맵 생성 완료:', Object.fromEntries(deliveryNumbersMap));
     
     // 병합 셀 처리를 위한 설정
     const MERGED_COLUMNS = [
@@ -97,7 +123,10 @@ export const POST = async (request: NextRequest) => {
       COLUMNS.ORDER_STATUS,
       COLUMNS.ORDER_DATE,
       COLUMNS.PAYMENT_DATE,
-      COLUMNS.OFFER_ID
+      COLUMNS.OFFER_ID,
+      COLUMNS.PRICE,
+      COLUMNS.DELIVERY_FEE,
+      COLUMNS.TOTAL_PRICE
     ];
     
     // 독립적인 값을 가져야 하는 컬럼 (이전 값을 사용하지 않음)
@@ -108,7 +137,7 @@ export const POST = async (request: NextRequest) => {
       COLUMNS.SKU_ID
     ];
     
-    console.log('Processing Excel data rows:', dataRows.length);
+    console.log('Excel 데이터 행 처리 시작:', dataRows.length);
     
     // 새로운 주문 그룹 시작 여부를 확인하는 함수
     const isNewOrderGroup = (row: any[]) => {
@@ -121,7 +150,7 @@ export const POST = async (request: NextRequest) => {
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       if (!row) {
-        console.log(`Skipping empty row at index ${i}`);
+        console.log(`빈 행을 건너뛰었습니다. 인덱스: ${i}`);
         continue;
       }
       
@@ -180,10 +209,17 @@ export const POST = async (request: NextRequest) => {
         
         // 현재 행에 실제 데이터가 있는 경우만 처리 (완전히 빈 행 제외)
         if (orderNumber || unitPrice || orderQty) {
+          // 운송장 번호 처리
+          const deliveryNumbers = deliveryNumbersMap.get(orderNumber) || [];
+          
           const invoiceItem = {
             order_number: orderNumber,
             delivery_fee: deliveryFee,
-            delivery_number: deliveryNumber,
+            delivery_number1: deliveryNumbers[0] || null,
+            delivery_number2: deliveryNumbers[1] || null,
+            delivery_number3: deliveryNumbers[2] || null,
+            delivery_number4: deliveryNumbers[3] || null,
+            delivery_number5: deliveryNumbers[4] || null,
             invoice: null, // 비워두기
             order_date: orderDate,
             payment_date: paymentDate,
@@ -207,7 +243,7 @@ export const POST = async (request: NextRequest) => {
           invoiceDataArray.push(invoiceItem);
         }
       } catch (rowError) {
-        console.error(`Error processing row ${i}:`, rowError);
+        console.error(`행 ${i} 처리 중 오류 발생:`, rowError);
       }
     }
 
@@ -215,7 +251,7 @@ export const POST = async (request: NextRequest) => {
     
     // 데이터가 비어있는지 확인
     if (invoiceDataArray.length === 0) {
-      console.log('No valid data found in Excel file');
+      console.log('Excel 파일에 유효한 데이터가 없습니다.');
       return NextResponse.json({ 
         error: '엑셀 파일에 유효한 데이터가 없습니다.' 
       }, { status: 400 });
@@ -224,20 +260,20 @@ export const POST = async (request: NextRequest) => {
     // 데이터 저장 시도
     try {
       // 일반 insert로 시도
-      console.log('일반 insert로 시도합니다...');
+      console.log('Supabase에 데이터를 저장하려고 합니다...');
       const { data, error } = await supabase
         .from('1688_invoice')
         .insert(invoiceDataArray);
         
       if (error) {
-        console.error('Insert 시도 중 오류:', error);
+        console.error('Supabase 저장 중 오류:', error);
         return NextResponse.json({ 
           error: 'Supabase 저장 중 오류가 발생했습니다.',
           details: error.message
         }, { status: 500 });
       }
       
-      console.log('일반 Insert 성공');
+      console.log('Supabase 일반 Insert 성공');
       
       return NextResponse.json({ 
         message: '엑셀 파일이 성공적으로 업로드되었습니다.',
@@ -251,7 +287,7 @@ export const POST = async (request: NextRequest) => {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('업로드 중 오류 발생:', error);
     return NextResponse.json({ 
       error: '업로드 중 오류가 발생했습니다.',
       details: error instanceof Error ? error.message : 'Unknown error'

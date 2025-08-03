@@ -6,11 +6,11 @@ export const GET = async () => {
   try {
     console.log('GET /api/get-stats 호출됨');
     
-    // 1. 거래완료(交易成功) 주문 데이터 가져오기
+    // 1. 거래완료(交易成功 또는 等待买家确认收货) 주문 데이터 가져오기
     const { data: completedOrders, error: completedError } = await supabase
       .from('1688_invoice')
       .select('order_number, unit_price, order_qty')
-      .eq('order_status', '交易成功');
+      .or('order_status.eq.交易成功,order_status.eq.等待买家确认收货');
 
     if (completedError) {
       console.error('거래완료 주문 조회 오류:', completedError);
@@ -24,7 +24,7 @@ export const GET = async () => {
     const { data: receiptOrders, error: receiptError } = await supabase
       .from('1688_invoice')
       .select('order_number, unit_price, order_qty')
-      .eq('order_status', '交易成功')
+      .or('order_status.eq.交易成功,order_status.eq.等待买家确认收货')
       .eq('img_upload', true);
 
     if (receiptError) {

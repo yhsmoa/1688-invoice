@@ -169,6 +169,44 @@
 .invoice-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed; /* 고정 테이블 레이아웃 사용 */
+}
+
+/* 테이블 열 너비 조정 */
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1) {
+  width: 40px;
+}
+
+.invoice-table th:nth-child(2),
+.invoice-table td:nth-child(2) {
+  width: 180px;
+}
+
+.invoice-table th:nth-child(3),
+.invoice-table td:nth-child(3) {
+  width: 100px;
+}
+
+.invoice-table th:nth-child(4),
+.invoice-table td:nth-child(4) {
+  width: 150px;
+}
+
+.invoice-table th:nth-child(5),
+.invoice-table td:nth-child(5) {
+  width: 150px;
+}
+
+.invoice-table th:nth-child(6),
+.invoice-table td:nth-child(6) {
+  width: 150px;
+}
+
+.invoice-table th:nth-child(7),
+.invoice-table td:nth-child(7) {
+  width: 80px;
+  text-align: center;
 }
 
 .invoice-table th {
@@ -178,6 +216,7 @@
   font-weight: 600;
   color: #333;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 /* 영수증 헤더 가운데 정렬 */
@@ -185,9 +224,14 @@
   text-align: center;
 }
 
+/* 테이블 셀 내용 처리 */
 .invoice-table td {
   padding: 16px;
   border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
 }
 
 /* 영수증 셀 가운데 정렬 */
@@ -204,9 +248,41 @@
 /* 주문번호 텍스트 클릭 스타일 */
 .order-number-text {
   cursor: pointer;
-  color: inherit !important;
-  font-weight: 600;
-  transition: none;
+  color: #333;
+  text-decoration: none;
+  display: block;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-number-text:hover {
+  color: #555;
+}
+
+/* 비고 입력 스타일 */
+.note-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.note-text {
+  cursor: pointer;
+  color: #666;
+}
+
+.note-text:hover {
+  color: #333;
+  text-decoration: underline;
 }
 
 /* 상품명 텍스트 클릭 스타일 */
@@ -448,19 +524,20 @@
   border-top: 1px solid #e2e8f0;
 }
 
-/* 저장 버튼 */
-.save-btn {
-  padding: 10px 20px;
-  background-color: #48bb78;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+/* 운송장 번호 스타일 */
+.delivery-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.save-btn:hover {
-  background-color: #38a169;
+.delivery-numbers div {
+  font-size: 0.9em;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 } 

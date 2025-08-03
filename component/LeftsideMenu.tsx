@@ -16,6 +16,12 @@ const LeftsideMenu: React.FC = () => {
       <nav className="leftside-nav">
         <ul className="menu-list">
           <li className="menu-item">
+            <Link href="/import-product" className="menu-link">
+              <span className="menu-icon">📦</span>
+              <span className="menu-text">상품 입고</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/invoice" className="menu-link">
               <span className="menu-icon">📄</span>
               <span className="menu-text">영수증 저장</span>
@@ -37,7 +43,7 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/export-invoice/match" className="submenu-link">
                     <span className="submenu-text">인보이스 영수증 매칭</span>
-            </Link>
+                  </Link>
                 </li>
               </ul>
             )}

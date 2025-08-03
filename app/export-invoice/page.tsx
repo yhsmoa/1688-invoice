@@ -1,4 +1,4 @@
-import ExportInvoice from '../../pages/export-invoice/ExportInvoice';
+import ExportInvoice from './ExportInvoice';
 
 export default function ExportInvoicePage() {
   return <ExportInvoice />;
