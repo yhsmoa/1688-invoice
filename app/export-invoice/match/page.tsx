@@ -1,4 +1,4 @@
-import ExportInvoiceMatch from '../../../pages/export-invoice/ExportInvoiceMatch'
+import ExportInvoiceMatch from '../ExportInvoiceMatch'
  
 export default function ExportInvoiceMatchPage() {
   return <ExportInvoiceMatch />

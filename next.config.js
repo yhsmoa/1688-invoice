@@ -4,6 +4,10 @@ const nextConfig = {
   webpack: (config) => {
     config.resolve.fallback = { fs: false };
     return config;
+  },
+  images: {
+    domains: ['cbu01.alicdn.com', 'img.alicdn.com', 'ae01.alicdn.com'],
+    unoptimized: true,
   }
 }
 

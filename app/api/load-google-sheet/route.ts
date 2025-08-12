@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
   try {
     console.log('구글 시트 API 호출 시작');
     
-    console.log('구글 시트 ID:', SPREADSHEET_ID);
+    // URL 파라미터에서 googlesheet_id 가져오기
+    const searchParams = request.nextUrl.searchParams;
+    const googleSheetId = searchParams.get('googlesheet_id') || SPREADSHEET_ID;
+    
+    console.log('구글 시트 ID:', googleSheetId);
     console.log('시트명:', SHEET_NAME);
     
     // 구글 시트 API 호출
@@ -59,7 +63,7 @@ export async function GET(request: NextRequest) {
       
       // 구글 시트에서 데이터 가져오기
       const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: googleSheetId,
         range: SHEET_NAME,
       });
       

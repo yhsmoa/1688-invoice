@@ -1,0 +1,210 @@
+/* 쉽먼트 페이지 전용 스타일 */
+.shipment-page-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.shipment-page-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.shipment-page-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.shipment-page-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.shipment-page-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 검색 영역 - 상품입고 페이지와 동일한 디자인 */
+.shipment-search-section {
+  margin-bottom: 20px;
+}
+
+.shipment-search-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.shipment-search-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.shipment-search-dropdown {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.shipment-search-input {
+  flex: 2;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.shipment-search-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.shipment-search-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 다운로드 버튼 영역 */
+.shipment-download-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+/* 다운로드 버튼 스타일 */
+.shipment-download-button {
+  padding: 10px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.shipment-download-button:hover {
+  background-color: #218838;
+}
+
+/* 테이블 영역 - 상품입고 페이지와 동일한 디자인 */
+.shipment-page-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.shipment-page-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* 쉽먼트 테이블 컬럼 너비 */
+.shipment-page-table th:nth-child(1),
+.shipment-page-table td:nth-child(1) {
+  width: 120px; /* 박스번호 */
+}
+
+.shipment-page-table th:nth-child(2),
+.shipment-page-table td:nth-child(2) {
+  width: 150px; /* 바코드 */
+}
+
+.shipment-page-table th:nth-child(3),
+.shipment-page-table td:nth-child(3) {
+  width: 300px; /* 상품명 */
+}
+
+.shipment-page-table th:nth-child(4),
+.shipment-page-table td:nth-child(4) {
+  width: 200px; /* 주문옵션 */
+}
+
+.shipment-page-table th:nth-child(5),
+.shipment-page-table td:nth-child(5) {
+  width: 80px; /* 개수 */
+  text-align: center;
+}
+
+.shipment-page-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.shipment-page-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.shipment-page-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* 빈 데이터 스타일 */
+.shipment-page-empty-data {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .shipment-page-content {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .shipment-page-table {
+    font-size: 12px;
+  }
+  
+  .shipment-page-table th,
+  .shipment-page-table td {
+    padding: 6px 4px;
+  }
+  
+  .shipment-search-form-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .shipment-search-input {
+    width: 100%;
+  }
+}

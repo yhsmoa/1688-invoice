@@ -29,26 +29,27 @@ const debounce = <F extends (...args: any[]) => any>(
 
 interface ItemData {
   id: string;
-  order_number: string;
-  product_name: string | null;
-  seller: string | null;
-  total_price: number | null;
-  order_qty: number | null;
-  unit_price: number | null;
-  received_qty: number | null;
-  category: string | null;
-  composition: string | null;
-  note?: string; // 메모 추가
+  row_number?: string; // 구글 시트 행 번호
   img_url?: string; // 이미지 URL
-  date?: string; // 날짜
-  option_name?: string; // 옵션명
-  china_option1?: string; // 중국 옵션1
-  china_option2?: string; // 중국 옵션2
-  price?: number; // 단가
-  import_qty?: number; // 입고수량
-  confirm_qty?: number; // 확인수량
-  cancel_qty?: number; // 취소수량
-  row_id?: string; // 구글 시트 행 번호 (UUID)
+  order_number_prefix?: string; // 글번호 앞부분 (A열)
+  order_number: string; // 글번호 뒷부분 (B열)
+  product_name: string | null; // 상품명 첫 줄 (C열)
+  product_name_sub?: string | null; // 상품명 둘째 줄 (D열)
+  barcode?: string | null; // 바코드 (F열)
+  china_option1?: string | null; // 주문옵션 첫 줄 (G열)
+  china_option2?: string | null; // 주문옵션 둘째 줄 (H열)
+  order_qty: number | null; // 개수 (E열)
+  cost_main?: string | null; // 비용 첫 줄 (I열)
+  cost_sub?: string | null; // 비용 둘째 줄 (J열)
+  progress_qty?: number | null; // 진행 (M열)
+  import_qty?: number | null; // 입고 (N열)
+  cancel_qty?: number | null; // 취소 (O열)
+  export_qty?: number | null; // 출고 (P열)
+  note?: string | null; // 비고 (Q열)
+  // 기존 필드들 (호환성을 위해 남겨둠)
+  date?: string;
+  row_id?: string;
+  confirm_qty?: number | null;
 }
 
 const ItemCheck: React.FC = () => {
@@ -62,9 +63,15 @@ const ItemCheck: React.FC = () => {
   const [filteredData, setFilteredData] = useState<ItemData[]>([]);
   const [originalData, setOriginalData] = useState<ItemData[]>([]);
   const [activeStatus, setActiveStatus] = useState<string>('전체');
+  const [searchType, setSearchType] = useState<string>('배송번호');
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<{[key: string]: string}>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
+  const [showQuantityDialog, setShowQuantityDialog] = useState(false);
+  const [productQuantities, setProductQuantities] = useState<{ [key: string]: number }>({});
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
+  const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
+  const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,6 +86,62 @@ const ItemCheck: React.FC = () => {
   // 수정된 데이터 추적
   const [modifiedData, setModifiedData] = useState<{[key: string]: {[field: string]: number | null}}>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  // 정렬 상태
+  const [sortType, setSortType] = useState<string>('주문순서');
+
+  // 정렬 함수
+  const sortData = (data: ItemData[], sortType: string): ItemData[] => {
+    const sortedData = [...data];
+    
+    if (sortType === '주문순서') {
+      // row_number 오름차순으로 정렬
+      return sortedData.sort((a, b) => {
+        const aRowNumber = parseInt(a.row_number || '0');
+        const bRowNumber = parseInt(b.row_number || '0');
+        return aRowNumber - bRowNumber;
+      });
+    } else if (sortType === '품목별') {
+      // 1. product_name 2. china_option1 3. row_number 순서로 정렬
+      return sortedData.sort((a, b) => {
+        // 1차: product_name 비교
+        const aProductName = a.product_name || '';
+        const bProductName = b.product_name || '';
+        const productCompare = aProductName.localeCompare(bProductName);
+        
+        if (productCompare !== 0) {
+          return productCompare;
+        }
+        
+        // 2차: china_option1 비교
+        const aOption = a.china_option1 || '';
+        const bOption = b.china_option1 || '';
+        const optionCompare = aOption.localeCompare(bOption);
+        
+        if (optionCompare !== 0) {
+          return optionCompare;
+        }
+        
+        // 3차: row_number 비교
+        const aRowNumber = parseInt(a.row_number || '0');
+        const bRowNumber = parseInt(b.row_number || '0');
+        return aRowNumber - bRowNumber;
+      });
+    }
+    
+    return sortedData;
+  };
+
+  // 정렬 타입 변경 핸들러
+  const handleSortTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSortType = e.target.value;
+    setSortType(newSortType);
+    
+    // 현재 필터링된 데이터를 새로운 정렬 기준으로 정렬
+    const sortedData = sortData(filteredData, newSortType);
+    setFilteredData(sortedData);
+    setCurrentPage(1); // 정렬 시 첫 페이지로 이동
+  };
 
   // 메모 저장 함수
   const saveNote = async (orderNumber: string, note: string) => {
@@ -227,49 +290,90 @@ const ItemCheck: React.FC = () => {
     }
   };
 
-  // 데이터 가져오기
+  // 데이터 가져오기 - 초기에는 빈 데이터
   const fetchItemData = async () => {
     console.log('fetchItemData 시작');
-    try {
-      setLoading(true);
-      
-      // Supabase에서 데이터 가져오기
-      const response = await fetch('/api/get-import-products', {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        cache: 'no-store'
-      });
-      
-      if (!response.ok) {
-        throw new Error('데이터를 불러오는데 실패했습니다.');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setOriginalData(result.data);
-        setItemData(result.data);
-        setFilteredData(result.data);
-      } else {
-        // 오류 또는 데이터가 없는 경우 빈 배열 설정
-        setOriginalData([]);
-        setItemData([]);
-        setFilteredData([]);
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('데이터 가져오기 오류:', error);
-      setLoading(false);
-      alert('데이터를 가져오는 중 오류가 발생했습니다.');
-    }
+    // 초기 로드 시에는 빈 데이터만 설정
+    setOriginalData([]);
+    setItemData([]);
+    setFilteredData([]);
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchItemData();
+    fetchCoupangUsers();
   }, []);
+
+  // 드롭다운 선택 시 캐시된 데이터 로드
+  useEffect(() => {
+    if (selectedCoupangUser && !isLoadingFromCache) {
+      loadCachedData(selectedCoupangUser);
+    }
+  }, [selectedCoupangUser]);
+
+  // 캐시된 데이터 로드 함수
+  const loadCachedData = (coupangName: string) => {
+    try {
+      const cacheKey = `sheet_data_${coupangName}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        const sortedData = sortData(parsedData.data || [], sortType);
+        setOriginalData(parsedData.data || []);
+        setItemData(parsedData.data || []);
+        setFilteredData(sortedData);
+        
+        // 캐시된 데이터 표시 메시지 (선택적)
+        console.log(`${coupangName}의 캐시된 데이터를 불러왔습니다.`);
+      }
+    } catch (error) {
+      console.error('캐시 데이터 로드 오류:', error);
+    }
+  };
+
+  // 데이터를 localStorage에 저장하는 함수
+  const saveToCache = (coupangName: string, data: ItemData[]) => {
+    try {
+      const cacheKey = `sheet_data_${coupangName}`;
+      const cacheData = {
+        data: data,
+        timestamp: Date.now(),
+        coupangName: coupangName
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('캐시 저장 오류:', error);
+      // localStorage가 가듵 차면 오래된 캐시 삭제
+      try {
+        const keys = Object.keys(localStorage);
+        const sheetDataKeys = keys.filter(key => key.startsWith('sheet_data_'));
+        if (sheetDataKeys.length > 0) {
+          // 가장 오래된 캐시 삭제
+          localStorage.removeItem(sheetDataKeys[0]);
+          // 다시 시도
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        }
+      } catch (e) {
+        console.error('캐시 정리 실패:', e);
+      }
+    }
+  };
+
+  // 쿠팡 사용자 목록 가져오기
+  const fetchCoupangUsers = async () => {
+    try {
+      const response = await fetch('/api/get-coupang-users');
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setCoupangUsers(result.data);
+      }
+    } catch (error) {
+      console.error('쿠팡 사용자 목록 가져오기 오류:', error);
+    }
+  };
 
   // 페이지네이션 처리 함수
   const updatePaginatedData = (data: ItemData[]) => {
@@ -306,7 +410,8 @@ const ItemCheck: React.FC = () => {
   // 검색 함수
   const performSearch = async () => {
     if (!searchTerm.trim()) {
-      setFilteredData(itemData); // 검색어가 없으면 모든 데이터 표시
+      const sortedData = sortData(itemData, sortType);
+      setFilteredData(sortedData); // 검색어가 없으면 모든 데이터 표시 (정렬 적용)
       setCurrentPage(1); // 검색 시 첫 페이지로 이동
       return;
     }
@@ -314,8 +419,15 @@ const ItemCheck: React.FC = () => {
     try {
       setLoading(true);
       
-      // 배송번호로 검색하는 API 호출
-      const response = await fetch(`/api/search-by-delivery-number?term=${encodeURIComponent(searchTerm)}`, {
+      // 검색 타입에 따라 다른 API 호출
+      let apiUrl = '';
+      if (searchType === '배송번호') {
+        apiUrl = `/api/search-by-delivery-number?term=${encodeURIComponent(searchTerm)}`;
+      } else if (searchType === '일반검색') {
+        apiUrl = `/api/search-general?term=${encodeURIComponent(searchTerm)}`;
+      }
+      
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
@@ -330,7 +442,8 @@ const ItemCheck: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        setFilteredData(result.data || []);
+        const sortedData = sortData(result.data || [], sortType);
+        setFilteredData(sortedData);
       } else {
         console.error('검색 오류:', result.error);
         alert(result.error || '검색 중 오류가 발생했습니다.');
@@ -349,6 +462,15 @@ const ItemCheck: React.FC = () => {
   // 검색어 변경 시 자동으로 필터링하지 않음 (메모리 효율성을 위해)
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+
+  // 검색 타입 변경 시 검색어 초기화 및 전체 데이터 표시
+  const handleSearchTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSearchType(e.target.value);
+    setSearchTerm(''); // 검색어 초기화
+    const sortedData = sortData(itemData, sortType);
+    setFilteredData(sortedData); // 전체 데이터 표시 (정렬 적용)
+    setCurrentPage(1);
   };
 
   // 검색 버튼 클릭
@@ -387,10 +509,23 @@ const ItemCheck: React.FC = () => {
   const isIndeterminate = selectedRows.size > 0 && selectedRows.size < filteredData.length;
 
   const handleLoadGoogleSheet = async () => {
+    if (!selectedCoupangUser) {
+      alert('쿠팡 사용자를 선택해주세요.');
+      return;
+    }
+
+    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
+    if (!selectedUser || !selectedUser.googlesheet_id) {
+      alert('선택한 사용자의 구글 시트 ID를 찾을 수 없습니다.');
+      return;
+    }
+
     try {
       setLoading(true);
+      setIsLoadingFromCache(true); // 캐시 로드 방지 플래그 설정
       
-      const response = await fetch('/api/load-google-sheet', {
+      // 최적화된 API 엔드포인트 사용 - 캐시 비활성화
+      const response = await fetch(`/api/load-google-sheet-optimized?googlesheet_id=${selectedUser.googlesheet_id}&cache=false`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
@@ -410,19 +545,33 @@ const ItemCheck: React.FC = () => {
       }
       
       if (response.ok && result.success) {
-        alert(`${result.message}`);
-        // 페이지 새로고침으로 간단하게 해결
-        window.location.reload();
+        // 구글 시트 데이터를 테이블에 직접 표시
+        const sortedData = sortData(result.data || [], sortType);
+        setOriginalData(result.data || []);
+        setItemData(result.data || []);
+        setFilteredData(sortedData);
+        
+        // 데이터를 캐시에 저장
+        saveToCache(selectedCoupangUser, result.data || []);
+        
+        setLoading(false);
+        setIsLoadingFromCache(false); // 플래그 해제
+        
+        // 로드 시간 정보 포함
+        const loadTimeInfo = result.loadTime ? ` (${(result.loadTime / 1000).toFixed(1)}초)` : '';
+        alert(`${result.message}${loadTimeInfo}`);
       } else {
         const errorMessage = result.error || result.details || '구글 시트 데이터를 불러오는데 실패했습니다.';
         console.error('구글 시트 API 오류:', errorMessage);
         alert(errorMessage);
         setLoading(false);
+        setIsLoadingFromCache(false);
       }
     } catch (error) {
       console.error('구글 시트 데이터 불러오기 오류:', error);
       alert(`구글 시트 데이터를 불러오는데 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
       setLoading(false);
+      setIsLoadingFromCache(false);
     }
   };
 
@@ -452,11 +601,117 @@ const ItemCheck: React.FC = () => {
     
     // 선택된 항목들의 바코드 정보 수집
     const selectedItems = filteredData.filter(item => selectedRows.has(item.id));
-    console.log('바코드 생성 대상:', selectedItems);
     
-    // 여기에 바코드 생성 로직 추가
-    alert(`${selectedItems.length}개 항목의 바코드를 생성합니다.`);
-    // TODO: 바코드 생성 API 호출 또는 페이지 이동
+    // 바코드가 있는 항목만 필터링
+    const itemsWithBarcode = selectedItems.filter(item => item.barcode);
+    
+    if (itemsWithBarcode.length === 0) {
+      alert('선택한 항목에 바코드 정보가 없습니다.');
+      return;
+    }
+    
+    // 초기 수량 설정 (기본값 1)
+    const initialQuantities: { [key: string]: number } = {};
+    itemsWithBarcode.forEach(item => {
+      initialQuantities[item.id] = 1;
+    });
+    setProductQuantities(initialQuantities);
+    
+    // 수량 입력 다이얼로그 표시
+    setShowQuantityDialog(true);
+  };
+
+  // 폴백 다운로드 함수 (File System Access API를 지원하지 않는 브라우저용)
+  const fallbackDownload = (jsonContent: string, itemCount: number) => {
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = 'barcode.json';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+    
+    alert(`바코드 데이터가 다운로드되었습니다.\n저장된 아이템: ${itemCount}개`);
+  };
+
+  // 수량 입력 후 JSON 저장
+  const handleQuantityConfirm = async () => {
+    // 바코드 데이터 준비 (수량 포함)
+    const barcodeData: Array<{name: string, barcode: string, qty: number}> = [];
+    
+    Object.entries(productQuantities).forEach(([id, quantity]) => {
+      const item = filteredData.find(item => item.id === id);
+      if (item && item.barcode) {
+        barcodeData.push({
+          name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
+          barcode: item.barcode,
+          qty: quantity
+        });
+      }
+    });
+    
+    if (barcodeData.length > 0) {
+      const jsonContent = JSON.stringify(barcodeData, null, 2);
+      
+      // File System Access API 지원 여부 확인
+      console.log('File System Access API 지원:', 'showSaveFilePicker' in window);
+      
+      if ('showSaveFilePicker' in window) {
+        try {
+          console.log('파일 저장 다이얼로그 열기 시도...');
+          
+          // 사용자가 저장 위치를 선택할 수 있는 다이얼로그 표시
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: 'barcode.json',
+            types: [{
+              description: 'JSON 파일',
+              accept: { 'application/json': ['.json'] },
+            }],
+          });
+          
+          console.log('파일 핸들 획득:', handle);
+          
+          // 파일 쓰기
+          const writable = await handle.createWritable();
+          await writable.write(jsonContent);
+          await writable.close();
+          
+          console.log('파일 저장 완료');
+          alert(`바코드 데이터가 저장되었습니다.\n저장된 아이템: ${barcodeData.length}개`);
+          
+          setShowQuantityDialog(false);
+          setProductQuantities({});
+          setIsAllChecked(false);
+          setSelectedRows(new Set());
+        } catch (error) {
+          console.error('파일 저장 오류:', error);
+          console.error('오류 이름:', (error as Error).name);
+          console.error('오류 메시지:', (error as Error).message);
+          
+          // 사용자가 취소한 경우가 아니면 폴백 사용
+          if ((error as Error).name !== 'AbortError') {
+            console.log('폴백 다운로드 사용');
+            fallbackDownload(jsonContent, barcodeData.length);
+            
+            setShowQuantityDialog(false);
+            setProductQuantities({});
+            setSelectedRows(new Set());
+          }
+        }
+      } else {
+        console.log('File System Access API 미지원 - 폴백 사용');
+        // File System Access API를 지원하지 않는 브라우저의 경우 기본 다운로드 사용
+        fallbackDownload(jsonContent, barcodeData.length);
+        
+        setShowQuantityDialog(false);
+        setProductQuantities({});
+        setIsAllChecked(false);
+        setSelectedRows(new Set());
+      }
+    }
   };
 
   // 저장 버튼 클릭 핸들러
@@ -561,6 +816,24 @@ const ItemCheck: React.FC = () => {
             
             {/* 시트 불러오기 버튼 - 카드 위로 이동 */}
             <div className="excel-upload-section">
+              <select 
+                className="coupang-user-dropdown"
+                value={selectedCoupangUser}
+                onChange={(e) => setSelectedCoupangUser(e.target.value)}
+              >
+                <option value="">쿠팡 사용자 선택</option>
+                {coupangUsers.map((user) => {
+                  // 캐시 데이터 확인
+                  const cacheKey = `sheet_data_${user.coupang_name}`;
+                  const hasCachedData = localStorage.getItem(cacheKey) !== null;
+                  
+                  return (
+                    <option key={user.coupang_name} value={user.coupang_name}>
+                      {user.coupang_name} {hasCachedData ? '●' : ''}
+                    </option>
+                  );
+                })}
+              </select>
               <button className="excel-upload-btn" onClick={handleLoadGoogleSheet}>
                 시트 불러오기
               </button>
@@ -578,21 +851,45 @@ const ItemCheck: React.FC = () => {
               ))}
             </div>
 
+            {/* 정렬 옵션과 저장 버튼 - 검색 입력폼 위로 이동 */}
+            <div className="control-section">
+              <div className="left-controls">
+                <select 
+                  className="sort-dropdown"
+                  value={sortType}
+                  onChange={handleSortTypeChange}
+                >
+                  <option value="주문순서">주문순서</option>
+                  <option value="품목별">품목별</option>
+                </select>
+              </div>
+              <div className="right-controls">
+                <button 
+                  className={`excel-download-btn ${Object.keys(modifiedData).length > 0 ? 'active' : ''}`}
+                  onClick={handleSaveClick}
+                  disabled={Object.keys(modifiedData).length === 0 || isSaving}
+                >
+                  {isSaving ? '저장 중...' : '저장'}
+                </button>
+                <button className="barcode-btn" onClick={handleBarcodeClick}>바코드 생성</button>
+              </div>
+            </div>
+
             {/* 검색 영역 */}
             <div className="search-section">
               <div className="search-board">
                 <div className="search-form-container">
-                  <select className="search-dropdown">
-                    <option value="">전체</option>
-                    <option value="미입고">미입고</option>
-                    <option value="부분입고">부분입고</option>
-                    <option value="입고완료">입고완료</option>
-                    <option value="불량">불량</option>
-                    <option value="반품">반품</option>
+                  <select 
+                    className="search-dropdown"
+                    value={searchType}
+                    onChange={handleSearchTypeChange}
+                  >
+                    <option value="배송번호">배송번호</option>
+                    <option value="일반검색">일반검색</option>
                   </select>
                   <input 
                     type="text" 
-                    placeholder="배송번호를 입력하세요" 
+                    placeholder={searchType === '배송번호' ? '배송번호를 입력하세요' : '상품명, 오퍼ID, 바코드를 입력하세요'} 
                     className="search-input"
                     value={searchTerm}
                     onChange={handleSearchInputChange}
@@ -601,18 +898,6 @@ const ItemCheck: React.FC = () => {
                   <button className="search-button" onClick={handleSearchClick}>검색</button>
                 </div>
               </div>
-            </div>
-
-            {/* 저장 버튼 - 테이블 바로 위로 이동 */}
-            <div className="excel-save-section">
-              <button 
-                className={`excel-download-btn ${Object.keys(modifiedData).length > 0 ? 'active' : ''}`}
-                onClick={handleSaveClick}
-                disabled={Object.keys(modifiedData).length === 0 || isSaving}
-              >
-                {isSaving ? '저장 중...' : '저장'}
-              </button>
-              <button className="barcode-btn" onClick={handleBarcodeClick}>바코드 생성</button>
             </div>
 
             {/* 테이블 */}
@@ -636,21 +921,22 @@ const ItemCheck: React.FC = () => {
                     <th>상품명</th>
                     <th>주문옵션</th>
                     <th>개수</th>
-                    <th>단가</th>
-                    <th>총금액</th>
+                    <th>비용</th>
+                    <th>진행</th>
                     <th>입고</th>
-                    <th>확인</th>
                     <th>취소</th>
+                    <th>출고</th>
+                    <th>비고</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={11} className="empty-data">로딩 중...</td>
+                      <td colSpan={12} className="empty-data">로딩 중...</td>
                     </tr>
                   ) : paginatedData.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="empty-data">검색 결과가 없습니다.</td>
+                      <td colSpan={12} className="empty-data">검색 결과가 없습니다.</td>
                     </tr>
                   ) : (
                     paginatedData.map((item) => (
@@ -667,11 +953,11 @@ const ItemCheck: React.FC = () => {
                           {item.img_url ? (
                             <div className="image-preview-container">
                               <img 
-                                src={item.img_url} 
+                                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`} 
                                 alt="상품 이미지" 
                                 className="product-thumbnail"
                                 onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/placeholder.png';
+                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
                                 }}
                               />
                               <div 
@@ -682,10 +968,10 @@ const ItemCheck: React.FC = () => {
                                 }}
                               >
                                 <img 
-                                  src={item.img_url} 
+                                  src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`} 
                                   alt="상품 이미지 미리보기" 
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/placeholder.png';
+                                    (e.target as HTMLImageElement).src = '/placeholder.svg';
                                   }}
                                 />
                               </div>
@@ -699,17 +985,24 @@ const ItemCheck: React.FC = () => {
                             className="order-number-text"
                             onClick={() => handleItemClick(item)}
                           >
-                            {item.date ? item.date : ''}<br />
-                            {item.order_number}
+                            {item.order_number_prefix || ''}
+                            {item.order_number_prefix && item.order_number && <br />}
+                            {item.order_number || ''}
                           </span>
                         </td>
                         <td>
                           <div className="product-name">
                             {item.product_name || '-'}
-                            {item.option_name && (
+                            {item.product_name_sub && (
                               <>
                                 <br />
-                                {item.option_name}
+                                {item.product_name_sub}
+                              </>
+                            )}
+                            {item.barcode && (
+                              <>
+                                <br />
+                                {item.barcode}
                               </>
                             )}
                           </div>
@@ -729,64 +1022,48 @@ const ItemCheck: React.FC = () => {
                           {item.order_qty || 0}
                         </td>
                         <td>
-                          {item.price ? item.price.toLocaleString() : '0'}
+                          <div className="cost-display">
+                            {item.cost_main || '-'}
+                            {item.cost_sub && (
+                              <>
+                                <br />
+                                {item.cost_sub}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="qty-cell">
+                          {item.progress_qty && (
+                            <span className="qty-badge progress-qty">
+                              {item.progress_qty}
+                            </span>
+                          )}
+                        </td>
+                        <td className="qty-cell">
+                          {item.import_qty && (
+                            <span className="qty-badge import-qty">
+                              {item.import_qty}
+                            </span>
+                          )}
+                        </td>
+                        <td className="qty-cell">
+                          {item.cancel_qty && (
+                            <span className="qty-badge cancel-qty">
+                              {item.cancel_qty}
+                            </span>
+                          )}
+                        </td>
+                        <td className="qty-cell">
+                          {item.export_qty && (
+                            <span className="qty-badge export-qty">
+                              {item.export_qty}
+                            </span>
+                          )}
                         </td>
                         <td>
-                          {item.total_price ? item.total_price.toLocaleString() : '0'}
-                        </td>
-                        <td 
-                          className="editable-cell"
-                          onClick={() => startEditingCell(item.id, 'import_qty', item.import_qty)}
-                        >
-                          {editingCell && editingCell.id === item.id && editingCell.field === 'import_qty' ? (
-                            <input
-                              type="text"
-                              value={cellValue}
-                              onChange={handleCellValueChange}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={finishEditingCell}
-                              autoFocus
-                              className="cell-input"
-                            />
-                          ) : (
-                            item.import_qty || ''
-                          )}
-                        </td>
-                        <td 
-                          className="editable-cell"
-                          onClick={() => startEditingCell(item.id, 'confirm_qty', item.confirm_qty)}
-                        >
-                          {editingCell && editingCell.id === item.id && editingCell.field === 'confirm_qty' ? (
-                            <input
-                              type="text"
-                              value={cellValue}
-                              onChange={handleCellValueChange}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={finishEditingCell}
-                              autoFocus
-                              className="cell-input"
-                            />
-                          ) : (
-                            item.confirm_qty || ''
-                          )}
-                        </td>
-                        <td 
-                          className="editable-cell"
-                          onClick={() => startEditingCell(item.id, 'cancel_qty', item.cancel_qty)}
-                        >
-                          {editingCell && editingCell.id === item.id && editingCell.field === 'cancel_qty' ? (
-                            <input
-                              type="text"
-                              value={cellValue}
-                              onChange={handleCellValueChange}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={finishEditingCell}
-                              autoFocus
-                              className="cell-input"
-                            />
-                          ) : (
-                            item.cancel_qty || ''
-                          )}
+                          <div className="note-display">
+                            {item.note || ''}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -924,6 +1201,70 @@ const ItemCheck: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 수량 입력 다이얼로그 */}
+      {showQuantityDialog && (
+        <div className="quantity-dialog-overlay" onClick={() => setShowQuantityDialog(false)}>
+          <div className="quantity-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="quantity-dialog-header">
+              <h2>바코드 라벨 수량 입력</h2>
+              <button className="close-btn" onClick={() => setShowQuantityDialog(false)}>×</button>
+            </div>
+            <div className="quantity-dialog-content">
+              <table className="quantity-table">
+                <thead>
+                  <tr>
+                    <th>상품정보</th>
+                    <th>수량</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData
+                    .filter(item => selectedRows.has(item.id) && item.barcode)
+                    .map(item => (
+                      <tr key={item.id}>
+                        <td>
+                          <div className="product-info-text">
+                            <div>{item.product_name} {item.product_name_sub}</div>
+                            <div className="china-options">
+                              {item.china_option1} {item.china_option2}
+                            </div>
+                            <div style={{fontSize: '12px', color: '#666', marginTop: '4px'}}>
+                              바코드: {item.barcode}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            value={productQuantities[item.id] || 1}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 1;
+                              setProductQuantities({
+                                ...productQuantities,
+                                [item.id]: value
+                              });
+                            }}
+                            className="quantity-input"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="quantity-dialog-actions">
+              <button className="cancel-btn" onClick={() => setShowQuantityDialog(false)}>
+                취소
+              </button>
+              <button className="confirm-btn" onClick={handleQuantityConfirm}>
+                저장
+              </button>
             </div>
           </div>
         </div>

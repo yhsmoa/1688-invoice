@@ -14,16 +14,24 @@ export async function POST(request: NextRequest) {
 
     console.log('쉽먼트 저장 요청:', shipmentData);
 
-    // 각 쉽먼트 항목 저장
-    const insertPromises = shipmentData.map(async (item: any) => {
+    // 각 쉽먼트 항목 처리 (upsert 방식으로 중복 방지)
+    const upsertPromises = shipmentData.map(async (item: any) => {
+      console.log('저장할 개별 항목:', item);
+      
+      // Box-barcode 조합으로 고유 ID 생성
+      const uniqueId = `${item.box}-${item.barcode}`;
+      
       const { error } = await supabase
         .from('1688_shipment')
-        .insert({
-          box: item.box_number,
+        .upsert({
+          id: uniqueId,
+          box: item.box,
           barcode: item.barcode,
           product_name: item.product_name,
-          option_name: item.order_option,
-          qty: item.quantity
+          option_name: item.option_name,
+          qty: item.qty
+        }, {
+          onConflict: 'id'
         });
 
       if (error) {
@@ -32,7 +40,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    await Promise.all(insertPromises);
+    await Promise.all(upsertPromises);
 
     console.log('쉽먼트 데이터 저장 완료');
     return NextResponse.json({ success: true });

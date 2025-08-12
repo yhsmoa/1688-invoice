@@ -1,0 +1,722 @@
+.china-order-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.china-order-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.china-order-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.china-order-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.china-order-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 컨트롤 섹션 (정렬 옵션과 저장 버튼) */
+.china-order-control-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.china-order-left-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.china-order-right-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.china-order-sort-dropdown {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+}
+
+.china-order-sort-dropdown:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.china-order-excel-download-btn {
+  background-color: #cccccc;
+  color: #666666;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+}
+
+.china-order-excel-download-btn.active {
+  background-color: #4CAF50;
+  color: white;
+  cursor: pointer;
+}
+
+.china-order-excel-download-btn.active:hover {
+  background-color: #45a049;
+}
+
+.china-order-excel-download-btn:hover {
+  background-color: #3182ce;
+}
+
+/* 검색 영역 */
+.china-order-search-section {
+  margin-bottom: 20px;
+}
+
+.china-order-search-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.china-order-view-mode-container {
+  margin-bottom: 15px;
+}
+
+.china-order-radio-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.china-order-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #333;
+}
+
+.china-order-radio-input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.china-order-search-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.china-order-search-input {
+  flex: 3;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.china-order-search-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.china-order-search-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 테이블 */
+.china-order-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 테이블 스타일 */
+.china-order-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* 고정 테이블 레이아웃 사용 */
+}
+
+/* 테이블 열 너비 조정 */
+.china-order-table th:nth-child(1),
+.china-order-table td:nth-child(1) {
+  width: 40px;
+}
+
+/* 업체명 열 */
+.china-order-table th:nth-child(2),
+.china-order-table td:nth-child(2) {
+  width: 100px;
+}
+
+/* 이미지 열 */
+.china-order-table th:nth-child(3),
+.china-order-table td:nth-child(3) {
+  width: 80px;
+  position: relative;
+}
+
+/* 글번호 열 */
+.china-order-table th:nth-child(4),
+.china-order-table td:nth-child(4) {
+  width: 60px;
+  max-width: 60px;
+}
+
+/* 상품명 열 */
+.china-order-table th:nth-child(5),
+.china-order-table td:nth-child(5) {
+  width: 200px;
+  min-width: 200px;
+}
+
+/* 주문옵션 열 */
+.china-order-table th:nth-child(6),
+.china-order-table td:nth-child(6) {
+  width: 150px;
+}
+
+/* 개수 열 */
+.china-order-table th:nth-child(7),
+.china-order-table td:nth-child(7) {
+  width: 60px;
+  text-align: center;
+}
+
+/* 단가 열 */
+.china-order-table th:nth-child(8),
+.china-order-table td:nth-child(8) {
+  width: 60px;
+  text-align: right;
+}
+
+/* 위안 열 */
+.china-order-table th:nth-child(8),
+.china-order-table td:nth-child(8) {
+  width: 80px;
+  text-align: center;
+}
+
+/* 비고 열 */
+.china-order-table th:nth-child(9),
+.china-order-table td:nth-child(9) {
+  width: 100px;
+  text-align: center;
+}
+
+.china-order-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* 테이블 셀 내용 처리 */
+.china-order-table td {
+  padding: 16px;
+  border-bottom: 1px solid #d1d5db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 상품 썸네일 이미지 */
+.china-order-product-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  padding: 2px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.china-order-product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+/* 이미지 미리보기 */
+.china-order-image-preview-container {
+  position: static;
+}
+
+.china-order-image-preview {
+  display: none;
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  background-color: white;
+  border: 2px solid #4a90e2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  padding: 10px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.china-order-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.china-order-image-preview-container:hover .china-order-image-preview {
+  display: block;
+}
+
+.china-order-no-image {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: 1px solid #ddd;
+}
+
+/* 상품명 스타일 */
+.china-order-product-name {
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* 클릭 가능한 상품명 링크 스타일 */
+.china-order-clickable-product-link {
+  color: #333 !important;
+  text-decoration: none;
+  cursor: pointer;
+  transition: text-decoration 0.2s ease;
+}
+
+.china-order-clickable-product-link:hover {
+  text-decoration: underline;
+}
+
+.china-order-clickable-product-link:visited {
+  color: #333 !important;
+}
+
+/* 중국 옵션 스타일 */
+.china-order-china-options {
+  text-align: left;
+  line-height: 1.3;
+}
+
+.china-order-empty-data {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+/* 주문번호 텍스트 클릭 스타일 */
+.china-order-order-number-text {
+  cursor: pointer;
+  color: #333;
+  text-decoration: none;
+  display: block;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.china-order-order-number-text:hover {
+  color: #555;
+}
+
+/* 테이블 체크박스 스타일 */
+.china-order-table-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 바코드 합치기 모드에서 아래 border 제거 */
+.china-order-remove-bottom-border td {
+  border-bottom: none !important;
+}
+
+
+/* Drawer 스타일 */
+.china-order-drawer-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1000;
+  height: 100vh;
+}
+
+.china-order-drawer {
+  background: white;
+  width: 12.5vw;
+  height: 100vh;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e2e8f0;
+}
+
+
+.china-order-drawer-header {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+}
+
+.china-order-drawer-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.china-order-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.china-order-close-btn:hover {
+  color: #333;
+}
+
+.china-order-drawer-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.china-order-drawer-content h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+/* Detail Table */
+.china-order-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.china-order-detail-table th,
+.china-order-detail-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.china-order-detail-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.china-order-detail-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Drawer 내 상품명 표시 스타일 */
+.china-order-product-name-display {
+  color: #333;
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Received 입력 필드 */
+.china-order-received-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.china-order-received-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Category 드롭박스 */
+.china-order-category-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.china-order-category-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Drawer 액션 버튼 영역 */
+.china-order-drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.china-order-save-btn {
+  padding: 10px 20px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.china-order-save-btn:hover {
+  background-color: #38a169;
+} 
+
+/* 페이지네이션 스타일 */
+.china-order-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.china-order-pagination-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.china-order-pagination-button:hover {
+  background-color: #e0e0e0;
+}
+
+.china-order-pagination-button:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.china-order-page-numbers {
+  display: flex;
+  margin: 0 10px;
+}
+
+.china-order-page-number {
+  width: 35px;
+  height: 35px;
+  margin: 0 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.china-order-page-number:hover {
+  background-color: #f0f0f0;
+}
+
+.china-order-page-number.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.china-order-page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+} 
+
+/* 모달 업로드 버튼 스타일 */
+.china-order-modal-upload-btn {
+  background-color: #3182ce;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.china-order-modal-upload-btn:hover {
+  background-color: #2c5282;
+}
+
+/* 콘솔 복사 버튼 스타일 */
+.china-order-console-copy-btn {
+  background-color: #805ad5;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.china-order-console-copy-btn:hover {
+  background-color: #6b46c1;
+}
+
+/* 모달 업로드 창 스타일 */
+.china-order-upload-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.china-order-upload-modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  height: 80%;
+  max-width: 1200px;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.china-order-upload-modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.china-order-upload-modal-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.china-order-modal-cancel-btn,
+.china-order-modal-save-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.china-order-modal-cancel-btn {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.china-order-modal-cancel-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.china-order-modal-save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.china-order-modal-save-btn:hover {
+  background-color: #218838;
+}
+
+.china-order-upload-modal-content {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+}
+
+.china-order-paste-area {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  background-color: #fafafa;
+}
+
+.china-order-paste-area:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  background-color: white;
+}

@@ -16,6 +16,12 @@ const LeftsideMenu: React.FC = () => {
       <nav className="leftside-nav">
         <ul className="menu-list">
           <li className="menu-item">
+            <Link href="/chinaorder" className="menu-link">
+              <span className="menu-icon">🛒</span>
+              <span className="menu-text">신규 주문</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/import-product" className="menu-link">
               <span className="menu-icon">📦</span>
               <span className="menu-text">상품 입고</span>
@@ -25,6 +31,12 @@ const LeftsideMenu: React.FC = () => {
             <Link href="/export-product" className="menu-link">
               <span className="menu-icon">📤</span>
               <span className="menu-text">상품 출고</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/shipment" className="menu-link">
+              <span className="menu-icon">🚚</span>
+              <span className="menu-text">쉽먼트</span>
             </Link>
           </li>
           <li className="menu-item">
