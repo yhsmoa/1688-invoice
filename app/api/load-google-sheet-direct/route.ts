@@ -3,8 +3,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { v4 as uuidv4 } from 'uuid';
 
-// 기본 구글 시트 ID
-const DEFAULT_SPREADSHEET_ID = '1yxaocZlgSEUJIurxQHjPNIp6D67frOv9INMeV-XIwP0';
+// 시트명 고정
 const SHEET_NAME = '진행';
 
 // 서비스 계정 키 정보는 환경 변수로 관리
@@ -16,9 +15,19 @@ export async function GET(request: NextRequest) {
   try {
     console.log('구글 시트 직접 로드 API 호출 시작');
     
-    // URL 파라미터에서 googlesheet_id 가져오기
+    // URL 파라미터에서 googlesheet_id 가져오기 (필수)
     const searchParams = request.nextUrl.searchParams;
-    const googleSheetId = searchParams.get('googlesheet_id') || DEFAULT_SPREADSHEET_ID;
+    const googleSheetId = searchParams.get('googlesheet_id');
+
+    // googlesheet_id가 없으면 에러 반환
+    if (!googleSheetId) {
+      console.error('googlesheet_id 파라미터가 필요합니다.');
+      return NextResponse.json({
+        error: 'googlesheet_id 파라미터가 필요합니다. users_api 테이블에서 사용자를 선택해주세요.',
+        success: false,
+        data: []
+      }, { status: 400 });
+    }
     
     console.log('구글 시트 ID:', googleSheetId);
     console.log('시트명:', SHEET_NAME);

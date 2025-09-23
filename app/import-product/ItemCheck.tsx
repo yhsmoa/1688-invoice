@@ -31,6 +31,7 @@ interface ItemData {
   id: string;
   row_number?: string; // 구글 시트 행 번호
   img_url?: string; // 이미지 URL
+  site_url?: string; // 사이트 URL (L열)
   order_number_prefix?: string; // 글번호 앞부분 (A열)
   order_number: string; // 글번호 뒷부분 (B열)
   product_name: string | null; // 상품명 첫 줄 (C열)
@@ -46,6 +47,8 @@ interface ItemData {
   cancel_qty?: number | null; // 취소 (O열)
   export_qty?: number | null; // 출고 (P열)
   note?: string | null; // 비고 (Q열)
+  option_id?: string | null; // 옵션 ID (U열)
+  product_size?: string | null; // 상품 입고 사이즈 (V열)
   // 기존 필드들 (호환성을 위해 남겨둠)
   date?: string;
   row_id?: string;
@@ -56,8 +59,6 @@ const ItemCheck: React.FC = () => {
   const cardData = ['전체', '미입고', '부분입고', '입고완료', '불량', '반품'];
   const [itemData, setItemData] = useState<ItemData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<ItemData | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<ItemData[]>([]);
@@ -72,6 +73,7 @@ const ItemCheck: React.FC = () => {
   const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
+  const [isSavingLabel, setIsSavingLabel] = useState(false);
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,6 +91,13 @@ const ItemCheck: React.FC = () => {
   
   // 정렬 상태
   const [sortType, setSortType] = useState<string>('주문순서');
+
+  // 엑셀 업로드 관련 상태
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+
+  // 배송정보 상태 (초기 로딩용)
+  const [deliveryInfoData, setDeliveryInfoData] = useState<{[key: string]: any}>({});
 
   // 정렬 함수
   const sortData = (data: ItemData[], sortType: string): ItemData[] => {
@@ -220,56 +229,103 @@ const ItemCheck: React.FC = () => {
   };
 
   // 셀 편집 시작
-  const startEditingCell = (id: string, field: string, value: number | null | undefined) => {
+  const startEditingCell = (id: string, field: string, value: number | string | null | undefined) => {
     setEditingCell({ id, field });
-    setCellValue(value !== null && value !== undefined ? value.toString() : '');
+    if (field === 'note') {
+      setCellValue(value ? value.toString() : '');
+    } else {
+      setCellValue(value !== null && value !== undefined ? value.toString() : '');
+    }
+  };
+
+  // 다음 편집 가능한 셀로 이동
+  const moveToNextEditableCell = (currentId: string, currentField: string) => {
+    const editableFields = ['import_qty', 'cancel_qty', 'note'];
+    const currentFieldIndex = editableFields.indexOf(currentField);
+
+    if (currentField === 'import_qty') {
+      // 입고 열에서는 다음 행의 입고 열로 이동
+      const currentIndex = paginatedData.findIndex(item => item.id === currentId);
+      if (currentIndex >= 0 && currentIndex < paginatedData.length - 1) {
+        const nextItem = paginatedData[currentIndex + 1];
+        startEditingCell(nextItem.id, 'import_qty', nextItem.import_qty);
+      }
+    } else {
+      // 취소, 비고 열에서는 같은 행의 다음 필드로 이동
+      if (currentFieldIndex < editableFields.length - 1) {
+        const nextField = editableFields[currentFieldIndex + 1];
+        const currentItem = paginatedData.find(item => item.id === currentId);
+        if (currentItem) {
+          startEditingCell(currentId, nextField, currentItem[nextField as keyof ItemData]);
+        }
+      }
+    }
   };
 
   // 셀 편집 완료
-  const finishEditingCell = async () => {
+  const finishEditingCell = async (moveToNext: boolean = false) => {
     if (editingCell) {
       const { id, field } = editingCell;
-      const numValue = cellValue === '' ? null : Number(cellValue);
-      
+
+      // note 필드인 경우 문자열 값, 그 외는 숫자 값
+      const finalValue = field === 'note'
+        ? (cellValue === '' ? null : cellValue)
+        : (cellValue === '' ? null : Number(cellValue));
+
       // 현재 아이템 찾기
       const currentItem = filteredData.find(item => item.id === id);
-      const currentValue = currentItem ? currentItem[field as keyof ItemData] : null;
-      
+      if (!currentItem) {
+        setEditingCell(null);
+        return;
+      }
+
+
+      const currentValue = currentItem[field as keyof ItemData];
+
       // 값이 실제로 변경된 경우에만 처리
-      const valueChanged = numValue !== currentValue;
-      
+      const valueChanged = finalValue !== currentValue;
+
       if (valueChanged) {
         // 데이터 업데이트
-        const updatedData = filteredData.map(item => 
-          item.id === id ? { ...item, [field]: numValue } : item
+        const updatedData = filteredData.map(item =>
+          item.id === id ? { ...item, [field]: finalValue } : item
         );
-        
+
         setFilteredData(updatedData);
-        
+
         // 전체 데이터도 업데이트
-        const updatedItemData = itemData.map(item => 
-          item.id === id ? { ...item, [field]: numValue } : item
+        const updatedItemData = itemData.map(item =>
+          item.id === id ? { ...item, [field]: finalValue } : item
         );
-        
+
         setItemData(updatedItemData);
-        
+
         // 변경된 항목 찾기
         const updatedItem = updatedData.find(item => item.id === id);
-        
-        // 수정된 데이터 추적
-        if (updatedItem && updatedItem.row_id) {
-          const rowKey = updatedItem.row_id;
+
+        // 수정된 데이터 추적 - row_number를 row_id로 사용
+        if (updatedItem && updatedItem.row_number) {
+          const rowKey = updatedItem.row_number; // row_number가 구글시트의 실제 행 번호
           setModifiedData(prev => ({
             ...prev,
             [rowKey]: {
               ...(prev[rowKey] || {}),
-              [field]: numValue
+              [field]: finalValue
             }
           }));
         }
       }
-      
+
+      const currentId = id;
+      const currentField = field;
       setEditingCell(null);
+
+      // Enter로 완료된 경우 다음 셀로 이동
+      if (moveToNext) {
+        setTimeout(() => {
+          moveToNextEditableCell(currentId, currentField);
+        }, 50);
+      }
     }
   };
 
@@ -282,9 +338,12 @@ const ItemCheck: React.FC = () => {
 
   // 셀 키 이벤트 처리
   const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Tab') {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      finishEditingCell();
+      finishEditingCell(true); // Enter 시 다음 셀로 이동
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      finishEditingCell(); // Tab 시 현재 위치에서 완료
     } else if (e.key === 'Escape') {
       setEditingCell(null);
     }
@@ -303,6 +362,7 @@ const ItemCheck: React.FC = () => {
   useEffect(() => {
     fetchItemData();
     fetchCoupangUsers();
+    fetchAllDeliveryInfo();
   }, []);
 
   // 드롭다운 선택 시 캐시된 데이터 로드
@@ -334,13 +394,15 @@ const ItemCheck: React.FC = () => {
   };
 
   // 데이터를 localStorage에 저장하는 함수
-  const saveToCache = (coupangName: string, data: ItemData[]) => {
+  const saveToCache = (coupangName: string, data: ItemData[], googlesheetId?: string, userId?: string) => {
     try {
       const cacheKey = `sheet_data_${coupangName}`;
       const cacheData = {
         data: data,
         timestamp: Date.now(),
-        coupangName: coupangName
+        coupangName: coupangName,
+        googlesheet_id: googlesheetId,
+        user_id: userId
       };
       localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
@@ -366,12 +428,39 @@ const ItemCheck: React.FC = () => {
     try {
       const response = await fetch('/api/get-coupang-users');
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         setCoupangUsers(result.data);
       }
     } catch (error) {
       console.error('쿠팡 사용자 목록 가져오기 오류:', error);
+    }
+  };
+
+  // 모든 배송정보 초기 로딩
+  const fetchAllDeliveryInfo = async () => {
+    try {
+      console.log('배송정보 전체 로딩 시작...');
+
+      const response = await fetch('/api/get-all-delivery-info');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // delivery_code를 키로 하는 맵으로 변환
+        const deliveryMap: {[key: string]: any} = {};
+        result.data.forEach((item: any) => {
+          if (item.delivery_code) {
+            deliveryMap[item.delivery_code] = item;
+          }
+        });
+
+        setDeliveryInfoData(deliveryMap);
+        console.log(`배송정보 ${result.data.length}개 로딩 완료`);
+      } else {
+        console.log('배송정보 로딩 실패 또는 데이터 없음');
+      }
+    } catch (error) {
+      console.error('배송정보 로딩 오류:', error);
     }
   };
 
@@ -407,7 +496,78 @@ const ItemCheck: React.FC = () => {
     updatePaginatedData(filteredData);
   }, [filteredData, currentPage]);
 
-  // 검색 함수
+  // 배송번호로 메모리에서 배송정보 조회
+  const searchDeliveryInfo = (deliveryCode: string) => {
+    console.log('배송번호로 메모리에서 조회:', deliveryCode);
+
+    const deliveryInfo = deliveryInfoData[deliveryCode];
+    if (deliveryInfo) {
+      console.log('배송정보 찾음:', deliveryInfo);
+      return deliveryInfo;
+    } else {
+      console.log('배송정보를 찾을 수 없음');
+      return null;
+    }
+  };
+
+  // order_info 파싱 및 검색 함수
+  const parseOrderInfoAndSearch = (orderInfo: string) => {
+    console.log('order_info 파싱:', orderInfo);
+
+    // 줄바꿈으로 나누어 각 라인 처리
+    const lines = orderInfo.split('\n').filter(line => line.trim());
+    const searchResults: ItemData[] = [];
+
+    lines.forEach(line => {
+      let matchingItems: ItemData[] = [];
+
+      // 패턴 1: 새로운 형식 - 글번호 // 옵션1 | 옵션2 // 바코드 // 개수ea
+      const newFormatMatch = line.match(/^([^//]+)\s*\/\/\s*(.+?)\s*\|\s*(.+?)\s*\/\/\s*(\S+)\s*\/\/\s*(\d+)ea$/);
+
+      if (newFormatMatch) {
+        const [, orderNumber, option1, option2, barcode, quantity] = newFormatMatch;
+
+        console.log(`새 형식 파싱 - 글번호: ${orderNumber}, 옵션1: ${option1}, 옵션2: ${option2}, 바코드: ${barcode}, 수량: ${quantity}`);
+
+        // 글번호(order_number)로 검색
+        matchingItems = itemData.filter(item => {
+          const itemOrderNumber = (item.order_number || '').toString();
+          const itemBarcode = (item.barcode || '').toString();
+
+          return itemOrderNumber === orderNumber.trim() && itemBarcode === barcode;
+        });
+
+        searchResults.push(...matchingItems);
+      } else {
+        // 패턴 2: 기존 형식 - MMDD - 옵션1 | 옵션2 - 바코드 - 개수?
+        const oldFormatMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*\|\s*(.+?)\s*-\s*(\S+)\s*-\s*(\d+)\?$/);
+
+        if (oldFormatMatch) {
+          const [, dateMMDD, option1, option2, barcode, quantity] = oldFormatMatch;
+
+          console.log(`기존 형식 파싱 - 날짜: ${dateMMDD}, 옵션1: ${option1}, 옵션2: ${option2}, 바코드: ${barcode}, 수량: ${quantity}`);
+
+          // 현재 메모리 데이터에서 해당 날짜와 바코드로 검색
+          matchingItems = itemData.filter(item => {
+            // order_number_prefix에서 날짜 추출 (MMDD 형태)
+            const orderPrefix = (item.order_number_prefix || '').toString();
+            const itemDate = orderPrefix.slice(-4); // 마지막 4자리가 MMDD
+
+            // 바코드 매칭
+            const itemBarcode = (item.barcode || '').toString();
+
+            return itemDate === dateMMDD && itemBarcode === barcode;
+          });
+
+          searchResults.push(...matchingItems);
+        }
+      }
+    });
+
+    return searchResults;
+  };
+
+  // 검색 함수 - 메모리 기반 검색으로 변경
   const performSearch = async () => {
     if (!searchTerm.trim()) {
       const sortedData = sortData(itemData, sortType);
@@ -418,37 +578,43 @@ const ItemCheck: React.FC = () => {
 
     try {
       setLoading(true);
-      
-      // 검색 타입에 따라 다른 API 호출
-      let apiUrl = '';
+
+      let searchResults: ItemData[] = [];
+
       if (searchType === '배송번호') {
-        apiUrl = `/api/search-by-delivery-number?term=${encodeURIComponent(searchTerm)}`;
+        // 배송번호 검색: 메모리에서 배송정보 조회
+        const deliveryInfo = searchDeliveryInfo(searchTerm);
+
+        if (deliveryInfo && deliveryInfo.order_info) {
+          // order_info를 파싱하여 날짜와 바코드로 메모리 데이터 검색
+          searchResults = parseOrderInfoAndSearch(deliveryInfo.order_info);
+          console.log(`배송번호 검색 결과: ${searchResults.length}개`);
+        } else {
+          console.log('배송정보를 찾을 수 없습니다.');
+          searchResults = [];
+        }
       } else if (searchType === '일반검색') {
-        apiUrl = `/api/search-general?term=${encodeURIComponent(searchTerm)}`;
+        // 일반검색: 상품명, 바코드에서 검색
+        searchResults = itemData.filter(item => {
+          const productName = (item.product_name || '').toString();
+          const productNameSub = (item.product_name_sub || '').toString();
+          const barcode = (item.barcode || '').toString();
+          const chinaOption1 = (item.china_option1 || '').toString();
+          const chinaOption2 = (item.china_option2 || '').toString();
+
+          return productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 productNameSub.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 chinaOption1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 chinaOption2.toLowerCase().includes(searchTerm.toLowerCase());
+        });
       }
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        cache: 'no-store'
-      });
-      
-      if (!response.ok) {
-        throw new Error('검색 중 오류가 발생했습니다.');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        const sortedData = sortData(result.data || [], sortType);
-        setFilteredData(sortedData);
-      } else {
-        console.error('검색 오류:', result.error);
-        alert(result.error || '검색 중 오류가 발생했습니다.');
-        setFilteredData([]);
-      }
+
+      const sortedData = sortData(searchResults, sortType);
+      setFilteredData(sortedData);
+
+      console.log(`검색 완료: "${searchTerm}" - ${searchResults.length}개 결과`);
+
     } catch (error) {
       console.error('검색 오류:', error);
       alert('검색 중 오류가 발생했습니다.');
@@ -524,8 +690,8 @@ const ItemCheck: React.FC = () => {
       setLoading(true);
       setIsLoadingFromCache(true); // 캐시 로드 방지 플래그 설정
       
-      // 최적화된 API 엔드포인트 사용 - 캐시 비활성화
-      const response = await fetch(`/api/load-google-sheet-optimized?googlesheet_id=${selectedUser.googlesheet_id}&cache=false`, {
+      // 최적화된 API 엔드포인트 사용 - 캐시 비활성화, 사용자 이름 추가
+      const response = await fetch(`/api/load-google-sheet-optimized?googlesheet_id=${selectedUser.googlesheet_id}&coupang_name=${encodeURIComponent(selectedCoupangUser)}&cache=false`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
@@ -551,8 +717,8 @@ const ItemCheck: React.FC = () => {
         setItemData(result.data || []);
         setFilteredData(sortedData);
         
-        // 데이터를 캐시에 저장
-        saveToCache(selectedCoupangUser, result.data || []);
+        // 데이터를 캐시에 저장 (구글시트 ID 포함)
+        saveToCache(selectedCoupangUser, result.data || [], selectedUser.googlesheet_id);
         
         setLoading(false);
         setIsLoadingFromCache(false); // 플래그 해제
@@ -575,15 +741,88 @@ const ItemCheck: React.FC = () => {
     }
   };
 
-  const handleItemClick = (item: ItemData) => {
-    setSelectedItem(item);
-    setDrawerOpen(true);
+  // 엑셀 업로드 버튼 클릭 핸들러
+  const handleExcelUpload = () => {
+    excelFileInputRef.current?.click();
   };
 
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setSelectedItem(null);
+  // 엑셀 파일 선택 시 처리 함수
+  const handleExcelFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 엑셀 파일 형식 확인
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
+      return;
+    }
+
+    setIsUploadingExcel(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      console.log('엑셀 파일 업로드 시작:', file.name);
+
+      const response = await fetch('/api/upload-delivery-excel', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
+        console.log('업로드 성공:', result);
+
+        // 배송정보 다시 로딩
+        await fetchAllDeliveryInfo();
+        console.log('배송정보 데이터 새로고침 완료');
+      } else {
+        console.error('업로드 실패:', result);
+        alert(result.error || '업로드 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('업로드 중 예외 발생:', error);
+      alert('업로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploadingExcel(false);
+      // 파일 입력 초기화
+      if (excelFileInputRef.current) {
+        excelFileInputRef.current.value = '';
+      }
+    }
   };
+
+  // 비용 클릭 시 URL 입력받아 새 탭으로 열기
+  const handleCostClick = (e: React.MouseEvent, item: ItemData) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // L열에 URL이 있으면 바로 열기
+    if (item.site_url && item.site_url.trim()) {
+      let fullUrl = item.site_url.trim();
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      console.log('사이트 URL로 이동:', fullUrl);
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // URL이 없으면 입력받기
+    const url = prompt('사이트 URL을 입력하세요:');
+    if (url && url.trim()) {
+      let fullUrl = url.trim();
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      console.log('입력한 URL로 이동:', fullUrl);
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
 
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
@@ -610,10 +849,10 @@ const ItemCheck: React.FC = () => {
       return;
     }
     
-    // 초기 수량 설정 (기본값 1)
+    // 초기 수량 설정 ('입고' 열 데이터 또는 기본값 1)
     const initialQuantities: { [key: string]: number } = {};
     itemsWithBarcode.forEach(item => {
-      initialQuantities[item.id] = 1;
+      initialQuantities[item.id] = item.import_qty || 1;
     });
     setProductQuantities(initialQuantities);
     
@@ -637,169 +876,326 @@ const ItemCheck: React.FC = () => {
     alert(`바코드 데이터가 다운로드되었습니다.\n저장된 아이템: ${itemCount}개`);
   };
 
-  // 수량 입력 후 JSON 저장
+  // 수량 입력 후 LABEL 시트에 저장
   const handleQuantityConfirm = async () => {
-    // 바코드 데이터 준비 (수량 포함)
-    const barcodeData: Array<{name: string, barcode: string, qty: number}> = [];
-    
+    // 현재 선택된 사용자의 구글시트 정보 확인
+    if (!selectedCoupangUser) {
+      alert('먼저 쿠팡 사용자를 선택해주세요.');
+      return;
+    }
+
+    setIsSavingLabel(true);
+
+    // localStorage에서 구글시트 ID 가져오기
+    const cacheKey = `sheet_data_${selectedCoupangUser}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (!cachedData) {
+      alert('구글시트 데이터를 먼저 불러와주세요.');
+      return;
+    }
+
+    let googlesheetId;
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      googlesheetId = parsedCache.googlesheet_id;
+    } catch (error) {
+      console.error('캐시 파싱 오류:', error);
+      alert('구글시트 정보를 가져올 수 없습니다.');
+      return;
+    }
+
+    if (!googlesheetId) {
+      alert('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
+      return;
+    }
+
+    // 바코드 데이터 준비 (수량과 주문번호 포함)
+    const labelData: Array<{name: string, barcode: string, qty: number, order_number: string}> = [];
+
     Object.entries(productQuantities).forEach(([id, quantity]) => {
       const item = filteredData.find(item => item.id === id);
       if (item && item.barcode) {
-        barcodeData.push({
+        // 주문번호에 상품 입고 사이즈 변환하여 추가
+        let orderNumber = item.order_number || '';
+        if (item.product_size && item.product_size.trim()) {
+          const sizeText = item.product_size.trim();
+          let sizeCode = '';
+          if (sizeText.toLowerCase().includes('small')) {
+            sizeCode = 'A';
+          } else if (sizeText.toLowerCase().includes('medium')) {
+            sizeCode = 'B';
+          } else if (sizeText.toLowerCase().includes('large')) {
+            sizeCode = 'C';
+          } else {
+            // 기타 사이즈는 첫 글자 사용
+            sizeCode = sizeText.charAt(0);
+          }
+          orderNumber = `${orderNumber}-${sizeCode}`;
+        }
+
+        labelData.push({
           name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
           barcode: item.barcode,
-          qty: quantity
+          qty: quantity,
+          order_number: orderNumber
         });
       }
     });
-    
-    if (barcodeData.length > 0) {
-      const jsonContent = JSON.stringify(barcodeData, null, 2);
-      
-      // File System Access API 지원 여부 확인
-      console.log('File System Access API 지원:', 'showSaveFilePicker' in window);
-      
-      if ('showSaveFilePicker' in window) {
-        try {
-          console.log('파일 저장 다이얼로그 열기 시도...');
-          
-          // 사용자가 저장 위치를 선택할 수 있는 다이얼로그 표시
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName: 'barcode.json',
-            types: [{
-              description: 'JSON 파일',
-              accept: { 'application/json': ['.json'] },
-            }],
-          });
-          
-          console.log('파일 핸들 획득:', handle);
-          
-          // 파일 쓰기
-          const writable = await handle.createWritable();
-          await writable.write(jsonContent);
-          await writable.close();
-          
-          console.log('파일 저장 완료');
-          alert(`바코드 데이터가 저장되었습니다.\n저장된 아이템: ${barcodeData.length}개`);
-          
+
+    if (labelData.length > 0) {
+      try {
+        console.log('LABEL 시트에 데이터 저장 시작...');
+        console.log('저장할 데이터:', labelData);
+
+        // LABEL 시트에 데이터 저장 API 호출
+        const response = await fetch('/api/save-label-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            labelData: labelData,
+            googlesheet_id: googlesheetId,
+            coupang_name: selectedCoupangUser
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert(`LABEL 시트에 바코드 데이터가 저장되었습니다.\n저장된 아이템: ${result.count}개`);
+
           setShowQuantityDialog(false);
           setProductQuantities({});
-          setIsAllChecked(false);
           setSelectedRows(new Set());
-        } catch (error) {
-          console.error('파일 저장 오류:', error);
-          console.error('오류 이름:', (error as Error).name);
-          console.error('오류 메시지:', (error as Error).message);
-          
-          // 사용자가 취소한 경우가 아니면 폴백 사용
-          if ((error as Error).name !== 'AbortError') {
-            console.log('폴백 다운로드 사용');
-            fallbackDownload(jsonContent, barcodeData.length);
-            
-            setShowQuantityDialog(false);
-            setProductQuantities({});
-            setSelectedRows(new Set());
-          }
+        } else {
+          console.error('LABEL 시트 저장 실패:', result);
+          alert(`LABEL 시트 저장에 실패했습니다.\n오류: ${result.message || result.error || '알 수 없는 오류'}`);
         }
-      } else {
-        console.log('File System Access API 미지원 - 폴백 사용');
-        // File System Access API를 지원하지 않는 브라우저의 경우 기본 다운로드 사용
-        fallbackDownload(jsonContent, barcodeData.length);
-        
-        setShowQuantityDialog(false);
-        setProductQuantities({});
-        setIsAllChecked(false);
-        setSelectedRows(new Set());
+
+      } catch (error) {
+        console.error('LABEL 시트 저장 중 오류:', error);
+        alert('LABEL 시트 저장 중 오류가 발생했습니다.');
+      } finally {
+        setIsSavingLabel(false);
       }
     }
   };
 
-  // 저장 버튼 클릭 핸들러
+  // 저장된 데이터 검증 함수
+  const verifyDataConsistency = async (googlesheetId: string, savedData: any[]) => {
+    try {
+      console.log('데이터 일치성 검증 시작...');
+
+      // 저장 후 데이터 다시 가져오기
+      const response = await fetch(`/api/load-google-sheet-optimized?googlesheet_id=${googlesheetId}&coupang_name=${encodeURIComponent(selectedCoupangUser)}&cache=false`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        throw new Error('검증을 위한 데이터 다시 로드 실패');
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        throw new Error('검증 데이터가 유효하지 않음');
+      }
+
+      const updatedData = result.data;
+      const inconsistencies: string[] = [];
+
+      // 저장된 각 항목에 대해 검증
+      savedData.forEach(savedItem => {
+        const updatedItem = updatedData.find((item: any) => item.row_number === savedItem.rowId);
+
+        if (!updatedItem) {
+          inconsistencies.push(`행 ${savedItem.rowId}: 데이터를 찾을 수 없음`);
+          return;
+        }
+
+        // 저장된 필드값과 실제 데이터 비교
+        if (savedItem.field === 'import_qty') {
+          const savedValue = savedItem.value;
+          const actualValue = updatedItem.import_qty;
+
+          if (savedValue !== actualValue) {
+            inconsistencies.push(`행 ${savedItem.rowId}: 입고 수량 불일치 (저장값: ${savedValue}, 실제값: ${actualValue})`);
+          }
+        } else if (savedItem.field === 'cancel_qty') {
+          const savedValue = savedItem.value;
+          const actualValue = updatedItem.cancel_qty;
+
+          if (savedValue !== actualValue) {
+            inconsistencies.push(`행 ${savedItem.rowId}: 취소 수량 불일치 (저장값: ${savedValue}, 실제값: ${actualValue})`);
+          }
+        } else if (savedItem.field === 'note') {
+          const savedValue = savedItem.value;
+          const actualValue = updatedItem.note;
+
+          if (savedValue !== actualValue) {
+            inconsistencies.push(`행 ${savedItem.rowId}: 비고 불일치 (저장값: "${savedValue}", 실제값: "${actualValue}")`);
+          }
+        }
+      });
+
+      return {
+        isConsistent: inconsistencies.length === 0,
+        inconsistencies
+      };
+
+    } catch (error) {
+      console.error('데이터 검증 중 오류:', error);
+      return {
+        isConsistent: false,
+        inconsistencies: ['데이터 검증 중 오류가 발생했습니다.'],
+        error: error.message
+      };
+    }
+  };
+
+  // 저장 버튼 클릭 핸들러 (순차 저장)
   const handleSaveClick = async () => {
     if (Object.keys(modifiedData).length === 0) return;
-    
+
+    // 현재 선택된 사용자의 구글시트 정보 확인
+    if (!selectedCoupangUser) {
+      alert('먼저 쿠팡 사용자를 선택해주세요.');
+      return;
+    }
+
+    // localStorage에서 구글시트 ID 가져오기
+    const cacheKey = `sheet_data_${selectedCoupangUser}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (!cachedData) {
+      alert('구글시트 데이터를 먼저 불러와주세요.');
+      return;
+    }
+
+    let googlesheetId;
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      googlesheetId = parsedCache.googlesheet_id;
+    } catch (error) {
+      console.error('캐시 파싱 오류:', error);
+      alert('구글시트 정보를 가져올 수 없습니다.');
+      return;
+    }
+
+    if (!googlesheetId) {
+      alert('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
+      return;
+    }
+
     setIsSaving(true);
     console.log('저장 시작, 수정된 데이터:', modifiedData);
-    
+    console.log('구글시트 ID:', googlesheetId, '사용자:', selectedCoupangUser);
+
     try {
-      // 수정된 모든 데이터에 대해 API 호출
-      const savePromises = Object.entries(modifiedData).map(async ([id, fields]) => {
-        const item = itemData.find(item => item.id === id);
-        if (!item) {
-          console.error('아이템을 찾을 수 없음:', id);
-          return null;
-        }
-        
-        // id가 row_id 값의 문자열이므로 row_id를 직접 사용
-        const rowId = id;
-        if (!rowId) {
-          console.error('유효하지 않은 행 번호:', id);
-          return { id, error: '유효하지 않은 행 번호입니다.' };
-        }
-        
-        console.log(`아이템 ${id} 저장 중, 행 번호: ${rowId}, 필드:`, fields);
-        
-        const results = await Promise.all(
-          Object.entries(fields).map(async ([field, value]) => {
-            try {
-              const requestBody = {
-                row_id: rowId,
-                field,
-                value
-              };
-              
-              console.log('API 요청 데이터:', requestBody);
-              
-              const response = await fetch('/api/save-cell-value', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-              });
-              
-              console.log(`${field} API 응답 상태:`, response.status, response.statusText);
-              
-              if (!response.ok) {
-                const errorData = await response.json();
-                console.error(`${field} 저장 실패:`, errorData);
-                return { success: false, field, error: errorData };
-              }
-              
-              const responseData = await response.json();
-              console.log(`${field} 저장 성공:`, responseData);
-              
-              return { success: true, field, data: responseData };
-            } catch (error) {
-              console.error(`${field} 저장 오류:`, error);
-              return { success: false, field, error };
-            }
+      // 수정된 데이터를 개별 저장 요청으로 변환
+      const savePromises: Promise<any>[] = [];
+      let totalUpdates = 0;
+
+      Object.entries(modifiedData).forEach(([rowId, fields]) => {
+        Object.entries(fields).forEach(([field, value]) => {
+          totalUpdates++;
+          const savePromise = fetch('/api/save-cell-value', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              row_id: rowId,
+              field,
+              value,
+              googlesheet_id: googlesheetId,
+              coupang_name: selectedCoupangUser
+            }),
           })
-        );
-        
-        return { id, results };
+          .then(async response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const result = await response.json();
+            return {
+              rowId,
+              field,
+              value,
+              success: result.success !== false,
+              result
+            };
+          })
+          .catch(error => {
+            console.error(`저장 실패 - rowId: ${rowId}, field: ${field}:`, error);
+            return {
+              rowId,
+              field,
+              value,
+              success: false,
+              error: error.message
+            };
+          });
+
+          savePromises.push(savePromise);
+        });
       });
-      
+
+      console.log(`총 ${totalUpdates}개 업데이트 요청 시작`);
+
+      // 모든 저장 요청 실행
       const results = await Promise.all(savePromises);
-      console.log('모든 저장 작업 완료:', results);
-      
-      // 저장 완료 후 수정 데이터 초기화
-      setModifiedData({});
-      
-      // 오류가 있는 경우 확인
-      const hasErrors = results.some(result => 
-        result && result.results && result.results.some((r: any) => !r.success)
-      );
-      
-      if (hasErrors) {
-        alert('일부 데이터 저장 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
+
+      console.log('저장 결과:', results);
+
+      // 성공/실패 개수 계산
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.length - successCount;
+
+      if (failureCount === 0) {
+        // 전체 성공 - 데이터 일치성 검증 수행
+        const successfulSaves = results.filter(r => r.success);
+
+        console.log('저장 완료, 데이터 일치성 검증 시작...');
+        const verification = await verifyDataConsistency(googlesheetId, successfulSaves);
+
+        if (verification.isConsistent) {
+          setModifiedData({}); // 수정 데이터 초기화
+          alert(`모든 변경사항이 저장되었습니다. (${successCount}개 완료)\n✅ 데이터 일치성 검증 완료`);
+        } else {
+          // 데이터 불일치 발견
+          console.error('데이터 불일치 발견:', verification.inconsistencies);
+          alert(`저장은 완료되었으나 일부 데이터가 일치하지 않습니다:\n\n${verification.inconsistencies.join('\n')}\n\n다시 시트를 불러와서 확인해주세요.`);
+        }
+      } else if (successCount > 0) {
+        // 부분 성공
+        alert(`일부 데이터가 저장되었습니다.\n성공: ${successCount}개, 실패: ${failureCount}개`);
+
+        // 성공한 항목들만 modifiedData에서 제거
+        const newModifiedData = { ...modifiedData };
+        results.forEach(result => {
+          if (result.success && newModifiedData[result.rowId]) {
+            delete newModifiedData[result.rowId][result.field];
+
+            // 해당 rowId의 모든 필드가 저장되었으면 rowId 자체를 삭제
+            if (Object.keys(newModifiedData[result.rowId]).length === 0) {
+              delete newModifiedData[result.rowId];
+            }
+          }
+        });
+        setModifiedData(newModifiedData);
       } else {
-        alert('모든 변경사항이 저장되었습니다.');
+        // 전체 실패
+        alert('데이터 저장에 실패했습니다. 네트워크 연결을 확인해주세요.');
       }
-      
+
     } catch (error) {
       console.error('저장 중 오류 발생:', error);
-      alert('일부 데이터 저장 중 오류가 발생했습니다.');
+      alert('데이터 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -816,7 +1212,7 @@ const ItemCheck: React.FC = () => {
             
             {/* 시트 불러오기 버튼 - 카드 위로 이동 */}
             <div className="excel-upload-section">
-              <select 
+              <select
                 className="coupang-user-dropdown"
                 value={selectedCoupangUser}
                 onChange={(e) => setSelectedCoupangUser(e.target.value)}
@@ -826,7 +1222,7 @@ const ItemCheck: React.FC = () => {
                   // 캐시 데이터 확인
                   const cacheKey = `sheet_data_${user.coupang_name}`;
                   const hasCachedData = localStorage.getItem(cacheKey) !== null;
-                  
+
                   return (
                     <option key={user.coupang_name} value={user.coupang_name}>
                       {user.coupang_name} {hasCachedData ? '●' : ''}
@@ -837,6 +1233,22 @@ const ItemCheck: React.FC = () => {
               <button className="excel-upload-btn" onClick={handleLoadGoogleSheet}>
                 시트 불러오기
               </button>
+              <button
+                className="excel-upload-btn"
+                onClick={handleExcelUpload}
+                disabled={isUploadingExcel}
+              >
+                {isUploadingExcel ? '업로드 중...' : '엑셀 불러오기'}
+              </button>
+
+              {/* 숨겨진 엑셀 파일 입력 요소 */}
+              <input
+                type="file"
+                ref={excelFileInputRef}
+                onChange={handleExcelFileChange}
+                accept=".xlsx,.xls"
+                style={{ display: 'none' }}
+              />
             </div>
             
             {/* 상태 카드들 */}
@@ -952,24 +1364,24 @@ const ItemCheck: React.FC = () => {
                         <td>
                           {item.img_url ? (
                             <div className="image-preview-container">
-                              <img 
-                                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`} 
-                                alt="상품 이미지" 
+                              <img
+                                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                                alt="상품 이미지"
                                 className="product-thumbnail"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                                 }}
                               />
-                              <div 
+                              <div
                                 className="image-preview"
                                 style={{
                                   top: `${mousePosition.y - 300}px`,
                                   left: `${mousePosition.x + 30}px`
                                 }}
                               >
-                                <img 
-                                  src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`} 
-                                  alt="상품 이미지 미리보기" 
+                                <img
+                                  src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                                  alt="상품 이미지 미리보기"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = '/placeholder.svg';
                                   }}
@@ -981,14 +1393,11 @@ const ItemCheck: React.FC = () => {
                           )}
                         </td>
                         <td>
-                          <span 
-                            className="order-number-text"
-                            onClick={() => handleItemClick(item)}
-                          >
+                          <div className="order-number-text">
                             {item.order_number_prefix || ''}
                             {item.order_number_prefix && item.order_number && <br />}
                             {item.order_number || ''}
-                          </span>
+                          </div>
                         </td>
                         <td>
                           <div className="product-name">
@@ -1003,6 +1412,14 @@ const ItemCheck: React.FC = () => {
                               <>
                                 <br />
                                 {item.barcode}
+                                {item.option_id ? ` | ${item.option_id}` : ''}
+                                {item.product_size && item.product_size.trim() ? ` | ${(() => {
+                                  const sizeText = item.product_size.trim();
+                                  if (sizeText.toLowerCase().includes('small')) return 'A';
+                                  if (sizeText.toLowerCase().includes('medium')) return 'B';
+                                  if (sizeText.toLowerCase().includes('large')) return 'C';
+                                  return sizeText.charAt(0);
+                                })()}` : ''}
                               </>
                             )}
                           </div>
@@ -1022,7 +1439,11 @@ const ItemCheck: React.FC = () => {
                           {item.order_qty || 0}
                         </td>
                         <td>
-                          <div className="cost-display">
+                          <div
+                            className="cost-display clickable-cost"
+                            onClick={(e) => handleCostClick(e, item)}
+                            title={item.site_url ? '클릭하여 사이트로 이동' : 'URL을 입력하여 사이트로 이동'}
+                          >
                             {item.cost_main || '-'}
                             {item.cost_sub && (
                               <>
@@ -1039,18 +1460,44 @@ const ItemCheck: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="qty-cell">
-                          {item.import_qty && (
-                            <span className="qty-badge import-qty">
-                              {item.import_qty}
-                            </span>
+                        <td
+                          className="qty-cell editable-qty-cell"
+                          onClick={() => startEditingCell(item.id, 'import_qty', item.import_qty)}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'import_qty' ? (
+                            <input
+                              type="number"
+                              value={cellValue}
+                              onChange={handleCellValueChange}
+                              onKeyDown={handleCellKeyDown}
+                              onBlur={() => finishEditingCell(false)}
+                              className="qty-input-seamless"
+                              autoFocus
+                            />
+                          ) : (
+                            <div className="qty-display-seamless">
+                              {item.import_qty || ''}
+                            </div>
                           )}
                         </td>
-                        <td className="qty-cell">
-                          {item.cancel_qty && (
-                            <span className="qty-badge cancel-qty">
-                              {item.cancel_qty}
-                            </span>
+                        <td
+                          className="qty-cell editable-qty-cell"
+                          onClick={() => startEditingCell(item.id, 'cancel_qty', item.cancel_qty)}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'cancel_qty' ? (
+                            <input
+                              type="number"
+                              value={cellValue}
+                              onChange={handleCellValueChange}
+                              onKeyDown={handleCellKeyDown}
+                              onBlur={() => finishEditingCell(false)}
+                              className="qty-input-seamless"
+                              autoFocus
+                            />
+                          ) : (
+                            <div className="qty-display-seamless">
+                              {item.cancel_qty || ''}
+                            </div>
                           )}
                         </td>
                         <td className="qty-cell">
@@ -1060,10 +1507,25 @@ const ItemCheck: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td>
-                          <div className="note-display">
-                            {item.note || ''}
-                          </div>
+                        <td
+                          className="editable-note-cell"
+                          onClick={() => startEditingCell(item.id, 'note', item.note)}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'note' ? (
+                            <input
+                              type="text"
+                              value={cellValue}
+                              onChange={(e) => setCellValue(e.target.value)}
+                              onKeyDown={handleCellKeyDown}
+                              onBlur={() => finishEditingCell(false)}
+                              className="note-input-seamless"
+                              autoFocus
+                            />
+                          ) : (
+                            <div className="note-display-seamless">
+                              {item.note || ''}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -1130,81 +1592,6 @@ const ItemCheck: React.FC = () => {
         </main>
       </div>
 
-      {/* Drawer */}
-      {drawerOpen && (
-        <div className="drawer-overlay" onClick={closeDrawer}>
-          <div className="drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
-              <h2>상품 상세 정보</h2>
-              <button className="close-btn" onClick={closeDrawer}>×</button>
-            </div>
-            <div className="drawer-content">
-              {selectedItem && (
-                <div>
-                  <h3>주문번호: {selectedItem.order_number}</h3>
-                  <table className="detail-table">
-                    <thead>
-                      <tr>
-                        <th>상품명</th>
-                        <th>주문수량</th>
-                        <th>단가</th>
-                        <th>총금액</th>
-                        <th>입고수량</th>
-                        <th>카테고리</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>
-                          <div className="product-name-display">
-                            {selectedItem.product_name}
-                          </div>
-                        </td>
-                        <td>{selectedItem.order_qty || 0}</td>
-                        <td>{selectedItem.unit_price?.toLocaleString() || 0}</td>
-                        <td>
-                          {selectedItem.total_price?.toLocaleString() || 0}
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="received-input"
-                            defaultValue={selectedItem.received_qty || ''}
-                          />
-                        </td>
-                        <td>
-                          <select 
-                            className="category-select"
-                            defaultValue={selectedItem.category || ''}
-                          >
-                            <option value="">선택</option>
-                            <option value="vest">vest</option>
-                            <option value="blouse">blouse</option>
-                            <option value="cardigan">cardigan</option>
-                            <option value="hat">hat</option>
-                            <option value="jacket">jacket</option>
-                            <option value="night wear">night wear</option>
-                            <option value="one piece">one piece</option>
-                            <option value="scarf">scarf</option>
-                            <option value="shorts">shorts</option>
-                            <option value="skirt">skirt</option>
-                            <option value="slippers">slippers</option>
-                            <option value="t-shirt">t-shirt</option>
-                          </select>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  
-                  <div className="drawer-actions">
-                    <button className="save-btn">저장</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 수량 입력 다이얼로그 */}
       {showQuantityDialog && (
@@ -1229,12 +1616,19 @@ const ItemCheck: React.FC = () => {
                       <tr key={item.id}>
                         <td>
                           <div className="product-info-text">
-                            <div>{item.product_name} {item.product_name_sub}</div>
-                            <div className="china-options">
+                            <div style={{color: '#333', fontSize: '14px', fontWeight: '500', marginBottom: '8px'}}>
+                              {item.product_name} {item.product_name_sub}
+                            </div>
+                            <div style={{color: '#333', fontSize: '14px', marginBottom: '8px'}}>
                               {item.china_option1} {item.china_option2}
                             </div>
-                            <div style={{fontSize: '12px', color: '#666', marginTop: '4px'}}>
-                              바코드: {item.barcode}
+                            <div style={{lineHeight: '1.6'}}>
+                              <span className="info-tag order-number">
+                                {item.order_number || ''}
+                              </span>
+                              <span className="info-tag barcode">
+                                {item.barcode}
+                              </span>
                             </div>
                           </div>
                         </td>
@@ -1242,7 +1636,7 @@ const ItemCheck: React.FC = () => {
                           <input
                             type="number"
                             min="1"
-                            value={productQuantities[item.id] || 1}
+                            value={productQuantities[item.id] || item.import_qty || 1}
                             onChange={(e) => {
                               const value = parseInt(e.target.value) || 1;
                               setProductQuantities({
@@ -1262,8 +1656,12 @@ const ItemCheck: React.FC = () => {
               <button className="cancel-btn" onClick={() => setShowQuantityDialog(false)}>
                 취소
               </button>
-              <button className="confirm-btn" onClick={handleQuantityConfirm}>
-                저장
+              <button
+                className="confirm-btn"
+                onClick={handleQuantityConfirm}
+                disabled={isSavingLabel}
+              >
+                {isSavingLabel ? '저장 중...' : 'LABEL 시트에 저장'}
               </button>
             </div>
           </div>

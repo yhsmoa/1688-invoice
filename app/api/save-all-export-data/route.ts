@@ -3,9 +3,8 @@ import { supabase } from '../../../lib/supabase';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
-// 구글 시트 ID와 시트명
-const SPREADSHEET_ID = '1yxaocZlgSEUJIurxQHjPNIp6D67frOv9INMeV-XIwP0';
-const SHEET_NAME = '주문';
+// 시트명 고정
+const SHEET_NAME = '진행';
 
 // 서비스 계정 키 정보는 환경 변수로 관리
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';

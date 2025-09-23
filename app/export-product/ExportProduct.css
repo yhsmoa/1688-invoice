@@ -43,6 +43,155 @@
 .export-left-buttons {
   display: flex;
   gap: 10px;
+  align-items: center;
+}
+
+/* 쿠팡 사용자 드롭박스 스타일 */
+.export-coupang-user-dropdown {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+/* 박스 입력박스 스타일 */
+.export-box-input {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  color: #333;
+  min-width: 150px;
+}
+
+/* 크기 선택 드롭박스 비활성화 스타일 */
+.export-size-dropdown:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* 주문 정보 표시 3등분 레이아웃 - 정확한 1:1:1 비율 */
+.export-order-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+/* 첫 번째: 이미지 영역 - 정확히 1/3 */
+.export-order-image {
+  width: 100%;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.export-order-image .export-product-image {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+
+.export-order-image .export-no-image {
+  color: #999;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* 두 번째: 주문 정보 영역 - 정확히 1/3 */
+.export-order-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+}
+
+.export-order-number {
+  font-size: 48px;
+  font-weight: bold;
+  color: #333;
+  line-height: 1.2;
+}
+
+.export-order-options {
+  font-size: 36px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* 세 번째: 수량 정보 영역 - 정확히 1/3 */
+.export-order-quantity {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.export-qty-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 둥근 사각형 배경 스타일 - 텍스트 길이에 유연한 "1/1" 형태 */
+.export-qty-circle {
+  min-width: 160px;
+  min-height: 160px;
+  padding: 20px 30px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 96px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  line-height: 1;
+}
+
+/* 스캔 개수 색상 조건 */
+.export-qty-circle.scanned {
+  background-color: #ffc107; /* 노란색 - 실입고개수 > 스캔개수 > 0 */
+}
+
+.export-qty-circle.completed {
+  background-color: #28a745; /* 초록색 - 실입고개수 = 스캔개수 > 0 */
+}
+
+.export-qty-circle.exceeded {
+  background-color: #dc3545; /* 빨간색 - 실입고개수 < 스캔개수 */
+}
+
+.export-qty-circle.default {
+  background-color: #6c757d; /* 회색 - 기본 */
+}
+
+.export-qty-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  display: none; /* 숨김 처리 */
+}
+
+.export-data-status {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
 }
 
 .export-right-buttons {
@@ -128,9 +277,9 @@
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 20px;
+  padding: 0px;
   margin-bottom: 20px;
-  min-height: 200px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -281,6 +430,28 @@
   background-color: #218838;
 }
 
+/* 저장 필요 상태 스타일 */
+.export-download-btn.has-changes {
+  background-color: #fd7e14;
+  animation: pulse-warning 2s infinite;
+}
+
+.export-download-btn.has-changes:hover {
+  background-color: #e8630a;
+}
+
+@keyframes pulse-warning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 126, 20, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(253, 126, 20, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 126, 20, 0);
+  }
+}
+
 .export-barcode-btn {
   padding: 10px 20px;
   background-color: #17a2b8;
@@ -314,35 +485,32 @@
 /* 메인 테이블 컬럼 너비 조정 */
 .export-table th:nth-child(1),
 .export-table td:nth-child(1) {
-  width: 80px; /* 이미지 */
+  width: 40px; /* 체크박스 */
 }
 
 .export-table th:nth-child(2),
 .export-table td:nth-child(2) {
-  width: 80px; /* 글번호 */
+  width: 100px; /* 박스번호 */
 }
 
 .export-table th:nth-child(3),
 .export-table td:nth-child(3) {
-  width: 300px; /* 상품명 - 2.5배 확대 */
+  width: 120px; /* 주문번호 */
 }
 
 .export-table th:nth-child(4),
 .export-table td:nth-child(4) {
-  width: 120px; /* 주문옵션 */
+  width: 300px; /* 상품명 */
 }
 
 .export-table th:nth-child(5),
-.export-table td:nth-child(5),
+.export-table td:nth-child(5) {
+  width: 200px; /* 주문옵션 */
+}
+
 .export-table th:nth-child(6),
-.export-table td:nth-child(6),
-.export-table th:nth-child(7),
-.export-table td:nth-child(7),
-.export-table th:nth-child(8),
-.export-table td:nth-child(8),
-.export-table th:nth-child(9),
-.export-table td:nth-child(9) {
-  width: 50px; /* 개수, 입고, 확인, 취소, 출고 - 동일하게 축소 */
+.export-table td:nth-child(6) {
+  width: 60px; /* 개수 */
   text-align: center;
 }
 
@@ -354,6 +522,11 @@
   color: #333;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
+}
+
+/* 체크박스 헤더도 가운데 정렬 */
+.export-table th.export-checkbox-column {
+  text-align: center;
 }
 
 .export-table td {
@@ -426,11 +599,59 @@
   margin-top: 30px;
 }
 
+.export-shipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .export-shipment-title {
   color: #333;
   font-size: 1.5rem;
-  margin-bottom: 20px;
-  margin-top: 0;
+  margin: 0;
+}
+
+/* 삭제 버튼 스타일 */
+.export-delete-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.export-delete-btn.active {
+  background-color: #dc3545;
+  color: white;
+}
+
+.export-delete-btn.active:hover {
+  background-color: #c82333;
+}
+
+.export-delete-btn.disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border: 1px solid #dee2e6;
+}
+
+/* 체크박스 열 스타일 */
+.export-checkbox-column {
+  width: 40px;
+  text-align: center;
+  padding: 8px !important;
+  vertical-align: middle;
+}
+
+.export-checkbox-column input[type="checkbox"] {
+  cursor: pointer;
+  transform: scale(1.2);
+  margin: 0;
+  vertical-align: middle;
 }
 
 /* 이미지 관련 스타일 */

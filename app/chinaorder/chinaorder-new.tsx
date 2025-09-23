@@ -519,7 +519,7 @@ const ChinaOrderNew: React.FC = () => {
           const barcode = item.columnF || '';
           const quantity = parseInt(item.columnE || '0');
           const option = `${item.columnG || ''} | ${item.columnH || ''}`.trim();
-          const date = item.columnA || '';
+          const date = item.columnB || '';
           
           if (barcode && quantity > 0) {
             if (barcodeMap[barcode]) {
@@ -542,7 +542,7 @@ const ChinaOrderNew: React.FC = () => {
       Object.keys(barcodeMap).forEach(barcode => {
         const data = barcodeMap[barcode];
         // 합산된 총 수량을 표시
-        const line = `${data.date} - ${data.option} - ${barcode} - ${data.totalQuantity}개`;
+        const line = `${data.date} // ${data.option} // ${barcode} // ${data.totalQuantity}ea`;
         memoLines.push(line);
       });
 

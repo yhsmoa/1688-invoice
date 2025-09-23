@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../../../lib/supabase';
 
-// 기본 구글 시트 ID
-const DEFAULT_SPREADSHEET_ID = '1yxaocZlgSEUJIurxQHjPNIp6D67frOv9INMeV-XIwP0';
+// 시트명 고정
 const SHEET_NAME = '진행';
 
 // 서비스 계정 키 정보는 환경 변수로 관리
@@ -22,10 +22,32 @@ export async function GET(request: NextRequest) {
   try {
     console.log('구글 시트 최적화 API 호출 시작');
     
-    // URL 파라미터에서 googlesheet_id 가져오기
+    // URL 파라미터에서 googlesheet_id와 coupang_name 가져오기 (필수)
     const searchParams = request.nextUrl.searchParams;
-    const googleSheetId = searchParams.get('googlesheet_id') || DEFAULT_SPREADSHEET_ID;
+    const googleSheetId = searchParams.get('googlesheet_id');
+    const coupangName = searchParams.get('coupang_name');
     const useCache = searchParams.get('cache') !== 'false'; // 기본적으로 캐시 사용
+
+    // 필수 파라미터 검증
+    if (!googleSheetId) {
+      console.error('googlesheet_id 파라미터가 필요합니다.');
+      return NextResponse.json({
+        error: 'googlesheet_id 파라미터가 필요합니다. users_api 테이블에서 사용자를 선택해주세요.',
+        success: false,
+        data: [],
+        loadTime: Date.now() - startTime
+      }, { status: 400 });
+    }
+
+    if (!coupangName) {
+      console.error('coupang_name 파라미터가 필요합니다.');
+      return NextResponse.json({
+        error: 'coupang_name 파라미터가 필요합니다. 사용자를 선택해주세요.',
+        success: false,
+        data: [],
+        loadTime: Date.now() - startTime
+      }, { status: 400 });
+    }
     
     console.log('구글 시트 ID:', googleSheetId);
     console.log('시트명:', SHEET_NAME);
@@ -62,9 +84,9 @@ export async function GET(request: NextRequest) {
       // 구글 시트 API 클라이언트 생성
       const sheets = google.sheets({ version: 'v4', auth: jwtClient });
       
-      // 필요한 컬럼만 지정하여 데이터 가져오기 (A:Q 범위)
-      // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16
-      const range = `${SHEET_NAME}!A:Q`; // A열부터 Q열까지
+      // 필요한 컬럼만 지정하여 데이터 가져오기 (A:V 범위)
+      // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20, V=21
+      const range = `${SHEET_NAME}!A:V`; // A열부터 V열까지
       
       console.log('구글 시트 데이터 요청 중...');
       const apiStartTime = Date.now();
@@ -138,10 +160,11 @@ export async function GET(request: NextRequest) {
               return null;
             }
             
-            return {
+            const item = {
               id: uuidv4(),
               row_number: (globalIndex + 2).toString(),
               img_url: row[10] || null, // K열 - 이미지
+              site_url: row[11] || null, // L열 - 사이트 URL
               order_number_prefix: row[0] || '', // A열 - 글번호 앞부분
               order_number: row[1] || '', // B열 - 글번호 뒷부분
               product_name: row[2] || null, // C열 - 상품명 첫 줄
@@ -157,7 +180,21 @@ export async function GET(request: NextRequest) {
               cancel_qty: row[14] ? parseInt(row[14]) : null, // O열 - 취소
               export_qty: row[15] ? parseInt(row[15]) : null, // P열 - 출고
               note: row[16] || null, // Q열 - 비고
+              option_id: row[20] || null, // U열 - 옵션 ID
+              product_size: row[21] || null, // V열 - 상품 입고 사이즈
             };
+
+            // 첫 번째 아이템의 디버깅 정보 출력
+            if (globalIndex === 0) {
+              console.log('첫 번째 행 디버깅:');
+              console.log('Row 길이:', row.length);
+              console.log('Row[20] (U열):', row[20]);
+              console.log('Row[21] (V열):', row[21]);
+              console.log('Option ID:', item.option_id);
+              console.log('Product Size:', item.product_size);
+            }
+
+            return item;
           }).filter(item => item !== null); // null 값 필터링
         })
       );
@@ -192,7 +229,72 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      
+
+      // Supabase에 사용자별 데이터 정리 및 저장
+      try {
+        console.log(`${coupangName} 사용자의 기존 데이터 삭제 시작...`);
+
+        // 1. 해당 사용자의 기존 데이터 삭제
+        const { error: deleteError } = await supabase
+          .from('invoice_import_googlesheet')
+          .delete()
+          .eq('coupang_name', coupangName);
+
+        if (deleteError) {
+          console.error('기존 데이터 삭제 오류:', deleteError);
+          // 삭제 실패해도 계속 진행 (새 데이터는 저장)
+        } else {
+          console.log(`${coupangName} 사용자의 기존 데이터 삭제 완료`);
+        }
+
+        // 2. 새로운 데이터 준비 (Supabase 저장용)
+        const supabaseData = processedData.map(item => ({
+          coupang_name: coupangName,
+          googlesheet_id: googleSheetId,
+          row_id: item.row_number,
+          img_url: item.img_url,
+          order_number_prefix: item.order_number_prefix,
+          order_number: item.order_number,
+          product_name: item.product_name,
+          product_name_sub: item.product_name_sub,
+          barcode: item.barcode,
+          china_option1: item.china_option1,
+          china_option2: item.china_option2,
+          order_qty: item.order_qty,
+          cost_main: item.cost_main,
+          cost_sub: item.cost_sub,
+          progress_qty: item.progress_qty,
+          import_qty: item.import_qty,
+          cancel_qty: item.cancel_qty,
+          export_qty: item.export_qty,
+          note: item.note,
+          offer_id: item.barcode // 바코드를 offer_id로 사용
+        }));
+
+        console.log(`${coupangName} 사용자의 새 데이터 ${supabaseData.length}개 저장 시작...`);
+
+        // 3. 새 데이터 저장 (배치로 나누어서 저장)
+        const batchSize = 100;
+        for (let i = 0; i < supabaseData.length; i += batchSize) {
+          const batch = supabaseData.slice(i, i + batchSize);
+
+          const { error: insertError } = await supabase
+            .from('invoice_import_googlesheet')
+            .insert(batch);
+
+          if (insertError) {
+            console.error(`배치 ${Math.floor(i/batchSize) + 1} 저장 오류:`, insertError);
+            // 저장 실패해도 계속 진행
+          }
+        }
+
+        console.log(`${coupangName} 사용자의 데이터 저장 완료`);
+
+      } catch (supabaseError) {
+        console.error('Supabase 데이터 정리/저장 오류:', supabaseError);
+        // Supabase 오류가 있어도 구글 시트 데이터는 정상 반환
+      }
+
       const totalTime = Date.now() - startTime;
       console.log(`전체 처리 시간: ${totalTime}ms`);
       
