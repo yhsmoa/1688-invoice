@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
               import_qty: row[13] ? parseInt(row[13]) : null, // N열 - 입고
               cancel_qty: row[14] ? parseInt(row[14]) : null, // O열 - 취소
               export_qty: row[15] ? parseInt(row[15]) : null, // P열 - 출고
-              note: row[16] || null, // Q열 - 비고
+              note: row[17] || null, // R열 - 비고
               option_id: row[20] || null, // U열 - 옵션 ID
               product_size: row[21] || null, // V열 - 상품 입고 사이즈
             };

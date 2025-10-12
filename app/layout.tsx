@@ -1,10 +1,8 @@
+'use client';
+
 import type { Metadata } from 'next'
 import './globals.css'
-
-export const metadata: Metadata = {
-  title: 'Invoice Manager',
-  description: '영수증 저장 프로그램',
-}
+import { LanguageProvider } from '../contexts/LanguageContext'
 
 export default function RootLayout({
   children,
@@ -14,7 +12,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   )

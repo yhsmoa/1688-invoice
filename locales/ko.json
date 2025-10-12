@@ -1,0 +1,76 @@
+{
+  "menu": {
+    "importProduct": "상품 입고",
+    "exportProduct": "상품 출고",
+    "chinaOrder": "중국 발주",
+    "exportInvoice": "수출 송장",
+    "invoiceList": "송장 목록",
+    "customsDocument": "통관 서류",
+    "customsInfo": "통관 정보",
+    "productList": "상품 목록",
+    "settings": "설정",
+    "barcodeSettings": "바코드 설정",
+    "orderSearch": "주문 검색"
+  },
+  "importProduct": {
+    "title": "상품 입고",
+    "refresh": "새로고침",
+    "uploadExcel": "엑셀 불러오기",
+    "uploading": "업로드 중...",
+    "selectUser": "쿠팡 사용자 선택",
+    "sortOrder": "주문순서",
+    "sortByProduct": "품목별",
+    "save": "저장",
+    "saving": "저장 중...",
+    "generateBarcode": "바코드 생성 sheet",
+    "generateBarcodeDB": "바코드 생성 DB",
+    "searchType": {
+      "deliveryNumber": "배송번호",
+      "general": "일반검색"
+    },
+    "searchPlaceholder": {
+      "deliveryNumber": "배송번호를 입력하세요",
+      "general": "상품명, 오퍼ID, 바코드를 입력하세요"
+    },
+    "search": "검색",
+    "statusCards": {
+      "all": "전체",
+      "beforeShipment": "발송전",
+      "partialReceived": "부분입고",
+      "receivedComplete": "입고완료",
+      "defective": "불량",
+      "return": "반품"
+    },
+    "table": {
+      "image": "이미지",
+      "orderNumber": "글번호",
+      "productName": "상품명",
+      "orderOption": "주문옵션",
+      "quantity": "개수",
+      "cost": "비용",
+      "progress": "진행",
+      "import": "입고",
+      "cancel": "취소",
+      "export": "출고",
+      "note": "비고",
+      "info": "정보",
+      "noImage": "이미지 없음",
+      "noData": "검색 결과가 없습니다.",
+      "loading": "로딩 중..."
+    },
+    "pagination": {
+      "previous": "이전",
+      "next": "다음",
+      "page": "페이지",
+      "total": "총"
+    },
+    "dialog": {
+      "quantityTitle": "바코드 라벨 수량 입력",
+      "productInfo": "상품정보",
+      "quantity": "수량",
+      "cancel": "취소",
+      "confirm": "LABEL 시트에 저장",
+      "saving": "저장 중..."
+    }
+  }
+}

@@ -178,67 +178,76 @@
 .china-order-table th:nth-child(1),
 .china-order-table td:nth-child(1) {
   width: 40px;
+  padding: 4px !important;
+  text-align: center;
 }
 
-/* 업체명 열 */
-.china-order-table th:nth-child(2),
+/* 이미지 열 - 이미지 크기 증가 */
+.china-order-table th:nth-child(2) {
+  width: 60px;
+  position: relative;
+  padding: 2px !important;
+  text-align: center;
+}
+
 .china-order-table td:nth-child(2) {
-  width: 100px;
+  width: 70px;
+  position: relative;
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
 }
 
-/* 이미지 열 */
+/* 글번호 열 - 너비 증가 */
 .china-order-table th:nth-child(3),
 .china-order-table td:nth-child(3) {
-  width: 80px;
-  position: relative;
-}
-
-/* 글번호 열 */
-.china-order-table th:nth-child(4),
-.china-order-table td:nth-child(4) {
-  width: 60px;
-  max-width: 60px;
+  width: 90px;
+  max-width: 90px;
 }
 
 /* 상품명 열 */
-.china-order-table th:nth-child(5),
-.china-order-table td:nth-child(5) {
+.china-order-table th:nth-child(4),
+.china-order-table td:nth-child(4) {
   width: 200px;
   min-width: 200px;
 }
 
-/* 주문옵션 열 */
-.china-order-table th:nth-child(6),
-.china-order-table td:nth-child(6) {
-  width: 150px;
+/* 주문옵션 열 - 3/4 크기로 줄임 */
+.china-order-table th:nth-child(5),
+.china-order-table td:nth-child(5) {
+  width: 112px;
 }
 
-/* 개수 열 */
-.china-order-table th:nth-child(7),
-.china-order-table td:nth-child(7) {
-  width: 60px;
+/* 개수 열 - 축소 */
+.china-order-table th:nth-child(6),
+.china-order-table td:nth-child(6) {
+  width: 35px;
   text-align: center;
 }
 
-/* 단가 열 */
-.china-order-table th:nth-child(8),
-.china-order-table td:nth-child(8) {
-  width: 60px;
-  text-align: right;
-}
-
 /* 위안 열 */
-.china-order-table th:nth-child(8),
-.china-order-table td:nth-child(8) {
+.china-order-table th:nth-child(7),
+.china-order-table td:nth-child(7) {
   width: 80px;
   text-align: center;
 }
 
-/* 비고 열 */
+/* 비고 열 - 왼쪽 정렬 */
+.china-order-table th:nth-child(8),
+.china-order-table td:nth-child(8) {
+  width: 100px;
+  max-width: 100px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 취소 열 - 업체명 50px + 기존 38px = 88px → 130px로 증가 */
 .china-order-table th:nth-child(9),
 .china-order-table td:nth-child(9) {
   width: 100px;
-  text-align: center;
+  min-width: 200px;
+  text-align: left;
 }
 
 .china-order-table th {
@@ -261,16 +270,18 @@
   word-break: break-all;
 }
 
-/* 상품 썸네일 이미지 */
+/* 상품 썸네일 이미지 - 크기 증가 */
 .china-order-product-thumbnail {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   border: 1px solid #ddd;
   background-color: #fff;
-  padding: 2px;
+  padding: 0;
   cursor: pointer;
   transition: transform 0.2s;
+  display: block;
+  margin: 0;
 }
 
 .china-order-product-thumbnail:hover {
@@ -280,6 +291,10 @@
 /* 이미지 미리보기 */
 .china-order-image-preview-container {
   position: static;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  line-height: 0;
 }
 
 .china-order-image-preview {
@@ -307,8 +322,8 @@
 }
 
 .china-order-no-image {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -719,4 +734,39 @@
   border-color: #667eea;
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
   background-color: white;
+}
+
+/* 토스트 알림 애니메이션 */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+.copy-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 10000;
+  animation: fadeInOut 1.5s ease-in-out;
 }

@@ -1,0 +1,76 @@
+{
+  "menu": {
+    "importProduct": "商品入库",
+    "exportProduct": "商品出库",
+    "chinaOrder": "中国订单",
+    "exportInvoice": "出口发票",
+    "invoiceList": "发票列表",
+    "customsDocument": "报关文件",
+    "customsInfo": "报关信息",
+    "productList": "商品列表",
+    "settings": "设置",
+    "barcodeSettings": "条码设置",
+    "orderSearch": "订单查询"
+  },
+  "importProduct": {
+    "title": "商品入库",
+    "refresh": "刷新",
+    "uploadExcel": "导入Excel",
+    "uploading": "上传中...",
+    "selectUser": "选择用户",
+    "sortOrder": "订单顺序",
+    "sortByProduct": "按商品",
+    "save": "保存",
+    "saving": "保存中...",
+    "generateBarcode": "生成条码 sheet",
+    "generateBarcodeDB": "生成条码 DB",
+    "searchType": {
+      "deliveryNumber": "快递单号",
+      "general": "常规搜索"
+    },
+    "searchPlaceholder": {
+      "deliveryNumber": "请输入快递单号",
+      "general": "请输入商品名称、OfferID、条码"
+    },
+    "search": "搜索",
+    "statusCards": {
+      "all": "全部",
+      "beforeShipment": "待发货",
+      "partialReceived": "部分入库",
+      "receivedComplete": "入库完成",
+      "defective": "不良品",
+      "return": "退货"
+    },
+    "table": {
+      "image": "图片",
+      "orderNumber": "帖子编号",
+      "productName": "商品名称",
+      "orderOption": "订单选项",
+      "quantity": "数量",
+      "cost": "费用",
+      "progress": "进度",
+      "import": "入库",
+      "cancel": "取消",
+      "export": "出库",
+      "note": "备注",
+      "info": "信息",
+      "noImage": "无图片",
+      "noData": "无搜索结果",
+      "loading": "加载中..."
+    },
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页",
+      "page": "页",
+      "total": "共"
+    },
+    "dialog": {
+      "quantityTitle": "输入条码标签数量",
+      "productInfo": "商品信息",
+      "quantity": "数量",
+      "cancel": "取消",
+      "confirm": "保存到LABEL表",
+      "saving": "保存中..."
+    }
+  }
+}

@@ -1,0 +1,452 @@
+.customs-document-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.customs-document-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.customs-document-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.customs-document-container {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.customs-document-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 컨트롤 섹션 */
+.customs-document-control-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.customs-document-left-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.customs-document-right-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.customs-document-google-sheet-btn {
+  background-color: #805ad5;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.customs-document-google-sheet-btn:hover {
+  background-color: #6b46c1;
+}
+
+.customs-document-excel-download-btn {
+  background-color: #3182ce;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.customs-document-excel-download-btn:hover {
+  background-color: #2c5aa0;
+}
+
+/* 검색 영역 */
+.customs-document-section {
+  margin-bottom: 20px;
+}
+
+.customs-document-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.customs-document-view-mode-container {
+  margin-bottom: 15px;
+}
+
+.customs-document-radio-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.customs-document-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #333;
+}
+
+.customs-document-radio-input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.customs-document-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.customs-document-input {
+  flex: 3;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.customs-document-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.customs-document-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 위치별 섹션 */
+.customs-document-location-section {
+  margin-bottom: 30px;
+}
+
+.customs-document-location-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 5px;
+}
+
+.customs-document-location-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.customs-document-location-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.customs-document-location-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.customs-document-location-move-btn {
+  padding: 8px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.customs-document-location-move-btn:hover {
+  background-color: #5a67d8;
+}
+
+/* 테이블 */
+.customs-document-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.customs-document-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* 체크박스 열 */
+.customs-document-table th:nth-child(1),
+.customs-document-table td:nth-child(1) {
+  width: 50px;
+  padding: 4px !important;
+  text-align: center;
+}
+
+/* 이미지 열 */
+.customs-document-table th:nth-child(2),
+.customs-document-table td:nth-child(2) {
+  width: 100px;
+  text-align: center;
+  padding: 8px !important;
+}
+
+/* 위치 열 */
+.customs-document-table th:nth-child(3),
+.customs-document-table td:nth-child(3) {
+  width: 100px;
+  text-align: center;
+}
+
+/* 주문번호 & 바코드 열 */
+.customs-document-table th:nth-child(4),
+.customs-document-table td:nth-child(4) {
+  width: 180px;
+  text-align: left;
+}
+
+/* 상품명 열 */
+.customs-document-table th:nth-child(5),
+.customs-document-table td:nth-child(5) {
+  width: 370px;
+  text-align: left;
+}
+
+/* 옵션명 열 */
+.customs-document-table th:nth-child(6),
+.customs-document-table td:nth-child(6) {
+  width: 150px;
+  text-align: left;
+}
+
+/* 출고개수 열 */
+.customs-document-table th:nth-child(7),
+.customs-document-table td:nth-child(7) {
+  width: 80px;
+  text-align: center;
+}
+
+/* 입고개수 열 */
+.customs-document-table th:nth-child(8),
+.customs-document-table td:nth-child(8) {
+  width: 80px;
+  text-align: center;
+}
+
+/* 단가 열 */
+.customs-document-table th:nth-child(9),
+.customs-document-table td:nth-child(9) {
+  width: 100px;
+  text-align: right;
+}
+
+/* 품목 열 */
+.customs-document-table th:nth-child(10),
+.customs-document-table td:nth-child(10) {
+  width: 100px;
+  text-align: center;
+}
+
+/* 혼용률 열 */
+.customs-document-table th:nth-child(11),
+.customs-document-table td:nth-child(11) {
+  width: 150px;
+  text-align: left;
+}
+
+.customs-document-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.customs-document-table td {
+  padding: 16px;
+  border-bottom: 1px solid #d1d5db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 상품 썸네일 */
+.customs-document-product-thumbnail {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: block;
+  margin: 0;
+}
+
+.customs-document-product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.customs-document-image-preview-container {
+  position: static;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  line-height: 0;
+}
+
+.customs-document-no-image {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: 1px solid #ddd;
+}
+
+.customs-document-image-cell {
+  cursor: default;
+  text-align: center;
+}
+
+.customs-document-order-barcode-cell {
+  line-height: 1.5;
+}
+
+.customs-document-order-number {
+  margin-bottom: 2px;
+}
+
+.customs-document-barcode {
+
+}
+
+.customs-document-cell {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.customs-document-cell:hover {
+  background-color: #f0f0f0;
+}
+
+.customs-document-empty-data {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 40px 20px;
+}
+
+.customs-document-table-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+
+/* 복사 완료 토스트 */
+.customs-document-copy-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 10000;
+  animation: fadeInOut 1.5s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+/* 스피너 스타일 */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

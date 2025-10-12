@@ -8,12 +8,16 @@
 
 .leftside-nav {
   padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 48px);
 }
 
 .menu-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
 }
 
 .menu-item {
@@ -79,4 +83,39 @@
 
 .submenu-text {
   font-weight: 400;
+}
+
+/* 언어 선택 드롭다운 - 메뉴 하단 */
+.language-selector-bottom {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.language-dropdown-menu {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.language-dropdown-menu:hover {
+  border-color: #667eea;
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.language-dropdown-menu:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.language-dropdown-menu option {
+  padding: 8px;
 } 

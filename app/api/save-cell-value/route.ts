@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       const columnMapping: { [key: string]: string } = {
         'import_qty': 'N',  // N열 - 입고
         'cancel_qty': 'O',  // O열 - 취소
-        'note': 'Q'         // Q열 - 비고
+        'note': 'R'         // R열 - 비고
       };
 
       const column = columnMapping[field];

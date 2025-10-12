@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 // 시트명 고정
-const SCAN_SHEET_NAME = '스캔';
+const SCAN_SHEET_NAME = '작업';
 
 // 서비스 계정 키 정보는 환경 변수로 관리
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';

@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 // 시트명 고정
-const SCAN_SHEET_NAME = '스캔';
+const SCAN_SHEET_NAME = '작업';
 
 // 서비스 계정 키 정보는 환경 변수로 관리
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
@@ -17,7 +17,7 @@ interface ScanDataItem {
   product_name: string;
   option_name: string;
   scanned_qty: number;
-  china_options: string;
+  available_qty: number; // 입고개수
 }
 
 interface ScanDataRequest {
@@ -96,16 +96,19 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 헤더 행 추가/업데이트 (새 시트든 기존 시트든 항상 실행)
-      console.log('헤더 행 업데이트 중...');
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: googlesheet_id,
-        range: `${SCAN_SHEET_NAME}!A1:G1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [['박스번호', '주문번호', '바코드', '등록상품명', '옵션명', '개수', '중국옵션']],
-        },
-      });
+      // 헤더 행은 기존 것을 유지 (건드리지 않음)
+      // 만약 시트가 새로 생성된 경우에만 헤더 추가
+      if (!scanSheetExists) {
+        console.log('새 시트 생성 - 헤더 행 추가 중...');
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: googlesheet_id,
+          range: `${SCAN_SHEET_NAME}!A1:G1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [['박스번호', '주문번호', '바코드', '등록상품명', '옵션명', '개수', '입고개수']],
+          },
+        });
+      }
     } catch (sheetError) {
       console.error('스캔 시트 확인/생성 오류:', sheetError);
       throw new Error('스캔 시트를 확인하거나 생성할 수 없습니다.');
@@ -153,7 +156,7 @@ export async function POST(request: NextRequest) {
       item.product_name,  // D열: 상품명
       item.option_name,   // E열: 옵션명
       item.scanned_qty,   // F열: 개수
-      item.china_options  // G열: 중국옵션
+      item.available_qty  // G열: 입고개수
     ]);
 
     console.log(`구글 시트에 데이터 저장: ${range}`);

@@ -43,7 +43,9 @@ export const POST = async (request: NextRequest) => {
 
     // 컬럼 인덱스 정의 (엑셀 컬럼을 0부터 시작하는 인덱스로 변환)
     const COLUMNS = {
+      ORDER_ID: 0,       // A열 - 주문ID
       SHOP: 3,           // D열 - 판매자/상점명
+      DELIVERY_STATUS: 9, // J열 - 배송상태
       OFFER_ID: 24,      // Y열 - 오퍼ID
       ORDER_INFO: 29,    // AD열 - 주문정보
       DELIVERY_CODE: 31  // AF열 - 배송코드
@@ -64,7 +66,9 @@ export const POST = async (request: NextRequest) => {
 
       try {
         // 각 컬럼 값 추출
+        const orderId = row[COLUMNS.ORDER_ID] || '';
         const shop = row[COLUMNS.SHOP] || '';
+        const deliveryStatus = row[COLUMNS.DELIVERY_STATUS] || '';
         const offerId = row[COLUMNS.OFFER_ID] || '';
         const orderInfo = row[COLUMNS.ORDER_INFO] || '';
         const deliveryCode = row[COLUMNS.DELIVERY_CODE] || '';
@@ -84,7 +88,9 @@ export const POST = async (request: NextRequest) => {
 
           const deliveryItem = {
             id: id,
+            order_id: orderId.toString().trim() || null,
             shop: shop.toString().trim(),
+            delivery_status: deliveryStatus.toString().trim() || null,
             offer_id: offerId.toString().trim() || null,
             order_info: orderInfo.toString().trim() || null,
             delivery_code: deliveryCode.toString().trim()

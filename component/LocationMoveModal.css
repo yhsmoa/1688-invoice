@@ -1,0 +1,150 @@
+/* 모달 오버레이 - 투명하게 */
+.location-move-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* 모달 */
+.location-move-modal {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  width: 400px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+/* 모달 헤더 */
+.location-move-modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #667eea;
+  color: white;
+  border-radius: 8px 8px 0 0;
+  user-select: none;
+}
+
+.location-move-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.location-move-modal-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.location-move-modal-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 모달 컨텐츠 */
+.location-move-modal-content {
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.location-move-current,
+.location-move-target {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.location-move-current label,
+.location-move-target label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.location-move-current-value {
+  padding: 10px 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.location-move-arrow {
+  text-align: center;
+  font-size: 24px;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.location-move-select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.location-move-select:focus {
+  border-color: #667eea;
+}
+
+/* 모달 푸터 */
+.location-move-modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.location-move-cancel-btn,
+.location-move-confirm-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.location-move-cancel-btn {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.location-move-cancel-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.location-move-confirm-btn {
+  background-color: #667eea;
+  color: white;
+}
+
+.location-move-confirm-btn:hover {
+  background-color: #5a67d8;
+}

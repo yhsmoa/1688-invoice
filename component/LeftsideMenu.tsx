@@ -2,10 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../contexts/LanguageContext';
 import './LeftsideMenu.css';
 
 const LeftsideMenu: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const toggleExportMenu = () => {
     setIsExportMenuOpen(!isExportMenuOpen);
@@ -18,19 +21,25 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <Link href="/chinaorder" className="menu-link">
               <span className="menu-icon">🛒</span>
-              <span className="menu-text">신규 주문</span>
+              <span className="menu-text">{t('menu.chinaOrder')}</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/order-search" className="menu-link">
+              <span className="menu-icon">🔍</span>
+              <span className="menu-text">{t('menu.orderSearch')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/import-product" className="menu-link">
               <span className="menu-icon">📦</span>
-              <span className="menu-text">상품 입고</span>
+              <span className="menu-text">{t('menu.importProduct')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/export-product" className="menu-link">
               <span className="menu-icon">📤</span>
-              <span className="menu-text">상품 출고</span>
+              <span className="menu-text">{t('menu.exportProduct')}</span>
             </Link>
           </li>
           <li className="menu-item">
@@ -48,19 +57,19 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleExportMenu}>
               <span className="menu-icon">📊</span>
-              <span className="menu-text">수출 인보이스</span>
+              <span className="menu-text">{t('menu.exportInvoice')}</span>
               <span className={`dropdown-arrow ${isExportMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isExportMenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
-                  <Link href="/export-invoice" className="submenu-link">
-                    <span className="submenu-text">인보이스 목록</span>
+                  <Link href="/export-invoice/customs-info" className="submenu-link">
+                    <span className="submenu-text">{t('menu.customsInfo')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
-                  <Link href="/export-invoice/match" className="submenu-link">
-                    <span className="submenu-text">인보이스 영수증 매칭</span>
+                  <Link href="/export-invoice/customs-document" className="submenu-link">
+                    <span className="submenu-text">{t('menu.customsDocument')}</span>
                   </Link>
                 </li>
               </ul>

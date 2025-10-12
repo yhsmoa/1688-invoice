@@ -270,8 +270,9 @@
 /* 개수 열 */
 .item-table th:nth-child(6),
 .item-table td:nth-child(6) {
-  width: 60px;
+  width: 30px;
   text-align: center;
+  padding: 0 !important;
 }
 
 /* 비용 열 */
@@ -290,14 +291,22 @@
 .item-table td:nth-child(10),
 .item-table th:nth-child(11),
 .item-table td:nth-child(11) {
-  width: 60px;
+  width: 30px;
   text-align: center;
+  padding: 0 !important;
 }
 
 /* 비고 열 */
 .item-table th:nth-child(12),
 .item-table td:nth-child(12) {
   width: 120px;
+  text-align: left;
+}
+
+/* 정보 열 */
+.item-table th:nth-child(13),
+.item-table td:nth-child(13) {
+  width: 170px;
   text-align: left;
 }
 
@@ -952,6 +961,27 @@
 
 .barcode-btn:hover {
   background-color: #2c5282;
+}
+
+.barcode-btn-db {
+  background-color: #000000;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.barcode-btn-db:hover {
+  background-color: #333333;
+}
+
+.barcode-btn-db:disabled {
+  background-color: #999999;
+  cursor: not-allowed;
 }
 
 /* 이미지 툴팁 스타일 */
