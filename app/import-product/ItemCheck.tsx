@@ -6,7 +6,26 @@ import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import SearchForm from '../../component/SearchForm';
 import StatusCard from './StatusCard';
+import ProcessReadyModal from '../../component/ProcessReadyModal';
 import './ItemCheck.css';
+
+// Import custom hooks
+import {
+  useItemData,
+  usePagination,
+  useSearch,
+  useEditCell,
+  useBarcodeDialog,
+  type ItemData
+} from './hooks';
+
+// Import utilities
+import { loadGoogleSheetData, saveToCache } from './utils/sheetLoader';
+
+// Import table components
+import ItemTable from './components/ItemTable';
+import ControlBar from './components/ControlBar';
+import SearchSection from './components/SearchSection';
 
 // 디바운스 함수 구현
 const debounce = <F extends (...args: any[]) => any>(
@@ -28,36 +47,6 @@ const debounce = <F extends (...args: any[]) => any>(
   };
 };
 
-interface ItemData {
-  id: string;
-  row_number?: string; // 구글 시트 행 번호
-  img_url?: string; // 이미지 URL
-  site_url?: string; // 사이트 URL (L열)
-  order_number_prefix?: string; // 글번호 앞부분 (A열)
-  order_number: string; // 글번호 뒷부분 (B열)
-  product_name: string | null; // 상품명 첫 줄 (C열)
-  product_name_sub?: string | null; // 상품명 둘째 줄 (D열)
-  barcode?: string | null; // 바코드 (F열)
-  china_option1?: string | null; // 주문옵션 첫 줄 (G열)
-  china_option2?: string | null; // 주문옵션 둘째 줄 (H열)
-  order_qty: number | null; // 개수 (E열)
-  cost_main?: string | null; // 비용 첫 줄 (I열)
-  cost_sub?: string | null; // 비용 둘째 줄 (J열)
-  progress_qty?: number | null; // 진행 (M열)
-  import_qty?: number | null; // 입고 (N열)
-  cancel_qty?: number | null; // 취소 (O열)
-  export_qty?: number | null; // 출고 (P열)
-  note?: string | null; // 비고 (R열)
-  option_id?: string | null; // 옵션 ID (U열)
-  product_size?: string | null; // 상품 입고 사이즈 (V열)
-  order_id?: string | null; // 주문 ID (배송정보)
-  delivery_status?: string | null; // 배송 상태 (배송정보)
-  // 기존 필드들 (호환성을 위해 남겨둠)
-  date?: string;
-  row_id?: string;
-  confirm_qty?: number | null;
-}
-
 const ItemCheck: React.FC = () => {
   const { t } = useTranslation();
   const cardData = [
@@ -68,68 +57,85 @@ const ItemCheck: React.FC = () => {
     t('importProduct.statusCards.defective'),
     t('importProduct.statusCards.return')
   ];
-  const [itemData, setItemData] = useState<ItemData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
+  // Custom hooks initialization
+  const {
+    itemData,
+    setItemData,
+    loading,
+    setLoading,
+    originalData,
+    setOriginalData,
+    deliveryInfoData,
+    statusCounts,
+    mapDeliveryInfoToItems,
+    fetchAllDeliveryInfo
+  } = useItemData();
+
   const [filteredData, setFilteredData] = useState<ItemData[]>([]);
-  const [originalData, setOriginalData] = useState<ItemData[]>([]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    paginatedData,
+    totalPages,
+    handlePageChange,
+    goToNextPage,
+    goToPrevPage
+  } = usePagination(filteredData, 20);
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    searchType,
+    setSearchType,
+    performSearch: performSearchHook,
+    searchDeliveryInfo: searchDeliveryInfoHook,
+    parseOrderInfoAndSearch: parseOrderInfoAndSearchHook
+  } = useSearch(itemData, deliveryInfoData);
+
+  const {
+    editingCell,
+    cellValue,
+    setCellValue,
+    modifiedData,
+    setModifiedData,
+    readyItems,
+    setReadyItems,
+    startEditingCell,
+    finishEditingCell,
+    handleCellValueChange,
+    handleCellKeyDown
+  } = useEditCell(filteredData, setFilteredData, itemData, setItemData, paginatedData, originalData);
+
+  const {
+    showQuantityDialog,
+    setShowQuantityDialog,
+    productQuantities,
+    setProductQuantities,
+    isSavingLabel,
+    setIsSavingLabel,
+    handleBarcodeClick: handleBarcodeClickHook,
+    handleBarcodeDBClick: handleBarcodeDBClickHook,
+    handleQuantityConfirm: handleQuantityConfirmHook
+  } = useBarcodeDialog();
+
+  // Other state that doesn't belong to hooks
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [activeStatus, setActiveStatus] = useState<string>(t('importProduct.statusCards.all'));
-  const [searchType, setSearchType] = useState<string>(t('importProduct.searchType.deliveryNumber'));
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<{[key: string]: string}>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
-  const [showQuantityDialog, setShowQuantityDialog] = useState(false);
-  const [productQuantities, setProductQuantities] = useState<{ [key: string]: number }>({});
   const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
-  const [isSavingLabel, setIsSavingLabel] = useState(false);
-  
-  // 페이지네이션 상태
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
-  const [paginatedData, setPaginatedData] = useState<ItemData[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  
-  // 셀 편집 상태
-  const [editingCell, setEditingCell] = useState<{id: string, field: string} | null>(null);
-  const [cellValue, setCellValue] = useState<string>('');
-  
-  // 수정된 데이터 추적
-  const [modifiedData, setModifiedData] = useState<{[key: string]: {[field: string]: number | string | null}}>({});
   const [isSaving, setIsSaving] = useState(false);
-  
-  // 정렬 상태
   const [sortType, setSortType] = useState<string>('주문순서');
-
-  // 엑셀 업로드 관련 상태
-  const excelFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+  const [isProcessReadyModalOpen, setIsProcessReadyModalOpen] = useState(false);
+  const [originalFieldValues, setOriginalFieldValues] = useState<{[itemId: string]: {import_qty: number | null, cancel_qty: number | null, note: string | null}}>({});
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // 배송정보 상태 (초기 로딩용)
-  const [deliveryInfoData, setDeliveryInfoData] = useState<{[key: string]: any}>({});
-
-  // 발송전 카운트를 useMemo로 캐싱 (무한 렌더링 방지)
-  const statusCounts = useMemo(() => {
-    const counts: { [key: string]: number } = {
-      '전체': itemData.length,
-      '발송전': 0,
-      '부분입고': 0,
-      '입고완료': 0,
-      '불량': 0,
-      '반품': 0
-    };
-
-    // 발송전 카운트 계산
-    counts['발송전'] = itemData.filter(item => {
-      const deliveryStatus = item.delivery_status;
-      return deliveryStatus === '等待卖家发货' || !deliveryStatus || deliveryStatus.trim() === '';
-    }).length;
-
-    // 나머지 상태는 아직 구현되지 않음
-    return counts;
-  }, [itemData]);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   // 정렬 함수
   const sortData = (data: ItemData[], sortType: string): ItemData[] => {
@@ -260,126 +266,7 @@ const ItemCheck: React.FC = () => {
     }));
   };
 
-  // 셀 편집 시작
-  const startEditingCell = (id: string, field: string, value: number | string | null | undefined) => {
-    setEditingCell({ id, field });
-    if (field === 'note') {
-      setCellValue(value ? value.toString() : '');
-    } else {
-      setCellValue(value !== null && value !== undefined ? value.toString() : '');
-    }
-  };
-
-  // 다음 편집 가능한 셀로 이동
-  const moveToNextEditableCell = (currentId: string, currentField: string) => {
-    const editableFields = ['import_qty', 'cancel_qty', 'note'];
-    const currentFieldIndex = editableFields.indexOf(currentField);
-
-    if (currentField === 'import_qty') {
-      // 입고 열에서는 다음 행의 입고 열로 이동
-      const currentIndex = paginatedData.findIndex(item => item.id === currentId);
-      if (currentIndex >= 0 && currentIndex < paginatedData.length - 1) {
-        const nextItem = paginatedData[currentIndex + 1];
-        startEditingCell(nextItem.id, 'import_qty', nextItem.import_qty);
-      }
-    } else {
-      // 취소, 비고 열에서는 같은 행의 다음 필드로 이동
-      if (currentFieldIndex < editableFields.length - 1) {
-        const nextField = editableFields[currentFieldIndex + 1];
-        const currentItem = paginatedData.find(item => item.id === currentId);
-        if (currentItem) {
-          startEditingCell(currentId, nextField, currentItem[nextField as keyof ItemData]);
-        }
-      }
-    }
-  };
-
-  // 셀 편집 완료
-  const finishEditingCell = async (moveToNext: boolean = false) => {
-    if (editingCell) {
-      const { id, field } = editingCell;
-
-      // note 필드인 경우 문자열 값, 그 외는 숫자 값
-      const finalValue = field === 'note'
-        ? (cellValue === '' ? null : cellValue)
-        : (cellValue === '' ? null : Number(cellValue));
-
-      // 현재 아이템 찾기
-      const currentItem = filteredData.find(item => item.id === id);
-      if (!currentItem) {
-        setEditingCell(null);
-        return;
-      }
-
-
-      const currentValue = currentItem[field as keyof ItemData];
-
-      // 값이 실제로 변경된 경우에만 처리
-      const valueChanged = finalValue !== currentValue;
-
-      if (valueChanged) {
-        // 데이터 업데이트
-        const updatedData = filteredData.map(item =>
-          item.id === id ? { ...item, [field]: finalValue } : item
-        );
-
-        setFilteredData(updatedData);
-
-        // 전체 데이터도 업데이트
-        const updatedItemData = itemData.map(item =>
-          item.id === id ? { ...item, [field]: finalValue } : item
-        );
-
-        setItemData(updatedItemData);
-
-        // 변경된 항목 찾기
-        const updatedItem = updatedData.find(item => item.id === id);
-
-        // 수정된 데이터 추적 - row_number를 row_id로 사용
-        if (updatedItem && updatedItem.row_number) {
-          const rowKey = updatedItem.row_number; // row_number가 구글시트의 실제 행 번호
-          setModifiedData(prev => ({
-            ...prev,
-            [rowKey]: {
-              ...(prev[rowKey] || {}),
-              [field]: finalValue
-            }
-          }));
-        }
-      }
-
-      const currentId = id;
-      const currentField = field;
-      setEditingCell(null);
-
-      // Enter로 완료된 경우 다음 셀로 이동
-      if (moveToNext) {
-        setTimeout(() => {
-          moveToNextEditableCell(currentId, currentField);
-        }, 50);
-      }
-    }
-  };
-
-  // 셀 값 변경
-  const handleCellValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 숫자만 입력 가능하도록
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    setCellValue(value);
-  };
-
-  // 셀 키 이벤트 처리
-  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      finishEditingCell(true); // Enter 시 다음 셀로 이동
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      finishEditingCell(); // Tab 시 현재 위치에서 완료
-    } else if (e.key === 'Escape') {
-      setEditingCell(null);
-    }
-  };
+  // Cell editing functions are now provided by useEditCell hook
 
   // 데이터 가져오기 - 초기에는 빈 데이터
   const fetchItemData = async () => {
@@ -397,285 +284,36 @@ const ItemCheck: React.FC = () => {
     fetchAllDeliveryInfo();
   }, []);
 
-  // 배송정보 매핑 함수
-  const mapDeliveryInfoToItems = (items: ItemData[]): ItemData[] => {
-    console.log('=== 배송정보 매핑 시작 ===');
-    console.log('총 아이템 개수:', items.length);
-    console.log('배송정보 개수:', Object.keys(deliveryInfoData).length);
-
-    let matchedCount = 0;
-    let unmatchedCount = 0;
-
-    const result = items.map((item, index) => {
-      // 각 아이템의 바코드로 배송정보 찾기
-      const itemBarcode = item.barcode?.toString().trim();
-
-      if (!itemBarcode) {
-        unmatchedCount++;
-        return item;
-      }
-
-      // deliveryInfoData에서 해당 바코드를 포함하는 배송정보 찾기
-      let matchedDeliveryInfo = null;
-
-      for (const [deliveryCode, deliveryInfo] of Object.entries(deliveryInfoData)) {
-        if (deliveryInfo.order_info) {
-          // order_info에서 현재 아이템의 바코드가 포함되어 있는지 확인
-          const orderInfoLines = deliveryInfo.order_info.split('\n').filter((line: string) => line.trim());
-
-          for (const line of orderInfoLines) {
-            if (line.includes(itemBarcode)) {
-              matchedDeliveryInfo = deliveryInfo;
-              break;
-            }
-          }
-
-          if (matchedDeliveryInfo) {
-            break;
-          }
-        }
-      }
-
-      // 매칭된 배송정보가 있으면 추가
-      if (matchedDeliveryInfo) {
-        matchedCount++;
-        if (matchedCount <= 5) {
-          console.log(`매칭 성공 [${matchedCount}]:`, {
-            barcode: itemBarcode,
-            order_id: matchedDeliveryInfo.order_id,
-            delivery_status: matchedDeliveryInfo.delivery_status
-          });
-        }
-        return {
-          ...item,
-          order_id: matchedDeliveryInfo.order_id || null,
-          delivery_status: matchedDeliveryInfo.delivery_status || null
-        };
-      } else {
-        unmatchedCount++;
-        if (unmatchedCount <= 3) {
-          console.log(`매칭 실패 [${unmatchedCount}]: 바코드=${itemBarcode}`);
-        }
-      }
-
-      return item;
-    });
-
-    console.log('=== 배송정보 매핑 완료 ===');
-    console.log('매칭 성공:', matchedCount);
-    console.log('매칭 실패:', unmatchedCount);
-
-    return result;
-  };
-
-  // 드롭다운 선택 시 캐시된 데이터 로드
+  // 드롭다운 선택 시 구글 시트 데이터 자동 로드
   useEffect(() => {
     if (selectedCoupangUser && !isLoadingFromCache) {
-      loadCachedData(selectedCoupangUser);
+      handleLoadGoogleSheet();
     }
   }, [selectedCoupangUser]);
 
-  // 캐시된 데이터 로드 함수
-  const loadCachedData = (coupangName: string) => {
-    try {
-      const cacheKey = `sheet_data_${coupangName}`;
-      const cachedData = localStorage.getItem(cacheKey);
-
-      if (cachedData) {
-        const parsedData = JSON.parse(cachedData);
-
-        // 배송정보 매핑 적용
-        const dataWithDeliveryInfo = mapDeliveryInfoToItems(parsedData.data || []);
-
-        // 현재 활성화된 상태에 따라 필터링
-        const filteredByStatus = filterByStatus(dataWithDeliveryInfo, activeStatus);
-
-        const sortedData = sortData(filteredByStatus, sortType);
-        setOriginalData(dataWithDeliveryInfo);
-        setItemData(dataWithDeliveryInfo);
-        setFilteredData(sortedData);
-
-        // 캐시된 데이터 표시 메시지 (선택적)
-        console.log(`${coupangName}의 캐시된 데이터를 불러왔습니다.`);
-      }
-    } catch (error) {
-      console.error('캐시 데이터 로드 오류:', error);
-    }
-  };
-
-  // 데이터를 localStorage에 저장하는 함수
-  const saveToCache = (coupangName: string, data: ItemData[], googlesheetId?: string, userId?: string) => {
-    try {
-      const cacheKey = `sheet_data_${coupangName}`;
-      const cacheData = {
-        data: data,
-        timestamp: Date.now(),
-        coupangName: coupangName,
-        googlesheet_id: googlesheetId,
-        user_id: userId
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('캐시 저장 오류:', error);
-      // localStorage가 가듵 차면 오래된 캐시 삭제
-      try {
-        const keys = Object.keys(localStorage);
-        const sheetDataKeys = keys.filter(key => key.startsWith('sheet_data_'));
-        if (sheetDataKeys.length > 0) {
-          // 가장 오래된 캐시 삭제
-          localStorage.removeItem(sheetDataKeys[0]);
-          // 다시 시도
-          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        }
-      } catch (e) {
-        console.error('캐시 정리 실패:', e);
-      }
-    }
-  };
 
   // 쿠팡 사용자 목록 가져오기
   const fetchCoupangUsers = async () => {
     try {
+      console.log('쿠팡 사용자 목록 가져오기 시작...');
       const response = await fetch('/api/get-coupang-users');
       const result = await response.json();
 
+      console.log('API 응답:', result);
+
       if (result.success && result.data) {
+        console.log('쿠팡 사용자 데이터:', result.data);
         setCoupangUsers(result.data);
+      } else {
+        console.warn('쿠팡 사용자 데이터를 가져오지 못했습니다:', result);
       }
     } catch (error) {
       console.error('쿠팡 사용자 목록 가져오기 오류:', error);
     }
   };
 
-  // 모든 배송정보 초기 로딩
-  const fetchAllDeliveryInfo = async () => {
-    try {
-      console.log('배송정보 전체 로딩 시작...');
-
-      const response = await fetch('/api/get-all-delivery-info');
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // delivery_code를 키로 하는 맵으로 변환
-        const deliveryMap: {[key: string]: any} = {};
-        result.data.forEach((item: any) => {
-          if (item.delivery_code) {
-            deliveryMap[item.delivery_code] = item;
-          }
-        });
-
-        setDeliveryInfoData(deliveryMap);
-        console.log(`배송정보 ${result.data.length}개 로딩 완료`);
-      } else {
-        console.log('배송정보 로딩 실패 또는 데이터 없음');
-      }
-    } catch (error) {
-      console.error('배송정보 로딩 오류:', error);
-    }
-  };
-
-  // 페이지네이션 처리 함수
-  const updatePaginatedData = (data: ItemData[]) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setPaginatedData(data.slice(startIndex, endIndex));
-    setTotalPages(Math.ceil(data.length / itemsPerPage));
-  };
-
-  // 페이지 변경 함수
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  // 다음 페이지로 이동
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // 이전 페이지로 이동
-  const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // 필터링된 데이터가 변경될 때 페이지네이션 업데이트
-  useEffect(() => {
-    updatePaginatedData(filteredData);
-  }, [filteredData, currentPage]);
-
-  // 배송번호로 메모리에서 배송정보 조회
-  const searchDeliveryInfo = (deliveryCode: string) => {
-    console.log('배송번호로 메모리에서 조회:', deliveryCode);
-
-    const deliveryInfo = deliveryInfoData[deliveryCode];
-    if (deliveryInfo) {
-      console.log('배송정보 찾음:', deliveryInfo);
-      return deliveryInfo;
-    } else {
-      console.log('배송정보를 찾을 수 없음');
-      return null;
-    }
-  };
-
-  // order_info 파싱 및 검색 함수
-  const parseOrderInfoAndSearch = (orderInfo: string) => {
-    console.log('order_info 파싱:', orderInfo);
-
-    // 줄바꿈으로 나누어 각 라인 처리
-    const lines = orderInfo.split('\n').filter(line => line.trim());
-    const searchResults: ItemData[] = [];
-
-    lines.forEach(line => {
-      let matchingItems: ItemData[] = [];
-
-      // 패턴 1: 새로운 형식 - 글번호 // 옵션1 | 옵션2 // 바코드 // 개수ea
-      const newFormatMatch = line.match(/^([^//]+)\s*\/\/\s*(.+?)\s*\|\s*(.+?)\s*\/\/\s*(\S+)\s*\/\/\s*(\d+)ea$/);
-
-      if (newFormatMatch) {
-        const [, orderNumber, option1, option2, barcode, quantity] = newFormatMatch;
-
-        console.log(`새 형식 파싱 - 글번호: ${orderNumber}, 옵션1: ${option1}, 옵션2: ${option2}, 바코드: ${barcode}, 수량: ${quantity}`);
-
-        // 글번호(order_number)로 검색
-        matchingItems = itemData.filter(item => {
-          const itemOrderNumber = (item.order_number || '').toString();
-          const itemBarcode = (item.barcode || '').toString();
-
-          return itemOrderNumber === orderNumber.trim() && itemBarcode === barcode;
-        });
-
-        searchResults.push(...matchingItems);
-      } else {
-        // 패턴 2: 기존 형식 - MMDD - 옵션1 | 옵션2 - 바코드 - 개수?
-        const oldFormatMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*\|\s*(.+?)\s*-\s*(\S+)\s*-\s*(\d+)\?$/);
-
-        if (oldFormatMatch) {
-          const [, dateMMDD, option1, option2, barcode, quantity] = oldFormatMatch;
-
-          console.log(`기존 형식 파싱 - 날짜: ${dateMMDD}, 옵션1: ${option1}, 옵션2: ${option2}, 바코드: ${barcode}, 수량: ${quantity}`);
-
-          // 현재 메모리 데이터에서 해당 날짜와 바코드로 검색
-          matchingItems = itemData.filter(item => {
-            // order_number_prefix에서 날짜 추출 (MMDD 형태)
-            const orderPrefix = (item.order_number_prefix || '').toString();
-            const itemDate = orderPrefix.slice(-4); // 마지막 4자리가 MMDD
-
-            // 바코드 매칭
-            const itemBarcode = (item.barcode || '').toString();
-
-            return itemDate === dateMMDD && itemBarcode === barcode;
-          });
-
-          searchResults.push(...matchingItems);
-        }
-      }
-    });
-
-    return searchResults;
-  };
+  // Pagination and delivery functions are provided by hooks
+  // searchDeliveryInfo and parseOrderInfoAndSearch are now provided by useSearch hook
 
   // 상태별 필터링 함수
   const filterByStatus = (data: ItemData[], status: string): ItemData[] => {
@@ -700,73 +338,17 @@ const ItemCheck: React.FC = () => {
     return data;
   };
 
-  // 검색 함수 - 메모리 기반 검색으로 변경
+  // 검색 함수 - Hook에서 가져온 함수 사용
   const performSearch = async () => {
-    if (!searchTerm.trim()) {
-      const filteredByStatus = filterByStatus(itemData, activeStatus);
-      const sortedData = sortData(filteredByStatus, sortType);
-      setFilteredData(sortedData); // 검색어가 없으면 상태 필터링된 데이터 표시 (정렬 적용)
-      setCurrentPage(1); // 검색 시 첫 페이지로 이동
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      let searchResults: ItemData[] = [];
-
-      if (searchType === '배송번호') {
-        // 배송번호 검색: 메모리에서 배송정보 조회
-        const deliveryInfo = searchDeliveryInfo(searchTerm);
-
-        if (deliveryInfo && deliveryInfo.order_info) {
-          // order_info를 파싱하여 날짜와 바코드로 메모리 데이터 검색
-          searchResults = parseOrderInfoAndSearch(deliveryInfo.order_info);
-
-          // 검색 결과에 배송정보 추가 (order_id, delivery_status)
-          searchResults = searchResults.map(item => ({
-            ...item,
-            order_id: deliveryInfo.order_id || null,
-            delivery_status: deliveryInfo.delivery_status || null
-          }));
-
-          console.log(`배송번호 검색 결과: ${searchResults.length}개`);
-        } else {
-          console.log('배송정보를 찾을 수 없습니다.');
-          searchResults = [];
-        }
-      } else if (searchType === '일반검색') {
-        // 일반검색: 상품명, 바코드에서 검색
-        searchResults = itemData.filter(item => {
-          const productName = (item.product_name || '').toString();
-          const productNameSub = (item.product_name_sub || '').toString();
-          const barcode = (item.barcode || '').toString();
-          const chinaOption1 = (item.china_option1 || '').toString();
-          const chinaOption2 = (item.china_option2 || '').toString();
-
-          return productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 productNameSub.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 chinaOption1.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 chinaOption2.toLowerCase().includes(searchTerm.toLowerCase());
-        });
-      }
-
-      // 검색 결과에도 상태 필터링 적용
-      const filteredByStatus = filterByStatus(searchResults, activeStatus);
-      const sortedData = sortData(filteredByStatus, sortType);
-      setFilteredData(sortedData);
-
-      console.log(`검색 완료: "${searchTerm}" - ${filteredByStatus.length}개 결과`);
-
-    } catch (error) {
-      console.error('검색 오류:', error);
-      alert('검색 중 오류가 발생했습니다.');
-      setFilteredData([]);
-    } finally {
-      setLoading(false);
-      setCurrentPage(1); // 검색 시 첫 페이지로 이동
-    }
+    await performSearchHook(
+      activeStatus,
+      sortType,
+      sortData,
+      filterByStatus,
+      setLoading,
+      setFilteredData,
+      setCurrentPage
+    );
   };
 
   // 검색어 변경 시 자동으로 필터링하지 않음 (메모리 효율성을 위해)
@@ -853,30 +435,16 @@ const ItemCheck: React.FC = () => {
     try {
       setLoading(true);
       setIsLoadingFromCache(true); // 캐시 로드 방지 플래그 설정
-      
-      // 최적화된 API 엔드포인트 사용 - 캐시 비활성화, 사용자 이름 추가
-      const response = await fetch(`/api/load-google-sheet-optimized?googlesheet_id=${selectedUser.googlesheet_id}&coupang_name=${encodeURIComponent(selectedCoupangUser)}&cache=false`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        cache: 'no-store'
+
+      // 구글 시트 데이터 로드 (유틸리티 함수 사용)
+      const result = await loadGoogleSheetData({
+        googlesheetId: selectedUser.googlesheet_id,
+        coupangName: selectedCoupangUser
       });
-      
-      let result;
-      try {
-        result = await response.json();
-        console.log('구글 시트 API 응답:', result);
-      } catch (parseError: any) {
-        const errorText = await response.text();
-        console.error('응답 파싱 오류:', parseError);
-        console.error('원본 응답 텍스트:', errorText);
-        throw new Error('API 응답을 파싱할 수 없습니다.');
-      }
-      
-      if (response.ok && result.success) {
+
+      if (result.success && result.data) {
         // 배송정보 매핑 적용
-        const dataWithDeliveryInfo = mapDeliveryInfoToItems(result.data || []);
+        const dataWithDeliveryInfo = mapDeliveryInfoToItems(result.data);
 
         // 현재 활성화된 상태에 따라 필터링
         const filteredByStatus = filterByStatus(dataWithDeliveryInfo, activeStatus);
@@ -890,6 +458,10 @@ const ItemCheck: React.FC = () => {
         // 데이터를 캐시에 저장 (구글시트 ID 포함)
         saveToCache(selectedCoupangUser, dataWithDeliveryInfo, selectedUser.googlesheet_id);
 
+        // 처리준비 목록 초기화
+        setReadyItems([]);
+        setModifiedData({});
+
         setLoading(false);
         setIsLoadingFromCache(false); // 플래그 해제
 
@@ -897,9 +469,8 @@ const ItemCheck: React.FC = () => {
         const loadTimeInfo = result.loadTime ? ` (${(result.loadTime / 1000).toFixed(1)}초)` : '';
         alert(`${result.message}${loadTimeInfo}`);
       } else {
-        const errorMessage = result.error || result.details || '구글 시트 데이터를 불러오는데 실패했습니다.';
-        console.error('구글 시트 API 오류:', errorMessage);
-        alert(errorMessage);
+        console.error('구글 시트 API 오류:', result.error);
+        alert(result.error || '구글 시트 데이터를 불러오는데 실패했습니다.');
         setLoading(false);
         setIsLoadingFromCache(false);
       }
@@ -993,9 +564,6 @@ const ItemCheck: React.FC = () => {
     }
   };
 
-
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
   // 마우스 위치 추적 함수
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
@@ -1120,6 +688,7 @@ const ItemCheck: React.FC = () => {
 
     if (!cachedData) {
       alert('구글시트 데이터를 먼저 불러와주세요.');
+      setIsSavingLabel(false);
       return;
     }
 
@@ -1130,87 +699,372 @@ const ItemCheck: React.FC = () => {
     } catch (error) {
       console.error('캐시 파싱 오류:', error);
       alert('구글시트 정보를 가져올 수 없습니다.');
+      setIsSavingLabel(false);
       return;
     }
 
     if (!googlesheetId) {
       alert('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
+      setIsSavingLabel(false);
       return;
     }
 
-    // 바코드 데이터 준비 (수량과 주문번호 포함)
-    const labelData: Array<{name: string, barcode: string, qty: number, order_number: string}> = [];
+    // 사용자가 '설온'인지 확인
+    const isSeolOn = selectedCoupangUser === '설온';
+
+    // 바코드 데이터 준비 및 시트별 분류
+    interface LabelDataItem {
+      name: string;
+      barcode: string;
+      qty: number;
+      order_number: string;
+      targetSheet: 'LABEL' | 'LABEL_kids';
+    }
+
+    const labelDataWithTarget: LabelDataItem[] = [];
 
     Object.entries(productQuantities).forEach(([id, quantity]) => {
       const item = filteredData.find(item => item.id === id);
       if (item && item.barcode) {
         // 주문번호에 상품 입고 사이즈 변환하여 추가
         let orderNumber = item.order_number || '';
-        if (item.product_size && item.product_size.trim()) {
+        if (item.product_size && typeof item.product_size === 'string' && item.product_size.trim()) {
           const sizeText = item.product_size.trim();
+          const sizeLower = sizeText.toLowerCase();
           let sizeCode = '';
-          if (sizeText.toLowerCase().includes('small')) {
+
+          if (sizeLower.includes('small')) {
             sizeCode = 'A';
-          } else if (sizeText.toLowerCase().includes('medium')) {
+          } else if (sizeLower.includes('medium')) {
             sizeCode = 'B';
-          } else if (sizeText.toLowerCase().includes('large')) {
+          } else if (sizeLower.includes('large')) {
             sizeCode = 'C';
-          } else {
-            // 기타 사이즈는 첫 글자 사용
-            sizeCode = sizeText.charAt(0);
+          } else if (sizeLower.includes('p-')) {
+            sizeCode = 'P';
+          } else if (sizeLower.includes('direct')) {
+            sizeCode = 'X';
           }
-          orderNumber = `${orderNumber}-${sizeCode}`;
+
+          if (sizeCode) {
+            orderNumber = `${orderNumber}-${sizeCode}`;
+          }
         }
 
-        labelData.push({
+        // 시트 선택 로직: 설온 + X열에 데이터 있음 → LABEL_kids, 그 외 → LABEL
+        const hasRecommendedAge = item.recommended_age &&
+                                   typeof item.recommended_age === 'string' &&
+                                   item.recommended_age.trim() !== '';
+
+        const targetSheet = (isSeolOn && hasRecommendedAge) ? 'LABEL_kids' : 'LABEL';
+
+        labelDataWithTarget.push({
           name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
           barcode: item.barcode,
           qty: quantity,
-          order_number: orderNumber
+          order_number: orderNumber,
+          targetSheet: targetSheet
         });
       }
     });
 
-    if (labelData.length > 0) {
-      try {
-        console.log('LABEL 시트에 데이터 저장 시작...');
-        console.log('저장할 데이터:', labelData);
+    if (labelDataWithTarget.length === 0) {
+      alert('저장할 바코드 데이터가 없습니다.');
+      setIsSavingLabel(false);
+      return;
+    }
 
-        // LABEL 시트에 데이터 저장 API 호출
-        const response = await fetch('/api/save-label-data', {
+    // 시트별로 데이터 그룹핑
+    const labelSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL');
+    const labelKidsSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL_kids');
+
+    console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
+
+    try {
+      // 병렬 처리로 여러 시트 동시 저장
+      const savePromises = [];
+
+      if (labelSheetData.length > 0) {
+        console.log('LABEL 시트에 데이터 저장 시작...');
+        savePromises.push(
+          fetch('/api/save-label-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              labelData: labelSheetData,
+              googlesheet_id: googlesheetId,
+              coupang_name: selectedCoupangUser,
+              targetSheet: 'LABEL'
+            }),
+          }).then(async response => {
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+              throw new Error(`LABEL 시트 저장 실패: ${result.message || result.error || '알 수 없는 오류'}`);
+            }
+            console.log(`LABEL 시트에 바코드 ${result.count}개 저장 완료`);
+            return result;
+          })
+        );
+      }
+
+      if (labelKidsSheetData.length > 0) {
+        console.log('LABEL_kids 시트에 데이터 저장 시작...');
+        savePromises.push(
+          fetch('/api/save-label-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              labelData: labelKidsSheetData,
+              googlesheet_id: googlesheetId,
+              coupang_name: selectedCoupangUser,
+              targetSheet: 'LABEL_kids'
+            }),
+          }).then(async response => {
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+              throw new Error(`LABEL_kids 시트 저장 실패: ${result.message || result.error || '알 수 없는 오류'}`);
+            }
+            console.log(`LABEL_kids 시트에 바코드 ${result.count}개 저장 완료`);
+            return result;
+          })
+        );
+      }
+
+      // 병렬 실행 (속도 최적화)
+      const results = await Promise.all(savePromises);
+
+      // 성공 메시지
+      const totalCount = results.reduce((sum, result) => sum + (result.count || 0), 0);
+      let message = '바코드 데이터가 저장되었습니다.\n';
+      if (labelSheetData.length > 0) {
+        message += `LABEL: ${labelSheetData.length}개\n`;
+      }
+      if (labelKidsSheetData.length > 0) {
+        message += `LABEL_kids: ${labelKidsSheetData.length}개\n`;
+      }
+      message += `총 ${totalCount}개 저장 완료`;
+
+      alert(message);
+
+      setShowQuantityDialog(false);
+      setProductQuantities({});
+      setSelectedRows(new Set());
+
+    } catch (error) {
+      console.error('LABEL 시트 저장 중 오류:', error);
+      alert(error instanceof Error ? error.message : 'LABEL 시트 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingLabel(false);
+    }
+  };
+
+
+  // 바코드 수량 변경 핸들러
+  const handleBarcodeQtyChange = (itemId: string, newQty: number) => {
+    setReadyItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, barcode_qty: newQty } : item
+      )
+    );
+  };
+
+  // 처리준비 모달에서 저장 버튼 클릭 핸들러
+  const handleReadySave = async () => {
+    console.log('=== handleReadySave 시작 ===');
+    console.log('modifiedData:', modifiedData);
+    console.log('readyItems 개수:', readyItems.length);
+
+    try {
+      // 1. 구글 시트 저장
+      await handleSaveClick();
+
+      // 2. LABEL 시트에 바코드 데이터 저장
+      await saveBarcodeToLabel();
+
+      console.log('저장 완료, 처리준비 목록 초기화');
+
+      // 3. 처리준비 목록 초기화
+      setReadyItems([]);
+      setModifiedData({});
+
+      // 4. 모달 닫기
+      setIsProcessReadyModalOpen(false);
+
+      console.log('=== handleReadySave 완료 ===');
+    } catch (error) {
+      console.error('처리준비 저장 오류:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // LABEL 시트에 바코드 데이터 저장
+  const saveBarcodeToLabel = async () => {
+    // 바코드 수량이 0보다 큰 항목만 필터링
+    const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
+
+    if (itemsWithBarcode.length === 0) {
+      console.log('바코드 저장할 항목 없음');
+      return;
+    }
+
+    // 현재 선택된 사용자의 구글시트 정보 확인
+    if (!selectedCoupangUser) {
+      throw new Error('쿠팡 사용자를 선택해주세요.');
+    }
+
+    // localStorage에서 구글시트 ID 가져오기
+    const cacheKey = `sheet_data_${selectedCoupangUser}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (!cachedData) {
+      throw new Error('구글시트 데이터를 먼저 불러와주세요.');
+    }
+
+    let googlesheetId;
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      googlesheetId = parsedCache.googlesheet_id;
+    } catch (error) {
+      console.error('캐시 파싱 오류:', error);
+      throw new Error('구글시트 정보를 가져올 수 없습니다.');
+    }
+
+    if (!googlesheetId) {
+      throw new Error('구글시트 ID를 찾을 수 없습니다.');
+    }
+
+    // 사용자가 '설온'인지 확인
+    const isSeolOn = selectedCoupangUser === '설온';
+
+    // 바코드 데이터 준비 및 시트별 분류
+    interface LabelDataItem {
+      name: string;
+      barcode: string;
+      qty: number;
+      order_number: string;
+      targetSheet: 'LABEL' | 'LABEL_kids';
+    }
+
+    const labelDataWithTarget: LabelDataItem[] = [];
+
+    itemsWithBarcode.forEach(item => {
+      if (item.barcode && item.barcode_qty > 0) {
+        // 원본 데이터에서 product_size와 recommended_age 가져오기
+        const originalItem = itemData.find(dataItem => dataItem.id === item.id);
+
+        // 주문번호에 상품 입고 사이즈 변환하여 추가
+        let orderNumber = item.order_number || '';
+        if (originalItem?.product_size && typeof originalItem.product_size === 'string' && originalItem.product_size.trim()) {
+          const sizeText = originalItem.product_size.trim();
+          const sizeLower = sizeText.toLowerCase();
+          let sizeCode = '';
+
+          if (sizeLower.includes('small')) {
+            sizeCode = 'A';
+          } else if (sizeLower.includes('medium')) {
+            sizeCode = 'B';
+          } else if (sizeLower.includes('large')) {
+            sizeCode = 'C';
+          } else if (sizeLower.includes('p-')) {
+            sizeCode = 'P';
+          } else if (sizeLower.includes('direct')) {
+            sizeCode = 'X';
+          }
+
+          if (sizeCode) {
+            orderNumber = `${orderNumber}-${sizeCode}`;
+          }
+        }
+
+        // 시트 선택 로직: 설온 + X열에 데이터 있음 → LABEL_kids, 그 외 → LABEL
+        const hasRecommendedAge = originalItem?.recommended_age &&
+                                   typeof originalItem.recommended_age === 'string' &&
+                                   originalItem.recommended_age.trim() !== '';
+
+        const targetSheet = (isSeolOn && hasRecommendedAge) ? 'LABEL_kids' : 'LABEL';
+
+        labelDataWithTarget.push({
+          name: item.product_name,
+          barcode: item.barcode,
+          qty: item.barcode_qty,
+          order_number: orderNumber,
+          targetSheet: targetSheet
+        });
+      }
+    });
+
+    if (labelDataWithTarget.length === 0) {
+      console.log('저장할 라벨 데이터 없음');
+      return;
+    }
+
+    // 시트별로 데이터 그룹핑
+    const labelSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL');
+    const labelKidsSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL_kids');
+
+    console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
+
+    // 병렬 처리로 여러 시트 동시 저장
+    const savePromises = [];
+
+    if (labelSheetData.length > 0) {
+      console.log('LABEL 시트에 데이터 저장 시작...');
+      savePromises.push(
+        fetch('/api/save-label-data', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            labelData: labelData,
+            labelData: labelSheetData,
             googlesheet_id: googlesheetId,
-            coupang_name: selectedCoupangUser
+            coupang_name: selectedCoupangUser,
+            targetSheet: 'LABEL'
           }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          alert(`LABEL 시트에 바코드 데이터가 저장되었습니다.\n저장된 아이템: ${result.count}개`);
-
-          setShowQuantityDialog(false);
-          setProductQuantities({});
-          setSelectedRows(new Set());
-        } else {
-          console.error('LABEL 시트 저장 실패:', result);
-          alert(`LABEL 시트 저장에 실패했습니다.\n오류: ${result.message || result.error || '알 수 없는 오류'}`);
-        }
-
-      } catch (error) {
-        console.error('LABEL 시트 저장 중 오류:', error);
-        alert('LABEL 시트 저장 중 오류가 발생했습니다.');
-      } finally {
-        setIsSavingLabel(false);
-      }
+        }).then(async response => {
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            console.error('LABEL 시트 저장 실패:', result);
+            throw new Error(result.message || result.error || 'LABEL 시트 저장 실패');
+          }
+          console.log(`LABEL 시트에 바코드 ${result.count}개 저장 완료`);
+          return result;
+        })
+      );
     }
-  };
 
+    if (labelKidsSheetData.length > 0) {
+      console.log('LABEL_kids 시트에 데이터 저장 시작...');
+      savePromises.push(
+        fetch('/api/save-label-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            labelData: labelKidsSheetData,
+            googlesheet_id: googlesheetId,
+            coupang_name: selectedCoupangUser,
+            targetSheet: 'LABEL_kids'
+          }),
+        }).then(async response => {
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            console.error('LABEL_kids 시트 저장 실패:', result);
+            throw new Error(result.message || result.error || 'LABEL_kids 시트 저장 실패');
+          }
+          console.log(`LABEL_kids 시트에 바코드 ${result.count}개 저장 완료`);
+          return result;
+        })
+      );
+    }
+
+    // 병렬 실행 (속도 최적화)
+    await Promise.all(savePromises);
+  };
 
   // 저장 버튼 클릭 핸들러 (배치 저장)
   const handleSaveClick = async () => {
@@ -1253,11 +1107,14 @@ const ItemCheck: React.FC = () => {
 
     try {
       // 수정된 데이터를 배치 업데이트 형식으로 변환
-      const updates: Array<{ rowId: string; field: string; value: number | string | null }> = [];
+      const updates: Array<{ order_number: string; barcode: string; field: string; value: number | string | null }> = [];
 
-      Object.entries(modifiedData).forEach(([rowId, fields]) => {
+      Object.entries(modifiedData).forEach(([itemKey, fields]) => {
+        // itemKey는 "order_number|barcode" 형식
+        const [order_number, barcode] = itemKey.split('|');
+
         Object.entries(fields).forEach(([field, value]) => {
-          updates.push({ rowId, field, value });
+          updates.push({ order_number, barcode, field, value });
         });
       });
 
@@ -1301,7 +1158,7 @@ const ItemCheck: React.FC = () => {
                 googlesheet_id: googlesheetId,
                 coupang_name: selectedCoupangUser,
                 verifications: successDetails.map((item: any) => ({
-                  rowId: item.rowId,
+                  rowId: item.rowNumber.toString(),
                   field: item.field,
                   expectedValue: item.value
                 }))
@@ -1356,12 +1213,15 @@ const ItemCheck: React.FC = () => {
           // 성공한 항목들만 modifiedData에서 제거
           const newModifiedData = { ...modifiedData };
           successDetails?.forEach((item: any) => {
-            if (newModifiedData[item.rowId]) {
-              delete newModifiedData[item.rowId][item.field];
+            // order_number와 barcode로 itemKey 생성
+            const itemKey = `${item.order_number}|${item.barcode}`;
 
-              // 해당 rowId의 모든 필드가 저장되었으면 rowId 자체를 삭제
-              if (Object.keys(newModifiedData[item.rowId]).length === 0) {
-                delete newModifiedData[item.rowId];
+            if (newModifiedData[itemKey]) {
+              delete newModifiedData[itemKey][item.field];
+
+              // 해당 itemKey의 모든 필드가 저장되었으면 itemKey 자체를 삭제
+              if (Object.keys(newModifiedData[itemKey]).length === 0) {
+                delete newModifiedData[itemKey];
               }
             }
           });
@@ -1410,8 +1270,19 @@ const ItemCheck: React.FC = () => {
                   );
                 })}
               </select>
-              <button className="excel-upload-btn" onClick={handleLoadGoogleSheet}>
-                {t('importProduct.refresh')}
+              <button
+                className="excel-upload-btn"
+                onClick={handleLoadGoogleSheet}
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="button-loading">
+                    <span className="spinner"></span>
+                    {t('importProduct.refresh')}
+                  </span>
+                ) : (
+                  t('importProduct.refresh')
+                )}
               </button>
               <button
                 className="excel-upload-btn"
@@ -1451,292 +1322,47 @@ const ItemCheck: React.FC = () => {
             </div>
 
             {/* 정렬 옵션과 저장 버튼 - 검색 입력폼 위로 이동 */}
-            <div className="control-section">
-              <div className="left-controls">
-                <select
-                  className="sort-dropdown"
-                  value={sortType}
-                  onChange={handleSortTypeChange}
-                >
-                  <option value="주문순서">{t('importProduct.sortOrder')}</option>
-                  <option value="품목별">{t('importProduct.sortByProduct')}</option>
-                </select>
-              </div>
-              <div className="right-controls">
-                <button
-                  className={`excel-download-btn ${Object.keys(modifiedData).length > 0 ? 'active' : ''}`}
-                  onClick={handleSaveClick}
-                  disabled={Object.keys(modifiedData).length === 0 || isSaving}
-                >
-                  {isSaving ? t('importProduct.saving') : t('importProduct.save')}
-                </button>
-                <button className="barcode-btn" onClick={handleBarcodeClick}>{t('importProduct.generateBarcode')}</button>
-                <button className="barcode-btn-db" onClick={handleBarcodeDBClick}>{t('importProduct.generateBarcodeDB')}</button>
-              </div>
-            </div>
+            <ControlBar
+              sortType={sortType}
+              readyItemsCount={readyItems.length}
+              modifiedDataCount={Object.keys(modifiedData).length}
+              isSaving={isSaving}
+              onSortTypeChange={handleSortTypeChange}
+              onProcessReadyClick={() => setIsProcessReadyModalOpen(true)}
+              onSaveClick={handleSaveClick}
+              onBarcodeClick={handleBarcodeClick}
+              onBarcodeDBClick={handleBarcodeDBClick}
+            />
 
             {/* 검색 영역 */}
-            <div className="search-section">
-              <div className="search-board">
-                <div className="search-form-container">
-                  <select
-                    className="search-dropdown"
-                    value={searchType}
-                    onChange={handleSearchTypeChange}
-                  >
-                    <option value="배송번호">{t('importProduct.searchType.deliveryNumber')}</option>
-                    <option value="일반검색">{t('importProduct.searchType.general')}</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder={searchType === '배송번호' ? t('importProduct.searchPlaceholder.deliveryNumber') : t('importProduct.searchPlaceholder.general')}
-                    className="search-input"
-                    value={searchTerm}
-                    onChange={handleSearchInputChange}
-                    onKeyPress={handleSearchKeyPress}
-                  />
-                  <button className="search-button" onClick={handleSearchClick}>{t('importProduct.search')}</button>
-                </div>
-              </div>
-            </div>
+            <SearchSection
+              searchType={searchType}
+              searchTerm={searchTerm}
+              onSearchTypeChange={handleSearchTypeChange}
+              onSearchInputChange={handleSearchInputChange}
+              onSearchKeyPress={handleSearchKeyPress}
+              onSearchClick={handleSearchClick}
+            />
 
             {/* 테이블 */}
-            <div className="table-board">
-              <table className="item-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected}
-                        ref={(input) => {
-                          if (input) input.indeterminate = isIndeterminate;
-                        }}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="table-checkbox"
-                      />
-                    </th>
-                    <th>{t('importProduct.table.image')}</th>
-                    <th>{t('importProduct.table.orderNumber')}</th>
-                    <th>{t('importProduct.table.productName')}</th>
-                    <th>{t('importProduct.table.orderOption')}</th>
-                    <th>{t('importProduct.table.quantity')}</th>
-                    <th>{t('importProduct.table.cost')}</th>
-                    <th>{t('importProduct.table.progress')}</th>
-                    <th>{t('importProduct.table.import')}</th>
-                    <th>{t('importProduct.table.cancel')}</th>
-                    <th>{t('importProduct.table.export')}</th>
-                    <th>{t('importProduct.table.note')}</th>
-                    <th>{t('importProduct.table.info')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={13} className="empty-data">{t('importProduct.table.loading')}</td>
-                    </tr>
-                  ) : paginatedData.length === 0 ? (
-                    <tr>
-                      <td colSpan={13} className="empty-data">{t('importProduct.table.noData')}</td>
-                    </tr>
-                  ) : (
-                    paginatedData.map((item) => (
-                      <tr key={item.id}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={selectedRows.has(item.id)}
-                            onChange={(e) => handleSelectRow(item.id, e.target.checked)}
-                            className="table-checkbox"
-                          />
-                        </td>
-                        <td>
-                          {item.img_url ? (
-                            <div className="image-preview-container">
-                              <img
-                                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
-                                alt="상품 이미지"
-                                className="product-thumbnail"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                }}
-                              />
-                              <div
-                                className="image-preview"
-                                style={{
-                                  top: `${mousePosition.y - 300}px`,
-                                  left: `${mousePosition.x + 30}px`
-                                }}
-                              >
-                                <img
-                                  src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
-                                  alt="상품 이미지 미리보기"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="no-image">{t('importProduct.table.noImage')}</div>
-                          )}
-                        </td>
-                        <td>
-                          <div className="order-number-text">
-                            {item.order_number_prefix || ''}
-                            {item.order_number_prefix && item.order_number && <br />}
-                            {item.order_number || ''}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="product-name">
-                            {item.product_name || '-'}
-                            {item.product_name_sub && (
-                              <>
-                                <br />
-                                {item.product_name_sub}
-                              </>
-                            )}
-                            {item.barcode && (
-                              <>
-                                <br />
-                                {item.barcode}
-                                {item.option_id ? ` | ${item.option_id}` : ''}
-                                {item.product_size && String(item.product_size).trim() ? ` | ${(() => {
-                                  const sizeText = String(item.product_size).trim();
-                                  if (sizeText.toLowerCase().includes('small')) return 'A';
-                                  if (sizeText.toLowerCase().includes('medium')) return 'B';
-                                  if (sizeText.toLowerCase().includes('large')) return 'C';
-                                  return sizeText.charAt(0);
-                                })()}` : ''}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="china-options">
-                            {item.china_option1 || '-'}
-                            {item.china_option2 && (
-                              <>
-                                <br />
-                                {item.china_option2}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {item.order_qty || 0}
-                        </td>
-                        <td>
-                          <div
-                            className="cost-display clickable-cost"
-                            onClick={(e) => handleCostClick(e, item)}
-                            title={item.site_url ? '클릭하여 사이트로 이동' : 'URL을 입력하여 사이트로 이동'}
-                          >
-                            {item.cost_main || '-'}
-                            {item.cost_sub && (
-                              <>
-                                <br />
-                                {item.cost_sub}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="qty-cell">
-                          {item.progress_qty && (
-                            <span className="qty-badge progress-qty">
-                              {item.progress_qty}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className="qty-cell editable-qty-cell"
-                          onClick={() => startEditingCell(item.id, 'import_qty', item.import_qty)}
-                        >
-                          {editingCell?.id === item.id && editingCell?.field === 'import_qty' ? (
-                            <input
-                              type="number"
-                              value={cellValue}
-                              onChange={handleCellValueChange}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={() => finishEditingCell(false)}
-                              className="qty-input-seamless"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="qty-display-seamless">
-                              {item.import_qty || ''}
-                            </div>
-                          )}
-                        </td>
-                        <td
-                          className="qty-cell editable-qty-cell"
-                          onClick={() => startEditingCell(item.id, 'cancel_qty', item.cancel_qty)}
-                        >
-                          {editingCell?.id === item.id && editingCell?.field === 'cancel_qty' ? (
-                            <input
-                              type="number"
-                              value={cellValue}
-                              onChange={handleCellValueChange}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={() => finishEditingCell(false)}
-                              className="qty-input-seamless"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="qty-display-seamless">
-                              {item.cancel_qty || ''}
-                            </div>
-                          )}
-                        </td>
-                        <td className="qty-cell">
-                          {item.export_qty && (
-                            <span className="qty-badge export-qty">
-                              {item.export_qty}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className="editable-note-cell"
-                          onClick={() => startEditingCell(item.id, 'note', item.note)}
-                        >
-                          {editingCell?.id === item.id && editingCell?.field === 'note' ? (
-                            <input
-                              type="text"
-                              value={cellValue}
-                              onChange={(e) => setCellValue(e.target.value)}
-                              onKeyDown={handleCellKeyDown}
-                              onBlur={() => finishEditingCell(false)}
-                              className="note-input-seamless"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="note-display-seamless">
-                              {item.note || ''}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <div style={{ lineHeight: '1.5', fontSize: '14px', color: '#333' }}>
-                            {item.order_id && <div>{item.order_id}</div>}
-                            {item.delivery_status && (
-                              <div style={{ marginTop: '4px' }}>
-                                {item.delivery_status === '等待买家确认收货' && '🟢 等待买家确认收货'}
-                                {item.delivery_status === '交易关闭' && '🏁 交易关闭'}
-                                {item.delivery_status === '退款中' && '↩️ 退款中'}
-                                {item.delivery_status === '等待卖家发货' && '🟡 等待卖家发货'}
-                                {item.delivery_status === '交易成功' && '✔️ 交易成功'}
-                                {!['等待买家确认收货', '交易关闭', '退款中', '等待卖家发货', '交易成功'].includes(item.delivery_status) && item.delivery_status}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <ItemTable
+              loading={loading}
+              paginatedData={paginatedData}
+              selectedRows={selectedRows}
+              editingCell={editingCell}
+              cellValue={cellValue}
+              mousePosition={mousePosition}
+              isAllSelected={isAllSelected}
+              isIndeterminate={isIndeterminate}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
+              onStartEditingCell={startEditingCell}
+              onCellValueChange={handleCellValueChange}
+              onHandleCellKeyDown={handleCellKeyDown}
+              onFinishEditingCell={finishEditingCell}
+              onSetCellValue={setCellValue}
+              onCostClick={handleCostClick}
+            />
             
             {/* 페이지네이션 */}
             {!loading && filteredData.length > 0 && (
@@ -1871,6 +1497,15 @@ const ItemCheck: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 처리준비 모달 */}
+      <ProcessReadyModal
+        isOpen={isProcessReadyModalOpen}
+        onClose={() => setIsProcessReadyModalOpen(false)}
+        readyItems={readyItems}
+        onBarcodeQtyChange={handleBarcodeQtyChange}
+        onSave={handleReadySave}
+      />
     </div>
   );
 };

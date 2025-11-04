@@ -77,13 +77,14 @@
 
 /* 박스 입력박스 스타일 */
 .export-box-input {
-  padding: 10px 15px;
+  padding: 20px 30px; /* 2배로 증가 */
   border: 1px solid #ddd;
   border-radius: 4px;
   background-color: white;
-  font-size: 14px;
+  font-size: 18px; /* 폰트도 크게 */
   color: #333;
   min-width: 150px;
+  text-align: center; /* 가운데 정렬 */
 }
 
 /* 크기 선택 드롭박스 비활성화 스타일 */
@@ -116,6 +117,7 @@
   border-radius: 8px;
   overflow: hidden;
   box-sizing: border-box;
+  padding: 0 20px; /* 좌우 패딩 축소 */
 }
 
 .export-order-image .export-product-image {
@@ -193,6 +195,127 @@
   color: white;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
   line-height: 1;
+}
+
+/* 수량과 사이즈 코드 가로 배치 */
+.export-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* 화살표 스타일 */
+.export-size-arrow {
+  font-size: 72px;
+  font-weight: bold;
+  color: #666;
+}
+
+/* 사이즈 코드 표시 스타일 */
+.export-size-code {
+  font-size: 72px;
+  font-weight: bold;
+  padding: 15px 25px;
+  border-radius: 20px;
+  min-width: 140px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* A: 검은색 */
+.export-size-code-a {
+  background-color: black;
+  color: white;
+}
+
+/* B, C: 보라색 */
+.export-size-code-b,
+.export-size-code-c {
+  background-color: purple;
+  color: white;
+}
+
+/* P: 빨간색 */
+.export-size-code-p {
+  background-color: red;
+  color: white;
+}
+
+/* X: 검은색 배경에 흰색 폰트 */
+.export-size-code-x {
+  background-color: black;
+  color: white;
+}
+
+/* 사이즈 코드 불일치 경고 스타일 */
+.export-size-mismatch-warning {
+  text-align: center;
+  padding: 20px;
+  animation: pulse 2s infinite;
+}
+
+.export-mismatch-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #dc3545;
+  margin-bottom: 30px;
+}
+
+.export-mismatch-codes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+}
+
+.export-mismatch-box,
+.export-mismatch-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.export-mismatch-label {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+.export-mismatch-arrow {
+  font-size: 48px;
+  font-weight: bold;
+  color: #dc3545;
+}
+
+/* 올바른 코드를 2배 크게 */
+.export-size-code-large {
+  font-size: 144px; /* 원래의 2배 */
+  font-weight: bold;
+  padding: 30px 50px;
+  border-radius: 20px;
+  min-width: 280px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 애니메이션 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* 스캔 개수 색상 조건 */
@@ -319,11 +442,12 @@
 
 .export-barcode-board {
   background: white;
-  padding: 20px;
+  padding: 60px 20px; /* 높이 3배 증가 (상하 패딩) */
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   max-width: 100%;
   box-sizing: border-box;
+  min-height: 180px; /* 최소 높이 지정 */
 }
 
 .export-dropdown-row {
@@ -350,14 +474,15 @@
 .export-quantity-input,
 .export-scan-button {
   flex: 1;
-  padding: 10px;
+  padding: 20px; /* 크기 2배 */
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 18px; /* 폰트 크기 증가 */
 }
 
 .export-barcode-input,
 .export-quantity-input {
   border: 1px solid #ddd;
+  text-align: center; /* 가운데 정렬 */
 }
 
 .export-scan-button {
@@ -618,7 +743,7 @@
 /* 메인 테이블 컬럼 너비 조정 */
 .export-table th:nth-child(1),
 .export-table td:nth-child(1) {
-  width: 40px; /* 체크박스 */
+  width: 60px; /* 체크박스 - 더 크게 */
 }
 
 .export-table th:nth-child(2),
@@ -628,12 +753,12 @@
 
 .export-table th:nth-child(3),
 .export-table td:nth-child(3) {
-  width: 120px; /* 주문번호 */
+  width: 150px; /* 주문번호 - 2글자 더 */
 }
 
 .export-table th:nth-child(4),
 .export-table td:nth-child(4) {
-  width: 300px; /* 상품명 */
+  width: 345px; /* 상품명 - 3글자 더 */
 }
 
 .export-table th:nth-child(5),
@@ -643,8 +768,25 @@
 
 .export-table th:nth-child(6),
 .export-table td:nth-child(6) {
-  width: 60px; /* 개수 */
+  width: 70px; /* 출고개수 - 4글자만 */
   text-align: center;
+  padding: 8px 4px !important; /* 좌우 패딩 최소화 */
+}
+
+.export-table th:nth-child(7),
+.export-table td:nth-child(7) {
+  width: 70px; /* 입고개수 - 4글자만 */
+  text-align: center;
+  padding: 8px 4px !important; /* 좌우 패딩 최소화 */
+}
+
+/* 열 너비 클래스 */
+.export-order-number-column {
+  width: 150px;
+}
+
+.export-product-name-column {
+  width: 345px;
 }
 
 .export-table th {
@@ -776,7 +918,7 @@
 
 /* 체크박스 열 스타일 */
 .export-checkbox-column {
-  width: 40px;
+  width: 60px;
   text-align: center;
   padding: 8px !important;
   vertical-align: middle;
@@ -784,7 +926,7 @@
 
 .export-checkbox-column input[type="checkbox"] {
   cursor: pointer;
-  transform: scale(1.2);
+  transform: scale(1.6);
   margin: 0;
   vertical-align: middle;
 }
@@ -955,12 +1097,12 @@
   border-color: #999;
 }
 
-/* 기록 슬라이드 패널 */
+/* 쉽먼트 슬라이드 패널 (화면의 1/2 크기) */
 .export-history-panel {
   position: fixed;
   top: 0;
-  right: -20%;
-  width: 20%;
+  right: -50%;
+  width: 50%;
   height: 100vh;
   background-color: white;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
@@ -968,6 +1110,7 @@
   z-index: 1001;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .export-history-panel.open {
@@ -1012,7 +1155,56 @@
 .export-history-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  overflow-x: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* flex 아이템의 overflow 활성화 */
+}
+
+/* 모달창 테이블 전용 스타일 */
+.export-history-panel .export-table-board {
+  overflow-y: auto; /* 테이블 보드에 세로 스크롤 */
+  max-height: calc(100vh - 200px); /* 헤더와 삭제 버튼 영역 제외한 높이 */
+  margin-bottom: 0;
+}
+
+/* 모달창 테이블 열 너비 최적화 */
+.export-history-panel .export-table th:nth-child(1),
+.export-history-panel .export-table td:nth-child(1) {
+  width: 50px !important; /* 체크박스 */
+}
+
+.export-history-panel .export-table th:nth-child(2),
+.export-history-panel .export-table td:nth-child(2) {
+  width: 110px !important; /* 박스번호 - 2글자 더 */
+}
+
+.export-history-panel .export-table th:nth-child(3),
+.export-history-panel .export-table td:nth-child(3) {
+  width: 170px !important; /* 주문번호 - 4글자 더 */
+}
+
+.export-history-panel .export-table th:nth-child(4),
+.export-history-panel .export-table td:nth-child(4) {
+  width: auto !important; /* 상품명 - 남은 공간의 3/4 */
+  max-width: 75% !important;
+  min-width: 120px !important;
+}
+
+.export-history-panel .export-table th:nth-child(5),
+.export-history-panel .export-table td:nth-child(5) {
+  width: 60px !important; /* 출고 */
+  text-align: center !important;
+  padding: 8px 4px !important;
+  background-color: #e3f2fd !important; /* 연한 파란색 */
+}
+
+.export-history-panel .export-table th:nth-child(6),
+.export-history-panel .export-table td:nth-child(6) {
+  width: 60px !important; /* 입고 */
+  text-align: center !important;
+  padding: 8px 4px !important;
 }
 
 .export-history-empty {

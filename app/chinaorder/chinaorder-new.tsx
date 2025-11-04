@@ -103,8 +103,22 @@ interface ChinaOrderData {
   columnJ?: string; // J열
   img_url?: string; // K열 - 이미지 URL
   site_url?: string; // L열 - 사이트 링크 URL
-  note?: string; // 비고
-  cancelStatus?: string; // 취소 상태 (취소-사유)
+  columnM?: string; // M열
+  columnN?: string; // N열
+  columnO?: string; // O열
+  columnP?: string; // P열
+  columnQ?: string; // Q열 (note와 동일)
+  columnR?: string; // R열 (cancelStatus와 동일)
+  columnS?: string; // S열
+  columnT?: string; // T열
+  columnU?: string; // U열
+  columnV?: string; // V열
+  columnW?: string; // W열
+  columnX?: string; // X열
+  columnY?: string; // Y열
+  columnZ?: string; // Z열
+  note?: string; // 비고 (Q열과 동기화)
+  cancelStatus?: string; // 취소 상태 (R열과 동기화)
 }
 
 const ChinaOrderNew: React.FC = () => {
@@ -417,7 +431,22 @@ const ChinaOrderNew: React.FC = () => {
             columnJ: columns[9] || '',
             img_url: columns[10] || '', // K열
             site_url: columns[11] || '', // L열
-            note: columns[16] || '' // Q열 - 비고
+            columnM: columns[12] || '', // M열
+            columnN: columns[13] || '', // N열
+            columnO: columns[14] || '', // O열
+            columnP: columns[15] || '', // P열
+            columnQ: columns[16] || '', // Q열
+            columnR: columns[17] || '', // R열
+            columnS: columns[18] || '', // S열
+            columnT: columns[19] || '', // T열
+            columnU: columns[20] || '', // U열
+            columnV: columns[21] || '', // V열
+            columnW: columns[22] || '', // W열
+            columnX: columns[23] || '', // X열
+            columnY: columns[24] || '', // Y열
+            columnZ: columns[25] || '', // Z열
+            note: columns[16] || '', // Q열과 동기화 - 비고
+            cancelStatus: columns[17] || '' // R열과 동기화 - 취소 상태
           });
         }
       });
@@ -739,8 +768,8 @@ const ChinaOrderNew: React.FC = () => {
 
     let normalized = optionName;
 
-    // cm, 码로 끝나는 경우 제거
-    normalized = normalized.replace(/cm$/i, '').replace(/码$/, '').trim();
+    // cm, 码 제거 (모든 위치에서)
+    normalized = normalized.replace(/cm/gi, '').replace(/码/g, '').trim();
 
     // 괄호나 브래킷으로 둘러싸인 내용 제거 (예: "2XL【125-135斤】" -> "2XL", "2XL (125-135斤)" -> "2XL")
     normalized = normalized.replace(/[【\[（\(].+?[】\]）\)]/g, '').trim();
@@ -924,7 +953,33 @@ const ChinaOrderNew: React.FC = () => {
     // 옵션명 정규화 (FREE = 均码)
     const normalizedItemOption = normalizeOptionName(itemOptionName);
 
-    // 4단계 매칭 로직으로 검수 데이터 확인
+    // 옵션이 하나만 있는지 확인 (예: "咖啡色" - 색상만, 또는 "; XL" - 사이즈만)
+    const itemParts = normalizedItemOption.split(/[;；]/).map(p => p.trim()).filter(p => p);
+    const isSingleOption = itemParts.length === 1;
+
+    // 옵션이 하나만 있는 경우: 색상만 또는 사이즈만 매칭
+    if (isSingleOption) {
+      const singleValue = itemParts[0];
+
+      const hasMatchingOption = parsedOrderData.some(orderItem => {
+        const verificationOptionName = orderItem.optionName || '';
+        const verificationOfferId = orderItem.offerId || '';
+        const normalizedVerificationOption = normalizeOptionName(verificationOptionName);
+
+        // 검수 데이터도 옵션이 하나만 있는 경우
+        const verificationParts = normalizedVerificationOption.split(/[;；]/).map(p => p.trim()).filter(p => p);
+        if (verificationParts.length === 1) {
+          // 정확히 일치하는지 확인
+          return verificationOfferId === itemOfferId && normalizedVerificationOption === singleValue;
+        }
+
+        return false;
+      });
+
+      return hasMatchingOption ? 'matched' : 'offerId-only';
+    }
+
+    // 옵션이 두 개인 경우: 기존 4단계 매칭 로직
     // 1차: 정확한 매칭
     let hasMatchingOption = parsedOrderData.some(orderItem => {
       const verificationOptionName = orderItem.optionName || '';
@@ -1178,50 +1233,33 @@ const ChinaOrderNew: React.FC = () => {
 
     Object.keys(groupedBySeller).forEach(sellerName => {
       const sellerOrders = groupedBySeller[sellerName];
-      
-      // 바코드별로 수량 합치기 - 중복 바코드의 수량을 합산
-      const barcodeMap: {[key: string]: {totalQuantity: number, option: string, date: string}} = {};
-      
+
       // 이 seller의 모든 offerId 수집
       const sellerOfferIds = new Set(sellerOrders.map(order => order.offerId));
-      
-      // orderData에서 이 seller의 offerId와 매칭되는 모든 아이템을 한 번만 처리
+
+      // 주문 메모 생성 - 각 항목을 개별적으로 출력 (합치지 않음)
+      const memoLines: string[] = [];
+
+      // orderData에서 이 seller의 offerId와 매칭되는 모든 아이템을 개별적으로 처리
       orderData.forEach(item => {
         const itemOfferId = extractOfferId(item.site_url || '');
-        
+
         // 이 아이템이 현재 seller의 것인지 확인
         if (sellerOfferIds.has(itemOfferId)) {
           const barcode = item.columnF || '';
           const quantity = parseInt(item.columnE || '0');
           const option = `${item.columnG || ''} | ${item.columnH || ''}`.trim();
           const date = item.columnB || '';
-          
+
           if (barcode && quantity > 0) {
-            if (barcodeMap[barcode]) {
-              // 동일한 바코드가 이미 있으면 수량을 합산
-              barcodeMap[barcode].totalQuantity += quantity;
-            } else {
-              // 새로운 바코드 추가
-              barcodeMap[barcode] = { 
-                totalQuantity: quantity, 
-                option, 
-                date
-              };
-            }
+            // 각 항목을 개별적으로 추가 (합치지 않음)
+            const line = `${date} // ${option} // ${barcode} // ${quantity}ea`;
+            memoLines.push(line);
           }
         }
       });
 
-      // 주문 메모 생성 - 각 바코드별로 한 줄씩
-      const memoLines: string[] = [];
-      Object.keys(barcodeMap).forEach(barcode => {
-        const data = barcodeMap[barcode];
-        // 합산된 총 수량을 표시
-        const line = `${data.date} // ${data.option} // ${barcode} // ${data.totalQuantity}ea`;
-        memoLines.push(line);
-      });
-
-      // 여러 바코드가 있을 때는 줄바꿈으로 구분
+      // 여러 항목이 있을 때는 줄바꿈으로 구분
       if (memoLines.length > 0) {
         consoleCode += `    "${sellerName}": \`${memoLines.join('\\n')}\`,\n`;
       }
@@ -1389,24 +1427,13 @@ const ChinaOrderNew: React.FC = () => {
   // 엑셀 다운로드 함수 (1개 파일, 2개 시트: 성공, 취소)
   const handleExcelDownload = () => {
     try {
-      // 바코드별 비고 매핑 생성
-      const barcodeNoteMap: {[key: string]: string} = {};
-      orderData.forEach(item => {
-        if (item.note && item.note.trim() && item.columnF) {
-          barcodeNoteMap[item.columnF] = item.note;
-        }
-      });
-
       // 성공 데이터와 취소 데이터 분리
       const successData: any[][] = [];
       const canceledData: any[][] = [];
 
       orderData.forEach(item => {
-        // 동일한 바코드에 비고가 있으면 적용
-        let noteToUse = item.note || '';
-        if (item.columnF && barcodeNoteMap[item.columnF]) {
-          noteToUse = barcodeNoteMap[item.columnF];
-        }
+        // 각 항목의 자체 비고만 사용
+        const noteToUse = item.note || '';
 
         // J열 계산: I열(단가) * E열(개수)
         const quantity = parseFloat(item.columnE || '0');
@@ -1430,16 +1457,24 @@ const ChinaOrderNew: React.FC = () => {
           totalPrice, // J열 (I열 * E열 계산값)
           imageUrlToUse, // K열 (교체된 이미지 또는 원본)
           item.site_url || '', // L열
-          '', // M열 (빈 열)
-          '', // N열 (빈 열)
-          '', // O열 (빈 열)
-          '', // P열 (빈 열)
-          noteToUse, // Q열 (비고 - 동일 바코드 공유)
-          item.cancelStatus || '', // R열 (취소 상태)
+          item.columnM || '', // M열
+          item.columnN || '', // N열
+          item.columnO || '', // O열
+          item.columnP || '', // P열
+          item.columnQ || noteToUse, // Q열 (비고)
+          item.columnR || item.cancelStatus || '', // R열 (취소 상태)
+          item.columnS || '', // S열
+          item.columnT || '', // T열
+          item.columnU || '', // U열
+          item.columnV || '', // V열
+          item.columnW || '', // W열
+          item.columnX || '', // X열
+          item.columnY || '', // Y열
+          item.columnZ || '', // Z열
         ];
 
-        // 취소 여부에 따라 분리
-        if (canceledItems[item.id]) {
+        // 취소 여부에 따라 분리 (cancelStatus에 [취소] 문구가 있을 때만)
+        if (item.cancelStatus && item.cancelStatus.includes('[취소]')) {
           canceledData.push(rowData);
         } else {
           successData.push(rowData);
@@ -1647,6 +1682,81 @@ function clickPlusButton(plusButton, times) {
 
 function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
     return new Promise((resolve) => {
+        // 먼저 사이트에 어떤 옵션이 있는지 확인
+        const featureItems = document.querySelectorAll('.feature-item');
+        let hasColorOption = false;
+        let hasSizeOption = false;
+
+        featureItems.forEach(item => {
+            const h3 = item.querySelector('h3');
+            if (h3) {
+                const label = h3.textContent.trim();
+                // 색상 관련 라벨 체크
+                if (label.includes('颜色') || label.includes('颜色分类') || label.toLowerCase().includes('color')) {
+                    hasColorOption = true;
+                }
+                // 사이즈 관련 라벨 체크 (适合身高 등 추가)
+                if (label.includes('尺码') || label.includes('尺寸') || label.includes('规格') ||
+                    label.includes('适合身高') || label.includes('身高') ||
+                    label.toLowerCase().includes('size')) {
+                    hasSizeOption = true;
+                }
+            }
+        });
+
+        const totalOptions = (hasColorOption ? 1 : 0) + (hasSizeOption ? 1 : 0);
+        console.log(\`옵션 존재 여부 - 색상: \${hasColorOption}, 사이즈: \${hasSizeOption}, 총 옵션 수: \${totalOptions}\`);
+
+        // 텍스트 정규화 함수 (공백, 괄호 제거)
+        function normalizeText(text) {
+            if (!text) return '';
+            // 공백 제거, 전각괄호→반각괄호, 모든 괄호 제거
+            return text.replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')').replace(/[()]/g, '');
+        }
+
+        // 옵션이 하나만 있는 경우 (색상만 OR 사이즈만)
+        if ((hasColorOption && !hasSizeOption) || (!hasColorOption && hasSizeOption)) {
+            console.log(\`옵션이 1개만 존재. "\${color}"를 expand-view-item에서 검색합니다.\`);
+
+            setTimeout(async () => {
+                const expandItems = document.querySelectorAll('.expand-view-item');
+                let found = false;
+
+                const normalizedColor = normalizeText(color);
+                console.log(\`정규화된 검색어: "\${normalizedColor}"\`);
+
+                // color 값을 expand-view-item에서 검색
+                for (const item of expandItems) {
+                    const label = item.querySelector('.item-label');
+                    const itemTitle = label ? label.getAttribute('title') : null;
+                    const normalizedTitle = normalizeText(itemTitle);
+
+                    console.log(\`비교: "\${normalizedTitle}" vs "\${normalizedColor}"\`);
+
+                    if (normalizedTitle === normalizedColor) {
+                        const plusButton = item.querySelector('.anticon-plus.enable');
+                        if (plusButton) {
+                            const totalQuantity = sizeQuantities.reduce((sum, item) => sum + item.quantity, 0);
+                            await clickPlusButton(plusButton, totalQuantity);
+                            results.success.push(\`\${color} - \${totalQuantity}개 (옵션 1개)\`);
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    sizeQuantities.forEach(({ size, quantity }) => {
+                        results.failed.push(\`\${color} - 사이즈 \${size} - \${quantity}개 (옵션에서 찾을 수 없음)\`);
+                    });
+                }
+
+                resolve(found);
+            }, 400);
+            return;
+        }
+
+        // 색상 영역이 있는 경우 기존 로직 진행
         const colorButtons = document.querySelectorAll('.sku-filter-button');
         let targetColorButton = null;
 
@@ -1661,18 +1771,49 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
         // 2차: "+" 포함된 경우 전체로 못 찾았으면 분리된 색상들로 재시도
         if (!targetColorButton && hasPlus && splitColors) {
             console.log(\`"\${color}" 전체로 찾을 수 없음. 분리된 색상으로 재시도...\`);
-            // 분리된 각 색상에 대해 개별 주문 처리
-            Promise.all(splitColors.map(splitColor =>
-                inputQuantitiesForColor(splitColor, [{ size: sizeQuantities[0].size, quantity: 1 }], false, null)
-            )).then(() => resolve(true));
+            // 분리된 각 색상에 대해 순차적으로 개별 주문 처리 (DOM 충돌 방지)
+            (async () => {
+                for (const splitColor of splitColors) {
+                    await inputQuantitiesForColor(splitColor, [{ size: sizeQuantities[0].size, quantity: 1 }], false, null);
+                }
+                resolve(true);
+            })();
             return;
         }
 
+        // 3차: 색상 버튼이 없는 경우 (색상이 expand-view-item으로 바로 표시되는 경우)
         if (!targetColorButton) {
-            sizeQuantities.forEach(({ size, quantity }) => {
-                results.failed.push(\`\${color} - 사이즈 \${size} - \${quantity}개 (색상 버튼을 찾을 수 없음)\`);
-            });
-            resolve(false);
+            console.log(\`색상 버튼을 찾을 수 없음. expand-view-item에서 직접 검색합니다.\`);
+
+            setTimeout(async () => {
+                const expandItems = document.querySelectorAll('.expand-view-item');
+                let found = false;
+
+                // color 값을 expand-view-item에서 검색
+                for (const item of expandItems) {
+                    const label = item.querySelector('.item-label');
+                    const itemTitle = label ? label.getAttribute('title') : null;
+
+                    if (itemTitle === color) {
+                        const plusButton = item.querySelector('.anticon-plus.enable');
+                        if (plusButton) {
+                            const totalQuantity = sizeQuantities.reduce((sum, item) => sum + item.quantity, 0);
+                            await clickPlusButton(plusButton, totalQuantity);
+                            results.success.push(\`\${color} - \${totalQuantity}개 (버튼 없이 직접 선택)\`);
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    sizeQuantities.forEach(({ size, quantity }) => {
+                        results.failed.push(\`\${color} - 사이즈 \${size} - \${quantity}개 (색상을 찾을 수 없음)\`);
+                    });
+                }
+
+                resolve(found);
+            }, 400);
             return;
         }
 
@@ -1681,9 +1822,22 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
         setTimeout(async () => {
             const expandItems = document.querySelectorAll('.expand-view-item');
 
-            // 사이즈 DIV가 없는 경우 (색상만 존재) - 색상 버튼의 plus 버튼으로 바로 수량 입력
-            if (expandItems.length === 0) {
-                const colorPlusButton = targetColorButton.querySelector('.anticon-plus.enable');
+            // 사이즈 옵션이 없는 경우 (색상만 존재)
+            if (!hasSizeOption) {
+                console.log('사이즈 옵션이 없어 색상만으로 선택합니다.');
+
+                // expand-view-item에서 plus 버튼 찾기 (색상 선택 후 나타나는 영역)
+                let colorPlusButton = null;
+                if (expandItems.length > 0) {
+                    // expand-view-item이 있는 경우 (색상 선택 후 수량 입력란이 나타나는 케이스)
+                    colorPlusButton = expandItems[0].querySelector('.anticon-plus.enable');
+                }
+
+                // expand-view-item이 없거나 거기서 못 찾은 경우 색상 버튼 자체에서 찾기
+                if (!colorPlusButton) {
+                    colorPlusButton = targetColorButton.querySelector('.anticon-plus.enable');
+                }
+
                 if (colorPlusButton) {
                     const totalQuantity = sizeQuantities.reduce((sum, item) => sum + item.quantity, 0);
                     await clickPlusButton(colorPlusButton, totalQuantity);
@@ -1702,6 +1856,13 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
             for (const { size, quantity } of sizeQuantities) {
                 let found = false;
                 let replacementNote = '';
+
+                // 사이즈 정규화 함수 (cm, 码 제거)
+                function normalizeSizeString(sizeStr) {
+                    if (!sizeStr) return '';
+                    // cm, 码 제거
+                    return sizeStr.replace(/cm|码/gi, '').trim();
+                }
 
                 // 사이즈 변환 함수
                 function getSizeVariants(size) {
@@ -1725,6 +1886,12 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
                     if (/^X{2,}L$/i.test(size)) {
                         const xCount = size.match(/X/gi).length;
                         variants.push(xCount + 'XL');
+                    }
+
+                    // cm, 码 제거한 버전도 추가
+                    const normalized = normalizeSizeString(size);
+                    if (normalized && normalized !== size) {
+                        variants.push(normalized);
                     }
 
                     return variants;
@@ -1751,6 +1918,38 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
                         }
                     }
                     if (found) break;
+                }
+
+                // 1.25차: cm, 码 제거 후 정확 일치 검색 (1차에서 못 찾았을 때만)
+                if (!found) {
+                    const normalizedSize = normalizeSizeString(size);
+                    const matchedItems = [];
+
+                    for (const item of expandItems) {
+                        const label = item.querySelector('.item-label');
+                        const sizeTitle = label ? label.getAttribute('title') : null;
+
+                        if (sizeTitle) {
+                            const normalizedTitle = normalizeSizeString(sizeTitle);
+
+                            // 정규화 후 정확히 일치하는지 확인
+                            if (normalizedTitle === normalizedSize) {
+                                if (!matchedItems.find(m => m.sizeTitle === sizeTitle)) {
+                                    matchedItems.push({ item, sizeTitle });
+                                }
+                            }
+                        }
+                    }
+
+                    // 정확히 1개만 매칭된 경우에만 허용
+                    if (matchedItems.length === 1) {
+                        const plusButton = matchedItems[0].item.querySelector('.anticon-plus.enable');
+                        if (plusButton) {
+                            await clickPlusButton(plusButton, quantity);
+                            results.success.push(\`\${color} - 사이즈 \${size} - \${quantity}개 (정규화 일치: \${matchedItems[0].sizeTitle})\`);
+                            found = true;
+                        }
+                    }
                 }
 
                 // 1.5차: FREE/均码의 경우 부분 일치 검색 (정확 일치 실패 시)
@@ -1800,8 +1999,19 @@ function inputQuantitiesForColor(color, sizeQuantities, hasPlus, splitColors) {
                             const label = item.querySelector('.item-label');
                             const sizeTitle = label ? label.getAttribute('title') : null;
 
-                            // 사이즈가 포함되어 있는지 확인 (예: "2XL【125-135斤】", "XXL (125-135斤)")
+                            // 사이즈가 포함되어 있는지 확인하되, 앞에 다른 문자가 있으면 안됨
+                            // 예: "L" 검색 시 "XL"은 제외, "L (설명)"은 허용
+                            // 예: "XL" 검색 시 "XXL"은 제외, "XL【125-135斤】"는 허용
                             if (sizeTitle && sizeTitle.includes(searchSize)) {
+                                const index = sizeTitle.indexOf(searchSize);
+                                // 앞에 문자가 있는지 확인 (숫자나 알파벳이 있으면 제외)
+                                if (index > 0) {
+                                    const prevChar = sizeTitle[index - 1];
+                                    // 앞 문자가 숫자나 알파벳이면 제외 (예: "XL"을 찾는데 "XXL"이나 "2XL"인 경우)
+                                    if (/[a-zA-Z0-9]/.test(prevChar)) {
+                                        continue;
+                                    }
+                                }
                                 // 중복 방지
                                 if (!matchedItems.find(m => m.sizeTitle === sizeTitle)) {
                                     matchedItems.push({ item, sizeTitle });

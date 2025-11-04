@@ -7,27 +7,45 @@ export const GET = async (request: NextRequest) => {
 
   try {
     // Supabase에서 모든 배송정보 조회
-    const { data, error } = await supabase
-      .from('1688_invoice_deliveryInfo')
-      .select('*')
-      .order('delivery_code', { ascending: true });
+    // range(0, 9999)는 10000개를 의미하지만 실제로는 페이지네이션 필요
+    let allData: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error) {
-      console.error('Supabase 조회 오류:', error);
-      return NextResponse.json({
-        success: false,
-        error: '배송정보 조회 중 오류가 발생했습니다.',
-        details: error.message
-      }, { status: 500 });
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('1688_invoice_deliveryInfo')
+        .select('*')
+        .order('delivery_code', { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        console.error('Supabase 조회 오류:', error);
+        return NextResponse.json({
+          success: false,
+          error: '배송정보 조회 중 오류가 발생했습니다.',
+          details: error.message
+        }, { status: 500 });
+      }
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data);
+        from += pageSize;
+        hasMore = data.length === pageSize; // 1000개 미만이면 마지막 페이지
+        console.log(`${from}개 조회 완료... (현재 배치: ${data.length}개)`);
+      } else {
+        hasMore = false;
+      }
     }
 
-    console.log(`총 ${data?.length || 0}개의 배송정보를 조회했습니다.`);
+    console.log(`총 ${allData.length}개의 배송정보를 조회했습니다.`);
 
     return NextResponse.json({
       success: true,
-      message: `${data?.length || 0}개의 배송정보를 조회했습니다.`,
-      data: data || [],
-      count: data?.length || 0
+      message: `${allData.length}개의 배송정보를 조회했습니다.`,
+      data: allData,
+      count: allData.length
     });
 
   } catch (error) {

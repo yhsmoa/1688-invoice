@@ -2,7 +2,7 @@
   "menu": {
     "importProduct": "商品入库",
     "exportProduct": "商品出库",
-    "chinaOrder": "中国订单",
+    "chinaOrder": "新订单",
     "exportInvoice": "出口发票",
     "invoiceList": "发票列表",
     "customsDocument": "报关文件",
@@ -71,6 +71,18 @@
       "cancel": "取消",
       "confirm": "保存到LABEL表",
       "saving": "保存中..."
+    },
+    "processReady": {
+      "button": "加工准备",
+      "modalTitle": "加工准备",
+      "progress": "进度",
+      "import": "入库",
+      "cancel": "取消",
+      "barcode": "生成条码",
+      "totalItems": "共",
+      "itemsCount": "项",
+      "save": "保存",
+      "emptyMessage": "无待处理项目。"
     }
   }
 }

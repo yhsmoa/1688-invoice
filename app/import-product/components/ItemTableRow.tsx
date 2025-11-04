@@ -1,0 +1,207 @@
+'use client';
+
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import EditableCell from './EditableCell';
+import type { ItemData } from '../hooks';
+
+interface ItemTableRowProps {
+  item: ItemData;
+  isSelected: boolean;
+  editingCell: {id: string, field: string} | null;
+  cellValue: string;
+  mousePosition: { x: number, y: number };
+  onSelectRow: (id: string, checked: boolean) => void;
+  onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
+  onCellValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onHandleCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFinishEditingCell: (moveToNext: boolean) => void;
+  onSetCellValue: (value: string) => void;
+  onCostClick: (e: React.MouseEvent, item: ItemData) => void;
+}
+
+const ItemTableRow: React.FC<ItemTableRowProps> = ({
+  item,
+  isSelected,
+  editingCell,
+  cellValue,
+  mousePosition,
+  onSelectRow,
+  onStartEditingCell,
+  onCellValueChange,
+  onHandleCellKeyDown,
+  onFinishEditingCell,
+  onSetCellValue,
+  onCostClick
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <tr key={item.id}>
+      <td>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => onSelectRow(item.id, e.target.checked)}
+          className="table-checkbox"
+        />
+      </td>
+      <td>
+        {item.img_url ? (
+          <div className="image-preview-container">
+            <img
+              src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+              alt="상품 이미지"
+              className="product-thumbnail"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
+            />
+            <div
+              className="image-preview"
+              style={{
+                top: `${mousePosition.y - 300}px`,
+                left: `${mousePosition.x + 30}px`
+              }}
+            >
+              <img
+                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                alt="상품 이미지 미리보기"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="no-image">{t('importProduct.table.noImage')}</div>
+        )}
+      </td>
+      <td>
+        <div className="order-number-text">
+          {item.order_number_prefix || ''}
+          {item.order_number_prefix && item.order_number && <br />}
+          {item.order_number || ''}
+        </div>
+      </td>
+      <td>
+        <div className="product-name">
+          {item.product_name || '-'}
+          {item.product_name_sub && (
+            <>
+              <br />
+              {item.product_name_sub}
+            </>
+          )}
+          {item.barcode && (
+            <>
+              <br />
+              {item.barcode}
+              {item.option_id ? ` | ${item.option_id}` : ''}
+              {item.product_size && String(item.product_size).trim() ? ` | ${(() => {
+                const sizeText = String(item.product_size).trim();
+                if (sizeText.toLowerCase().includes('small')) return 'A';
+                if (sizeText.toLowerCase().includes('medium')) return 'B';
+                if (sizeText.toLowerCase().includes('large')) return 'C';
+                return sizeText.charAt(0);
+              })()}` : ''}
+            </>
+          )}
+        </div>
+      </td>
+      <td>
+        <div className="china-options">
+          {item.china_option1 || '-'}
+          {item.china_option2 && (
+            <>
+              <br />
+              {item.china_option2}
+            </>
+          )}
+        </div>
+      </td>
+      <td style={{ textAlign: 'center' }}>
+        {item.order_qty || 0}
+      </td>
+      <td>
+        <div
+          className="cost-display clickable-cost"
+          onClick={(e) => onCostClick(e, item)}
+          title={item.site_url ? '클릭하여 사이트로 이동' : 'URL을 입력하여 사이트로 이동'}
+        >
+          {item.cost_main || '-'}
+          {item.cost_sub && (
+            <>
+              <br />
+              {item.cost_sub}
+            </>
+          )}
+        </div>
+      </td>
+      <td className="qty-cell">
+        {item.progress_qty && (
+          <span className="qty-badge progress-qty">
+            {item.progress_qty}
+          </span>
+        )}
+      </td>
+      <EditableCell
+        id={item.id}
+        field="import_qty"
+        value={item.import_qty}
+        isEditing={editingCell?.id === item.id && editingCell?.field === 'import_qty'}
+        editValue={cellValue}
+        type="number"
+        onStartEdit={onStartEditingCell}
+        onValueChange={onCellValueChange}
+        onKeyDown={onHandleCellKeyDown}
+        onFinishEdit={onFinishEditingCell}
+        className="qty-cell editable-qty-cell"
+      />
+      <td className="qty-cell">
+        {item.cancel_qty && (
+          <span className="qty-badge cancel-qty">
+            {item.cancel_qty}
+          </span>
+        )}
+      </td>
+      <td className="qty-cell">
+        {item.export_qty && (
+          <span className="qty-badge export-qty">
+            {item.export_qty}
+          </span>
+        )}
+      </td>
+      <EditableCell
+        id={item.id}
+        field="note"
+        value={item.note}
+        isEditing={editingCell?.id === item.id && editingCell?.field === 'note'}
+        editValue={cellValue}
+        type="text"
+        onStartEdit={onStartEditingCell}
+        onValueChange={(e) => onSetCellValue(e.target.value)}
+        onKeyDown={onHandleCellKeyDown}
+        onFinishEdit={onFinishEditingCell}
+        className="editable-note-cell"
+      />
+      <td>
+        <div style={{ lineHeight: '1.5', fontSize: '14px', color: '#333' }}>
+          {item.order_id && <div>{item.order_id}</div>}
+          {item.delivery_status && (
+            <div style={{ marginTop: '4px' }}>
+              {item.delivery_status === '等待买家确认收货' && '🟢 等待买家确认收货'}
+              {item.delivery_status === '交易关闭' && '🏁 交易关闭'}
+              {item.delivery_status === '退款中' && '↩️ 退款中'}
+              {item.delivery_status === '等待卖家发货' && '🟡 等待卖家发货'}
+              {item.delivery_status === '交易成功' && '✔️ 交易成功'}
+              {!['等待买家确认收货', '交易关闭', '退款中', '等待卖家发货', '交易成功'].includes(item.delivery_status) && item.delivery_status}
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+export default ItemTableRow;

@@ -3,6 +3,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { LanguageProvider } from '../contexts/LanguageContext'
+import { SidebarProvider } from '../contexts/SidebarContext'
 
 export default function RootLayout({
   children,
@@ -13,7 +14,9 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <LanguageProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </LanguageProvider>
       </body>
     </html>

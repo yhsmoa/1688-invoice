@@ -84,9 +84,9 @@ export async function GET(request: NextRequest) {
       // 구글 시트 API 클라이언트 생성
       const sheets = google.sheets({ version: 'v4', auth: jwtClient });
       
-      // 필요한 컬럼만 지정하여 데이터 가져오기 (A:V 범위)
-      // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20, V=21
-      const range = `${SHEET_NAME}!A:V`; // A열부터 V열까지
+      // 필요한 컬럼만 지정하여 데이터 가져오기 (A:X 범위)
+      // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20, V=21, W=22, X=23
+      const range = `${SHEET_NAME}!A:X`; // A열부터 X열까지
       
       console.log('구글 시트 데이터 요청 중...');
       const apiStartTime = Date.now();
@@ -182,6 +182,8 @@ export async function GET(request: NextRequest) {
               note: row[17] || null, // R열 - 비고
               option_id: row[20] || null, // U열 - 옵션 ID
               product_size: row[21] || null, // V열 - 상품 입고 사이즈
+              fabric_blend: row[22] || null, // W열 - 혼용률
+              recommended_age: row[23] || null, // X열 - 추천연령
             };
 
             // 첫 번째 아이템의 디버깅 정보 출력
@@ -190,8 +192,12 @@ export async function GET(request: NextRequest) {
               console.log('Row 길이:', row.length);
               console.log('Row[20] (U열):', row[20]);
               console.log('Row[21] (V열):', row[21]);
+              console.log('Row[22] (W열):', row[22]);
+              console.log('Row[23] (X열):', row[23]);
               console.log('Option ID:', item.option_id);
               console.log('Product Size:', item.product_size);
+              console.log('Fabric Blend:', item.fabric_blend);
+              console.log('Recommended Age:', item.recommended_age);
             }
 
             return item;

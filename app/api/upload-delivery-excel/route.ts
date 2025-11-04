@@ -42,6 +42,7 @@ export const POST = async (request: NextRequest) => {
     const dataRows = jsonData.slice(1) as any[][];
 
     // 컬럼 인덱스 정의 (엑셀 컬럼을 0부터 시작하는 인덱스로 변환)
+    // A=0, B=1, ..., Z=25, AA=26, AB=27, AC=28, AD=29, AE=30, AF=31
     const COLUMNS = {
       ORDER_ID: 0,       // A열 - 주문ID
       SHOP: 3,           // D열 - 판매자/상점명
@@ -51,8 +52,16 @@ export const POST = async (request: NextRequest) => {
       DELIVERY_CODE: 31  // AF열 - 배송코드
     };
 
+    // 디버깅: 첫 번째 데이터 행의 AD열(29)과 AF열(31) 값 출력
+    if (dataRows.length > 0 && dataRows[0]) {
+      console.log('=== 첫 번째 행 컬럼 확인 ===');
+      console.log('AD열(29번 인덱스):', dataRows[0][29]);
+      console.log('AF열(31번 인덱스):', dataRows[0][31]);
+      console.log('===========================');
+    }
+
     const deliveryDataArray: any[] = [];
-    const uniqueIds = new Set<string>(); // 중복 ID 체크용
+    const deliveryCountMap = new Map<string, number>(); // 동일 배송번호 카운트용
 
     console.log('데이터 행 처리 시작...');
 
@@ -73,18 +82,26 @@ export const POST = async (request: NextRequest) => {
         const orderInfo = row[COLUMNS.ORDER_INFO] || '';
         const deliveryCode = row[COLUMNS.DELIVERY_CODE] || '';
 
+        // 디버깅: 처음 5개 행의 모든 값 출력
+        if (i < 5) {
+          console.log(`\n행 ${i + 2} 디버깅:`);
+          console.log('  ORDER_ID(0):', orderId);
+          console.log('  SHOP(3):', shop);
+          console.log('  DELIVERY_STATUS(9):', deliveryStatus);
+          console.log('  OFFER_ID(24):', offerId);
+          console.log('  ORDER_INFO(29):', orderInfo?.toString().substring(0, 50) + '...');
+          console.log('  DELIVERY_CODE(31):', deliveryCode);
+        }
+
         // AF열(delivery_code)에 데이터가 있는 경우만 처리
         if (deliveryCode && deliveryCode.toString().trim() !== '') {
-          // ID 생성: offer_id + "-" + delivery_code
-          const id = `${offerId}-${deliveryCode}`;
+          // 동일한 offer_id + delivery_code 조합의 순번 계산
+          const key = `${offerId}-${deliveryCode}`;
+          const count = deliveryCountMap.get(key) || 0;
+          deliveryCountMap.set(key, count + 1);
 
-          // 중복 ID 체크
-          if (uniqueIds.has(id)) {
-            console.log(`행 ${i + 2}: 중복 ID 건너뛰기 - ${id}`);
-            continue;
-          }
-
-          uniqueIds.add(id);
+          // ID 생성: offer_id + "-" + delivery_code + "-" + 순번
+          const id = `${offerId}-${deliveryCode}-${count + 1}`;
 
           const deliveryItem = {
             id: id,
@@ -97,7 +114,14 @@ export const POST = async (request: NextRequest) => {
           };
 
           deliveryDataArray.push(deliveryItem);
-          console.log(`행 ${i + 2}: 배송정보 추가 - ID: ${id}, 상점: ${shop}, 배송코드: ${deliveryCode}`);
+
+          // 처음 3개만 상세 로그
+          if (deliveryDataArray.length <= 3) {
+            console.log(`✅ 행 ${i + 2}: 배송정보 추가`);
+            console.log('  ID:', id);
+            console.log('  상점:', shop);
+            console.log('  배송코드:', deliveryCode);
+          }
         }
       } catch (rowError) {
         console.error(`행 ${i + 2} 처리 중 오류:`, rowError);

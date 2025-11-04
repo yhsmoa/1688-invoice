@@ -291,7 +291,7 @@
 .item-table td:nth-child(10),
 .item-table th:nth-child(11),
 .item-table td:nth-child(11) {
-  width: 30px;
+  width: 35px;
   text-align: center;
   padding: 0 !important;
 }
@@ -306,7 +306,7 @@
 /* 정보 열 */
 .item-table th:nth-child(13),
 .item-table td:nth-child(13) {
-  width: 170px;
+  width: 127px;
   text-align: left;
 }
 
@@ -1148,4 +1148,66 @@
 .info-tag.option {
   background-color: #f0f0f0;
   color: #666666;
+}
+
+/* 처리준비 버튼 스타일 */
+.process-ready-btn {
+  background-color: #f59e0b;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.process-ready-btn:hover {
+  background-color: #d97706;
+}
+
+.process-ready-btn.has-items {
+  background-color: #10b981;
+}
+
+.process-ready-btn.has-items:hover {
+  background-color: #059669;
+}
+
+/* 로딩 스피너 애니메이션 */
+.button-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 버튼 크기 고정 */
+.excel-upload-btn {
+  min-width: 90px;
+  min-height: 38px;
+}
+
+.excel-upload-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
 } 

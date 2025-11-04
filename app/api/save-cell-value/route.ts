@@ -22,18 +22,18 @@ export async function POST(request: NextRequest) {
 
     // 요청 본문에서 데이터 추출
     const body = await request.json();
-    const { row_id, field, value, googlesheet_id, coupang_name } = body;
+    const { order_number, barcode, field, value, googlesheet_id, coupang_name } = body;
 
     console.log('요청 데이터:', JSON.stringify(body, null, 2));
 
-    if (!row_id || !field) {
-      console.error('필수 파라미터 누락:', { row_id, field });
+    if (!order_number || !barcode || !field) {
+      console.error('필수 파라미터 누락:', { order_number, barcode, field });
       return NextResponse.json({
-        error: '필수 파라미터가 누락되었습니다.'
+        error: '필수 파라미터가 누락되었습니다. (order_number, barcode, field 필요)'
       }, { status: 400 });
     }
 
-    console.log(`셀 값 저장 요청: row_id=${row_id}, field=${field}, value=${value}`);
+    console.log(`셀 값 저장 요청: order_number=${order_number}, barcode=${barcode}, field=${field}, value=${value}`);
 
     // 1. 필수 파라미터 체크
     if (!googlesheet_id || !coupang_name) {
@@ -44,10 +44,7 @@ export async function POST(request: NextRequest) {
     }
     console.log(`구글시트 ID: ${googlesheet_id}, 사용자: ${coupang_name}`);
 
-    // 2. 구글 시트 업데이트만 수행 (Supabase 업데이트 제거)
-    console.log('구글 시트 업데이트만 수행');
-
-    // 3. 구글 시트 업데이트
+    // 2. 구글 시트 업데이트
     try {
       console.log('환경변수 확인:');
       console.log('SERVICE_ACCOUNT_EMAIL:', SERVICE_ACCOUNT_EMAIL ? '설정됨' : '누락');
@@ -56,24 +53,6 @@ export async function POST(request: NextRequest) {
       // 서비스 계정 키가 설정되어 있는지 확인
       if (!SERVICE_ACCOUNT_EMAIL || !PRIVATE_KEY) {
         throw new Error('구글 서비스 계정 정보가 설정되지 않았습니다.');
-      }
-
-      // 필드에 따른 구글 시트 열 매핑 (load-google-sheet-optimized 기준)
-      const columnMapping: { [key: string]: string } = {
-        'import_qty': 'N',  // N열 - 입고
-        'cancel_qty': 'O',  // O열 - 취소
-        'note': 'R'         // R열 - 비고
-      };
-
-      const column = columnMapping[field];
-
-      if (!column) {
-        console.warn(`${field}에 대한 구글 시트 열 매핑이 없습니다.`);
-        return NextResponse.json({
-          success: false,
-          message: '지원하지 않는 필드입니다.',
-          field: field
-        });
       }
 
       // JWT 인증 객체 생성
@@ -91,8 +70,57 @@ export async function POST(request: NextRequest) {
       // 구글 시트 API 클라이언트 생성
       const sheets = google.sheets({ version: 'v4', auth: jwtClient });
 
-      // 셀 주소 생성 (예: N2, O5, Q10)
-      const cellAddress = `${SHEET_NAME}!${column}${row_id}`;
+      // 전체 시트 데이터 가져오기 (B열=주문번호, F열=바코드)
+      console.log('구글 시트에서 주문번호와 바코드로 행 찾기...');
+      const sheetData = await sheets.spreadsheets.values.get({
+        spreadsheetId: googlesheet_id,
+        range: `${SHEET_NAME}!B:F`, // B열(주문번호)부터 F열(바코드)까지
+      });
+
+      const rows = sheetData.data.values;
+      if (!rows || rows.length === 0) {
+        throw new Error('구글 시트에 데이터가 없습니다.');
+      }
+
+      // 주문번호(B열, index 0)와 바코드(F열, index 4)가 일치하는 행 찾기
+      let targetRowNumber = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const sheetOrderNumber = row[0]?.toString().trim() || ''; // B열
+        const sheetBarcode = row[4]?.toString().trim() || '';     // F열
+
+        if (sheetOrderNumber === order_number.toString().trim() &&
+            sheetBarcode === barcode.toString().trim()) {
+          targetRowNumber = i + 1; // 1-based index
+          console.log(`일치하는 행 발견: ${targetRowNumber}번째 행`);
+          break;
+        }
+      }
+
+      if (targetRowNumber === -1) {
+        throw new Error(`주문번호(${order_number})와 바코드(${barcode})가 일치하는 행을 찾을 수 없습니다.`);
+      }
+
+      // 필드에 따른 구글 시트 열 매핑
+      const columnMapping: { [key: string]: string } = {
+        'import_qty': 'N',  // N열 - 입고
+        'cancel_qty': 'O',  // O열 - 취소
+        'note': 'R'         // R열 - 비고
+      };
+
+      const column = columnMapping[field];
+
+      if (!column) {
+        console.warn(`${field}에 대한 구글 시트 열 매핑이 없습니다.`);
+        return NextResponse.json({
+          success: false,
+          message: '지원하지 않는 필드입니다.',
+          field: field
+        });
+      }
+
+      // 셀 주소 생성 (예: N2, O5, R10)
+      const cellAddress = `${SHEET_NAME}!${column}${targetRowNumber}`;
 
       console.log(`구글 시트 셀 업데이트 준비:`);
       console.log(`- Spreadsheet ID: ${googlesheet_id}`);
@@ -119,7 +147,8 @@ export async function POST(request: NextRequest) {
           spreadsheetId: googlesheet_id,
           range: cellAddress,
           value: value,
-          coupang_name: coupang_name
+          coupang_name: coupang_name,
+          foundRowNumber: targetRowNumber
         }
       });
 
@@ -133,10 +162,10 @@ export async function POST(request: NextRequest) {
         googleError: googleError instanceof Error ? googleError.message : '알 수 없는 오류'
       }, { status: 500 });
     }
-    
+
   } catch (error) {
     console.error('셀 값 저장 처리 중 오류:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: '셀 값 저장 처리 중 오류가 발생했습니다.',
       details: error instanceof Error ? error.message : '알 수 없는 오류'
     }, { status: 500 });

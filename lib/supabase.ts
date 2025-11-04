@@ -11,4 +11,17 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey) 
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'x-my-custom-header': 'my-app-name'
+    },
+  },
+  // 기본 페이지 크기 제한 해제
+  auth: {
+    persistSession: false,
+  },
+}) 

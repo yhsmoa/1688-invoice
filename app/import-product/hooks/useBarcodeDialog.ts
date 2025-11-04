@@ -1,0 +1,213 @@
+import { useState } from 'react';
+import { ItemData } from './useItemData';
+
+export const useBarcodeDialog = () => {
+  const [showQuantityDialog, setShowQuantityDialog] = useState(false);
+  const [productQuantities, setProductQuantities] = useState<{ [key: string]: number }>({});
+  const [isSavingLabel, setIsSavingLabel] = useState(false);
+
+  // 바코드 버튼 클릭 핸들러 (Sheet)
+  const handleBarcodeClick = (
+    selectedRows: Set<string>,
+    filteredData: ItemData[]
+  ) => {
+    if (selectedRows.size === 0) {
+      alert('바코드를 생성할 항목을 선택해주세요.');
+      return;
+    }
+
+    const selectedItems = filteredData.filter(item => selectedRows.has(item.id));
+    const itemsWithBarcode = selectedItems.filter(item => item.barcode);
+
+    if (itemsWithBarcode.length === 0) {
+      alert('선택한 항목에 바코드 정보가 없습니다.');
+      return;
+    }
+
+    const initialQuantities: { [key: string]: number } = {};
+    itemsWithBarcode.forEach(item => {
+      initialQuantities[item.id] = item.import_qty || 1;
+    });
+    setProductQuantities(initialQuantities);
+    setShowQuantityDialog(true);
+  };
+
+  // 바코드 DB 저장 버튼 클릭 핸들러
+  const handleBarcodeDBClick = async (
+    selectedRows: Set<string>,
+    filteredData: ItemData[],
+    setSelectedRows: (rows: Set<string>) => void
+  ) => {
+    if (selectedRows.size === 0) {
+      alert('바코드를 생성할 항목을 선택해주세요.');
+      return;
+    }
+
+    const selectedItems = filteredData.filter(item => selectedRows.has(item.id));
+    const itemsWithBarcode = selectedItems.filter(item => item.barcode);
+
+    if (itemsWithBarcode.length === 0) {
+      alert('선택한 항목에 바코드 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      setIsSavingLabel(true);
+
+      const barcodeData = itemsWithBarcode.map((item, index) => ({
+        id: String(index + 1).padStart(4, '0'),
+        brand: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
+        item_name: `${item.china_option1 || ''}${item.china_option1 && item.china_option2 ? ' ' : ''}${item.china_option2 || ''}`.trim(),
+        barcode: item.barcode || '',
+        qty: item.import_qty || 1,
+        order_number: item.order_number || ''
+      }));
+
+      const response = await fetch('/api/save-barcode-to-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ barcodeData }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(`바코드 데이터가 DB에 저장되었습니다.\n저장된 아이템: ${result.count}개`);
+        setSelectedRows(new Set());
+      } else {
+        console.error('DB 저장 실패:', result);
+        alert(`DB 저장에 실패했습니다.\n오류: ${result.error || '알 수 없는 오류'}`);
+      }
+
+    } catch (error) {
+      console.error('DB 저장 중 오류:', error);
+      alert('DB 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingLabel(false);
+    }
+  };
+
+  // 수량 입력 후 LABEL 시트에 저장
+  const handleQuantityConfirm = async (
+    selectedCoupangUser: string,
+    filteredData: ItemData[],
+    setSelectedRows: (rows: Set<string>) => void
+  ) => {
+    if (!selectedCoupangUser) {
+      alert('먼저 쿠팡 사용자를 선택해주세요.');
+      return;
+    }
+
+    setIsSavingLabel(true);
+
+    const cacheKey = `sheet_data_${selectedCoupangUser}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (!cachedData) {
+      alert('구글시트 데이터를 먼저 불러와주세요.');
+      setIsSavingLabel(false);
+      return;
+    }
+
+    let googlesheetId;
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      googlesheetId = parsedCache.googlesheet_id;
+    } catch (error) {
+      console.error('캐시 파싱 오류:', error);
+      alert('구글시트 정보를 가져올 수 없습니다.');
+      setIsSavingLabel(false);
+      return;
+    }
+
+    if (!googlesheetId) {
+      alert('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
+      setIsSavingLabel(false);
+      return;
+    }
+
+    const labelData: Array<{name: string, barcode: string, qty: number, order_number: string}> = [];
+
+    Object.entries(productQuantities).forEach(([id, quantity]) => {
+      const item = filteredData.find(item => item.id === id);
+      if (item && item.barcode) {
+        let orderNumber = item.order_number || '';
+        if (item.product_size && item.product_size.trim()) {
+          const sizeText = item.product_size.trim();
+          let sizeCode = '';
+          if (sizeText.toLowerCase().includes('small')) {
+            sizeCode = 'A';
+          } else if (sizeText.toLowerCase().includes('medium')) {
+            sizeCode = 'B';
+          } else if (sizeText.toLowerCase().includes('large')) {
+            sizeCode = 'C';
+          } else {
+            sizeCode = sizeText.charAt(0);
+          }
+          orderNumber = `${orderNumber}-${sizeCode}`;
+        }
+
+        labelData.push({
+          name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
+          barcode: item.barcode,
+          qty: quantity,
+          order_number: orderNumber
+        });
+      }
+    });
+
+    if (labelData.length > 0) {
+      try {
+        console.log('LABEL 시트에 데이터 저장 시작...');
+        console.log('저장할 데이터:', labelData);
+
+        const response = await fetch('/api/save-label-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            labelData: labelData,
+            googlesheet_id: googlesheetId,
+            coupang_name: selectedCoupangUser
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert(`LABEL 시트에 바코드 데이터가 저장되었습니다.\n저장된 아이템: ${result.count}개`);
+
+          setShowQuantityDialog(false);
+          setProductQuantities({});
+          setSelectedRows(new Set());
+        } else {
+          console.error('LABEL 시트 저장 실패:', result);
+          alert(`LABEL 시트 저장에 실패했습니다.\n오류: ${result.message || result.error || '알 수 없는 오류'}`);
+        }
+
+      } catch (error) {
+        console.error('LABEL 시트 저장 중 오류:', error);
+        alert('LABEL 시트 저장 중 오류가 발생했습니다.');
+      } finally {
+        setIsSavingLabel(false);
+      }
+    } else {
+      setIsSavingLabel(false);
+    }
+  };
+
+  return {
+    showQuantityDialog,
+    setShowQuantityDialog,
+    productQuantities,
+    setProductQuantities,
+    isSavingLabel,
+    setIsSavingLabel,
+    handleBarcodeClick,
+    handleBarcodeDBClick,
+    handleQuantityConfirm
+  };
+};

@@ -1,0 +1,638 @@
+/* 주문 검사 페이지 전용 스타일 */
+
+.order-check-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.order-check-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.order-check-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.order-check-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.order-check-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 업로드 섹션 - 왼쪽/오른쪽 배치 */
+.order-check-upload-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.order-check-upload-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-check-upload-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-check-user-dropdown {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  min-width: 180px;
+}
+
+.order-check-user-dropdown:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+}
+
+.order-check-upload-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.order-check-upload-btn:hover {
+  background-color: #45a049;
+}
+
+.order-check-upload-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.order-check-download-btn {
+  background-color: #3b82f6;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.order-check-download-btn:hover {
+  background-color: #2563eb;
+}
+
+.order-check-download-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 상태 카드 그리드 */
+.order-check-status-cards {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.order-check-status-card {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  white-space: pre-line; /* 줄바꿈 적용 */
+}
+
+.order-check-status-card:hover {
+  transform: translateY(-2px);
+}
+
+.order-check-button-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.order-check-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: order-check-spin 0.8s linear infinite;
+}
+
+@keyframes order-check-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 검색 영역 */
+.order-check-search-section {
+  margin-bottom: 20px;
+}
+
+.order-check-search-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.order-check-search-form-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.order-check-search-dropdown {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.order-check-search-input {
+  flex: 2;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.order-check-search-button {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.order-check-search-button:hover {
+  background-color: #5a67d8;
+}
+
+/* 테이블 */
+.order-check-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.order-check-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* 테이블 열 너비 */
+.order-check-table th:nth-child(1),
+.order-check-table td:nth-child(1) {
+  width: 80px;
+  text-align: center;
+}
+
+.order-check-table th:nth-child(2),
+.order-check-table td:nth-child(2) {
+  width: 120px;
+}
+
+.order-check-table th:nth-child(3),
+.order-check-table td:nth-child(3) {
+  width: 250px;
+  min-width: 250px;
+}
+
+.order-check-table th:nth-child(4),
+.order-check-table td:nth-child(4) {
+  width: 150px;
+}
+
+.order-check-table th:nth-child(5),
+.order-check-table td:nth-child(5) {
+  width: 60px;
+  text-align: center;
+}
+
+.order-check-table th:nth-child(6),
+.order-check-table td:nth-child(6) {
+  width: 80px;
+  text-align: center;
+}
+
+.order-check-table th:nth-child(7),
+.order-check-table td:nth-child(7) {
+  width: 120px;
+}
+
+.order-check-table th:nth-child(8),
+.order-check-table td:nth-child(8) {
+  width: 150px;
+}
+
+.order-check-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.order-check-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 상품 썸네일 */
+.order-check-product-thumbnail {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  border: none;
+  background-color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.order-check-product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.order-check-no-image {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: none;
+}
+
+/* 텍스트 스타일 */
+.order-check-order-number-text {
+  color: #333;
+  display: block;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-check-product-name {
+  text-align: left !important;
+  line-height: 1.4 !important;
+  font-size: 14px !important;
+  color: #333 !important;
+  font-weight: normal !important;
+  font-family: Arial, sans-serif !important;
+}
+
+.order-check-china-options {
+  text-align: left !important;
+  line-height: 1.4 !important;
+  font-size: 14px !important;
+  color: #333 !important;
+  font-weight: normal !important;
+  font-family: Arial, sans-serif !important;
+}
+
+.order-check-qty-cell {
+  text-align: center;
+  padding: 8px 4px !important;
+}
+
+.order-check-qty-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 28px;
+  text-align: center;
+  background-color: #e2e2e2;
+  color: #333;
+}
+
+.order-check-cost-display {
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+}
+
+.order-check-note-display {
+  text-align: left;
+  line-height: 1.3;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #666;
+}
+
+.order-check-empty-data {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-style: italic;
+}
+
+/* 페이지네이션 */
+.order-check-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.order-check-pagination-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.order-check-pagination-button:hover {
+  background-color: #e0e0e0;
+}
+
+.order-check-pagination-button:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.order-check-page-numbers {
+  display: flex;
+  margin: 0 10px;
+}
+
+.order-check-page-number {
+  width: 35px;
+  height: 35px;
+  margin: 0 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.order-check-page-number:hover {
+  background-color: #f0f0f0;
+}
+
+.order-check-page-number.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.order-check-page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 이미지 미리보기 */
+.order-check-image-preview-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.order-check-image-preview {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.order-check-image-preview-container:hover .order-check-image-preview {
+  display: block;
+}
+
+.order-check-image-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+/* 클릭 가능한 비용 */
+.order-check-clickable-cost {
+  cursor: pointer;
+  color: #4a90e2;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.order-check-clickable-cost:hover {
+  color: #357abd;
+}
+
+/* 체크박스 */
+.order-check-table-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* 수량 배지 색상 */
+.order-check-progress-qty {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.order-check-cancel-qty {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.order-check-export-qty {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+}
+
+/* 테이블 헤더 너비 조정 (13개 열) */
+.order-check-table th:nth-child(1),
+.order-check-table td:nth-child(1) {
+  width: 50px;
+  text-align: center;
+}
+
+.order-check-table th:nth-child(2),
+.order-check-table td:nth-child(2) {
+  width: 60px;
+  text-align: center;
+}
+
+.order-check-table th:nth-child(3),
+.order-check-table td:nth-child(3) {
+  width: 120px; /* 글번호 열 약간 확대 (100 → 120) */
+}
+
+.order-check-table th:nth-child(4),
+.order-check-table td:nth-child(4) {
+  width: 200px; /* 상품명 열 축소 (280 → 200) */
+}
+
+.order-check-table th:nth-child(5) {
+  width: 120px; /* 주문옵션 열 */
+  text-align: left; /* 주문옵션 헤더 왼쪽 정렬 */
+}
+
+.order-check-table td:nth-child(5) {
+  width: 120px;
+  text-align: center; /* 주문옵션 데이터 가운데 정렬 */
+}
+
+.order-check-table th:nth-child(6),
+.order-check-table td:nth-child(6) {
+  width: 50px; /* 개수 열 */
+  text-align: center;
+}
+
+.order-check-table th:nth-child(7),
+.order-check-table td:nth-child(7) {
+  width: 80px; /* 비용 열 */
+  text-align: center;
+}
+
+/* 진행 열 - 헤더와 데이터 모두 가운데 정렬 */
+.order-check-table th:nth-child(8),
+.order-check-table td:nth-child(8) {
+  width: 60px; /* 원래 40px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 입고 열 - 헤더와 데이터 모두 가운데 정렬 */
+.order-check-table th:nth-child(9),
+.order-check-table td:nth-child(9) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 취소 열 - 헤더와 데이터 모두 가운데 정렬 */
+.order-check-table th:nth-child(10),
+.order-check-table td:nth-child(10) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 출고 열 - 헤더와 데이터 모두 가운데 정렬 */
+.order-check-table th:nth-child(11),
+.order-check-table td:nth-child(11) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 상태 배지 스타일 (둥근 사각형 배경) */
+.order-check-status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* 진행 - 회색 배경 */
+.order-check-status-badge.progress {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+/* 입고 - 부드러운 초록색 배경 */
+.order-check-status-badge.import {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* 취소 - 빨간색 배경 */
+.order-check-status-badge.cancel {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* 출고 - 파란색 배경 */
+.order-check-status-badge.export {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.order-check-table th:nth-child(12),
+.order-check-table td:nth-child(12) {
+  width: 120px; /* 비고 열 */
+}
+
+.order-check-table th:nth-child(13),
+.order-check-table td:nth-child(13) {
+  width: 200px; /* 정보 열 확대 (150 → 200) */
+}

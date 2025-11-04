@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
+import { useSaveContext } from '../../contexts/SaveContext';
 import './ExportProduct.css';
 
 interface CoupangUser {
@@ -21,6 +22,7 @@ interface OrderData {
   cancel_qty: number;
   available_qty: number; // 실입고개수 (입고-취소)
   barcode: string; // 바코드 (F열)
+  product_size: string; // 분류상자코드 (V열)
 }
 
 interface ShipmentData {
@@ -45,6 +47,8 @@ interface ScanSheetData {
 }
 
 const ExportProduct: React.FC = () => {
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useSaveContext();
+
   const [barcodeInput, setBarcodeInput] = useState('');
   const [quantityInput, setQuantityInput] = useState('');
   const [selectedBox, setSelectedBox] = useState('');
@@ -79,15 +83,14 @@ const ExportProduct: React.FC = () => {
   const [orderData, setOrderData] = useState<OrderData[]>([]);
   const [currentOrder, setCurrentOrder] = useState<OrderData | null>(null);
   const [scannedQty, setScannedQty] = useState(0);
+  const [lastScannedSizeCode, setLastScannedSizeCode] = useState<string | null>(null);
+  const [sizeMismatchInfo, setSizeMismatchInfo] = useState<{ boxCode: string; productCode: string } | null>(null);
 
   // 쉽먼트 데이터
   const [shipmentData, setShipmentData] = useState<ShipmentData[]>([]);
 
   // 체크박스 선택 상태
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
-
-  // 저장 상태 관리
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // 테이블 개수 수정 상태
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -111,6 +114,38 @@ const ExportProduct: React.FC = () => {
   useEffect(() => {
     fetchCoupangUsers();
   }, []);
+
+  // 페이지 이탈 방지 (브라우저 닫기, 새로고침)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome에서 필요
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // 드롭다운 변경 시 저장 확인
+  const handleCoupangUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm('저장하시겠습니까？\n你想保存吗？');
+      if (confirmed) {
+        saveAllData().then(() => {
+          setSelectedCoupangUser(e.target.value);
+        });
+        return;
+      }
+      // 취소하면 변경사항 버리고 진행
+      setHasUnsavedChanges(false);
+    }
+    setSelectedCoupangUser(e.target.value);
+  };
 
   // 전역 클릭 이벤트로 보드 비활성화
   useEffect(() => {
@@ -233,8 +268,9 @@ const ExportProduct: React.FC = () => {
         image_url: item.img_url || '',
         import_qty: parseInt(item.import_qty) || 0,
         cancel_qty: parseInt(item.cancel_qty) || 0,
-        available_qty: (parseInt(item.import_qty) || 0) - (parseInt(item.cancel_qty) || 0),
-        barcode: item.barcode || '' // F열 바코드 추가
+        available_qty: parseInt(item.import_qty) || 0, // 입고개수만 사용 (취소개수 무시)
+        barcode: item.barcode || '', // F열 바코드 추가
+        product_size: item.product_size || '' // V열 분류상자코드 추가
       }));
 
       const transformedOrderData: OrderData[] = rawTransformed.filter((item: OrderData) => item.order_number.trim() !== '');
@@ -303,6 +339,40 @@ const ExportProduct: React.FC = () => {
   };
 
   // 주문번호로 주문 정보 찾기
+  // 성공 소리 재생 함수 - 밝고 경쾌한 소리
+  const playSuccessSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // 첫 번째 비프음 (높은음)
+      const osc1 = audioContext.createOscillator();
+      const gain1 = audioContext.createGain();
+      osc1.connect(gain1);
+      gain1.connect(audioContext.destination);
+      osc1.frequency.setValueAtTime(1200, audioContext.currentTime);
+      osc1.type = 'sine';
+      gain1.gain.setValueAtTime(0.5, audioContext.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      osc1.start(audioContext.currentTime);
+      osc1.stop(audioContext.currentTime + 0.1);
+
+      // 두 번째 비프음 (더 높은음)
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.frequency.setValueAtTime(1400, audioContext.currentTime + 0.15);
+      osc2.type = 'sine';
+      gain2.gain.setValueAtTime(0.5, audioContext.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+      osc2.start(audioContext.currentTime + 0.15);
+      osc2.stop(audioContext.currentTime + 0.25);
+
+    } catch (error) {
+      console.log('성공 소리 재생 실패:', error);
+    }
+  };
+
   // 에러 소리 재생 함수 - 더 확실한 소리
   const playErrorSound = () => {
     try {
@@ -362,8 +432,82 @@ const ExportProduct: React.FC = () => {
     return trimmed;
   };
 
+  // 바코드에서 사이즈 코드 추출 (마지막 -A, -B, -C, -P, -X)
+  const extractSizeCode = (barcode: string): string | null => {
+    const trimmed = barcode.trim();
+    const parts = trimmed.split('-');
+
+    // 마지막 부분이 A, B, C, P, X 중 하나인지 확인
+    if (parts.length > 3) {
+      const lastPart = parts[parts.length - 1].toUpperCase();
+      if (['A', 'B', 'C', 'P', 'X'].includes(lastPart)) {
+        return lastPart;
+      }
+    }
+
+    return null;
+  };
+
+  // V열(product_size)에서 사이즈 코드 변환 함수
+  const getSizeCodeFromProductSize = (productSize: string | null | undefined): string | null => {
+    if (!productSize || typeof productSize !== 'string' || !productSize.trim()) return 'X'; // 비어있으면 'X'
+
+    const sizeLower = productSize.trim().toLowerCase();
+
+    if (sizeLower.includes('small')) return 'A';
+    if (sizeLower.includes('medium')) return 'B';
+    if (sizeLower.includes('large')) return 'C';
+    if (sizeLower.includes('p-')) return 'P';
+    if (sizeLower.includes('direct')) return 'X';
+
+    return 'X'; // 매칭되지 않는 경우도 'X'
+  };
+
+  // 박스 번호에서 사이즈 코드 추출 함수 (BZ-A-01 -> A, HI-P-01 -> P)
+  const getSizeCodeFromBoxNumber = (boxNumber: string): string | null => {
+    if (!boxNumber || typeof boxNumber !== 'string') return null;
+
+    const parts = boxNumber.trim().split('-');
+
+    // 최소 3개 부분이 있어야 함 (예: BZ-A-01)
+    if (parts.length < 3) return null;
+
+    // 두 번째 부분이 사이즈 코드 (A, B, C, P, X 중 하나)
+    const sizeCode = parts[1].toUpperCase();
+    if (['A', 'B', 'C', 'P', 'X'].includes(sizeCode)) {
+      return sizeCode;
+    }
+
+    return null;
+  };
+
   const findOrderByNumber = (orderNumber: string) => {
+    const trimmed = orderNumber.trim();
+    const parts = trimmed.split('-');
+
+    // 1. 정규화된 주문번호 (BZ-250926-0049)
     const normalized = normalizeBarcodeToOrderNumber(orderNumber);
+
+    // 2. '-'가 3개 미만이면 (예: BZ-251005-0012)
+    if (parts.length === 3) {
+      // 먼저 정규화된 주문번호로 주문 찾기
+      const matchedOrder = orderData.find(order => order.order_number === normalized);
+
+      if (matchedOrder) {
+        // product_size 확인하여 사이즈 코드 추가
+        const sizeCode = getSizeCodeFromProductSize(matchedOrder.product_size);
+
+        if (sizeCode) {
+          // 사이즈 코드가 있으면 임시로 사이즈 코드를 붙여서 처리
+          console.log(`주문번호 ${normalized}에 사이즈 코드 ${sizeCode} 자동 추가`);
+          // 실제로는 정규화된 주문번호로 저장되지만, 사이즈 코드는 UI 표시용으로만 사용
+        }
+      }
+
+      return matchedOrder;
+    }
+
+    // 3. '-'가 3개 이상이면 (예: BZ-251005-0012-A) 정규화해서 찾기
     return orderData.find(order => order.order_number === normalized);
   };
 
@@ -447,6 +591,7 @@ const ExportProduct: React.FC = () => {
       setShowAlert(true);
       setTimeout(() => setShowAlert(false), 2000);
       setCurrentOrder(null);
+      setLastScannedSizeCode(null); // 사이즈 코드 초기화
 
       // 잘못된 스캔도 기록에 추가 (에러 상태)
       const scanTime = new Date().toLocaleString('ko-KR', {
@@ -477,6 +622,51 @@ const ExportProduct: React.FC = () => {
       return;
     }
 
+    // 사이즈 코드 검증 로직
+    const boxSizeCode = getSizeCodeFromBoxNumber(selectedBox);
+    const productSizeCode = getSizeCodeFromProductSize(foundOrder.product_size);
+
+    console.log('박스 사이즈 코드:', boxSizeCode, '/ 상품 사이즈 코드:', productSizeCode);
+
+    // 두 사이즈 코드가 모두 존재하고 일치하지 않으면 에러
+    if (boxSizeCode && productSizeCode && boxSizeCode !== productSizeCode) {
+      playErrorSound();
+      // 모달창 제거, 결과 입력폼에만 표시
+      setCurrentOrder(null);
+      setLastScannedSizeCode(null);
+      // 사이즈 불일치 정보 저장 (화면에 표시용)
+      setSizeMismatchInfo({ boxCode: boxSizeCode, productCode: productSizeCode });
+      setTimeout(() => setSizeMismatchInfo(null), 5000); // 5초 후 자동 제거
+
+      // 사이즈 불일치 에러도 기록에 추가 (에러 상태)
+      const scanTime = new Date().toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      const sizeMismatchItem: ShipmentData = {
+        box_number: selectedBox,
+        order_number: normalizedOrderNumber,
+        product_name: `${foundOrder.product_name} [사이즈 불일치: 박스=${boxSizeCode}, 상품=${productSizeCode}]`,
+        option_name: foundOrder.option_name,
+        china_options: `${foundOrder.china_option1} ${foundOrder.china_option2}`.trim(),
+        scanned_qty: quantity,
+        barcode: foundOrder.barcode,
+        available_qty: foundOrder.available_qty,
+        scan_method: scanMethod,
+        scan_time: scanTime,
+        is_error: true
+      };
+
+      setScanHistory(prev => [...prev, sizeMismatchItem]);
+
+      return;
+    }
+
     // 기존 스캔된 수량 계산 (정규화된 주문번호로 검색)
     const existingScannedQty = shipmentData
       .filter(item => item.order_number === normalizedOrderNumber)
@@ -491,6 +681,11 @@ const ExportProduct: React.FC = () => {
       // 현재 주문 정보는 표시하되 초과된 스캔개수를 보여줌 (빨간색 표시를 위해)
       setCurrentOrder(foundOrder);
       setScannedQty(newTotalScannedQty); // 초과된 개수를 표시
+
+      // V열(product_size)에서 사이즈 코드 추출 (에러 시에도 표시)
+      const sizeCode = getSizeCodeFromProductSize(foundOrder.product_size);
+      setLastScannedSizeCode(sizeCode);
+      console.log('에러 시 product_size에서 사이즈 코드 추출:', sizeCode);
 
       // 초과 스캔도 기록에 추가 (에러 상태)
       const scanTime = new Date().toLocaleString('ko-KR', {
@@ -521,9 +716,17 @@ const ExportProduct: React.FC = () => {
       return;
     }
 
+    // 성공 소리 재생 (정상 스캔)
+    playSuccessSound();
+
     // 현재 주문 정보 설정
     setCurrentOrder(foundOrder);
     setScannedQty(newTotalScannedQty);
+
+    // V열(product_size)에서 사이즈 코드 추출 (항상 V열에서만 가져오기)
+    const sizeCode = getSizeCodeFromProductSize(foundOrder.product_size);
+    setLastScannedSizeCode(sizeCode);
+    console.log('product_size에서 사이즈 코드 추출:', sizeCode);
 
     // 쉽먼트 데이터에 추가 또는 업데이트 (정규화된 주문번호 사용)
     setShipmentData(prev => {
@@ -797,7 +1000,7 @@ const ExportProduct: React.FC = () => {
                 <select
                   className="export-coupang-user-dropdown"
                   value={selectedCoupangUser}
-                  onChange={(e) => setSelectedCoupangUser(e.target.value)}
+                  onChange={handleCoupangUserChange}
                 >
                   <option value="">쿠팡 사용자 선택</option>
                   {coupangUsers.map((user) => (
@@ -859,73 +1062,7 @@ const ExportProduct: React.FC = () => {
               </div>
             </div>
 
-            {/* 바코드 입력 영역 */}
-            <div className="export-barcode-section">
-              <div
-                className="export-barcode-board"
-                onMouseDown={(e) => {
-                  e.stopPropagation(); // 전역 클릭 이벤트 전파 방지
-                  setIsInputFormActive(true);
-                  setIsResultBoardActive(false);
-                }}
-                style={{
-                  border: isInputFormActive ? '3px solid #2196F3' : undefined,
-                  boxShadow: isInputFormActive ? '0 0 10px rgba(33, 150, 243, 0.3)' : undefined
-                }}
-              >
-                {/* 클릭 이벤트 캡처용 오버레이 */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  style={{ width: '100%', height: '100%' }}
-                >
-                  {/* 입력폼과 버튼 */}
-                  <div className="export-input-row">
-                    <input
-                      ref={barcodeInputRef}
-                      type="text"
-                      placeholder="바코드를 입력하세요"
-                      className="export-barcode-input"
-                      value={barcodeInput}
-                      onChange={(e) => {
-                        setBarcodeInput(e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          // 개수 입력 필드로 포커스 이동
-                          quantityInputRef.current?.focus();
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <input
-                      ref={quantityInputRef}
-                      type="number"
-                      placeholder="개수"
-                      className="export-quantity-input"
-                      value={quantityInput}
-                      onChange={(e) => setQuantityInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleScan(e);
-                        }
-                      }}
-                    />
-                    <button
-                      className={`export-scan-button ${!barcodeInput.trim() || !quantityInput.trim() ? 'disabled' : ''}`}
-                      onClick={handleScan}
-                      disabled={!barcodeInput.trim() || !quantityInput.trim()}
-                    >
-                      스캔
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 스캔 정보 보드 */}
+            {/* 스캔 정보 보드 (결과 표시) */}
             <div
               className={`export-scan-board ${isResultBoardActive ? 'active' : ''}`}
               onMouseDown={(e) => {
@@ -1016,12 +1153,22 @@ const ExportProduct: React.FC = () => {
                     {/* 세 번째: 수량 정보 */}
                     <div className="export-order-quantity">
                       <div className="export-qty-display">
-                        <div className={`export-qty-circle ${
-                          scannedQty >= currentOrder.available_qty && scannedQty > 0 ?
-                            (scannedQty === currentOrder.available_qty ? 'completed' : 'exceeded') :
-                          scannedQty > 0 && scannedQty < currentOrder.available_qty ? 'scanned' : 'default'
-                        }`}>
-                          {scannedQty}/{currentOrder.available_qty}
+                        <div className="export-qty-row">
+                          <div className={`export-qty-circle ${
+                            scannedQty >= currentOrder.available_qty && scannedQty > 0 ?
+                              (scannedQty === currentOrder.available_qty ? 'completed' : 'exceeded') :
+                            scannedQty > 0 && scannedQty < currentOrder.available_qty ? 'scanned' : 'default'
+                          }`}>
+                            {scannedQty}/{currentOrder.available_qty}
+                          </div>
+                          {lastScannedSizeCode && (
+                            <>
+                              <div className="export-size-arrow">⇒</div>
+                              <div className={`export-size-code export-size-code-${lastScannedSizeCode.toLowerCase()}`}>
+                                {lastScannedSizeCode}
+                              </div>
+                            </>
+                          )}
                         </div>
                         {selectedBox && (
                           <div className="export-box-info-line">
@@ -1035,97 +1182,103 @@ const ExportProduct: React.FC = () => {
                   </div>
                 ) : (
                   <div className="export-scan-info">
-                    <p>주문번호를 입력해주세요</p>
-                    {orderData.length > 0 && (
-                      <p className="export-data-status">
-                        로드된 주문: {orderData.length}개
-                      </p>
+                    {sizeMismatchInfo ? (
+                      <div className="export-size-mismatch-warning">
+                        <div className="export-mismatch-title">⚠️ 사이즈 코드 불일치!</div>
+                        <div className="export-mismatch-codes">
+                          <div className="export-mismatch-box">
+                            <span className="export-mismatch-label">박스:</span>
+                            <span className={`export-size-code export-size-code-${sizeMismatchInfo.boxCode.toLowerCase()}`}>
+                              {sizeMismatchInfo.boxCode}
+                            </span>
+                          </div>
+                          <div className="export-mismatch-arrow">→</div>
+                          <div className="export-mismatch-product">
+                            <span className="export-mismatch-label">올바른 코드:</span>
+                            <span className={`export-size-code-large export-size-code-${sizeMismatchInfo.productCode.toLowerCase()}`}>
+                              {sizeMismatchInfo.productCode}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p>주문번호를 입력해주세요</p>
+                        {orderData.length > 0 && (
+                          <p className="export-data-status">
+                            로드된 주문: {orderData.length}개
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* 쉽먼트 테이블 */}
-            <div className="export-shipment-section">
-              <div className="export-shipment-header">
-                <h3 className="export-shipment-title">쉽먼트</h3>
-                <button
-                  className={`export-delete-btn ${selectedItems.size > 0 ? 'active' : 'disabled'}`}
-                  onClick={handleDeleteSelected}
-                  disabled={selectedItems.size === 0}
+            {/* 바코드 입력 영역 */}
+            <div className="export-barcode-section">
+              <div
+                className="export-barcode-board"
+                onMouseDown={(e) => {
+                  e.stopPropagation(); // 전역 클릭 이벤트 전파 방지
+                  setIsInputFormActive(true);
+                  setIsResultBoardActive(false);
+                }}
+                style={{
+                  border: isInputFormActive ? '3px solid #2196F3' : undefined,
+                  boxShadow: isInputFormActive ? '0 0 10px rgba(33, 150, 243, 0.3)' : undefined
+                }}
+              >
+                {/* 클릭 이벤트 캡처용 오버레이 */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={{ width: '100%', height: '100%' }}
                 >
-                  삭제 ({selectedItems.size})
-                </button>
-              </div>
-              <div className="export-table-board">
-                <table className="export-table">
-                  <thead>
-                    <tr>
-                      <th className="export-checkbox-column">
-                        <input
-                          type="checkbox"
-                          checked={shipmentData.length > 0 && selectedItems.size === shipmentData.length}
-                          onChange={handleSelectAll}
-                          disabled={shipmentData.length === 0}
-                        />
-                      </th>
-                      <th>박스번호</th>
-                      <th>주문번호</th>
-                      <th>상품명</th>
-                      <th>주문옵션</th>
-                      <th>개수</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shipmentData.length === 0 ? (
-                      <tr><td colSpan={6} className="export-empty-data">데이터 없음</td></tr>
-                    ) : (
-                      shipmentData.map((item, index) => (
-                        <tr key={index}>
-                          <td className="export-checkbox-column">
-                            <input
-                              type="checkbox"
-                              checked={selectedItems.has(index)}
-                              onChange={() => handleSelectItem(index)}
-                            />
-                          </td>
-                          <td>{item.box_number}</td>
-                          <td>{item.order_number}</td>
-                          <td>
-                            {item.product_name}
-                            {item.option_name && `, ${item.option_name}`}
-                          </td>
-                          <td>{item.china_options}</td>
-                          <td
-                            onClick={() => handleQtyClick(index)}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            {editingIndex === index ? (
-                              <input
-                                type="number"
-                                value={editingValue}
-                                onChange={handleQtyChange}
-                                onBlur={handleQtyBlur}
-                                onKeyDown={handleQtyKeyDown}
-                                autoFocus
-                                style={{
-                                  width: '60px',
-                                  padding: '4px',
-                                  border: '2px solid #4CAF50',
-                                  borderRadius: '4px',
-                                  textAlign: 'center'
-                                }}
-                              />
-                            ) : (
-                              item.scanned_qty
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                  {/* 입력폼과 버튼 */}
+                  <div className="export-input-row">
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      placeholder="주문번호를 입력하세요"
+                      className="export-barcode-input"
+                      value={barcodeInput}
+                      onChange={(e) => {
+                        setBarcodeInput(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // 개수 입력 필드로 포커스 이동
+                          quantityInputRef.current?.focus();
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <input
+                      ref={quantityInputRef}
+                      type="number"
+                      placeholder="개수"
+                      className="export-quantity-input"
+                      value={quantityInput}
+                      onChange={(e) => setQuantityInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleScan(e);
+                        }
+                      }}
+                    />
+                    <button
+                      className={`export-scan-button ${!barcodeInput.trim() || !quantityInput.trim() ? 'disabled' : ''}`}
+                      onClick={handleScan}
+                      disabled={!barcodeInput.trim() || !quantityInput.trim()}
+                    >
+                      스캔
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1141,57 +1294,91 @@ const ExportProduct: React.FC = () => {
         </div>
       )}
 
-      {/* 기록 슬라이드 패널 */}
+      {/* 쉽먼트 슬라이드 패널 */}
       <div className={`export-history-panel ${isHistoryPanelOpen ? 'open' : ''}`}>
         <div className="export-history-header">
-          <h3>스캔 기록</h3>
+          <h3>쉽먼트</h3>
           <button className="export-history-close" onClick={() => setIsHistoryPanelOpen(false)}>
             ✕
           </button>
         </div>
         <div className="export-history-content">
-          {scanHistory.length === 0 ? (
-            <div className="export-history-empty">
-              <p>스캔 기록이 없습니다</p>
-            </div>
-          ) : (
-            <div className="export-history-list">
-              {scanHistory.slice().reverse().map((item, index) => {
-                // 해당 주문번호의 누적 스캔 개수 계산 (해당 기록까지의 누적)
-                const historyUpToThisPoint = scanHistory.slice(0, scanHistory.length - index);
-                const cumulativeScanned = historyUpToThisPoint
-                  .filter(s => s.order_number === item.order_number)
-                  .reduce((sum, s) => sum + s.scanned_qty, 0);
-
-                return (
-                  <div
-                    key={index}
-                    className={`export-history-item ${item.is_error ? 'error' : ''}`}
-                  >
-                    <div className="export-history-item-header">
-                      <span className="export-history-qty-badge">
-                        {item.scan_method} {cumulativeScanned}
-                      </span>
-                      <span className="export-history-box-order">
-                        {item.box_number} | {item.order_number}
-                      </span>
-                    </div>
-                    <div className="export-history-item-content">
-                      <div className="export-history-product">
-                        {item.product_name}
-                      </div>
-                      {item.option_name && item.option_name.trim() !== '' && (
-                        <div className="export-history-option-name">
-                          {item.option_name} | {item.china_options}
-                        </div>
-                      )}
-                      <div className="export-history-time">{item.scan_time}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* 쉽먼트 테이블 내용 */}
+          <div className="export-shipment-header" style={{ padding: '15px 20px', borderBottom: '1px solid #ddd' }}>
+            <button
+              className="export-delete-btn"
+              onClick={handleDeleteSelected}
+              disabled={selectedItems.size === 0}
+            >
+              삭제 ({selectedItems.size})
+            </button>
+          </div>
+          <div className="export-table-board" style={{ padding: '0', margin: '0' }}>
+            <table className="export-table">
+              <thead>
+                <tr>
+                  <th className="export-checkbox-column">
+                    <input
+                      type="checkbox"
+                      checked={shipmentData.length > 0 && selectedItems.size === shipmentData.length}
+                      onChange={handleSelectAll}
+                      disabled={shipmentData.length === 0}
+                    />
+                  </th>
+                  <th>박스번호</th>
+                  <th className="export-order-number-column">주문번호</th>
+                  <th className="export-product-name-column">상품명</th>
+                  <th>출고</th>
+                  <th>입고</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipmentData.length === 0 ? (
+                  <tr><td colSpan={6} className="export-empty-data">데이터 없음</td></tr>
+                ) : (
+                  // 역순으로 표시 (최신 스캔이 위에 오도록)
+                  [...shipmentData].reverse().map((item, displayIndex) => {
+                    // 원본 배열의 인덱스 계산 (체크박스와 편집을 위해 필요)
+                    const originalIndex = shipmentData.length - 1 - displayIndex;
+                    return (
+                      <tr key={originalIndex}>
+                        <td className="export-checkbox-column">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(originalIndex)}
+                            onChange={() => handleSelectItem(originalIndex)}
+                          />
+                        </td>
+                        <td>{item.box_number}</td>
+                        <td>{item.order_number}</td>
+                        <td>{item.product_name}</td>
+                        <td
+                          className="export-editable-cell"
+                          onClick={() => handleQtyClick(originalIndex)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {editingIndex === originalIndex ? (
+                            <input
+                              type="number"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={handleQtyBlur}
+                              onKeyDown={handleQtyKeyDown}
+                              autoFocus
+                              className="export-qty-input"
+                            />
+                          ) : (
+                            <span>{item.scanned_qty}</span>
+                          )}
+                        </td>
+                        <td>{item.available_qty}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

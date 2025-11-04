@@ -11,7 +11,8 @@ const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY ?
   process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') : '';
 
 interface UpdateItem {
-  rowId: string;
+  order_number: string;
+  barcode: string;
   field: string;
   value: number | string | null;
 }
@@ -71,40 +72,81 @@ export async function POST(request: NextRequest) {
     // 구글 시트 API 클라이언트 생성
     const sheets = google.sheets({ version: 'v4', auth: jwtClient });
 
+    // 전체 시트 데이터 가져오기 (B열=주문번호, F열=바코드)
+    console.log('구글 시트에서 주문번호와 바코드 데이터 로드...');
+    const sheetData = await sheets.spreadsheets.values.get({
+      spreadsheetId: googlesheet_id,
+      range: `${SHEET_NAME}!B:F`, // B열(주문번호)부터 F열(바코드)까지
+    });
+
+    const rows = sheetData.data.values;
+    if (!rows || rows.length === 0) {
+      throw new Error('구글 시트에 데이터가 없습니다.');
+    }
+
+    // 주문번호+바코드를 키로 하는 맵 생성 (행 번호 찾기용)
+    const rowMap = new Map<string, number>();
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const orderNumber = row[0]?.toString().trim() || ''; // B열
+      const barcode = row[4]?.toString().trim() || '';     // F열
+      if (orderNumber && barcode) {
+        const key = `${orderNumber}|${barcode}`;
+        rowMap.set(key, i + 1); // 1-based index
+      }
+    }
+
+    console.log(`행 맵 생성 완료: ${rowMap.size}개 항목`);
+
     // batchUpdate 요청 데이터 준비
     const batchUpdateData: Array<{
       range: string;
       values: any[][];
     }> = [];
 
-    const successDetails: Array<{ rowId: string; field: string; value: any }> = [];
-    const failedDetails: Array<{ rowId: string; field: string; error: string }> = [];
+    const successDetails: Array<{ order_number: string; barcode: string; field: string; value: any; rowNumber: number }> = [];
+    const failedDetails: Array<{ order_number: string; barcode: string; field: string; error: string }> = [];
 
     // 각 업데이트 항목에 대해 배치 데이터 생성
     updates.forEach(update => {
-      const { rowId, field, value } = update;
+      const { order_number, barcode, field, value } = update;
       const column = columnMapping[field];
 
       if (!column) {
         failedDetails.push({
-          rowId,
+          order_number,
+          barcode,
           field,
           error: '지원하지 않는 필드입니다.'
         });
         return;
       }
 
-      const cellAddress = `${SHEET_NAME}!${column}${rowId}`;
+      // 주문번호+바코드로 행 번호 찾기
+      const key = `${order_number.trim()}|${barcode.trim()}`;
+      const rowNumber = rowMap.get(key);
+
+      if (!rowNumber) {
+        failedDetails.push({
+          order_number,
+          barcode,
+          field,
+          error: '일치하는 행을 찾을 수 없습니다.'
+        });
+        return;
+      }
+
+      const cellAddress = `${SHEET_NAME}!${column}${rowNumber}`;
 
       batchUpdateData.push({
         range: cellAddress,
         values: [[value]]
       });
 
-      successDetails.push({ rowId, field, value });
+      successDetails.push({ order_number, barcode, field, value, rowNumber });
     });
 
-    console.log(`배치 업데이트 준비 완료: ${batchUpdateData.length}개 셀`);
+    console.log(`배치 업데이트 준비 완료: ${batchUpdateData.length}개 셀, ${failedDetails.length}개 실패`);
 
     // 구글 시트 배치 업데이트 실행
     if (batchUpdateData.length > 0) {

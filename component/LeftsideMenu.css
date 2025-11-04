@@ -4,6 +4,14 @@
   padding: 24px 0;
   border-right: 1px solid #e2e8f0;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, margin-left 0.3s ease;
+  position: relative;
+  background-color: white;
+}
+
+.leftside-menu.closed {
+  transform: translateX(-100%);
+  margin-left: -280px;
 }
 
 .leftside-nav {

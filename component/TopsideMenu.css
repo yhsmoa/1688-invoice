@@ -16,6 +16,31 @@
   gap: 24px;
 }
 
+/* 햄버거 메뉴 버튼 */
+.sidebar-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #374151;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+.sidebar-toggle-btn:active {
+  transform: scale(0.95);
+}
+
 .topside-title {
   font-size: 24px;
   font-weight: 700;

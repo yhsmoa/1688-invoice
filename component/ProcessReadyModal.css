@@ -1,0 +1,402 @@
+/* 배경 오버레이 */
+.process-ready-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* 슬라이드 모달 */
+.process-ready-modal {
+  position: fixed;
+  top: 0;
+  right: -33.33%;
+  width: 33.33%;
+  height: 100vh;
+  background-color: white;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease-in-out;
+}
+
+.process-ready-modal.open {
+  right: 0;
+}
+
+/* 헤더 */
+.process-ready-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.process-ready-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+/* 컨텐츠 영역 */
+.process-ready-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+/* 아이템 리스트 */
+.ready-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* 개별 아이템 */
+.ready-item {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fff;
+  transition: box-shadow 0.2s;
+  position: relative;
+}
+
+.ready-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 이미지 - 왼쪽 배치, 크기 증가 */
+.ready-item-image {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ready-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+/* 상품 정보 */
+.ready-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* 글번호 | 바코드 */
+.order-barcode-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.order-barcode-row .separator {
+  color: #ccc;
+}
+
+/* 상품명 */
+.product-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* 주문옵션 - 연한 파란색 둥근 배경, 상품명과 동일한 폰트 크기 */
+.order-option-badge {
+  display: inline-flex;
+  padding: 4px 12px;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  width: fit-content;
+  flex-shrink: 0;
+}
+
+/* 진행, 입고, 취소, 바코드 - 한줄 표시 */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 40px; /* 최소 너비로 정렬 유지 */
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 값이 0인 경우 - 연한 회색 */
+.stat-value.zero {
+  color: #d1d5db;
+}
+
+/* 입고 - 파란색 폰트 (0보다 큰 경우) */
+.stat-value.import {
+  color: #2563eb;
+}
+
+/* 취소 - 빨간색 폰트 (0보다 큰 경우) */
+.stat-value.cancel {
+  color: #dc2626;
+}
+
+/* 바코드 컨트롤 */
+.stat-item.barcode-control {
+  min-width: auto;
+}
+
+.barcode-quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 바코드 클릭 가능한 값 */
+.stat-value.barcode-clickable {
+  cursor: pointer;
+  min-width: 42px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-value.barcode-clickable:hover {
+  background-color: #f3f4f6;
+}
+
+/* 바코드 입력 필드 */
+.barcode-qty-input {
+  width: 42px;
+  height: 28px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  border: 2px solid #2563eb;
+  border-radius: 4px;
+  outline: none;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.barcode-btn-minus,
+.barcode-btn-plus {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.barcode-btn-minus:hover:not(:disabled),
+.barcode-btn-plus:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.barcode-btn-minus:disabled {
+  background-color: #f9fafb;
+  color: #d1d5db;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.barcode-btn-plus {
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+.barcode-btn-plus:hover {
+  background-color: #dbeafe;
+  border-color: #60a5fa;
+}
+
+/* 푸터 */
+.process-ready-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.footer-info {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 저장 버튼 - 너비 3배 */
+.save-ready-button {
+  background-color: #10b981;
+  color: white;
+  padding: 10px 72px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 168px;
+  min-height: 40px;
+}
+
+.save-ready-button:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.save-ready-button:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+/* 로딩 스피너 스타일 (ProcessReadyModal용) */
+.save-ready-button .button-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.save-ready-button .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: modal-spin 0.8s linear infinite;
+}
+
+@keyframes modal-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 반응형 - 작은 화면 */
+@media (max-width: 1200px) {
+  .process-ready-modal {
+    width: 40%;
+    right: -40%;
+  }
+}
+
+@media (max-width: 768px) {
+  .process-ready-modal {
+    width: 80%;
+    right: -80%;
+  }
+
+  .ready-item-content {
+    flex-direction: column;
+  }
+
+  .ready-item-image {
+    width: 100%;
+    height: 120px;
+  }
+}

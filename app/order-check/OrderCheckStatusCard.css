@@ -1,0 +1,48 @@
+.order-check-status-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.order-check-status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.order-check-status-card.active {
+  border-color: #667eea;
+  background-color: #f0f4ff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.order-check-status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-check-status-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.order-check-status-card.active .order-check-status-text {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.order-check-status-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.order-check-status-card.active .order-check-status-count {
+  color: #667eea;
+}

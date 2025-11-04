@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
-// LABEL 시트명 고정
-const SHEET_NAME = 'LABEL';
-
 // 서비스 계정 키 정보는 환경 변수로 관리
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
 const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY ?
@@ -16,7 +13,10 @@ export async function POST(request: NextRequest) {
 
     // 요청 본문에서 데이터 추출
     const body = await request.json();
-    const { labelData, googlesheet_id, coupang_name } = body;
+    const { labelData, googlesheet_id, coupang_name, targetSheet } = body;
+
+    // 시트명 동적 선택 (기본값: LABEL)
+    const SHEET_NAME = targetSheet || 'LABEL';
 
     // 1. 필수 파라미터 체크
     if (!googlesheet_id || !coupang_name || !labelData || !Array.isArray(labelData)) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`LABEL 저장: ${labelData.length}개 아이템`);
+    console.log(`${SHEET_NAME} 저장: ${labelData.length}개 아이템`);
 
     // 2. 구글 시트에 데이터 저장
     try {
@@ -98,11 +98,12 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `LABEL 시트에 ${values.length}개 데이터가 저장되었습니다.`,
+        message: `${SHEET_NAME} 시트에 ${values.length}개 데이터가 저장되었습니다.`,
         count: values.length,
         sheetUpdate: {
           spreadsheetId: googlesheet_id,
           range: range,
+          sheetName: SHEET_NAME,
           coupang_name: coupang_name
         }
       });
