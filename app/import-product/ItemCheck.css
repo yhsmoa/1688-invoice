@@ -330,6 +330,11 @@
   word-break: break-all;
 }
 
+/* 진행 > 입고인 행 노란색 처리 */
+.item-table tr.missing-delivery-row {
+  background-color: #fef3c7;
+}
+
 /* 상품 썸네일 이미지 */
 .product-thumbnail {
   width: 80px;

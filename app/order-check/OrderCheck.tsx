@@ -303,16 +303,20 @@ const OrderCheck: React.FC = () => {
     let filtered: OrderCheckData[] = [];
 
     if (searchType === '배송번호/offerID') {
-      // 배송번호/offerID 검색 - delivery_code와 offer_id에서 검색
-      filtered = itemData.filter(item => {
-        return (
-          item.delivery_code?.toLowerCase().includes(searchLower) ||
-          deliveryInfoData.some(info =>
-            info.offer_id?.toLowerCase().includes(searchLower) &&
-            info.delivery_code === item.delivery_code
-          )
-        );
-      });
+      // 배송번호/offerID 검색 - deliveryInfoData에서 먼저 찾고 매칭
+      const matchingDeliveryInfos = deliveryInfoData.filter(info =>
+        info.delivery_code?.toLowerCase().includes(searchLower) ||
+        info.offer_id?.toLowerCase().includes(searchLower)
+      );
+
+      // 매칭된 delivery_info의 sheet_order_number로 item 찾기
+      const matchedOrderNumbers = new Set(
+        matchingDeliveryInfos.map(info => info.sheet_order_number)
+      );
+
+      filtered = itemData.filter(item =>
+        matchedOrderNumbers.has(item.order_number)
+      );
     } else {
       // 일반검색
       filtered = itemData.filter(item => {

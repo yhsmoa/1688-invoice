@@ -3,56 +3,34 @@ import { ItemData } from './useItemData';
 
 export const useSearch = (
   itemData: ItemData[],
-  deliveryInfoData: {[key: string]: any}
+  deliveryInfoData: any[]
 ) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<string>('배송번호');
 
-  // 배송번호로 메모리에서 배송정보 조회
+  // 배송번호로 메모리에서 배송정보 조회 (모든 매칭 항목 반환)
   const searchDeliveryInfo = (deliveryCode: string) => {
     console.log('=== searchDeliveryInfo 시작 ===');
     console.log('1. 검색할 배송번호:', deliveryCode);
-    console.log('2. deliveryInfoData 타입:', typeof deliveryInfoData);
-    console.log('3. deliveryInfoData 키 개수:', Object.keys(deliveryInfoData).length);
+    console.log('2. deliveryInfoData 배열 길이:', deliveryInfoData.length);
 
-    // 처음 10개 키 출력
-    const keys = Object.keys(deliveryInfoData).slice(0, 10);
-    console.log('4. deliveryInfoData 샘플 키:', keys);
+    // 배송번호로 모든 매칭 항목 찾기
+    const matchingInfos = deliveryInfoData.filter((info: any) =>
+      info.delivery_code?.toLowerCase().includes(deliveryCode.toLowerCase())
+    );
 
-    // 정확한 매칭 시도
-    console.log('5. 정확한 매칭 시도: deliveryInfoData["' + deliveryCode + '"]');
-    const deliveryInfo = deliveryInfoData[deliveryCode];
+    console.log(`3. 매칭된 배송정보 개수: ${matchingInfos.length}`);
 
-    if (deliveryInfo) {
-      console.log('6. ✅ 배송정보 찾음!');
-      console.log('7. 배송정보 내용:', {
-        delivery_code: deliveryInfo.delivery_code,
-        order_id: deliveryInfo.order_id,
-        delivery_status: deliveryInfo.delivery_status,
-        order_info: deliveryInfo.order_info?.substring(0, 100) + '...'
+    if (matchingInfos.length > 0) {
+      console.log('4. ✅ 배송정보 찾음!');
+      matchingInfos.forEach((info: any, idx: number) => {
+        console.log(`   [${idx + 1}] sheet_order_number: ${info.sheet_order_number}`);
       });
-      return deliveryInfo;
+      return matchingInfos;
     } else {
-      console.log('6. ❌ 정확한 매칭 실패');
-      console.log('7. 부분 일치 검색 시도...');
-
-      // 부분 일치 검색 시도
-      const partialMatch = Object.keys(deliveryInfoData).find(key => {
-        const match = key.includes(deliveryCode) || deliveryCode.includes(key);
-        if (match) {
-          console.log(`   부분 일치 발견: "${key}" <-> "${deliveryCode}"`);
-        }
-        return match;
-      });
-
-      if (partialMatch) {
-        console.log('8. ✅ 부분 일치 발견:', partialMatch);
-        return deliveryInfoData[partialMatch];
-      }
-
-      console.log('8. ❌ 부분 일치도 실패');
+      console.log('4. ❌ 매칭 실패');
       console.log('=== searchDeliveryInfo 종료 (결과 없음) ===');
-      return null;
+      return [];
     }
   };
 
@@ -198,32 +176,23 @@ export const useSearch = (
         console.log('\n📦 배송번호 검색 모드');
         console.log('1단계: searchDeliveryInfo 호출');
 
-        const deliveryInfo = searchDeliveryInfo(searchTerm);
+        const deliveryInfos = searchDeliveryInfo(searchTerm);
 
-        console.log('\n2단계: deliveryInfo 결과 확인');
-        if (deliveryInfo) {
-          console.log('✅ deliveryInfo 찾음:', {
-            delivery_code: deliveryInfo.delivery_code,
-            order_id: deliveryInfo.order_id,
-            has_order_info: !!deliveryInfo.order_info
-          });
+        console.log('\n2단계: deliveryInfos 결과 확인');
+        if (deliveryInfos.length > 0) {
+          console.log(`✅ deliveryInfo ${deliveryInfos.length}개 찾음`);
 
-          if (deliveryInfo.order_info) {
-            console.log('\n3단계: parseOrderInfoAndSearch 호출');
-            searchResults = parseOrderInfoAndSearch(deliveryInfo.order_info);
+          // 모든 sheet_order_number 추출
+          const sheetOrderNumbers = deliveryInfos.map((info: any) => info.sheet_order_number);
+          console.log('\n3단계: sheet_order_number로 itemData 검색');
+          console.log('검색할 주문번호들:', sheetOrderNumbers);
 
-            console.log('\n4단계: 배송정보 추가');
-            searchResults = searchResults.map(item => ({
-              ...item,
-              order_id: deliveryInfo.order_id || null,
-              delivery_status: deliveryInfo.delivery_status || null
-            }));
+          // itemData에서 매칭
+          searchResults = itemData.filter(item =>
+            sheetOrderNumbers.includes(item.order_number)
+          );
 
-            console.log(`✅ 배송번호 검색 완료: ${searchResults.length}개 발견`);
-          } else {
-            console.log('❌ order_info가 비어있음');
-            searchResults = [];
-          }
+          console.log(`✅ 배송번호 검색 완료: ${searchResults.length}개 발견`);
         } else {
           console.log('❌ deliveryInfo를 찾을 수 없음');
           searchResults = [];

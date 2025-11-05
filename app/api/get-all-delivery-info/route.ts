@@ -15,7 +15,7 @@ export const GET = async (request: NextRequest) => {
 
     while (hasMore) {
       const { data, error } = await supabase
-        .from('1688_invoice_deliveryInfo')
+        .from('1688_invoice_deliveryInfo_check')
         .select('*')
         .order('delivery_code', { ascending: true })
         .range(from, from + pageSize - 1);

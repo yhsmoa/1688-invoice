@@ -35,7 +35,7 @@ export const useItemData = () => {
   const [itemData, setItemData] = useState<ItemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [originalData, setOriginalData] = useState<ItemData[]>([]);
-  const [deliveryInfoData, setDeliveryInfoData] = useState<{[key: string]: any}>({});
+  const [deliveryInfoData, setDeliveryInfoData] = useState<any[]>([]);
 
   // 발송전 카운트를 useMemo로 캐싱 (무한 렌더링 방지)
   const statusCounts = useMemo(() => {
@@ -81,29 +81,13 @@ export const useItemData = () => {
       // 특정 바코드 디버깅
       const isDebugBarcode = itemBarcode === 'S0024873459432';
 
-      for (const [, deliveryInfo] of Object.entries(deliveryInfoData)) {
-        if (deliveryInfo.order_info) {
-          const orderInfoLines = deliveryInfo.order_info.split('\n').filter((line: string) => line.trim());
+      // order_number로 매칭
+      const itemOrderNumber = item.order_number?.toString().trim();
 
-          for (const line of orderInfoLines) {
-            if (isDebugBarcode && line.includes('BZ-251007-0183')) {
-              console.log('🔍 디버깅: BZ-251007-0183 발견!');
-              console.log('  라인 내용:', line);
-              console.log('  검색 바코드:', itemBarcode);
-              console.log('  includes 결과:', line.includes(itemBarcode));
-              console.log('  delivery_code:', deliveryInfo.delivery_code);
-            }
-
-            if (line.includes(itemBarcode)) {
-              matchedDeliveryInfo = deliveryInfo;
-              break;
-            }
-          }
-
-          if (matchedDeliveryInfo) {
-            break;
-          }
-        }
+      if (itemOrderNumber) {
+        matchedDeliveryInfo = deliveryInfoData.find((deliveryInfo: any) =>
+          deliveryInfo.sheet_order_number === itemOrderNumber
+        );
       }
 
       if (matchedDeliveryInfo) {
@@ -144,20 +128,11 @@ export const useItemData = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        const deliveryMap: {[key: string]: any} = {};
-
         // 처음 3개 샘플 데이터 출력
         console.log('샘플 배송정보 데이터:', result.data.slice(0, 3));
 
-        result.data.forEach((item: any) => {
-          if (item.delivery_code) {
-            deliveryMap[item.delivery_code] = item;
-          }
-        });
-
-        setDeliveryInfoData(deliveryMap);
+        setDeliveryInfoData(result.data);
         console.log(`배송정보 ${result.data.length}개 로딩 완료`);
-        console.log('deliveryMap 키 샘플:', Object.keys(deliveryMap).slice(0, 10));
       } else {
         console.log('배송정보 로딩 실패 또는 데이터 없음');
       }

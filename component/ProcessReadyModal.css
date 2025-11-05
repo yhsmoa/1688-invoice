@@ -250,6 +250,32 @@
   background-color: #f3f4f6;
 }
 
+/* 비고 행 */
+.note-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fef3c7;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+  margin-top: 4px;
+}
+
+.note-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  flex-shrink: 0;
+}
+
+.note-content {
+  font-size: 12px;
+  color: #78350f;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
 /* 바코드 입력 필드 */
 .barcode-qty-input {
   width: 42px;

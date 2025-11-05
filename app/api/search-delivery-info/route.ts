@@ -19,7 +19,7 @@ export const POST = async (request: NextRequest) => {
 
     // Supabase에서 delivery_code로 검색
     const { data, error } = await supabase
-      .from('1688_invoice_deliveryInfo')
+      .from('1688_invoice_deliveryInfo_check')
       .select('*')
       .eq('delivery_code', deliveryCode.trim())
       .single(); // 단일 결과 기대

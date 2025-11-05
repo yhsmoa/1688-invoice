@@ -255,21 +255,44 @@ export const useEditCell = (
   };
 
   // 셀 값 변경
-  const handleCellValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    setCellValue(value);
+  const handleCellValueChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // note 필드는 모든 문자 허용, 그 외는 숫자만
+    if (editingCell?.field === 'note') {
+      setCellValue(e.target.value);
+    } else {
+      const value = e.target.value.replace(/[^0-9]/g, '');
+      setCellValue(value);
+    }
   };
 
   // 셀 키 이벤트 처리
-  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      finishEditingCell(true);
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      finishEditingCell();
-    } else if (e.key === 'Escape') {
-      setEditingCell(null);
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // note 필드에서 Enter 키는 줄바꿈
+    if (editingCell?.field === 'note') {
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+        // Enter만 누르면 줄바꿈 (기본 동작)
+        return;
+      } else if (e.key === 'Enter' && (e.shiftKey || e.ctrlKey)) {
+        // Shift+Enter 또는 Ctrl+Enter는 저장 후 다음 셀로 이동
+        e.preventDefault();
+        finishEditingCell(true);
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        finishEditingCell();
+      } else if (e.key === 'Escape') {
+        setEditingCell(null);
+      }
+    } else {
+      // 다른 필드는 기존 동작 유지
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishEditingCell(true);
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        finishEditingCell();
+      } else if (e.key === 'Escape') {
+        setEditingCell(null);
+      }
     }
   };
 

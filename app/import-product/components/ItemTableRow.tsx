@@ -36,8 +36,13 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // 행 배경색 결정: 진행 > 입고인 경우만 노란색
+  const progressQty = parseInt(item.progress_qty?.toString() || '0');
+  const importQty = parseInt(item.import_qty?.toString() || '0');
+  const isMissingDelivery = progressQty > importQty;
+
   return (
-    <tr key={item.id}>
+    <tr key={item.id} className={isMissingDelivery ? 'missing-delivery-row' : ''}>
       <td>
         <input
           type="checkbox"

@@ -19,7 +19,7 @@ export const POST = async (request: NextRequest) => {
 
     // Supabase에서 order_info에 검색어가 포함된 데이터 검색
     const { data, error } = await supabase
-      .from('1688_invoice_deliveryInfo')
+      .from('1688_invoice_deliveryInfo_check')
       .select('shop, offer_id, delivery_status, order_id, order_info')
       .ilike('order_info', `%${searchTerm.trim()}%`); // ILIKE는 대소문자 구분 없이 포함 검색
 

@@ -16,11 +16,13 @@ import {
   useSearch,
   useEditCell,
   useBarcodeDialog,
-  type ItemData
+  type ItemData,
+  type ReadyItem
 } from './hooks';
 
 // Import utilities
 import { loadGoogleSheetData, saveToCache } from './utils/sheetLoader';
+import { hasValueChanged } from './utils/dataComparison';
 
 // Import table components
 import ItemTable from './components/ItemTable';
@@ -340,6 +342,12 @@ const ItemCheck: React.FC = () => {
 
   // 검색 함수 - Hook에서 가져온 함수 사용
   const performSearch = async () => {
+    // 검색 시 처리준비 데이터 초기화
+    setReadyItems([]);
+    setModifiedData({});
+    // 검색 시 체크박스 선택 초기화
+    setSelectedRows(new Set());
+
     await performSearchHook(
       activeStatus,
       sortType,
@@ -360,6 +368,13 @@ const ItemCheck: React.FC = () => {
   const handleSearchTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSearchType(e.target.value);
     setSearchTerm(''); // 검색어 초기화
+
+    // 처리준비 데이터 초기화
+    setReadyItems([]);
+    setModifiedData({});
+    // 체크박스 선택 초기화
+    setSelectedRows(new Set());
+
     const filteredByStatus = filterByStatus(itemData, activeStatus);
     const sortedData = sortData(filteredByStatus, sortType);
     setFilteredData(sortedData); // 상태 필터링된 데이터 표시 (정렬 적용)
@@ -376,6 +391,12 @@ const ItemCheck: React.FC = () => {
     console.log('activeStatus 변경 시도:', status);
 
     setSearchTerm(''); // 검색어 초기화
+
+    // 처리준비 데이터 초기화
+    setReadyItems([]);
+    setModifiedData({});
+    // 체크박스 선택 초기화
+    setSelectedRows(new Set());
 
     const filteredByStatus = filterByStatus(itemData, status);
     console.log('필터링된 데이터 개수:', filteredByStatus.length);
@@ -598,8 +619,176 @@ const ItemCheck: React.FC = () => {
     setShowQuantityDialog(true);
   };
 
-  // 바코드 DB 저장 버튼 클릭 핸들러
+  // 배송누락 버튼 클릭 핸들러 (토글 방식)
   const handleBarcodeDBClick = async () => {
+    if (selectedRows.size === 0) {
+      return;
+    }
+
+    // 선택된 항목 필터링
+    const selectedItems = filteredData.filter(item => selectedRows.has(item.id));
+
+    // 배송누락 마커 텍스트
+    const missingMarkers = ['😈 没有库存-미입고', '😠 库存短缺-입고부족'];
+
+    // 추가할 항목과 제거할 항목 분류
+    const itemsToAdd: Array<{
+      id: string;
+      currentNote: string;
+      newNote: string;
+    }> = [];
+
+    const itemsToRemove: Array<{
+      id: string;
+      currentNote: string;
+      newNote: string;
+    }> = [];
+
+    selectedItems.forEach(item => {
+      const progressQty = parseInt(item.progress_qty?.toString() || '0');
+      const importQty = parseInt(item.import_qty?.toString() || '0');
+
+      if (progressQty > importQty) {
+        const currentNote = item.note || '';
+
+        // 이미 배송누락 마커가 있는지 확인
+        const hasMarker = missingMarkers.some(marker => currentNote.includes(marker));
+
+        if (hasMarker) {
+          // 제거: 모든 배송누락 마커 삭제
+          let newNote = currentNote;
+          missingMarkers.forEach(marker => {
+            newNote = newNote.split('\n').filter(line => !line.includes(marker)).join('\n').trim();
+          });
+
+          itemsToRemove.push({
+            id: item.id,
+            currentNote: currentNote,
+            newNote: newNote
+          });
+        } else {
+          // 추가: 배송누락 마커 추가
+          let missingText = '';
+          if (importQty === 0) {
+            missingText = '😈 没有库存-미입고';
+          } else {
+            missingText = '😠 库存短缺-입고부족';
+          }
+
+          const newNote = currentNote ? `${currentNote}\n${missingText}` : missingText;
+
+          itemsToAdd.push({
+            id: item.id,
+            currentNote: currentNote,
+            newNote: newNote
+          });
+        }
+      }
+    });
+
+    // 업데이트할 항목이 없으면 종료
+    if (itemsToAdd.length === 0 && itemsToRemove.length === 0) {
+      return;
+    }
+
+    try {
+      // modifiedData 업데이트
+      const newModifiedData = { ...modifiedData };
+
+      [...itemsToAdd, ...itemsToRemove].forEach(updateItem => {
+        const item = filteredData.find(i => i.id === updateItem.id);
+        if (item && item.order_number && item.barcode) {
+          const itemKey = `${item.order_number}|${item.barcode}`;
+          if (!newModifiedData[itemKey]) {
+            newModifiedData[itemKey] = {};
+          }
+          newModifiedData[itemKey].note = updateItem.newNote;
+        }
+      });
+      setModifiedData(newModifiedData);
+
+      // filteredData와 itemData 업데이트
+      const updateDataNote = (data: ItemData[]) => {
+        return data.map(item => {
+          const updateItem = [...itemsToAdd, ...itemsToRemove].find(u => u.id === item.id);
+          if (updateItem) {
+            return { ...item, note: updateItem.newNote };
+          }
+          return item;
+        });
+      };
+
+      setFilteredData(updateDataNote(filteredData));
+      setItemData(updateDataNote(itemData));
+
+      // readyItems 업데이트 (처리준비 목록에 추가)
+      [...itemsToAdd, ...itemsToRemove].forEach(updateItem => {
+        const item = filteredData.find(i => i.id === updateItem.id);
+        if (item && item.order_number && item.barcode) {
+          // 원본 데이터에서 원본 입고 수량 가져오기
+          const originalItem = originalData.find(i => i.id === item.id);
+          const originalImportQty = originalItem?.import_qty ?? null;
+
+          console.log('=== 배송누락 처리준비 추가 디버깅 ===');
+          console.log('항목 ID:', item.id);
+          console.log('원본 note:', originalItem?.note);
+          console.log('새로운 note:', updateItem.newNote);
+
+          // 원본과 비교하여 변경되었는지 확인
+          const isChangedFromOriginal = hasValueChanged(
+            originalData,
+            item.id,
+            'note',
+            updateItem.newNote
+          );
+
+          console.log('isChangedFromOriginal:', isChangedFromOriginal);
+
+          if (isChangedFromOriginal) {
+            setReadyItems(prev => {
+              const existingIndex = prev.findIndex(ri => ri.id === item.id);
+
+              const readyItem: ReadyItem = {
+                id: item.id,
+                img_url: item.img_url || null,
+                order_number: item.order_number,
+                barcode: item.barcode || '',
+                product_name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
+                order_option: `${item.china_option1 || ''}${item.china_option1 && item.china_option2 ? ' ' : ''}${item.china_option2 || ''}`.trim(),
+                progress: item.progress_qty?.toString() || null,
+                import_qty: item.import_qty ?? null,
+                cancel_qty: item.cancel_qty ?? null,
+                memo: updateItem.newNote || null,
+                barcode_qty: 0, // 배송누락은 바코드 수량 0
+                original_import_qty: originalImportQty,
+                modifiedFields: {
+                  ...(existingIndex >= 0 ? prev[existingIndex].modifiedFields : {}),
+                  note: updateItem.newNote
+                }
+              };
+
+              if (existingIndex >= 0) {
+                const newItems = [...prev];
+                newItems[existingIndex] = readyItem;
+                return newItems;
+              } else {
+                return [...prev, readyItem];
+              }
+            });
+          } else {
+            // 원본과 같아졌으면 처리준비 목록에서 제거
+            setReadyItems(prev => prev.filter(ri => ri.id !== item.id));
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('배송누락 표시 중 오류:', error);
+    }
+  };
+
+  // 기존 바코드 DB 저장 함수 (참고용)
+  const handleBarcodeDBClickOld = async () => {
     if (selectedRows.size === 0) {
       alert('바코드를 생성할 항목을 선택해주세요.');
       return;
@@ -1109,11 +1298,21 @@ const ItemCheck: React.FC = () => {
       // 수정된 데이터를 배치 업데이트 형식으로 변환
       const updates: Array<{ order_number: string; barcode: string; field: string; value: number | string | null }> = [];
 
+      console.log('modifiedData 키 목록:', Object.keys(modifiedData));
+
       Object.entries(modifiedData).forEach(([itemKey, fields]) => {
         // itemKey는 "order_number|barcode" 형식
-        const [order_number, barcode] = itemKey.split('|');
+        const parts = itemKey.split('|');
+
+        if (parts.length !== 2) {
+          console.error('잘못된 itemKey 형식:', itemKey);
+          return;
+        }
+
+        const [order_number, barcode] = parts;
 
         Object.entries(fields).forEach(([field, value]) => {
+          console.log(`추가: ${order_number} | ${barcode} | ${field} = ${value}`);
           updates.push({ order_number, barcode, field, value });
         });
       });
@@ -1321,15 +1520,12 @@ const ItemCheck: React.FC = () => {
               })}
             </div>
 
-            {/* 정렬 옵션과 저장 버튼 - 검색 입력폼 위로 이동 */}
+            {/* 정렬 옵션과 버튼들 - 검색 입력폼 위로 이동 */}
             <ControlBar
               sortType={sortType}
               readyItemsCount={readyItems.length}
-              modifiedDataCount={Object.keys(modifiedData).length}
-              isSaving={isSaving}
               onSortTypeChange={handleSortTypeChange}
               onProcessReadyClick={() => setIsProcessReadyModalOpen(true)}
-              onSaveClick={handleSaveClick}
               onBarcodeClick={handleBarcodeClick}
               onBarcodeDBClick={handleBarcodeDBClick}
             />

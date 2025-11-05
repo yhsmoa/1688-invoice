@@ -61,7 +61,7 @@ export const POST = async (request: NextRequest) => {
     }
 
     const deliveryDataArray: any[] = [];
-    const deliveryCountMap = new Map<string, number>(); // 동일 배송번호 카운트용
+    let itemCounter = 0;
 
     console.log('데이터 행 처리 시작...');
 
@@ -95,32 +95,42 @@ export const POST = async (request: NextRequest) => {
 
         // AF열(delivery_code)에 데이터가 있는 경우만 처리
         if (deliveryCode && deliveryCode.toString().trim() !== '') {
-          // 동일한 offer_id + delivery_code 조합의 순번 계산
-          const key = `${offerId}-${deliveryCode}`;
-          const count = deliveryCountMap.get(key) || 0;
-          deliveryCountMap.set(key, count + 1);
+          // order_info를 줄바꿈으로 분리
+          const orderInfoLines = orderInfo.toString().split('\n').filter((line: string) => line.trim());
 
-          // ID 생성: offer_id + "-" + delivery_code + "-" + 순번
-          const id = `${offerId}-${deliveryCode}-${count + 1}`;
+          // 각 줄마다 별도 레코드 생성
+          for (const orderInfoLine of orderInfoLines) {
+            const trimmedLine = orderInfoLine.trim();
+            if (!trimmedLine) continue;
 
-          const deliveryItem = {
-            id: id,
-            order_id: orderId.toString().trim() || null,
-            shop: shop.toString().trim(),
-            delivery_status: deliveryStatus.toString().trim() || null,
-            offer_id: offerId.toString().trim() || null,
-            order_info: orderInfo.toString().trim() || null,
-            delivery_code: deliveryCode.toString().trim()
-          };
+            // sheet_order_number 파싱 (// 기준으로 첫 번째 부분)
+            const parts = trimmedLine.split('//');
+            const sheetOrderNumber = parts[0].trim();
 
-          deliveryDataArray.push(deliveryItem);
+            itemCounter++;
+            const id = `${deliveryCode}-${itemCounter}`;
 
-          // 처음 3개만 상세 로그
-          if (deliveryDataArray.length <= 3) {
-            console.log(`✅ 행 ${i + 2}: 배송정보 추가`);
-            console.log('  ID:', id);
-            console.log('  상점:', shop);
-            console.log('  배송코드:', deliveryCode);
+            const deliveryItem = {
+              id: id,
+              order_id: orderId.toString().trim() || null,
+              shop: shop.toString().trim(),
+              delivery_status: deliveryStatus.toString().trim() || null,
+              offer_id: offerId.toString().trim() || null,
+              order_info: trimmedLine, // 한 줄만
+              delivery_code: deliveryCode.toString().trim(),
+              sheet_order_number: sheetOrderNumber
+            };
+
+            deliveryDataArray.push(deliveryItem);
+
+            // 처음 3개만 상세 로그
+            if (deliveryDataArray.length <= 3) {
+              console.log(`✅ 행 ${i + 2}: 배송정보 추가`);
+              console.log('  ID:', id);
+              console.log('  상점:', shop);
+              console.log('  배송코드:', deliveryCode);
+              console.log('  sheet_order_number:', sheetOrderNumber);
+            }
           }
         }
       } catch (rowError) {
@@ -141,12 +151,12 @@ export const POST = async (request: NextRequest) => {
 
     // Supabase에 데이터 저장
     try {
-      console.log('Supabase 1688_invoice_deliveryInfo 테이블에 데이터 저장 중...');
+      console.log('Supabase 1688_invoice_deliveryInfo_check 테이블에 데이터 저장 중...');
 
       // 1. 먼저 기존 데이터 전체 삭제
       console.log('기존 배송정보 데이터 전체 삭제 시작...');
       const { error: deleteAllError } = await supabase
-        .from('1688_invoice_deliveryInfo')
+        .from('1688_invoice_deliveryInfo_check')
         .delete()
         .neq('id', ''); // 모든 데이터 삭제 (빈 문자열이 아닌 모든 ID)
 
@@ -175,7 +185,7 @@ export const POST = async (request: NextRequest) => {
 
           // 새 데이터 삽입
           const { data, error } = await supabase
-            .from('1688_invoice_deliveryInfo')
+            .from('1688_invoice_deliveryInfo_check')
             .insert(batch)
             .select();
 

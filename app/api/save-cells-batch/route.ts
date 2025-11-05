@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 주문번호+바코드로 행 번호 찾기
-      const key = `${order_number.trim()}|${barcode.trim()}`;
+      const key = `${order_number?.toString().trim() || ''}|${barcode?.toString().trim() || ''}`;
       const rowNumber = rowMap.get(key);
 
       if (!rowNumber) {

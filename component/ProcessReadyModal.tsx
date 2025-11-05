@@ -122,6 +122,9 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
                 const cancelQty = item.modifiedFields.cancel_qty !== undefined
                   ? item.modifiedFields.cancel_qty
                   : item.cancel_qty;
+                const memo = item.modifiedFields.memo !== undefined
+                  ? item.modifiedFields.memo
+                  : item.memo;
                 const barcodeQty = item.barcode_qty;
 
                 return (
@@ -220,6 +223,14 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* 비고 - 통계 아래 */}
+                      {memo && (
+                        <div className="note-row">
+                          <span className="note-label">비고:</span>
+                          <span className="note-content">{memo}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

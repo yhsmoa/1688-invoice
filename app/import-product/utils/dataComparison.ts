@@ -39,11 +39,11 @@ export function hasValueChanged(
 ): boolean {
   const originalValue = getOriginalValue(originalData, itemId, field);
 
-  // null 처리: null과 undefined를 동일하게 취급
-  const normalizedOriginal = originalValue === undefined ? null : originalValue;
-  const normalizedCurrent = currentValue === undefined ? null : currentValue;
+  // null 처리: null과 undefined, 빈 문자열을 동일하게 취급
+  const normalizedOriginal = (originalValue === undefined || originalValue === null || originalValue === '') ? null : originalValue;
+  const normalizedCurrent = (currentValue === undefined || currentValue === null || currentValue === '') ? null : currentValue;
 
-  // 완전히 동일한지 먼저 확인 (null, undefined 포함)
+  // 완전히 동일한지 먼저 확인 (null, undefined, '' 포함)
   if (normalizedOriginal === normalizedCurrent) {
     return false; // 변경 없음
   }
