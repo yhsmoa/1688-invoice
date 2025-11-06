@@ -32,6 +32,12 @@ const LeftsideMenu: React.FC = () => {
       <nav className="leftside-nav">
         <ul className="menu-list">
           <li className="menu-item">
+            <Link href="/order-stats" className="menu-link" onClick={(e) => handleNavigation(e, '/order-stats')}>
+              <span className="menu-icon">📊</span>
+              <span className="menu-text">주문 통계</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/chinaorder" className="menu-link" onClick={(e) => handleNavigation(e, '/chinaorder')}>
               <span className="menu-icon">🛒</span>
               <span className="menu-text">{t('menu.chinaOrder')}</span>

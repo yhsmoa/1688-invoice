@@ -30,14 +30,28 @@ const IndexPage: React.FC = () => {
     totalAmount: { receipt: 0, completed: 0, percentage: 0 },
     productCount: { receipt: 0, completed: 0, percentage: 0 }
   });
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string>('전체');
+
+  // 쿠팡 사용자 목록 가져오기
+  const fetchCoupangUsers = async () => {
+    try {
+      const response = await fetch('/api/get-coupang-users');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setCoupangUsers(result.data);
+      }
+    } catch (error) {
+      console.error('쿠팡 사용자 목록 가져오기 오류:', error);
+    }
+  };
 
   // 통계 데이터 가져오기
   const fetchStats = async () => {
     try {
-      // 절대 경로 사용
       const apiUrl = window.location.origin + '/api/get-stats';
-      console.log('API 호출 URL:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -45,17 +59,10 @@ const IndexPage: React.FC = () => {
         },
         cache: 'no-store'
       });
-      
-      console.log('API 응답 상태:', response.status, response.statusText);
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log('받은 데이터:', data);
         setStats(data);
-      } else {
-        console.error('API 응답 오류:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('오류 내용:', errorText);
       }
     } catch (error) {
       console.error('통계 데이터 가져오기 오류:', error);
@@ -66,6 +73,7 @@ const IndexPage: React.FC = () => {
 
   useEffect(() => {
     fetchStats();
+    fetchCoupangUsers();
   }, []);
 
   // 숫자 포맷팅 함수
@@ -85,68 +93,8 @@ const IndexPage: React.FC = () => {
         <LeftsideMenu />
         <main className="home-content">
           <div className="home-container">
-            <div className="stats-card">
-              <h2 className="stats-title">주문 통계</h2>
-              
-              {loading ? (
-                <div className="loading">데이터 로딩 중...</div>
-              ) : (
-                <div className="stats-content">
-                  <div className="stats-row">
-                    <div className="stats-label">주문개수</div>
-                    <div className="stats-values">
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">영수증 발행:</span>
-                        <span className="stats-value-number">{formatNumber(stats.orderCount.receipt)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">거래완료:</span>
-                        <span className="stats-value-number">{formatNumber(stats.orderCount.completed)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">달성률:</span>
-                        <span className="stats-value-number percentage">{formatPercentage(stats.orderCount.percentage)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="stats-row">
-                    <div className="stats-label">총 금액</div>
-                    <div className="stats-values">
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">영수증 발행:</span>
-                        <span className="stats-value-number">{formatNumber(stats.totalAmount.receipt)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">거래완료:</span>
-                        <span className="stats-value-number">{formatNumber(stats.totalAmount.completed)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">달성률:</span>
-                        <span className="stats-value-number percentage">{formatPercentage(stats.totalAmount.percentage)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="stats-row">
-                    <div className="stats-label">상품개수</div>
-                    <div className="stats-values">
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">영수증 발행:</span>
-                        <span className="stats-value-number">{formatNumber(stats.productCount.receipt)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">거래완료:</span>
-                        <span className="stats-value-number">{formatNumber(stats.productCount.completed)}</span>
-                      </div>
-                      <div className="stats-value-item">
-                        <span className="stats-value-label">달성률:</span>
-                        <span className="stats-value-number percentage">{formatPercentage(stats.productCount.percentage)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="page-header">
+              <h1 className="page-title">안녕하세요</h1>
             </div>
           </div>
         </main>
