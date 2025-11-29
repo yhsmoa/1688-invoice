@@ -24,11 +24,45 @@
   width: 100%;
 }
 
+/* 타이틀 행 */
+.china-order-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
 .china-order-title {
   color: #333;
   font-size: 2rem;
-  margin-bottom: 30px;
-  margin-top: 0;
+  margin: 0;
+}
+
+.china-order-title-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.china-order-user-dropdown {
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  min-width: 200px;
+  transition: border-color 0.2s ease;
+}
+
+.china-order-user-dropdown:hover {
+  border-color: #667eea;
+}
+
+.china-order-user-dropdown:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 /* 컨트롤 섹션 (정렬 옵션과 저장 버튼) */
@@ -90,6 +124,21 @@
   background-color: #3182ce;
 }
 
+.china-order-image-replace-all-btn {
+  background-color: #9C27B0;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.china-order-image-replace-all-btn:hover {
+  background-color: #7B1FA2;
+}
+
 /* 검색 영역 */
 .china-order-search-section {
   margin-bottom: 20px;
@@ -141,6 +190,28 @@
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
+}
+
+.china-order-status-filter-dropdown {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: white;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.china-order-status-filter-dropdown:hover {
+  border-color: #667eea;
+}
+
+.china-order-status-filter-dropdown:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 .china-order-search-button {

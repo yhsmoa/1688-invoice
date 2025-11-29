@@ -5,10 +5,10 @@ export async function GET(request: NextRequest) {
   try {
     console.log('GET /api/get-coupang-users 호출됨');
 
-    // users_api 테이블에서 coupang_name과 googlesheet_id 가져오기
+    // users_api 테이블에서 coupang_name, googlesheet_id, user_code, master_account, user_id 가져오기
     const { data, error } = await supabase
       .from('users_api')
-      .select('coupang_name, googlesheet_id')
+      .select('coupang_name, googlesheet_id, user_code, master_account, user_id')
       .order('coupang_name');
 
     console.log('Supabase 쿼리 결과:', { data, error });

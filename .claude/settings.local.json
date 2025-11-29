@@ -28,7 +28,11 @@
       "Bash(del nul)",
       "Bash(rm:*)",
       "Bash(git restore:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(del InvoiceSave.css)",
+      "Bash(mv:*)",
+      "Bash(xcopy:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

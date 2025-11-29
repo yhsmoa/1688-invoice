@@ -9,6 +9,7 @@ import './ExportProduct.css';
 interface CoupangUser {
   coupang_name: string;
   googlesheet_id: string;
+  user_code?: string;
 }
 
 interface OrderData {
@@ -1005,7 +1006,7 @@ const ExportProduct: React.FC = () => {
                   <option value="">쿠팡 사용자 선택</option>
                   {coupangUsers.map((user) => (
                     <option key={user.coupang_name} value={user.coupang_name}>
-                      {user.coupang_name}
+                      {user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name}
                     </option>
                   ))}
                 </select>

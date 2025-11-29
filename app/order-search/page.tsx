@@ -193,12 +193,40 @@ const OrderSearch: React.FC = () => {
   const handleCopyToClipboard = (text: string, fieldName: string) => {
     if (!text) return;
 
-    navigator.clipboard.writeText(text).then(() => {
+    // HTTP 환경에서도 작동하도록 fallback 추가
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setShowCopyToast(true);
+        setTimeout(() => setShowCopyToast(false), 1500);
+      }).catch(err => {
+        console.error('복사 실패:', err);
+        fallbackCopyToClipboard(text);
+      });
+    } else {
+      fallbackCopyToClipboard(text);
+    }
+  };
+
+  // HTTP 환경에서 사용할 fallback 복사 함수
+  const fallbackCopyToClipboard = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      document.execCommand('copy');
       setShowCopyToast(true);
       setTimeout(() => setShowCopyToast(false), 1500);
-    }).catch(err => {
+    } catch (err) {
       console.error('복사 실패:', err);
-    });
+      alert('복사에 실패했습니다.');
+    }
+
+    document.body.removeChild(textArea);
   };
 
   // 엑셀 업로드 핸들러 (기능 없음 - 템플릿만)

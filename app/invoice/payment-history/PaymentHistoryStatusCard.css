@@ -1,0 +1,48 @@
+.payment-history-status-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.payment-history-status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.payment-history-status-card.active {
+  border-color: #667eea;
+  background-color: #f0f4ff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.payment-history-status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.payment-history-status-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.payment-history-status-card.active .payment-history-status-text {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.payment-history-status-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.payment-history-status-card.active .payment-history-status-count {
+  color: #667eea;
+}

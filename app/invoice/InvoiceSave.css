@@ -1,17 +1,19 @@
-.invoice-layout {
+/* 주문 검사 페이지 전용 스타일 */
+
+.invoice-save-layout {
   min-height: 100vh !important;
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
 }
 
-.invoice-main-content {
+.invoice-save-main-content {
   display: flex !important;
   flex: 1 !important;
   width: 100% !important;
 }
 
-.invoice-content {
+.invoice-save-content {
   flex: 1 !important;
   padding: 20px;
   background-color: #f5f5f5;
@@ -19,122 +21,204 @@
   min-height: calc(100vh - 80px) !important;
 }
 
-.invoice-container {
+.invoice-save-container {
   padding: 20px;
   width: 100%;
 }
 
-.invoice-title {
+.invoice-save-title {
   color: #333;
   font-size: 2rem;
-  margin-bottom: 30px;
+  margin-bottom: 0;
   margin-top: 0;
 }
 
-/* 상태 카드들 */
-.status-cards {
+/* 타이틀 행 레이아웃 */
+.invoice-save-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.invoice-save-title-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 업로드 섹션 - 왼쪽/오른쪽 배치 */
+.invoice-save-upload-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.invoice-save-upload-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invoice-save-upload-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invoice-save-user-dropdown {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  min-width: 180px;
+}
+
+.invoice-save-user-dropdown:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+}
+
+.invoice-save-upload-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.invoice-save-upload-btn:hover {
+  background-color: #45a049;
+}
+
+.invoice-save-upload-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.invoice-save-download-btn {
+  background-color: #3b82f6;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.invoice-save-download-btn:hover {
+  background-color: #2563eb;
+}
+
+.invoice-save-download-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 잔액 보드 */
+.invoice-save-balance-section {
+  margin-bottom: 20px;
+}
+
+.invoice-save-balance-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.invoice-save-balance-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 상태 카드 그리드 */
+.invoice-save-status-cards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 30px;
 }
 
-.status-card {
+.invoice-save-status-card {
   cursor: pointer;
   transition: transform 0.2s ease;
+  white-space: pre-line; /* 줄바꿈 적용 */
 }
 
-.status-card:hover {
+.invoice-save-status-card:hover {
   transform: translateY(-2px);
 }
 
-.status-content {
+.invoice-save-button-loading {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
-.status-text {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
+.invoice-save-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: invoice-save-spin 0.8s linear infinite;
 }
 
-.status-count {
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-}
-
-/* 엑셀 업로드 섹션 */
-.excel-upload-section {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.excel-upload-btn {
-  padding: 10px 20px;
-  background-color: #48bb78;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  white-space: nowrap;
-}
-
-.excel-upload-btn:hover {
-  background-color: #38a169;
-}
-
-.excel-download-btn {
-  padding: 10px 20px;
-  background-color: #4299e1;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  white-space: nowrap;
-}
-
-.excel-download-btn:hover {
-  background-color: #3182ce;
+@keyframes invoice-save-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 검색 영역 */
-.search-section {
+.invoice-save-search-section {
   margin-bottom: 20px;
 }
 
-.search-board {
+.invoice-save-search-board {
   background: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.search-form-container {
+.invoice-save-search-form-container {
   display: flex;
   gap: 16px;
   align-items: center;
 }
 
-.search-dropdown {
+.invoice-save-search-dropdown {
   flex: 1;
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
+  background: white;
+  cursor: pointer;
 }
 
-.search-input {
+.invoice-save-search-input {
   flex: 2;
   padding: 10px 12px;
   border: 1px solid #ddd;
@@ -142,7 +226,7 @@
   font-size: 14px;
 }
 
-.search-button {
+.invoice-save-search-button {
   flex: 1;
   padding: 10px 16px;
   background-color: #667eea;
@@ -154,62 +238,70 @@
   transition: background-color 0.2s ease;
 }
 
-.search-button:hover {
+.invoice-save-search-button:hover {
   background-color: #5a67d8;
 }
 
 /* 테이블 */
-.table-board {
+.invoice-save-table-board {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.invoice-table {
+.invoice-save-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; /* 고정 테이블 레이아웃 사용 */
+  table-layout: fixed;
 }
 
-/* 테이블 열 너비 조정 */
-.invoice-table th:nth-child(1),
-.invoice-table td:nth-child(1) {
-  width: 40px;
-}
-
-.invoice-table th:nth-child(2),
-.invoice-table td:nth-child(2) {
-  width: 180px;
-}
-
-.invoice-table th:nth-child(3),
-.invoice-table td:nth-child(3) {
-  width: 100px;
-}
-
-.invoice-table th:nth-child(4),
-.invoice-table td:nth-child(4) {
-  width: 150px;
-}
-
-.invoice-table th:nth-child(5),
-.invoice-table td:nth-child(5) {
-  width: 150px;
-}
-
-.invoice-table th:nth-child(6),
-.invoice-table td:nth-child(6) {
-  width: 150px;
-}
-
-.invoice-table th:nth-child(7),
-.invoice-table td:nth-child(7) {
+/* 테이블 열 너비 */
+.invoice-save-table th:nth-child(1),
+.invoice-save-table td:nth-child(1) {
   width: 80px;
   text-align: center;
 }
 
-.invoice-table th {
+.invoice-save-table th:nth-child(2),
+.invoice-save-table td:nth-child(2) {
+  width: 120px;
+}
+
+.invoice-save-table th:nth-child(3),
+.invoice-save-table td:nth-child(3) {
+  width: 250px;
+  min-width: 250px;
+}
+
+.invoice-save-table th:nth-child(4),
+.invoice-save-table td:nth-child(4) {
+  width: 150px;
+}
+
+.invoice-save-table th:nth-child(5),
+.invoice-save-table td:nth-child(5) {
+  width: 60px;
+  text-align: center;
+}
+
+.invoice-save-table th:nth-child(6),
+.invoice-save-table td:nth-child(6) {
+  width: 80px;
+  text-align: center;
+}
+
+.invoice-save-table th:nth-child(7),
+.invoice-save-table td:nth-child(7) {
+  width: 120px;
+}
+
+.invoice-save-table th:nth-child(8),
+.invoice-save-table td:nth-child(8) {
+  width: 150px;
+}
+
+.invoice-save-table th {
   background-color: #f8f9fa;
   padding: 16px;
   text-align: left;
@@ -219,13 +311,7 @@
   white-space: nowrap;
 }
 
-/* 영수증 헤더 가운데 정렬 */
-.invoice-table th:last-child {
-  text-align: center;
-}
-
-/* 테이블 셀 내용 처리 */
-.invoice-table td {
+.invoice-save-table td {
   padding: 16px;
   border-bottom: 1px solid #e2e8f0;
   overflow: hidden;
@@ -234,310 +320,352 @@
   word-break: break-all;
 }
 
-/* 영수증 셀 가운데 정렬 */
-.invoice-table td:last-child {
-  text-align: center;
-}
-
-.empty-data {
-  text-align: center;
-  color: #666;
-  font-style: italic;
-}
-
-/* 주문번호 텍스트 클릭 스타일 */
-.order-number-text {
+/* 상품 썸네일 */
+.invoice-save-product-thumbnail {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  border: none;
+  background-color: #fff;
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.invoice-save-product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.invoice-save-no-image {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: none;
+}
+
+/* 텍스트 스타일 */
+.invoice-save-order-number-text {
   color: #333;
-  text-decoration: none;
   display: block;
   line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.order-number-text:hover {
-  color: #555;
+.invoice-save-product-name {
+  text-align: left !important;
+  line-height: 1.4 !important;
+  font-size: 14px !important;
+  color: #333 !important;
+  font-weight: normal !important;
+  font-family: Arial, sans-serif !important;
 }
 
-/* 비고 입력 스타일 */
-.note-input {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  font-size: 14px;
+.invoice-save-china-options {
+  text-align: left !important;
+  line-height: 1.4 !important;
+  font-size: 14px !important;
+  color: #333 !important;
+  font-weight: normal !important;
+  font-family: Arial, sans-serif !important;
 }
 
-.note-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+.invoice-save-qty-cell {
+  text-align: center;
+  padding: 8px 4px !important;
 }
 
-.note-text {
-  cursor: pointer;
-  color: #666;
-}
-
-.note-text:hover {
-  color: #333;
-  text-decoration: underline;
-}
-
-/* 상품명 텍스트 클릭 스타일 */
-.product-name-text {
-  cursor: pointer;
-  color: inherit !important;
-  transition: none;
-}
-
-/* 영수증 체크박스와 아이콘 스타일 */
-.receipt-checkbox-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-}
-
-.receipt-checkbox {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-/* 테이블 체크박스 스타일 */
-.table-checkbox {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-/* 영수증 첨부 텍스트 스타일 */
-.receipt-attach-text {
-  color: #333;
-  cursor: pointer;
+.invoice-save-qty-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
   font-size: 14px;
   font-weight: 500;
-  transition: color 0.2s ease;
-  display: inline-block;
+  min-width: 28px;
+  text-align: center;
+  background-color: #e2e2e2;
+  color: #333;
 }
 
-.receipt-attach-text:hover {
+.invoice-save-cost-display {
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+}
+
+.invoice-save-note-display {
+  text-align: left;
+  line-height: 1.3;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
   color: #666;
 }
 
-/* 영수증 아이콘 스타일 */
-.receipt-icon {
-  font-size: 20px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+.invoice-save-empty-data {
   text-align: center;
-  display: inline-block;
-  padding: 4px;
-  position: relative;
+  padding: 40px;
+  color: #666;
+  font-style: italic;
 }
 
-.receipt-icon:hover {
-  transform: scale(1.2);
+/* 페이지네이션 */
+.invoice-save-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
 }
 
-.receipt-icon.uploading {
-  cursor: wait;
-  animation: pulse 1.5s infinite;
+.invoice-save-pagination-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
 }
 
-/* 영수증 아이콘들 컨테이너 */
-.receipt-icons-container {
+.invoice-save-pagination-button:hover {
+  background-color: #e0e0e0;
+}
+
+.invoice-save-pagination-button:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.invoice-save-page-numbers {
+  display: flex;
+  margin: 0 10px;
+}
+
+.invoice-save-page-number {
+  width: 35px;
+  height: 35px;
+  margin: 0 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-}
-
-/* 삭제 아이콘 스타일 */
-.delete-icon {
-  font-size: 18px;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  text-align: center;
-  display: inline-block;
-  padding: 4px;
+  transition: all 0.2s;
 }
 
-.delete-icon:hover {
-  transform: scale(1.2);
+.invoice-save-page-number:hover {
+  background-color: #f0f0f0;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+.invoice-save-page-number.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
 }
 
-/* Drawer 스타일 */
-.drawer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+.invoice-save-page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 이미지 미리보기 */
+.invoice-save-image-preview-container {
+  position: relative;
   display: flex;
-  justify-content: flex-end;
-}
-
-.drawer {
-  background: white;
-  width: 50%;
-  height: 100vh;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  animation: slideIn 0.3s ease-out;
-  display: flex;
-  flex-direction: column;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.drawer-header {
-  padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  background-color: #f8f9fa;
+  justify-content: center;
 }
 
-.drawer-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-  transition: color 0.2s ease;
-}
-
-.close-btn:hover {
-  color: #333;
-}
-
-.drawer-content {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.drawer-content h3 {
-  margin-bottom: 20px;
-  color: #333;
-  font-size: 1.2rem;
-}
-
-/* Detail Table */
-.detail-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-.detail-table th,
-.detail-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.detail-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #333;
-}
-
-.detail-table tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-/* Drawer 내 상품명 표시 스타일 */
-.product-name-display {
-  color: #333;
-  line-height: 1.5;
-  width: 100%;
-}
-
-/* Received 입력 필드 */
-.received-input {
-  width: 60px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 4px;
-  font-size: 14px;
-  text-align: center;
-  background: transparent;
-}
-
-.received-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-/* Category 드롭박스 */
-.category-select {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  font-size: 14px;
+.invoice-save-image-preview {
+  display: none;
+  position: fixed;
+  z-index: 9999;
   background: white;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.invoice-save-image-preview-container:hover .invoice-save-image-preview {
+  display: block;
+}
+
+.invoice-save-image-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+/* 클릭 가능한 비용 */
+.invoice-save-clickable-cost {
   cursor: pointer;
+  color: #4a90e2;
+  text-decoration: underline;
+  transition: color 0.2s;
 }
 
-.category-select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+.invoice-save-clickable-cost:hover {
+  color: #357abd;
 }
 
-/* Drawer 액션 버튼 영역 */
-.drawer-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e2e8f0;
+/* 체크박스 */
+.invoice-save-table-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
 }
 
-/* 운송장 번호 스타일 */
-.delivery-numbers {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 수량 배지 색상 */
+.invoice-save-progress-qty {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
 }
 
-.delivery-numbers div {
-  font-size: 0.9em;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-} 
+.invoice-save-cancel-qty {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.invoice-save-export-qty {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+}
+
+/* 테이블 헤더 너비 조정 (13개 열) */
+.invoice-save-table th:nth-child(1),
+.invoice-save-table td:nth-child(1) {
+  width: 50px;
+  text-align: center;
+}
+
+.invoice-save-table th:nth-child(2),
+.invoice-save-table td:nth-child(2) {
+  width: 60px;
+  text-align: center;
+}
+
+.invoice-save-table th:nth-child(3),
+.invoice-save-table td:nth-child(3) {
+  width: 120px; /* 글번호 열 약간 확대 (100 → 120) */
+}
+
+.invoice-save-table th:nth-child(4),
+.invoice-save-table td:nth-child(4) {
+  width: 200px; /* 상품명 열 축소 (280 → 200) */
+}
+
+.invoice-save-table th:nth-child(5) {
+  width: 120px; /* 주문옵션 열 */
+  text-align: left; /* 주문옵션 헤더 왼쪽 정렬 */
+}
+
+.invoice-save-table td:nth-child(5) {
+  width: 120px;
+  text-align: center; /* 주문옵션 데이터 가운데 정렬 */
+}
+
+.invoice-save-table th:nth-child(6),
+.invoice-save-table td:nth-child(6) {
+  width: 50px; /* 개수 열 */
+  text-align: center;
+}
+
+.invoice-save-table th:nth-child(7),
+.invoice-save-table td:nth-child(7) {
+  width: 80px; /* 비용 열 */
+  text-align: center;
+}
+
+/* 진행 열 - 헤더와 데이터 모두 가운데 정렬 */
+.invoice-save-table th:nth-child(8),
+.invoice-save-table td:nth-child(8) {
+  width: 60px; /* 원래 40px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 입고 열 - 헤더와 데이터 모두 가운데 정렬 */
+.invoice-save-table th:nth-child(9),
+.invoice-save-table td:nth-child(9) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 취소 열 - 헤더와 데이터 모두 가운데 정렬 */
+.invoice-save-table th:nth-child(10),
+.invoice-save-table td:nth-child(10) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 출고 열 - 헤더와 데이터 모두 가운데 정렬 */
+.invoice-save-table th:nth-child(11),
+.invoice-save-table td:nth-child(11) {
+  width: 45px; /* 원래 30px의 1.5배 */
+  text-align: center;
+  padding: 4px 2px !important; /* 여백 최소화 */
+}
+
+/* 상태 배지 스타일 (둥근 사각형 배경) */
+.invoice-save-status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* 진행 - 회색 배경 */
+.invoice-save-status-badge.progress {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+/* 입고 - 부드러운 초록색 배경 */
+.invoice-save-status-badge.import {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* 취소 - 빨간색 배경 */
+.invoice-save-status-badge.cancel {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* 출고 - 파란색 배경 */
+.invoice-save-status-badge.export {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.invoice-save-table th:nth-child(12),
+.invoice-save-table td:nth-child(12) {
+  width: 120px; /* 비고 열 */
+}
+
+.invoice-save-table th:nth-child(13),
+.invoice-save-table td:nth-child(13) {
+  width: 200px; /* 정보 열 확대 (150 → 200) */
+}

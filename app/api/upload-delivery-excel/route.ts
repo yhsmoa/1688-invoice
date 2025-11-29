@@ -103,9 +103,29 @@ export const POST = async (request: NextRequest) => {
             const trimmedLine = orderInfoLine.trim();
             if (!trimmedLine) continue;
 
-            // sheet_order_number 파싱 (// 기준으로 첫 번째 부분)
-            const parts = trimmedLine.split('//');
-            const sheetOrderNumber = parts[0].trim();
+            // 데이터 형식 판별 및 파싱
+            let sheetOrderCode: string | null = null;
+            let sheetOrderNumber: string | null = null;
+
+            if (trimmedLine.includes('//')) {
+              // "//" 구분자 형식 (새 형식 또는 기존 형식)
+              const parts = trimmedLine.split('//').map(p => p.trim());
+
+              if (parts.length >= 5) {
+                // 새 형식: order_code // order_number // 옵션 // 바코드 // 수량
+                sheetOrderCode = parts[0] || null;
+                sheetOrderNumber = parts[1] || null;
+              } else {
+                // 기존 형식: order_number // 옵션 // 바코드 // 수량
+                sheetOrderCode = null;
+                sheetOrderNumber = parts[0] || null;
+              }
+            } else if (trimmedLine.includes(' - ')) {
+              // 레거시 형식: MMDD - 옵션 - 바코드 - 수량
+              const parts = trimmedLine.split(' - ').map(p => p.trim());
+              sheetOrderCode = null;
+              sheetOrderNumber = parts[0] || null; // MMDD 날짜
+            }
 
             itemCounter++;
             const id = `${deliveryCode}-${itemCounter}`;
@@ -118,6 +138,7 @@ export const POST = async (request: NextRequest) => {
               offer_id: offerId.toString().trim() || null,
               order_info: trimmedLine, // 한 줄만
               delivery_code: deliveryCode.toString().trim(),
+              sheet_order_code: sheetOrderCode,
               sheet_order_number: sheetOrderNumber
             };
 
@@ -129,6 +150,7 @@ export const POST = async (request: NextRequest) => {
               console.log('  ID:', id);
               console.log('  상점:', shop);
               console.log('  배송코드:', deliveryCode);
+              console.log('  sheet_order_code:', sheetOrderCode);
               console.log('  sheet_order_number:', sheetOrderNumber);
             }
           }

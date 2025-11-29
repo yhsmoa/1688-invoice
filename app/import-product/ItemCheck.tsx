@@ -127,7 +127,7 @@ const ItemCheck: React.FC = () => {
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<{[key: string]: string}>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
-  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1464,7 +1464,7 @@ const ItemCheck: React.FC = () => {
 
                   return (
                     <option key={user.coupang_name} value={user.coupang_name}>
-                      {user.coupang_name} {hasCachedData ? '●' : ''}
+                      {user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name} {hasCachedData ? '●' : ''}
                     </option>
                   );
                 })}

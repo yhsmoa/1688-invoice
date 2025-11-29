@@ -102,6 +102,7 @@ interface ChinaOrderData {
   columnI?: string; // I열
   columnJ?: string; // J열
   img_url?: string; // K열 - 이미지 URL
+  original_img_url?: string; // 원본 이미지 URL (이미지 교체용)
   site_url?: string; // L열 - 사이트 링크 URL
   columnM?: string; // M열
   columnN?: string; // N열
@@ -131,6 +132,7 @@ const ChinaOrderNew: React.FC = () => {
   const [filteredData, setFilteredData] = useState<ChinaOrderData[]>([]);
   const [originalData, setOriginalData] = useState<ChinaOrderData[]>([]);
   const [activeStatus, setActiveStatus] = useState<string>('전체');
+  const [statusFilter, setStatusFilter] = useState<string>('전체'); // '전체', '성공', '취소'
   const [viewMode, setViewMode] = useState<string>('기본'); // '기본' 또는 '사이트 합치기'
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<{[key: string]: string}>({});
@@ -145,6 +147,8 @@ const ChinaOrderNew: React.FC = () => {
   const [parsedOrderData, setParsedOrderData] = useState<any[]>([]);
   const [cancelReasons, setCancelReasons] = useState<{[key: string]: string}>({});
   const [canceledItems, setCanceledItems] = useState<{[key: string]: boolean}>({});
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string}[]>([]);
+  const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   
   // 이미지 URL 프록시 처리
   const getProxyImageUrl = (url: string): string => {
@@ -175,8 +179,11 @@ const ChinaOrderNew: React.FC = () => {
   // 정렬 상태
   const [sortType, setSortType] = useState<string>('주문순서');
 
-  // 이미지 교체 상태 (사이트별로 토글)
+  // 이미지 교체 상태 (사이트별로 교체 여부 추적)
   const [imageReplaced, setImageReplaced] = useState<{[siteUrl: string]: boolean}>({});
+
+  // 개별 항목의 이미지 교체 상태 추적
+  const [itemImageReplaced, setItemImageReplaced] = useState<Set<string>>(new Set());
 
   // 정렬 함수
   const sortData = (data: ChinaOrderData[], sortType: string): ChinaOrderData[] => {
@@ -303,17 +310,72 @@ const ChinaOrderNew: React.FC = () => {
     }
   }, [filteredData, currentPage, viewMode]);
 
-  // 검색 함수
-  const performSearch = async () => {
+  // 쿠팡 사용자 목록 가져오기
+  useEffect(() => {
+    const fetchCoupangUsers = async () => {
+      try {
+        console.log('쿠팡 사용자 목록 가져오기 시작...');
+        const response = await fetch('/api/get-coupang-users');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          setCoupangUsers(result.data);
+        } else {
+          console.warn('쿠팡 사용자 데이터를 가져오지 못했습니다:', result);
+        }
+      } catch (error) {
+        console.error('쿠팡 사용자 목록 가져오기 오류:', error);
+      }
+    };
+
+    fetchCoupangUsers();
+  }, []);
+
+  // 상태 필터 변경 시 자동 필터링
+  useEffect(() => {
+    performSearch();
+  }, [statusFilter]);
+
+  // 미매칭 여부 확인 함수
+  const isUnmatched = (item: ChinaOrderData): boolean => {
+    const status = getVerificationStatus(item);
+    const qtyStatus = getQuantityStatus(item);
+
+    // 노란색 배경이 되는 조건: 개수 불일치 또는 옵션 불일치
+    return (
+      qtyStatus === 'insufficient' ||
+      qtyStatus === 'excess' ||
+      status === 'offerId-only'
+    );
+  };
+
+  // 상태별 필터링 함수 (전체/성공/미매칭/취소 구분)
+  const filterByStatus = (data: ChinaOrderData[]): ChinaOrderData[] => {
+    if (statusFilter === '전체') {
+      return data;
+    } else if (statusFilter === '성공') {
+      // cancelStatus가 없고, 미매칭이 아닌 항목
+      return data.filter(item =>
+        (!item.cancelStatus || !item.cancelStatus.includes('[취소]')) &&
+        !isUnmatched(item)
+      );
+    } else if (statusFilter === '미매칭') {
+      // 개수 불일치 또는 옵션 불일치 항목 (노란색 배경)
+      return data.filter(item => isUnmatched(item));
+    } else if (statusFilter === '취소') {
+      // cancelStatus에 [취소] 문구가 있는 항목
+      return data.filter(item => item.cancelStatus && item.cancelStatus.includes('[취소]'));
+    }
+    return data;
+  };
+
+  // 검색어 필터링 함수
+  const filterBySearchTerm = (data: ChinaOrderData[]): ChinaOrderData[] => {
     if (!searchTerm.trim()) {
-      const sortedData = sortData(orderData, sortType);
-      setFilteredData(sortedData); // 검색어가 없으면 모든 데이터 표시 (정렬 적용)
-      setCurrentPage(1); // 검색 시 첫 페이지로 이동
-      return;
+      return data;
     }
 
-    // 기본적인 클라이언트 사이드 검색 구현
-    const searchResults = orderData.filter(item => {
+    return data.filter(item => {
       // 기본 검색 (상품명 등)
       const basicSearch =
         (item.columnA && item.columnA.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -330,10 +392,22 @@ const ChinaOrderNew: React.FC = () => {
 
       return basicSearch || sellerSearch || offerIdSearch;
     });
+  };
 
-    const sortedData = sortData(searchResults, sortType);
+  // 통합 검색 함수 (상태 필터 → 검색어 필터 → 정렬)
+  const performSearch = async () => {
+    // 1단계: 상태별 필터링
+    let filtered = filterByStatus(orderData);
+
+    // 2단계: 검색어 필터링
+    filtered = filterBySearchTerm(filtered);
+
+    // 3단계: 정렬
+    const sortedData = sortData(filtered, sortType);
+
+    // 결과 적용
     setFilteredData(sortedData);
-    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    setCurrentPage(1);
   };
 
   // 검색어 변경 시 자동으로 필터링하지 않음 (메모리 효율성을 위해)
@@ -344,8 +418,12 @@ const ChinaOrderNew: React.FC = () => {
   // 검색 초기화 함수
   const resetSearch = () => {
     setSearchTerm(''); // 검색어 초기화
-    const sortedData = sortData(orderData, sortType);
-    setFilteredData(sortedData); // 전체 데이터 표시 (정렬 적용)
+    setStatusFilter('전체'); // 상태 필터 초기화
+
+    // 상태 필터만 적용 후 정렬
+    const filtered = filterByStatus(orderData);
+    const sortedData = sortData(filtered, sortType);
+    setFilteredData(sortedData);
     setCurrentPage(1);
   };
 
@@ -430,6 +508,7 @@ const ChinaOrderNew: React.FC = () => {
             columnI: columns[8] || '',
             columnJ: columns[9] || '',
             img_url: columns[10] || '', // K열
+            original_img_url: columns[10] || '', // 원본 이미지 URL 백업
             site_url: columns[11] || '', // L열
             columnM: columns[12] || '', // M열
             columnN: columns[13] || '', // N열
@@ -1076,31 +1155,52 @@ const ChinaOrderNew: React.FC = () => {
       const siteOfferId = siteUrl === 'no-link' ? '' : siteUrl; // siteUrl은 이미 offerId
 
       if (itemOfferId === siteOfferId) {
-        // 취소 토글 처리 (이미 취소되어 있으면 취소 해제)
+        const orderIndex = newOrderData.findIndex(d => d.id === rowId);
+        const filteredIndex = newFilteredData.findIndex(d => d.id === rowId);
+
+        // 취소 토글 처리 (이미 취소되어 있으면 마지막 추가된 취소 데이터만 제거)
         if (newCanceledItems[rowId]) {
           delete newCanceledItems[rowId];
 
-          // 취소 해제 시 취소 상태 제거
-          const orderIndex = newOrderData.findIndex(d => d.id === rowId);
-          const filteredIndex = newFilteredData.findIndex(d => d.id === rowId);
-
+          // 기존 cancelStatus에서 마지막 줄만 제거
           if (orderIndex !== -1) {
-            newOrderData[orderIndex] = { ...newOrderData[orderIndex], cancelStatus: '' };
+            const currentStatus = newOrderData[orderIndex].cancelStatus || '';
+            const lines = currentStatus.split('\n').filter(line => line.trim());
+
+            if (lines.length > 0) {
+              // 마지막 줄 제거
+              lines.pop();
+              const updatedStatus = lines.join('\n');
+              newOrderData[orderIndex] = { ...newOrderData[orderIndex], cancelStatus: updatedStatus };
+            }
           }
           if (filteredIndex !== -1) {
-            newFilteredData[filteredIndex] = { ...newFilteredData[filteredIndex], cancelStatus: '' };
+            const currentStatus = newFilteredData[filteredIndex].cancelStatus || '';
+            const lines = currentStatus.split('\n').filter(line => line.trim());
+
+            if (lines.length > 0) {
+              // 마지막 줄 제거
+              lines.pop();
+              const updatedStatus = lines.join('\n');
+              newFilteredData[filteredIndex] = { ...newFilteredData[filteredIndex], cancelStatus: updatedStatus };
+            }
           }
         } else {
-          // 입력 처리
+          // 입력 처리 - 기존 데이터 유지하고 줄바꿈 후 추가
           if (selectedReason && selectedReason !== '선택' && selectedReason !== '--------------------------') {
-            const orderIndex = newOrderData.findIndex(d => d.id === rowId);
-            const filteredIndex = newFilteredData.findIndex(d => d.id === rowId);
-
             if (orderIndex !== -1) {
-              newOrderData[orderIndex] = { ...newOrderData[orderIndex], cancelStatus: selectedReason };
+              const currentStatus = newOrderData[orderIndex].cancelStatus || '';
+              const updatedStatus = currentStatus.trim()
+                ? `${currentStatus}\n${selectedReason}`
+                : selectedReason;
+              newOrderData[orderIndex] = { ...newOrderData[orderIndex], cancelStatus: updatedStatus };
             }
             if (filteredIndex !== -1) {
-              newFilteredData[filteredIndex] = { ...newFilteredData[filteredIndex], cancelStatus: selectedReason };
+              const currentStatus = newFilteredData[filteredIndex].cancelStatus || '';
+              const updatedStatus = currentStatus.trim()
+                ? `${currentStatus}\n${selectedReason}`
+                : selectedReason;
+              newFilteredData[filteredIndex] = { ...newFilteredData[filteredIndex], cancelStatus: updatedStatus };
             }
 
             // [취소]가 포함된 경우에만 canceledItems에 추가
@@ -1117,20 +1217,29 @@ const ChinaOrderNew: React.FC = () => {
     setFilteredData(newFilteredData);
   };
 
-  // 이미지 교체 토글 함수
+  // 개별 이미지 교체 함수 (단일 사이트 보드)
   const handleImageReplace = (siteUrl: string) => {
+    console.log('[이미지 교체] 시작 - siteUrl:', siteUrl);
+
     // 해당 보드의 데이터 가져오기
     const siteData = groupBySite(filteredData)[siteUrl] || [];
+    console.log('[이미지 교체] siteData 개수:', siteData.length);
 
     // 체크된 항목이 있는지 확인
     const checkedItems = siteData.filter((item: ChinaOrderData) => selectedRows.has(item.id));
+    console.log('[이미지 교체] 체크된 항목 개수:', checkedItems.length);
 
     if (checkedItems.length > 0) {
       // 체크된 항목만 이미지 교체
+      const newReplacedIds = new Set(itemImageReplaced);
+      console.log('[이미지 교체] 기존 교체된 ID 개수:', itemImageReplaced.size);
+
       setOrderData(prevData => prevData.map(item => {
         if (checkedItems.some((checkedItem: ChinaOrderData) => checkedItem.id === item.id)) {
           const itemOfferId = extractOfferId(item.site_url || '');
           const itemOption = `${item.columnG || ''}|${item.columnH || ''}`.trim();
+
+          console.log('[이미지 교체] 매칭 시도 - ID:', item.id, 'offerId:', itemOfferId, 'option:', itemOption);
 
           const matchedOrder = parsedOrderData.find(order => {
             if (order.offerId !== itemOfferId) return false;
@@ -1140,13 +1249,21 @@ const ChinaOrderNew: React.FC = () => {
           });
 
           if (matchedOrder?.imageUrl) {
+            console.log('[이미지 교체] 매칭 성공 - ID:', item.id, '기존 이미지:', item.img_url, '새 이미지:', matchedOrder.imageUrl);
+            newReplacedIds.add(item.id); // 교체 완료로 표시
             return { ...item, img_url: matchedOrder.imageUrl };
+          } else {
+            console.log('[이미지 교체] 매칭 실패 - ID:', item.id);
           }
         }
         return item;
       }));
+
+      console.log('[이미지 교체] 최종 교체된 ID 개수:', newReplacedIds.size);
+      setItemImageReplaced(newReplacedIds);
     } else {
       // 체크된 항목이 없으면 전체 보드 이미지 교체
+      console.log('[이미지 교체] 전체 보드 토글 - 기존 상태:', imageReplaced[siteUrl]);
       setImageReplaced(prev => ({
         ...prev,
         [siteUrl]: !prev[siteUrl]
@@ -1154,9 +1271,34 @@ const ChinaOrderNew: React.FC = () => {
     }
   };
 
+  // 전체 이미지 교체 함수 (모든 매칭된 데이터)
+  const handleReplaceAllImages = () => {
+    // 현재 필터링된 데이터의 모든 사이트 URL 추출
+    const allSiteUrls = new Set(
+      filteredData
+        .map(item => extractOfferId(item.site_url || ''))
+        .filter(url => url)
+    );
+
+    // 모든 사이트의 교체 상태를 토글
+    const newImageReplaced: {[siteUrl: string]: boolean} = { ...imageReplaced };
+
+    // 현재 상태 확인 (모두 true인지 확인)
+    const allReplaced = Array.from(allSiteUrls).every(siteUrl => imageReplaced[siteUrl]);
+
+    // 모두 교체 상태면 원본으로, 아니면 교체로
+    allSiteUrls.forEach(siteUrl => {
+      newImageReplaced[siteUrl] = !allReplaced;
+    });
+
+    setImageReplaced(newImageReplaced);
+  };
+
   // 이미지 URL 가져오기 함수 (교체 상태에 따라)
   const getImageUrl = (item: ChinaOrderData, siteUrl: string): string => {
-    if (imageReplaced[siteUrl]) {
+    const isReplaced = imageReplaced[siteUrl] || itemImageReplaced.has(item.id);
+
+    if (isReplaced) {
       // 교체 상태: parsedOrderData에서 매칭되는 imageUrl 찾기
       const itemOfferId = extractOfferId(item.site_url || '');
       const itemOption = `${item.columnG || ''}|${item.columnH || ''}`.trim();
@@ -1202,10 +1344,10 @@ const ChinaOrderNew: React.FC = () => {
         });
       }
 
-      return matchedOrder?.imageUrl || item.img_url || '';
+      return matchedOrder?.imageUrl || item.original_img_url || item.img_url || '';
     }
     // 원본 상태
-    return item.img_url || '';
+    return item.original_img_url || item.img_url || '';
   };
 
   // 주문 콘솔 코드 생성 함수
@@ -1253,7 +1395,10 @@ const ChinaOrderNew: React.FC = () => {
 
           if (barcode && quantity > 0) {
             // 각 항목을 개별적으로 추가 (합치지 않음)
-            const line = `${date} // ${option} // ${barcode} // ${quantity}ea`;
+            const orderCode = item.columnS || '';
+            const line = orderCode
+              ? `${orderCode} // ${date} // ${option} // ${barcode} // ${quantity}ea`
+              : `${date} // ${option} // ${barcode} // ${quantity}ea`;
             memoLines.push(line);
           }
         }
@@ -1427,9 +1572,35 @@ const ChinaOrderNew: React.FC = () => {
   // 엑셀 다운로드 함수 (1개 파일, 2개 시트: 성공, 취소)
   const handleExcelDownload = () => {
     try {
+      // 헤더 정의
+      const headers = [
+        'DATE',           // A
+        'user_code',      // B
+        'product_name',   // C
+        'option_name',    // D
+        'qty',            // E
+        'barcode',        // F
+        'china_option1',  // G
+        'china_option2',  // H
+        'unit_price',     // I
+        'total_price',    // J
+        'img_url',        // K
+        'site_url',       // L
+        '진행',           // M
+        '입고',           // N
+        '취소',           // O
+        '출고',           // P
+        '한국 비고',      // Q
+        '중국 비고',      // R
+        'order_code',     // S
+        'shipment_code',  // T
+        'option_id',      // U
+        'shipment_info',  // V
+      ];
+
       // 성공 데이터와 취소 데이터 분리
-      const successData: any[][] = [];
-      const canceledData: any[][] = [];
+      const successData: any[][] = [headers];
+      const canceledData: any[][] = [headers];
 
       orderData.forEach(item => {
         // 각 항목의 자체 비고만 사용
@@ -1484,14 +1655,14 @@ const ChinaOrderNew: React.FC = () => {
       // 워크북 생성
       const wb = XLSX.utils.book_new();
 
-      // 성공 시트 생성 및 추가
-      if (successData.length > 0) {
+      // 성공 시트 생성 및 추가 (헤더 포함 길이가 1보다 크면 데이터 있음)
+      if (successData.length > 1) {
         const successWS = XLSX.utils.aoa_to_sheet(successData);
         XLSX.utils.book_append_sheet(wb, successWS, '성공');
       }
 
-      // 취소 시트 생성 및 추가
-      if (canceledData.length > 0) {
+      // 취소 시트 생성 및 추가 (헤더 포함 길이가 1보다 크면 데이터 있음)
+      if (canceledData.length > 1) {
         const cancelWS = XLSX.utils.aoa_to_sheet(canceledData);
         XLSX.utils.book_append_sheet(wb, cancelWS, '취소');
       }
@@ -1499,7 +1670,8 @@ const ChinaOrderNew: React.FC = () => {
       // 엑셀 파일 다운로드
       XLSX.writeFile(wb, `주문데이터_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
-      alert(`엑셀 다운로드 완료!\n성공: ${successData.length}개\n취소: ${canceledData.length}개`);
+      // 알림 메시지 (헤더 제외한 실제 데이터 개수)
+      alert(`엑셀 다운로드 완료!\n성공: ${successData.length - 1}개\n취소: ${canceledData.length - 1}개`);
 
     } catch (error) {
       console.error('엑셀 다운로드 오류:', error);
@@ -1515,7 +1687,30 @@ const ChinaOrderNew: React.FC = () => {
         <LeftsideMenu />
         <main className="china-order-content">
           <div className="china-order-container">
-            <h1 className="china-order-title">신규 주문</h1>
+            {/* 타이틀 행 - 왼쪽: 제목, 오른쪽: 사용자 선택 */}
+            <div className="china-order-title-row">
+              <h1 className="china-order-title">신규 주문</h1>
+              <div className="china-order-title-controls">
+                <select
+                  className="china-order-user-dropdown"
+                  value={selectedCoupangUser}
+                  onChange={(e) => setSelectedCoupangUser(e.target.value)}
+                >
+                  <option value="">쿠팡 사용자 선택</option>
+                  {coupangUsers.map((user) => {
+                    const displayName = user.user_code
+                      ? `${user.user_code} ${user.coupang_name}`
+                      : user.coupang_name;
+
+                    return (
+                      <option key={user.coupang_name} value={user.coupang_name}>
+                        {displayName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
 
             {/* 컨트롤 섹션 (정렬 옵션과 저장 버튼) */}
             <div className="china-order-control-section">
@@ -1538,6 +1733,7 @@ const ChinaOrderNew: React.FC = () => {
                 >
                   {isSaving ? '생성 중...' : '주문 검수'}
                 </button>
+                <button className="china-order-image-replace-all-btn" onClick={handleReplaceAllImages}>전체 이미지 교체</button>
                 <button className="china-order-excel-download-btn active" onClick={handleOrderConsole}>주문번호 입력 콘솔</button>
                 <button className="china-order-excel-download-btn active" onClick={handleExcelDownload}>엑셀 다운</button>
               </div>
@@ -1573,9 +1769,19 @@ const ChinaOrderNew: React.FC = () => {
                   </div>
                 </div>
                 <div className="china-order-search-form-container">
-                  <input 
-                    type="text" 
-                    placeholder="상품명, 글번호 등을 입력하세요" 
+                  <select
+                    className="china-order-status-filter-dropdown"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="전체">전체</option>
+                    <option value="성공">성공</option>
+                    <option value="미매칭">미매칭</option>
+                    <option value="취소">취소</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="상품명, 글번호 등을 입력하세요"
                     className="china-order-search-input"
                     value={searchTerm}
                     onChange={handleSearchInputChange}
@@ -2188,7 +2394,7 @@ processAllOrders();`;
                               onClick={() => handleImageReplace(siteUrl)}
                               style={{
                                 padding: '6px 12px',
-                                background: '#9C27B0',
+                                background: imageReplaced[siteUrl] ? '#9C27B0' : '#9C27B0',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
@@ -2196,7 +2402,7 @@ processAllOrders();`;
                                 fontSize: '14px'
                               }}
                             >
-                              {imageReplaced[siteUrl] ? '원본 이미지' : '이미지 교체'}
+                              {imageReplaced[siteUrl] ? '✅ 교체완료' : '이미지 교체'}
                             </button>
                             <select
                               className="china-order-cancel-reason-select"
@@ -2470,17 +2676,21 @@ processAllOrders();`;
                                   <td>
                                     <div
                                       onClick={() => handleCellEdit(item.id, 'cancelStatus')}
-                                      style={{cursor: 'pointer', minHeight: '20px'}}
+                                      style={{cursor: 'pointer', minHeight: '20px', whiteSpace: 'pre-line'}}
                                     >
                                       {editingCell?.id === item.id && editingCell?.field === 'cancelStatus' ? (
-                                        <input
-                                          type="text"
+                                        <textarea
                                           value={cellValue}
                                           onChange={(e) => setCellValue(e.target.value)}
                                           onBlur={() => handleCellSave(item.id, 'cancelStatus')}
-                                          onKeyPress={(e) => e.key === 'Enter' && handleCellSave(item.id, 'cancelStatus')}
+                                          onKeyPress={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              handleCellSave(item.id, 'cancelStatus');
+                                            }
+                                          }}
                                           autoFocus
-                                          style={{width: '100%', border: 'none', outline: 'none', background: 'transparent', textAlign: 'left'}}
+                                          style={{width: '100%', border: 'none', outline: 'none', background: 'transparent', textAlign: 'left', resize: 'vertical', minHeight: '40px'}}
                                         />
                                       ) : (
                                         item.cancelStatus || ''
@@ -2747,17 +2957,21 @@ processAllOrders();`;
                           <td>
                             <div
                               onClick={() => handleCellEdit(item.id, 'cancelStatus')}
-                              style={{cursor: 'pointer', minHeight: '20px'}}
+                              style={{cursor: 'pointer', minHeight: '20px', whiteSpace: 'pre-line'}}
                             >
                               {editingCell?.id === item.id && editingCell?.field === 'cancelStatus' ? (
-                                <input
-                                  type="text"
+                                <textarea
                                   value={cellValue}
                                   onChange={(e) => setCellValue(e.target.value)}
                                   onBlur={() => handleCellSave(item.id, 'cancelStatus')}
-                                  onKeyPress={(e) => e.key === 'Enter' && handleCellSave(item.id, 'cancelStatus')}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleCellSave(item.id, 'cancelStatus');
+                                    }
+                                  }}
                                   autoFocus
-                                  style={{width: '100%', border: 'none', outline: 'none', background: 'transparent', textAlign: 'left'}}
+                                  style={{width: '100%', border: 'none', outline: 'none', background: 'transparent', textAlign: 'left', resize: 'vertical', minHeight: '40px'}}
                                 />
                               ) : (
                                 item.cancelStatus || ''

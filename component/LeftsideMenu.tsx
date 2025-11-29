@@ -11,6 +11,7 @@ import './LeftsideMenu.css';
 
 const LeftsideMenu: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isInvoiceMenuOpen, setIsInvoiceMenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const { checkUnsavedChanges } = useSaveContext();
@@ -18,6 +19,10 @@ const LeftsideMenu: React.FC = () => {
 
   const toggleExportMenu = () => {
     setIsExportMenuOpen(!isExportMenuOpen);
+  };
+
+  const toggleInvoiceMenu = () => {
+    setIsInvoiceMenuOpen(!isInvoiceMenuOpen);
   };
 
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -74,10 +79,25 @@ const LeftsideMenu: React.FC = () => {
             </Link>
           </li>
           <li className="menu-item">
-            <Link href="/invoice" className="menu-link" onClick={(e) => handleNavigation(e, '/invoice')}>
+            <div className="menu-link" onClick={toggleInvoiceMenu}>
               <span className="menu-icon">📄</span>
               <span className="menu-text">영수증 저장</span>
-            </Link>
+              <span className={`dropdown-arrow ${isInvoiceMenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isInvoiceMenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/invoice/payment-history" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history')}>
+                    <span className="submenu-text">결제내역</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/invoice/order-refund" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/order-refund')}>
+                    <span className="submenu-text">주문취소</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
           <li className="menu-item">
             <div className="menu-link" onClick={toggleExportMenu}>

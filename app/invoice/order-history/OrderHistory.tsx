@@ -2,14 +2,13 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import TopsideMenu from '../../component/TopsideMenu';
-import LeftsideMenu from '../../component/LeftsideMenu';
-import './OrderCheck.css';
-import { matchDeliveryInfo, formatInfoColumn, type DeliveryInfo } from './utils/deliveryMatcher';
-import OrderCheckStatusCard from './OrderCheckStatusCard';
+import TopsideMenu from '../../../component/TopsideMenu';
+import LeftsideMenu from '../../../component/LeftsideMenu';
+import './OrderHistory.css';
+import OrderHistoryStatusCard from './OrderHistoryStatusCard';
 
 // 데이터 타입 정의 - 상품 입고 페이지와 동일
-export interface OrderCheckData {
+export interface OrderHistoryData {
   id: string;
   row_number?: string;
   image_url?: string;
@@ -38,45 +37,32 @@ export interface OrderCheckData {
   order_payment_time?: string | null;
 }
 
-const OrderCheck: React.FC = () => {
+const OrderHistory: React.FC = () => {
   const { t } = useTranslation();
 
-  // 카드 데이터 정의 - delivery_status 기반
-  const DELIVERY_STATUS_LABELS = {
-    'all': '전체',
-    '等待买家确认收货': '等待买家确认收货\n수령대기',
-    '等待卖家发货': '等待卖家发货\n판매자 배송 전',
-    '交易关闭': '交易关闭\n거래 종료',
-    '退款中': '退款中\n환불 진행 중',
-    '交易成功': '交易成功\n거래 성공',
-    'unmatched': '미매칭'
-  };
-
+  // 카드 데이터 정의
   const cardData = [
-    { key: 'all', label: DELIVERY_STATUS_LABELS['all'] },
-    { key: '等待买家确认收货', label: DELIVERY_STATUS_LABELS['等待买家确认收货'] },
-    { key: '等待卖家发货', label: DELIVERY_STATUS_LABELS['等待卖家发货'] },
-    { key: '交易关闭', label: DELIVERY_STATUS_LABELS['交易关闭'] },
-    { key: '退款中', label: DELIVERY_STATUS_LABELS['退款中'] },
-    { key: '交易成功', label: DELIVERY_STATUS_LABELS['交易成功'] },
-    { key: 'unmatched', label: DELIVERY_STATUS_LABELS['unmatched'] }
+    { key: 'new', label: '신규' },
+    { key: 'progress', label: '진행' },
+    { key: 'cancel_received', label: '취소접수' },
+    { key: 'cancel_completed', label: '취소완료' }
   ];
 
   // State 관리
-  const [itemData, setItemData] = useState<OrderCheckData[]>([]);
-  const [filteredData, setFilteredData] = useState<OrderCheckData[]>([]);
+  const [itemData, setItemData] = useState<OrderHistoryData[]>([]);
+  const [filteredData, setFilteredData] = useState<OrderHistoryData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string}[]>([]);
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState('일반검색');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [deliveryInfoData, setDeliveryInfoData] = useState<DeliveryInfo[]>([]);
   const [activeStatus, setActiveStatus] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
 
   const excelFileInputRef = useRef<HTMLInputElement>(null);
   const itemsPerPage = 20;
@@ -93,7 +79,7 @@ const OrderCheck: React.FC = () => {
   };
 
   // 상태별 필터링 함수
-  const filterByStatus = (statusKey: string): OrderCheckData[] => {
+  const filterByStatus = (statusKey: string): OrderHistoryData[] => {
     if (statusKey === 'all') {
       return itemData;
     }
@@ -120,91 +106,68 @@ const OrderCheck: React.FC = () => {
     }
   };
 
-  // 배송 정보 가져오기
-  const fetchDeliveryInfo = async (): Promise<DeliveryInfo[]> => {
-    try {
-      console.log('배송 정보 가져오기 시작...');
-      const response = await fetch('/api/get-all-delivery-info-check');
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setDeliveryInfoData(result.data);
-        console.log(`배송 정보 ${result.data.length}개 로드 완료`);
-        return result.data; // 데이터 직접 반환
-      } else {
-        console.warn('배송 정보를 가져오지 못했습니다:', result);
-        return [];
-      }
-    } catch (error) {
-      console.error('배송 정보 가져오기 오류:', error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     fetchCoupangUsers();
-    fetchDeliveryInfo();
   }, []);
 
-  // 드롭다운 선택 시 구글 시트 데이터 자동 로드
+  // 드롭다운 선택 시 상태 초기화
   useEffect(() => {
-    if (selectedCoupangUser) {
-      handleLoadGoogleSheet();
+    if (!selectedCoupangUser) {
+      setHasLoadedData(false);
+      setItemData([]);
+      setFilteredData([]);
+      setBalance(null);
     }
   }, [selectedCoupangUser]);
 
-  // 구글 시트 데이터 로드
-  const handleLoadGoogleSheet = async () => {
+  // 잔액 조회
+  const fetchBalance = async (masterAccount: string) => {
+    try {
+      const response = await fetch(`/api/get-invoice-balance?master_account=${encodeURIComponent(masterAccount)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setBalance(result.balance);
+        console.log('잔액 조회 성공:', result.balance);
+      } else {
+        console.warn('잔액 조회 실패:', result.error);
+        setBalance(null);
+      }
+    } catch (error) {
+      console.error('잔액 조회 오류:', error);
+      setBalance(null);
+    }
+  };
+
+  // 업데이트 버튼 - 잔액만 조회
+  const handleUpdate = async () => {
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
 
     const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.googlesheet_id) {
-      alert('선택한 사용자의 구글 시트 ID를 찾을 수 없습니다.');
+    if (!selectedUser) {
+      alert('선택한 사용자 정보를 찾을 수 없습니다.');
       return;
     }
 
     try {
       setLoading(true);
 
-      // 구글 시트 데이터 로드 전에 최신 배송 정보 가져오기
-      console.log('📦 구글 시트 로드 전 배송 정보 새로고침 시작...');
-      const latestDeliveryInfo = await fetchDeliveryInfo();
-      console.log('✅ 배송 정보 새로고침 완료 - 개수:', latestDeliveryInfo.length);
-
-      // 구글 시트 데이터 로드 API 호출
-      const response = await fetch('/api/load-google-sheet-order-check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          googlesheet_id: selectedUser.googlesheet_id,
-          coupang_name: selectedCoupangUser
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // 최신 배송 정보로 매칭 (방금 가져온 latestDeliveryInfo 사용)
-        console.log('🔄 매칭 시작 - 배송 정보 개수:', latestDeliveryInfo.length);
-        const matchedData = matchDeliveryInfo(result.data, latestDeliveryInfo);
-
-        setItemData(matchedData);
-        setFilteredData(matchedData);
-        setLoading(false);
-        alert(`데이터를 불러왔습니다. (${matchedData.length}개 항목)`);
+      // 잔액 조회 (master_account가 있는 경우)
+      if (selectedUser.master_account) {
+        await fetchBalance(selectedUser.master_account);
+        setHasLoadedData(true); // 업데이트 후 엑셀 불러오기 활성화
+        alert('잔액이 업데이트되었습니다.');
       } else {
-        console.error('구글 시트 API 오류:', result.error);
-        alert(result.error || '구글 시트 데이터를 불러오는데 실패했습니다.');
-        setLoading(false);
+        alert('master_account 정보가 없습니다.');
       }
+
+      setLoading(false);
     } catch (error) {
-      console.error('구글 시트 데이터 불러오기 오류:', error);
-      alert(`구글 시트 데이터를 불러오는데 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.error('업데이트 오류:', error);
+      alert(`업데이트 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
       setLoading(false);
     }
   };
@@ -232,7 +195,7 @@ const OrderCheck: React.FC = () => {
     try {
       console.log('엑셀 파일 업로드 시작:', file.name);
 
-      const response = await fetch('/api/upload-order-check-excel', {
+      const response = await fetch('/api/upload-chinaorder-excel', {
         method: 'POST',
         body: formData,
       });
@@ -242,10 +205,6 @@ const OrderCheck: React.FC = () => {
       if (response.ok) {
         alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
         console.log('업로드 성공:', result);
-
-        // 엑셀 업로드 성공 후 배송 정보 다시 가져오기
-        await fetchDeliveryInfo();
-        console.log('✅ 배송 정보 새로고침 완료');
       } else {
         console.error('업로드 실패:', result);
         alert(result.error || '업로드 중 오류가 발생했습니다.');
@@ -300,35 +259,16 @@ const OrderCheck: React.FC = () => {
 
     const searchLower = searchTerm.toLowerCase().trim();
 
-    let filtered: OrderCheckData[] = [];
-
-    if (searchType === '배송번호/offerID') {
-      // 배송번호/offerID 검색 - deliveryInfoData에서 먼저 찾고 매칭
-      const matchingDeliveryInfos = deliveryInfoData.filter(info =>
-        info.delivery_code?.toLowerCase().includes(searchLower) ||
-        info.offer_id?.toLowerCase().includes(searchLower)
+    // 일반검색
+    const filtered = itemData.filter(item => {
+      return (
+        item.product_name?.toLowerCase().includes(searchLower) ||
+        item.order_number?.toLowerCase().includes(searchLower) ||
+        item.barcode?.toLowerCase().includes(searchLower) ||
+        item.china_option1?.toLowerCase().includes(searchLower) ||
+        item.china_option2?.toLowerCase().includes(searchLower)
       );
-
-      // 매칭된 delivery_info의 sheet_order_number로 item 찾기
-      const matchedOrderNumbers = new Set(
-        matchingDeliveryInfos.map(info => info.sheet_order_number)
-      );
-
-      filtered = itemData.filter(item =>
-        matchedOrderNumbers.has(item.order_number)
-      );
-    } else {
-      // 일반검색
-      filtered = itemData.filter(item => {
-        return (
-          item.product_name?.toLowerCase().includes(searchLower) ||
-          item.order_number?.toLowerCase().includes(searchLower) ||
-          item.barcode?.toLowerCase().includes(searchLower) ||
-          item.china_option1?.toLowerCase().includes(searchLower) ||
-          item.china_option2?.toLowerCase().includes(searchLower)
-        );
-      });
-    }
+    });
 
     setFilteredData(filtered);
     setCurrentPage(1);
@@ -377,7 +317,7 @@ const OrderCheck: React.FC = () => {
   };
 
   // 비용 클릭 시 URL 열기
-  const handleCostClick = (e: React.MouseEvent, item: OrderCheckData) => {
+  const handleCostClick = (e: React.MouseEvent, item: OrderHistoryData) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -453,18 +393,18 @@ const OrderCheck: React.FC = () => {
   };
 
   return (
-    <div className="order-check-layout" onMouseMove={handleMouseMove}>
+    <div className="order-history-layout" onMouseMove={handleMouseMove}>
       <TopsideMenu />
-      <div className="order-check-main-content">
+      <div className="order-history-main-content">
         <LeftsideMenu />
-        <main className="order-check-content">
-          <div className="order-check-container">
+        <main className="order-history-content">
+          <div className="order-history-container">
             {/* 타이틀 행 - 왼쪽: 제목, 오른쪽: 사용자 선택 및 업데이트 */}
-            <div className="order-check-title-row">
-              <h1 className="order-check-title">주문 검사</h1>
-              <div className="order-check-title-controls">
+            <div className="order-history-title-row">
+              <h1 className="order-history-title">영수증 저장</h1>
+              <div className="order-history-title-controls">
                 <select
-                  className="order-check-user-dropdown"
+                  className="order-history-user-dropdown"
                   value={selectedCoupangUser}
                   onChange={(e) => setSelectedCoupangUser(e.target.value)}
                 >
@@ -472,43 +412,45 @@ const OrderCheck: React.FC = () => {
                   {coupangUsers.map((user) => {
                     const cacheKey = `sheet_data_${user.coupang_name}`;
                     const hasCachedData = localStorage.getItem(cacheKey) !== null;
+                    const displayName = user.user_code
+                      ? `${user.user_code} ${user.coupang_name}`
+                      : user.coupang_name;
 
                     return (
                       <option key={user.coupang_name} value={user.coupang_name}>
-                        {user.coupang_name} {hasCachedData ? '●' : ''}
+                        {displayName} {hasCachedData ? '●' : ''}
                       </option>
                     );
                   })}
                 </select>
                 <button
-                  className="order-check-upload-btn"
-                  onClick={handleLoadGoogleSheet}
-                  disabled={loading}
+                  className="order-history-upload-btn"
+                  onClick={handleUpdate}
+                  disabled={!selectedCoupangUser || loading}
                 >
                   {loading ? (
-                    <span className="order-check-button-loading">
-                      <span className="order-check-spinner"></span>
+                    <span className="order-history-button-loading">
+                      <span className="order-history-spinner"></span>
                       {t('importProduct.refresh')}
                     </span>
                   ) : (
                     t('importProduct.refresh')
                   )}
                 </button>
-              </div>
-            </div>
-
-            {/* 시트 불러오기 버튼 - 왼쪽/오른쪽 분리 */}
-            <div className="order-check-upload-section">
-              {/* 왼쪽: 엑셀 불러오기 */}
-              <div className="order-check-upload-left">
                 <button
-                  className="order-check-upload-btn"
+                  className="order-history-upload-btn"
                   onClick={handleExcelUpload}
-                  disabled={isUploadingExcel}
+                  disabled={!hasLoadedData || isUploadingExcel}
                 >
                   {isUploadingExcel ? t('importProduct.uploading') : t('importProduct.uploadExcel')}
                 </button>
-
+                <button
+                  className="order-history-download-btn"
+                  onClick={handleExcelDownload}
+                  disabled={filteredData.length === 0}
+                >
+                  엑셀 다운로드
+                </button>
                 <input
                   type="file"
                   ref={excelFileInputRef}
@@ -517,27 +459,25 @@ const OrderCheck: React.FC = () => {
                   style={{ display: 'none' }}
                 />
               </div>
+            </div>
 
-              {/* 오른쪽: 엑셀 다운로드 */}
-              <div className="order-check-upload-right">
-                <button
-                  className="order-check-download-btn"
-                  onClick={handleExcelDownload}
-                  disabled={filteredData.length === 0}
-                >
-                  엑셀 다운로드
-                </button>
+            {/* 잔액 보드 */}
+            <div className="order-history-balance-section">
+              <div className="order-history-balance-board">
+                <div className="order-history-balance-text">
+                  잔액: {balance !== null ? balance.toLocaleString() : '-'}
+                </div>
               </div>
             </div>
 
             {/* 상태 카드들 */}
-            <div className="order-check-status-cards">
+            <div className="order-history-status-cards">
               {cardData.map((statusCard, index) => {
                 const count = getStatusCount(statusCard.key);
                 const isActive = activeStatus === statusCard.key;
 
                 return (
-                  <OrderCheckStatusCard
+                  <OrderHistoryStatusCard
                     key={index}
                     label={statusCard.label}
                     count={count}
@@ -549,26 +489,18 @@ const OrderCheck: React.FC = () => {
             </div>
 
             {/* 검색 영역 */}
-            <div className="order-check-search-section">
-              <div className="order-check-search-board">
-                <div className="order-check-search-form-container">
-                  <select
-                    className="order-check-search-dropdown"
-                    value={searchType}
-                    onChange={(e) => setSearchType(e.target.value)}
-                  >
-                    <option value="일반검색">일반검색</option>
-                    <option value="배송번호/offerID">배송번호/offerID</option>
-                  </select>
+            <div className="order-history-search-section">
+              <div className="order-history-search-board">
+                <div className="order-history-search-form-container">
                   <input
                     type="text"
-                    className="order-check-search-input"
-                    placeholder={searchType === '배송번호/offerID' ? '배송번호 또는 offerID를 입력하세요' : '상품명, 주문번호, 바코드를 입력하세요'}
+                    className="order-history-search-input"
+                    placeholder="상품명, 주문번호, 바코드를 입력하세요"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyPress={handleSearchKeyPress}
                   />
-                  <button className="order-check-search-button" onClick={handleSearchClick}>
+                  <button className="order-history-search-button" onClick={handleSearchClick}>
                     {t('importProduct.search')}
                   </button>
                 </div>
@@ -576,11 +508,11 @@ const OrderCheck: React.FC = () => {
             </div>
 
             {/* 테이블 */}
-            <div className="order-check-table-board">
+            <div className="order-history-table-board">
               {loading ? (
-                <div className="order-check-empty-data">{t('importProduct.table.loading')}</div>
+                <div className="order-history-empty-data">{t('importProduct.table.loading')}</div>
               ) : (
-                <table className="order-check-table">
+                <table className="order-history-table">
                   <thead>
                     <tr>
                       <th>
@@ -588,7 +520,7 @@ const OrderCheck: React.FC = () => {
                           type="checkbox"
                           checked={selectAll}
                           onChange={handleSelectAll}
-                          className="order-check-table-checkbox"
+                          className="order-history-table-checkbox"
                         />
                       </th>
                       <th>{t('importProduct.table.image')}</th>
@@ -602,13 +534,12 @@ const OrderCheck: React.FC = () => {
                       <th>{t('importProduct.table.cancel')}</th>
                       <th>{t('importProduct.table.export')}</th>
                       <th>{t('importProduct.table.note')}</th>
-                      <th>{t('importProduct.table.info')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedData.length === 0 ? (
                       <tr>
-                        <td colSpan={13} className="order-check-empty-data">
+                        <td colSpan={12} className="order-history-empty-data">
                           {t('importProduct.table.noData')}
                         </td>
                       </tr>
@@ -620,22 +551,22 @@ const OrderCheck: React.FC = () => {
                               type="checkbox"
                               checked={selectedItems.has(item.id)}
                               onChange={() => handleSelectItem(item.id)}
-                              className="order-check-table-checkbox"
+                              className="order-history-table-checkbox"
                             />
                           </td>
                           <td>
                             {item.image_url ? (
-                              <div className="order-check-image-preview-container">
+                              <div className="order-history-image-preview-container">
                                 <img
                                   src={`/api/image-proxy?url=${encodeURIComponent(item.image_url)}`}
                                   alt="상품 이미지"
-                                  className="order-check-product-thumbnail"
+                                  className="order-history-product-thumbnail"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = '/placeholder.svg';
                                   }}
                                 />
                                 <div
-                                  className="order-check-image-preview"
+                                  className="order-history-image-preview"
                                   style={{
                                     top: `${mousePosition.y - 300}px`,
                                     left: `${mousePosition.x + 30}px`
@@ -651,18 +582,18 @@ const OrderCheck: React.FC = () => {
                                 </div>
                               </div>
                             ) : (
-                              <div className="order-check-no-image">{t('importProduct.table.noImage')}</div>
+                              <div className="order-history-no-image">{t('importProduct.table.noImage')}</div>
                             )}
                           </td>
                           <td>
-                            <div className="order-check-order-number-text">
+                            <div className="order-history-order-number-text">
                               {item.order_number_prefix || ''}
                               {item.order_number_prefix && item.order_number && <br />}
                               {item.order_number || ''}
                             </div>
                           </td>
                           <td>
-                            <div className="order-check-product-name">
+                            <div className="order-history-product-name">
                               {item.product_name || '-'}
                               {item.product_name_sub && (
                                 <>
@@ -679,7 +610,7 @@ const OrderCheck: React.FC = () => {
                             </div>
                           </td>
                           <td>
-                            <div className="order-check-china-options">
+                            <div className="order-history-china-options">
                               {item.china_option1 || '-'}
                               {item.china_option2 && (
                                 <>
@@ -694,7 +625,7 @@ const OrderCheck: React.FC = () => {
                           </td>
                           <td>
                             <div
-                              className="order-check-cost-display order-check-clickable-cost"
+                              className="order-history-cost-display order-history-clickable-cost"
                               onClick={(e) => handleCostClick(e, item)}
                               title={item.site_url ? '클릭하여 사이트로 이동' : 'URL을 입력하여 사이트로 이동'}
                             >
@@ -709,39 +640,34 @@ const OrderCheck: React.FC = () => {
                           </td>
                           <td>
                             {item.progress_status ? (
-                              <span className="order-check-status-badge progress">
+                              <span className="order-history-status-badge progress">
                                 {item.progress_status}
                               </span>
                             ) : ''}
                           </td>
                           <td>
                             {item.import_qty ? (
-                              <span className="order-check-status-badge import">
+                              <span className="order-history-status-badge import">
                                 {item.import_qty}
                               </span>
                             ) : ''}
                           </td>
                           <td>
                             {item.cancel_qty ? (
-                              <span className="order-check-status-badge cancel">
+                              <span className="order-history-status-badge cancel">
                                 {item.cancel_qty}
                               </span>
                             ) : ''}
                           </td>
                           <td>
                             {item.export_qty ? (
-                              <span className="order-check-status-badge export">
+                              <span className="order-history-status-badge export">
                                 {item.export_qty}
                               </span>
                             ) : ''}
                           </td>
                           <td>
-                            <div className="order-check-note-display">{item.note || ''}</div>
-                          </td>
-                          <td>
-                            <div style={{ lineHeight: '1.5', fontSize: '12px', color: '#333', whiteSpace: 'pre-line' }}>
-                              {formatInfoColumn(item)}
-                            </div>
+                            <div className="order-history-note-display">{item.note || ''}</div>
                           </td>
                         </tr>
                       ))
@@ -753,16 +679,16 @@ const OrderCheck: React.FC = () => {
 
             {/* 페이지네이션 */}
             {!loading && filteredData.length > 0 && (
-              <div className="order-check-pagination">
+              <div className="order-history-pagination">
                 <button
                   onClick={goToPrevPage}
                   disabled={currentPage === 1}
-                  className="order-check-pagination-button"
+                  className="order-history-pagination-button"
                 >
                   {t('importProduct.pagination.previous')}
                 </button>
 
-                <div className="order-check-page-numbers">
+                <div className="order-history-page-numbers">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -779,7 +705,7 @@ const OrderCheck: React.FC = () => {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`order-check-page-number ${currentPage === pageNum ? 'active' : ''}`}
+                        className={`order-history-page-number ${currentPage === pageNum ? 'active' : ''}`}
                       >
                         {pageNum}
                       </button>
@@ -790,12 +716,12 @@ const OrderCheck: React.FC = () => {
                 <button
                   onClick={goToNextPage}
                   disabled={currentPage === totalPages}
-                  className="order-check-pagination-button"
+                  className="order-history-pagination-button"
                 >
                   {t('importProduct.pagination.next')}
                 </button>
 
-                <span className="order-check-page-info">
+                <span className="order-history-page-info">
                   {currentPage} / {totalPages} {t('importProduct.pagination.page')} ({t('importProduct.pagination.total')} {filteredData.length}개)
                 </span>
               </div>
@@ -807,4 +733,4 @@ const OrderCheck: React.FC = () => {
   );
 };
 
-export default OrderCheck;
+export default OrderHistory;
