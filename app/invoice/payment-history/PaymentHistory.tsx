@@ -52,6 +52,7 @@ const PaymentHistory: React.FC = () => {
   const [selectAll, setSelectAll] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [liveBalance, setLiveBalance] = useState<number | null>(null);
 
   // 검색 필터 상태
   const [periodType, setPeriodType] = useState<string>('30days');
@@ -196,6 +197,7 @@ const PaymentHistory: React.FC = () => {
       setItemData([]);
       setFilteredData([]);
       setBalance(null);
+      setLiveBalance(null);
     }
   }, [selectedCoupangUser]);
 
@@ -215,6 +217,25 @@ const PaymentHistory: React.FC = () => {
     } catch (error) {
       console.error('잔액 조회 오류:', error);
       setBalance(null);
+    }
+  };
+
+  // 라이브 잔액 조회 (master_account 사용)
+  const fetchLiveBalance = async (masterAccount: string) => {
+    try {
+      const response = await fetch(`/api/get-live-balance?master_account=${encodeURIComponent(masterAccount)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setLiveBalance(result.liveBalance);
+        console.log('라이브 잔액 조회 성공:', result.liveBalance);
+      } else {
+        console.warn('라이브 잔액 조회 실패:', result.error);
+        setLiveBalance(null);
+      }
+    } catch (error) {
+      console.error('라이브 잔액 조회 오류:', error);
+      setLiveBalance(null);
     }
   };
 
@@ -240,7 +261,7 @@ const PaymentHistory: React.FC = () => {
     }
   };
 
-  // 업데이트 버튼 - 잔액 + 트랜잭션 조회
+  // 업데이트 버튼 - 잔액 + 라이브 잔액 + 트랜잭션 조회
   const handleUpdate = async () => {
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
@@ -253,15 +274,21 @@ const PaymentHistory: React.FC = () => {
       return;
     }
 
+    if (!selectedUser.user_id) {
+      alert('선택한 사용자의 user_id 정보를 찾을 수 없습니다.');
+      return;
+    }
+
     try {
       setLoading(true);
 
       if (selectedUser.master_account) {
         await fetchBalance(selectedUser.master_account);
+        await fetchLiveBalance(selectedUser.master_account);
       }
 
-      // 트랜잭션 조회 (user_id = coupang_name)
-      await fetchTransactions(selectedUser.coupang_name);
+      // 트랜잭션 조회 (user_id 사용)
+      await fetchTransactions(selectedUser.user_id);
       setHasLoadedData(true);
 
       setLoading(false);
@@ -472,8 +499,8 @@ const PaymentHistory: React.FC = () => {
     }
 
     const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account) {
-      alert('선택한 사용자의 master_account 정보를 찾을 수 없습니다.');
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+      alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
 
@@ -484,7 +511,7 @@ const PaymentHistory: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.coupang_name,
+          user_id: selectedUser.user_id,
           master_account: selectedUser.master_account,
           transaction_type: '충전',
           description: chargeForm.description || null,
@@ -498,7 +525,10 @@ const PaymentHistory: React.FC = () => {
       if (result.success) {
         alert('충전이 완료되었습니다.');
         setBalance(result.newBalance);
-        await fetchTransactions(selectedUser.coupang_name);
+        await fetchTransactions(selectedUser.user_id);
+        if (selectedUser.master_account) {
+          await fetchLiveBalance(selectedUser.master_account);
+        }
         handleCloseModal();
       } else {
         alert(`저장 실패: ${result.error}`);
@@ -524,8 +554,8 @@ const PaymentHistory: React.FC = () => {
     }
 
     const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account) {
-      alert('선택한 사용자의 master_account 정보를 찾을 수 없습니다.');
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+      alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
 
@@ -536,7 +566,7 @@ const PaymentHistory: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.coupang_name,
+          user_id: selectedUser.user_id,
           master_account: selectedUser.master_account,
           transaction_type: '차감',
           description: deductForm.description || null,
@@ -554,7 +584,10 @@ const PaymentHistory: React.FC = () => {
       if (result.success) {
         alert('차감이 완료되었습니다.');
         setBalance(result.newBalance);
-        await fetchTransactions(selectedUser.coupang_name);
+        await fetchTransactions(selectedUser.user_id);
+        if (selectedUser.master_account) {
+          await fetchLiveBalance(selectedUser.master_account);
+        }
         handleCloseModal();
       } else {
         alert(`저장 실패: ${result.error}`);
@@ -602,8 +635,8 @@ const PaymentHistory: React.FC = () => {
     }
 
     const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account) {
-      alert('선택한 사용자의 master_account 정보를 찾을 수 없습니다.');
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+      alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
 
@@ -688,7 +721,7 @@ const PaymentHistory: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.coupang_name,
+          user_id: selectedUser.user_id,
           master_account: selectedUser.master_account,
           order_code: orderCode,
           transaction_type: '차감',
@@ -709,7 +742,10 @@ const PaymentHistory: React.FC = () => {
       if (result.success) {
         alert(`1688 주문이 저장되었습니다.\n주문번호: ${orderCode}\n수량: ${totalItemQty}개\n차감금액: ${finalAmount.toLocaleString()}원`);
         setBalance(result.newBalance);
-        await fetchTransactions(selectedUser.coupang_name);
+        await fetchTransactions(selectedUser.user_id);
+        if (selectedUser.master_account) {
+          await fetchLiveBalance(selectedUser.master_account);
+        }
         setOrderExcelFile(null);
         if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
         handleCloseModal();
@@ -800,8 +836,18 @@ const PaymentHistory: React.FC = () => {
             {/* 잔액 보드 */}
             <div className="payment-history-balance-section">
               <div className="payment-history-balance-board">
-                <div className="payment-history-balance-text">
-                  잔액: {balance !== null ? balance.toLocaleString() : '-'}
+                <div className="payment-history-balance-item">
+                  <span className="payment-history-balance-label">잔액:</span>
+                  <span className="payment-history-balance-value">
+                    {balance !== null ? balance.toLocaleString() : '-'}
+                  </span>
+                </div>
+                <div className="payment-history-balance-divider"></div>
+                <div className="payment-history-balance-item">
+                  <span className="payment-history-balance-label">라이브 잔액:</span>
+                  <span className="payment-history-balance-value">
+                    {liveBalance !== null ? liveBalance.toLocaleString() : '-'}
+                  </span>
                 </div>
               </div>
             </div>

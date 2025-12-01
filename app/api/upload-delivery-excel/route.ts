@@ -93,20 +93,29 @@ export const POST = async (request: NextRequest) => {
           console.log('  DELIVERY_CODE(31):', deliveryCode);
         }
 
-        // AF열(delivery_code)에 데이터가 있는 경우만 처리
-        if (deliveryCode && deliveryCode.toString().trim() !== '') {
-          // order_info를 줄바꿈으로 분리
-          const orderInfoLines = orderInfo.toString().split('\n').filter((line: string) => line.trim());
+        // AD열 또는 AF열에 데이터가 있는 경우 처리
+        const hasOrderInfo = orderInfo && orderInfo.toString().trim() !== '';
+        const hasDeliveryCode = deliveryCode && deliveryCode.toString().trim() !== '';
 
-          // 각 줄마다 별도 레코드 생성
-          for (const orderInfoLine of orderInfoLines) {
-            const trimmedLine = orderInfoLine.trim();
-            if (!trimmedLine) continue;
+        // AD열과 AF열이 모두 비어있으면 건너뛰기
+        if (!hasOrderInfo && !hasDeliveryCode) {
+          continue;
+        }
 
-            // 데이터 형식 판별 및 파싱
-            let sheetOrderCode: string | null = null;
-            let sheetOrderNumber: string | null = null;
+        // order_info를 줄바꿈으로 분리
+        const orderInfoLines = hasOrderInfo
+          ? orderInfo.toString().split('\n').filter((line: string) => line.trim())
+          : [''];
 
+        // 각 줄마다 별도 레코드 생성
+        for (const orderInfoLine of orderInfoLines) {
+          const trimmedLine = orderInfoLine.trim();
+
+          // 데이터 형식 판별 및 파싱
+          let sheetOrderCode: string | null = null;
+          let sheetOrderNumber: string | null = null;
+
+          if (trimmedLine) {
             if (trimmedLine.includes('//')) {
               // "//" 구분자 형식 (새 형식 또는 기존 형식)
               const parts = trimmedLine.split('//').map(p => p.trim());
@@ -126,33 +135,36 @@ export const POST = async (request: NextRequest) => {
               sheetOrderCode = null;
               sheetOrderNumber = parts[0] || null; // MMDD 날짜
             }
+          }
 
-            itemCounter++;
-            const id = `${deliveryCode}-${itemCounter}`;
+          itemCounter++;
+          const id = hasDeliveryCode
+            ? `${deliveryCode.toString().trim()}-${itemCounter}`
+            : `no-code-${itemCounter}`;
 
-            const deliveryItem = {
-              id: id,
-              order_id: orderId.toString().trim() || null,
-              shop: shop.toString().trim(),
-              delivery_status: deliveryStatus.toString().trim() || null,
-              offer_id: offerId.toString().trim() || null,
-              order_info: trimmedLine, // 한 줄만
-              delivery_code: deliveryCode.toString().trim(),
-              sheet_order_code: sheetOrderCode,
-              sheet_order_number: sheetOrderNumber
-            };
+          const deliveryItem = {
+            id: id,
+            order_id: orderId.toString().trim() || null,
+            shop: shop.toString().trim(),
+            delivery_status: deliveryStatus.toString().trim() || null,
+            offer_id: offerId.toString().trim() || null,
+            order_info: trimmedLine || null, // 한 줄만 (빈 경우 null)
+            delivery_code: hasDeliveryCode ? deliveryCode.toString().trim() : null,
+            sheet_order_code: sheetOrderCode,
+            sheet_order_number: sheetOrderNumber
+          };
 
-            deliveryDataArray.push(deliveryItem);
+          deliveryDataArray.push(deliveryItem);
 
-            // 처음 3개만 상세 로그
-            if (deliveryDataArray.length <= 3) {
-              console.log(`✅ 행 ${i + 2}: 배송정보 추가`);
-              console.log('  ID:', id);
-              console.log('  상점:', shop);
-              console.log('  배송코드:', deliveryCode);
-              console.log('  sheet_order_code:', sheetOrderCode);
-              console.log('  sheet_order_number:', sheetOrderNumber);
-            }
+          // 처음 3개만 상세 로그
+          if (deliveryDataArray.length <= 3) {
+            console.log(`✅ 행 ${i + 2}: 배송정보 추가`);
+            console.log('  ID:', id);
+            console.log('  상점:', shop);
+            console.log('  배송코드:', hasDeliveryCode ? deliveryCode : '(없음)');
+            console.log('  주문정보:', trimmedLine || '(없음)');
+            console.log('  sheet_order_code:', sheetOrderCode);
+            console.log('  sheet_order_number:', sheetOrderNumber);
           }
         }
       } catch (rowError) {
@@ -167,7 +179,7 @@ export const POST = async (request: NextRequest) => {
     // 데이터가 없는 경우
     if (deliveryDataArray.length === 0) {
       return NextResponse.json({
-        error: 'AF열에 배송코드가 있는 유효한 데이터가 없습니다.'
+        error: 'AD열(주문정보) 또는 AF열(배송코드)에 데이터가 있는 유효한 행이 없습니다.'
       }, { status: 400 });
     }
 

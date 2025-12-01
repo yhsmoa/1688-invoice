@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       .insert({
         order_code: finalOrderCode,
         user_id: user_id || null,
+        master_account: master_account || null,
         transaction_type,
         description: description || null,
         item_qty: item_qty || null,

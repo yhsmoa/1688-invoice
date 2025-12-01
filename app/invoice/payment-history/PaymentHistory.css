@@ -454,7 +454,34 @@
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+}
+
+.payment-history-balance-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.payment-history-balance-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.payment-history-balance-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.payment-history-balance-divider {
+  width: 1px;
+  height: 32px;
+  background-color: #e5e7eb;
 }
 
 .payment-history-balance-text {

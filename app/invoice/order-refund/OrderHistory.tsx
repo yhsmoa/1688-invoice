@@ -40,12 +40,14 @@ const OrderHistory: React.FC = () => {
   const [selectAll, setSelectAll] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [liveBalance, setLiveBalance] = useState<number | null>(null);
   const [activeStatus, setActiveStatus] = useState<string>('all');
   const [editingRefundAmount, setEditingRefundAmount] = useState<{[key: string]: number | null}>({});
   const [editingRefundDescription, setEditingRefundDescription] = useState<{[key: string]: string}>({});
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(30);
+  const [show1688Only, setShow1688Only] = useState(false);
 
   // 상태 카드 데이터 (key: DB의 refund_status 값)
   const cardData = [
@@ -81,6 +83,7 @@ const OrderHistory: React.FC = () => {
       setItemData([]);
       setFilteredData([]);
       setBalance(null);
+      setLiveBalance(null);
     }
   }, [selectedCoupangUser]);
 
@@ -101,6 +104,25 @@ const OrderHistory: React.FC = () => {
     }
   };
 
+  // 라이브 잔액 조회 (master_account 사용)
+  const fetchLiveBalance = async (masterAccount: string) => {
+    try {
+      const response = await fetch(`/api/get-live-balance?master_account=${encodeURIComponent(masterAccount)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setLiveBalance(result.liveBalance);
+        console.log('라이브 잔액 조회 성공:', result.liveBalance);
+      } else {
+        console.warn('라이브 잔액 조회 실패:', result.error);
+        setLiveBalance(null);
+      }
+    } catch (error) {
+      console.error('라이브 잔액 조회 오류:', error);
+      setLiveBalance(null);
+    }
+  };
+
   // 환불 주문 데이터 조회
   const fetchRefundOrders = async (userId: string, keepActiveStatus: boolean = false) => {
     try {
@@ -110,13 +132,10 @@ const OrderHistory: React.FC = () => {
       if (result.success) {
         setItemData(result.data);
 
-        // keepActiveStatus가 true이고 activeStatus가 있으면 해당 상태로 필터링
-        if (keepActiveStatus && activeStatus !== 'all') {
-          const filtered = result.data.filter((item: RefundOrderData) => item.refund_status === activeStatus);
-          setFilteredData(filtered);
-        } else {
-          setFilteredData(result.data);
-        }
+        // 필터 적용
+        const statusToUse = keepActiveStatus ? activeStatus : 'all';
+        const filtered = applyFilters(result.data, statusToUse, show1688Only);
+        setFilteredData(filtered);
       } else {
         console.error('환불 주문 조회 실패:', result.error);
         setItemData([]);
@@ -145,9 +164,10 @@ const OrderHistory: React.FC = () => {
     try {
       setLoading(true);
 
-      // 잔액 조회
+      // 잔액 및 라이브 잔액 조회
       if (selectedUser.master_account) {
         await fetchBalance(selectedUser.master_account);
+        await fetchLiveBalance(selectedUser.master_account);
       }
 
       // 환불 주문 조회
@@ -196,39 +216,42 @@ const OrderHistory: React.FC = () => {
     return itemData.filter(item => item.refund_status === statusKey).length;
   };
 
+  // 데이터 필터링 공통 함수
+  const applyFilters = (data: RefundOrderData[], statusKey: string, only1688: boolean): RefundOrderData[] => {
+    let filtered = data;
+
+    // 1. 상태 필터
+    if (statusKey !== 'all') {
+      filtered = filtered.filter(item => item.refund_status === statusKey);
+    }
+
+    // 2. 1688 주문번호 필터
+    if (only1688) {
+      filtered = filtered.filter(item => item['1688_order_number'] && item['1688_order_number'].trim() !== '');
+    }
+
+    return filtered;
+  };
+
   // 상태 카드 클릭 핸들러
   const handleStatusCardClick = (statusKey: string) => {
     setActiveStatus(statusKey);
-
-    if (statusKey === 'all') {
-      setFilteredData(itemData);
-    } else {
-      const filtered = itemData.filter(item => item.refund_status === statusKey);
-      setFilteredData(filtered);
-    }
+    const filtered = applyFilters(itemData, statusKey, show1688Only);
+    setFilteredData(filtered);
     setCurrentPage(1);
   };
 
   // 검색 기능
   const handleSearchClick = () => {
     if (!searchTerm.trim()) {
-      if (activeStatus === 'all') {
-        setFilteredData(itemData);
-      } else {
-        const filtered = itemData.filter(item => item.refund_status === activeStatus);
-        setFilteredData(filtered);
-      }
+      const filtered = applyFilters(itemData, activeStatus, show1688Only);
+      setFilteredData(filtered);
       setCurrentPage(1);
       return;
     }
 
     const searchLower = searchTerm.toLowerCase().trim();
-    let baseData = itemData;
-
-    // 활성 상태가 'all'이 아니면 먼저 상태로 필터링
-    if (activeStatus !== 'all') {
-      baseData = itemData.filter(item => item.refund_status === activeStatus);
-    }
+    const baseData = applyFilters(itemData, activeStatus, show1688Only);
 
     const filtered = baseData.filter(item =>
       item.order_number?.toLowerCase().includes(searchLower) ||
@@ -629,8 +652,18 @@ const OrderHistory: React.FC = () => {
             {/* 잔액 보드 */}
             <div className="order-history-balance-section">
               <div className="order-history-balance-board">
-                <div className="order-history-balance-text">
-                  잔액: {balance !== null ? balance.toLocaleString() : '-'}
+                <div className="order-history-balance-item">
+                  <span className="order-history-balance-label">잔액:</span>
+                  <span className="order-history-balance-value">
+                    {balance !== null ? balance.toLocaleString() : '-'}
+                  </span>
+                </div>
+                <div className="order-history-balance-divider"></div>
+                <div className="order-history-balance-item">
+                  <span className="order-history-balance-label">라이브 잔액:</span>
+                  <span className="order-history-balance-value">
+                    {liveBalance !== null ? liveBalance.toLocaleString() : '-'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -693,6 +726,20 @@ const OrderHistory: React.FC = () => {
               >
                 1688 조회
               </button>
+              <label className="order-history-1688-only-checkbox">
+                <input
+                  type="checkbox"
+                  checked={show1688Only}
+                  onChange={(e) => {
+                    const newShow1688Only = e.target.checked;
+                    setShow1688Only(newShow1688Only);
+                    const filtered = applyFilters(itemData, activeStatus, newShow1688Only);
+                    setFilteredData(filtered);
+                    setCurrentPage(1);
+                  }}
+                />
+                <span>1688 주문번호만 표시</span>
+              </label>
               <div style={{ flex: 1 }}></div>
               {activeStatus === 'all' ? (
                 <>

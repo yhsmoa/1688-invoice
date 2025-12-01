@@ -226,7 +226,34 @@
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+}
+
+.order-history-balance-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-history-balance-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.order-history-balance-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.order-history-balance-divider {
+  width: 1px;
+  height: 32px;
+  background-color: #e5e7eb;
 }
 
 .order-history-balance-text {
@@ -852,6 +879,39 @@
 
 .order-history-refund-description-input::placeholder {
   color: #999;
+}
+
+/* 1688 주문번호만 표시 체크박스 */
+.order-history-1688-only-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.order-history-1688-only-checkbox:hover {
+  background-color: #f9fafb;
+  border-color: #6366f1;
+}
+
+.order-history-1688-only-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.order-history-1688-only-checkbox span {
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
 }
 
 /* 이미지 모달 */
