@@ -14,7 +14,18 @@ const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY ?
 export async function POST(request: NextRequest) {
   try {
     console.log('API 호출: /api/save-all-export-data');
-    
+
+    // 요청 body에서 googlesheet_id 가져오기
+    const body = await request.json();
+    const { googlesheet_id } = body;
+
+    if (!googlesheet_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'googlesheet_id 파라미터가 필요합니다.'
+      }, { status: 400 });
+    }
+
     // 1. Supabase에서 export_qty가 있는 모든 데이터 조회
     console.log('export_qty가 있는 데이터 조회 시작');
     const { data: exportData, error: fetchError } = await supabase
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
       });
       
       // 구글 스프레드시트 문서 초기화 및 인증
-      const doc = new GoogleSpreadsheet(SPREADSHEET_ID, authClient);
+      const doc = new GoogleSpreadsheet(googlesheet_id, authClient);
       
       // 스프레드시트 로드
       await doc.loadInfo();
