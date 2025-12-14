@@ -10,8 +10,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.850.0",
-    "@aws-sdk/s3-request-presigner": "^3.850.0",
     "@supabase/supabase-js": "^2.52.1",
     "@types/uuid": "^10.0.0",
     "exceljs": "^4.4.0",
