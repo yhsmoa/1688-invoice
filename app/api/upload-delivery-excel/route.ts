@@ -118,7 +118,7 @@ export const POST = async (request: NextRequest) => {
           if (trimmedLine) {
             if (trimmedLine.includes('//')) {
               // "//" 구분자 형식 (새 형식 또는 기존 형식)
-              const parts = trimmedLine.split('//').map(p => p.trim());
+              const parts = trimmedLine.split('//').map((p: string) => p.trim());
 
               if (parts.length >= 5) {
                 // 새 형식: order_code // order_number // 옵션 // 바코드 // 수량
@@ -131,7 +131,7 @@ export const POST = async (request: NextRequest) => {
               }
             } else if (trimmedLine.includes(' - ')) {
               // 레거시 형식: MMDD - 옵션 - 바코드 - 수량
-              const parts = trimmedLine.split(' - ').map(p => p.trim());
+              const parts = trimmedLine.split(' - ').map((p: string) => p.trim());
               sheetOrderCode = null;
               sheetOrderNumber = parts[0] || null; // MMDD 날짜
             }

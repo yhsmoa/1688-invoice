@@ -13,8 +13,8 @@ interface ItemTableRowProps {
   mousePosition: { x: number, y: number };
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
-  onCellValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onHandleCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onHandleCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: (moveToNext: boolean) => void;
   onSetCellValue: (value: string) => void;
   onCostClick: (e: React.MouseEvent, item: ItemData) => void;

@@ -144,7 +144,7 @@ export function matchDeliveryInfo(
 export function formatInfoColumn(item: OrderCheckData & {
   delivery_shop?: string;
   delivery_order_id?: string;
-  delivery_status?: string;
+  delivery_status?: string | null;
   delivery_code?: string;
   order_payment_time?: string | null;
 }): string {

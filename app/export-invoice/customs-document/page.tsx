@@ -35,6 +35,7 @@ const CustomsDocument: React.FC = () => {
   const [showLocationMoveModal, setShowLocationMoveModal] = useState(false);
   const [currentMoveLocation, setCurrentMoveLocation] = useState<string>('');
   const [isExcelDownloading, setIsExcelDownloading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // 위치별로 데이터 그룹화
   const groupedDataByLocation = filteredData.reduce((acc, item) => {

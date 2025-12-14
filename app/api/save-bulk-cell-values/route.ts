@@ -95,20 +95,20 @@ export async function POST(request: NextRequest) {
     console.log(`Supabase 업데이트 완료: ${supabaseResults.filter(r => r.success).length}/${updates.length}`);
 
     // 3. 구글 시트 일괄 업데이트
-    const googleSheetResults = [];
+    const googleSheetResults: Array<{ row_id: string; success: boolean; range?: string; value?: number | string | null; error?: string }> = [];
+
+    // 필드에 따른 구글 시트 열 매핑 (catch 블록에서도 접근 가능하도록 try 밖에 정의)
+    const columnMapping: { [key: string]: string } = {
+      'import_qty': 'N',  // N열 - 입고
+      'cancel_qty': 'O',  // O열 - 취소
+      'note': 'Q'         // Q열 - 비고
+    };
 
     try {
       // 서비스 계정 키가 설정되어 있는지 확인
       if (!SERVICE_ACCOUNT_EMAIL || !PRIVATE_KEY) {
         throw new Error('구글 서비스 계정 정보가 설정되지 않았습니다.');
       }
-
-      // 필드에 따른 구글 시트 열 매핑
-      const columnMapping: { [key: string]: string } = {
-        'import_qty': 'N',  // N열 - 입고
-        'cancel_qty': 'O',  // O열 - 취소
-        'note': 'Q'         // Q열 - 비고
-      };
 
       // JWT 인증 객체 생성
       const jwtClient = new JWT({

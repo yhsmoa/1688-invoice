@@ -20,6 +20,7 @@ export interface ReadyItem {
     import_qty?: number | null;
     cancel_qty?: number | null;
     memo?: string | null;
+    note?: string | null;
   };
 }
 

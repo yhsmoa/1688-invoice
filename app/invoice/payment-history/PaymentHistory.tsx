@@ -26,6 +26,8 @@ export interface PaymentHistoryData {
   date: string | null;  // YYYY-MM-DD 형식
   created_at: string | null;
   updated_at: string | null;
+  delivery_status?: string | null;
+  site_url?: string | null;
 }
 
 const PaymentHistory: React.FC = () => {
@@ -43,7 +45,7 @@ const PaymentHistory: React.FC = () => {
   const [itemData, setItemData] = useState<PaymentHistoryData[]>([]);
   const [filteredData, setFilteredData] = useState<PaymentHistoryData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string}[]>([]);
+  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string, user_id?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');

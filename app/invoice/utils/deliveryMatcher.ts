@@ -2,7 +2,7 @@
  * 배송정보 매칭 유틸리티
  */
 
-import { OrderCheckData } from '../OrderCheck';
+import { OrderCheckData } from '../../order-check/OrderCheck';
 
 export interface DeliveryInfo {
   id: string;
@@ -144,7 +144,7 @@ export function matchDeliveryInfo(
 export function formatInfoColumn(item: OrderCheckData & {
   delivery_shop?: string;
   delivery_order_id?: string;
-  delivery_status?: string;
+  delivery_status?: string | null;
   delivery_code?: string;
   order_payment_time?: string | null;
 }): string {

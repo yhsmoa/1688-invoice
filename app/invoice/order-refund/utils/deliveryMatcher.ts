@@ -2,7 +2,7 @@
  * 배송정보 매칭 유틸리티
  */
 
-import { OrderCheckData } from '../OrderCheck';
+import { OrderCheckData } from '../../../order-check/OrderCheck';
 
 export interface DeliveryInfo {
   id: string;
