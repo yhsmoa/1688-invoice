@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import jsPDF from 'jspdf';
 import './BarcodeLabels.css';
@@ -14,7 +14,7 @@ interface ProductData {
   china_option2?: string | null;
 }
 
-const BarcodeLabels: React.FC = () => {
+const BarcodeLabelsContent: React.FC = () => {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const BarcodeLabels: React.FC = () => {
   const fetchSelectedProducts = async (ids: string[]) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch('/api/get-selected-products', {
         method: 'POST',
         headers: {
@@ -39,13 +39,13 @@ const BarcodeLabels: React.FC = () => {
         },
         body: JSON.stringify({ ids }),
       });
-      
+
       if (!response.ok) {
         throw new Error('상품 데이터를 불러오는데 실패했습니다.');
       }
-      
+
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         console.log('받은 상품 데이터:', result.data);
         setProducts(result.data);
@@ -56,7 +56,7 @@ const BarcodeLabels: React.FC = () => {
       } else {
         setProducts([]);
       }
-      
+
     } catch (error) {
       console.error('상품 데이터 가져오기 오류:', error);
       setProducts([]);
@@ -93,7 +93,7 @@ const BarcodeLabels: React.FC = () => {
     try {
       const pdf = new jsPDF({
         orientation: 'landscape',
-        unit: 'mm', 
+        unit: 'mm',
         format: [60, 40]
       });
 
@@ -113,14 +113,14 @@ const BarcodeLabels: React.FC = () => {
         // 상품명 (영어로 변환하거나 단순화)
         const productLabel = getProductLabel(product);
         const simpleLabel = productLabel || 'Product';
-        
+
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'bold');
-        
+
         // 텍스트 길이에 따라 줄바꿈
         const lines = pdf.splitTextToSize(simpleLabel, 50);
         let yPos = 15;
-        
+
         lines.forEach((line: string, index: number) => {
           if (index < 3) { // 최대 3줄만
             pdf.text(line, 30, yPos + (index * 4), { align: 'center' });
@@ -137,7 +137,7 @@ const BarcodeLabels: React.FC = () => {
       }
 
       pdf.save('barcode-labels.pdf');
-      
+
     } catch (error) {
       console.error('PDF 생성 오류:', error);
       alert('PDF 생성 중 오류가 발생했습니다.');
@@ -190,8 +190,8 @@ const BarcodeLabels: React.FC = () => {
             <div className="barcode-section">
               {product.barcode ? (
                 <>
-                  <img 
-                    src={generateBarcodeUrl(product.barcode)} 
+                  <img
+                    src={generateBarcodeUrl(product.barcode)}
                     alt={`바코드: ${product.barcode}`}
                     className="barcode-image"
                     onError={(e) => {
@@ -209,6 +209,18 @@ const BarcodeLabels: React.FC = () => {
         ))}
       </div>
     </div>
+  );
+};
+
+const BarcodeLabels: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="barcode-loading">
+        <p>바코드 라벨을 생성하는 중...</p>
+      </div>
+    }>
+      <BarcodeLabelsContent />
+    </Suspense>
   );
 };
 
