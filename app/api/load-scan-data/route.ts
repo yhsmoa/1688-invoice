@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 스캔 시트에서 데이터 가져오기 (헤더 제외 2행부터)
-    let scanData = [];
+    let scanData: { box_number: string; order_number: string; scanned_qty: number; row_index: number }[] = [];
     try {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: googlesheet_id,
