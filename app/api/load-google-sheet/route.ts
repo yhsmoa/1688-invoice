@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
     
     // URL 파라미터에서 googlesheet_id 가져오기
     const searchParams = request.nextUrl.searchParams;
-    const googleSheetId = searchParams.get('googlesheet_id') || SPREADSHEET_ID;
+    const googleSheetId = searchParams.get('googlesheet_id');
+
+    if (!googleSheetId) {
+      return NextResponse.json({ error: 'googlesheet_id 파라미터가 필요합니다.' }, { status: 400 });
+    }
     
     console.log('구글 시트 ID:', googleSheetId);
     console.log('시트명:', SHEET_NAME);
