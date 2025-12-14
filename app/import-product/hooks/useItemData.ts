@@ -151,7 +151,6 @@ export const useItemData = () => {
 
   useEffect(() => {
     fetchItemData();
-    fetchAllDeliveryInfo();
   }, []);
 
   return {

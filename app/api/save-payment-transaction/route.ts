@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
       extra_fee,
       admin_note,
       price,
-      status: inputStatus
+      status: inputStatus,
+      date
     } = body;
 
     // 필수값 검증
@@ -80,7 +81,8 @@ export async function POST(request: NextRequest) {
         balance_after: newBalance,
         status: inputStatus || '성공',
         admin_note: admin_note || null,
-        price: price || null
+        price: price || null,
+        date: date || null
       })
       .select()
       .single();

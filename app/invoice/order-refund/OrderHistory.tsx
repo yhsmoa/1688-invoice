@@ -23,6 +23,7 @@ export interface RefundOrderData {
   img_url: string | null;
   created_at: string | null;
   updated_at: string | null;
+  confirm_date: string | null;
 }
 
 const OrderHistory: React.FC = () => {
@@ -148,8 +149,8 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // 업데이트 버튼 - 잔액 + 환불 주문 조회
-  const handleUpdate = async () => {
+  // 불러오기 버튼 - 잔액 + 환불 주문 조회
+  const handleLoad = async () => {
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
@@ -175,8 +176,68 @@ const OrderHistory: React.FC = () => {
       setHasLoadedData(true);
 
     } catch (error) {
+      console.error('불러오기 오류:', error);
+      alert(`불러오기 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 업데이트 버튼 - 구글 시트 '취소내역' 데이터를 supabase에 추가
+  const handleUpdate = async () => {
+    if (!selectedCoupangUser) {
+      alert('쿠팡 사용자를 선택해주세요.');
+      return;
+    }
+
+    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
+    if (!selectedUser) {
+      alert('선택한 사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    if (!selectedUser.googlesheet_id) {
+      alert('해당 사용자의 구글 시트 ID가 없습니다.');
+      return;
+    }
+
+    if (!selectedUser.user_id) {
+      alert('해당 사용자의 user_id가 없습니다.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch('/api/sync-refund-orders-from-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          googlesheet_id: selectedUser.googlesheet_id,
+          user_id: selectedUser.user_id,
+          master_account: selectedUser.master_account || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        let message = result.message;
+        if (result.added > 0 || result.skipped > 0) {
+          message += `\n\n추가: ${result.added}건\n스킵(기존): ${result.skipped}건`;
+        }
+        alert(message);
+
+        // 데이터 새로고침
+        if (selectedUser.user_id) {
+          await fetchRefundOrders(selectedUser.user_id, true);
+        }
+      } else {
+        alert(`업데이트 실패: ${result.error}`);
+      }
+    } catch (error) {
       console.error('업데이트 오류:', error);
-      alert(`업데이트 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      alert('업데이트 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -573,7 +634,7 @@ const OrderHistory: React.FC = () => {
         '반품사유': item.refund_description || '',
         '상태': item.refund_status || '',
         '생성일': formatDate(item.created_at),
-        '수정일': formatDate(item.updated_at),
+        '반품완료일': formatDate(item.confirm_date),
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -620,17 +681,24 @@ const OrderHistory: React.FC = () => {
                 </select>
                 <button
                   className="order-history-upload-btn"
-                  onClick={handleUpdate}
+                  onClick={handleLoad}
                   disabled={!selectedCoupangUser || loading}
                 >
                   {loading ? (
                     <span className="order-history-button-loading">
                       <span className="order-history-spinner"></span>
-                      {t('importProduct.refresh')}
+                      불러오기
                     </span>
                   ) : (
-                    t('importProduct.refresh')
+                    '불러오기'
                   )}
+                </button>
+                <button
+                  className="order-history-update-btn"
+                  onClick={handleUpdate}
+                  disabled={!selectedCoupangUser || loading}
+                >
+                  업데이트
                 </button>
                 <button
                   className="order-history-download-btn"
@@ -843,7 +911,7 @@ const OrderHistory: React.FC = () => {
                       </tr>
                     ) : (
                       paginatedData.map((item) => (
-                        <tr key={item.id}>
+                        <tr key={item.id} className={selectedItems.has(item.id) ? 'selected' : ''}>
                           <td>
                             <input
                               type="checkbox"
@@ -920,16 +988,16 @@ const OrderHistory: React.FC = () => {
                           <td
                             className="order-history-refund-description-cell"
                             onClick={(e) => {
-                              const input = e.currentTarget.querySelector('input');
-                              input?.focus();
+                              const textarea = e.currentTarget.querySelector('textarea');
+                              textarea?.focus();
                             }}
                           >
-                            <input
-                              type="text"
+                            <textarea
                               className="order-history-refund-description-input"
                               value={editingRefundDescription[item.id] !== undefined ? editingRefundDescription[item.id] : item.refund_description || ''}
                               onChange={(e) => handleRefundDescriptionChange(item.id, e.target.value)}
                               placeholder="반품사유"
+                              rows={3}
                             />
                           </td>
                           <td>

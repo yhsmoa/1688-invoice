@@ -7,6 +7,71 @@
   width: 100% !important;
 }
 
+/* 날짜 편집 스타일 */
+.payment-history-date-cell {
+  padding: 8px !important;
+}
+
+.payment-history-date-text {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: inline-block;
+}
+
+.payment-history-date-text:hover {
+  background-color: #f0f0f0;
+}
+
+.payment-history-date-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.payment-history-date-input {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 140px;
+}
+
+.payment-history-date-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.payment-history-date-save-btn,
+.payment-history-date-cancel-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.payment-history-date-save-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.payment-history-date-save-btn:hover {
+  background-color: #45a049;
+}
+
+.payment-history-date-cancel-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.payment-history-date-cancel-btn:hover {
+  background-color: #da190b;
+}
+
 .payment-history-main-content {
   display: flex !important;
   flex: 1 !important;

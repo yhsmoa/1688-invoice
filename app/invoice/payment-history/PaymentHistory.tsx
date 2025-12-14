@@ -23,6 +23,7 @@ export interface PaymentHistoryData {
   extra_fee: number | null;
   balance_after: number | null;
   status: string | null;
+  date: string | null;  // YYYY-MM-DD 형식
   created_at: string | null;
   updated_at: string | null;
 }
@@ -53,6 +54,10 @@ const PaymentHistory: React.FC = () => {
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [liveBalance, setLiveBalance] = useState<number | null>(null);
+
+  // 날짜 편집 상태
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingDateValue, setEditingDateValue] = useState<string>('');
 
   // 검색 필터 상태
   const [periodType, setPeriodType] = useState<string>('30days');
@@ -90,9 +95,14 @@ const PaymentHistory: React.FC = () => {
 
   const itemsPerPage = 20;
 
-  // 날짜를 YYYY-MM-DD 형식으로 변환
+  // 날짜를 YYYY-MM-DD 형식으로 변환 (검색 필터용)
   const formatDate = (date: Date): string => {
     return date.toISOString().split('T')[0];
+  };
+
+  // 현재 날짜를 YYYY-MM-DD 형식으로 반환 (DB 저장용)
+  const getCurrentDate = (): string => {
+    return formatDate(new Date());
   };
 
   // 기간 타입에 따라 시작/종료 날짜 계산
@@ -336,20 +346,37 @@ const PaymentHistory: React.FC = () => {
     }
 
     const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.user_id) return;
 
     setLoading(true);
     try {
-      await fetchTransactions(selectedUser.coupang_name);
+      // API 호출하여 데이터 가져오기
+      const params = new URLSearchParams({ user_id: selectedUser.user_id });
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (searchType !== 'all') params.append('transaction_type', searchType);
 
-      // 검색어가 있으면 클라이언트에서 추가 필터링
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.toLowerCase().trim();
-        const filtered = itemData.filter(item =>
-          item.description?.toLowerCase().includes(searchLower) ||
-          item.transaction_type?.toLowerCase().includes(searchLower)
-        );
-        setFilteredData(filtered);
+      const response = await fetch(`/api/get-payment-transactions?${params}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const fetchedData = result.data;
+        setItemData(fetchedData);
+
+        // 검색어가 있으면 클라이언트에서 추가 필터링
+        if (searchTerm.trim()) {
+          const searchLower = searchTerm.toLowerCase().trim();
+          const filtered = fetchedData.filter((item: PaymentHistoryData) =>
+            item.description?.toLowerCase().includes(searchLower) ||
+            item.transaction_type?.toLowerCase().includes(searchLower)
+          );
+          setFilteredData(filtered);
+        } else {
+          // 검색어가 없으면 전체 데이터 표시
+          setFilteredData(fetchedData);
+        }
+      } else {
+        console.error('트랜잭션 조회 실패:', result.error);
       }
 
       setCurrentPage(1);
@@ -442,6 +469,12 @@ const PaymentHistory: React.FC = () => {
     try {
       const XLSX = await import('xlsx');
 
+      // 금액 표시 헬퍼 함수 (차감일 경우 마이너스 표시)
+      const formatAmountForExcel = (amount: number | null, transactionType: string | null): number | string => {
+        if (amount === null || amount === undefined) return '';
+        return transactionType === '차감' ? -amount : amount;
+      };
+
       // 테이블 컬럼 순서대로 데이터 변환
       const excelData = filteredData.map((item) => ({
         '업체': item.user_id || '',
@@ -449,16 +482,15 @@ const PaymentHistory: React.FC = () => {
         '타입': item.transaction_type || '',
         '내용': item.description || '',
         '수량': item.item_qty ?? '',
-        '총금액': item.amount ?? '',
-        '금액': item.price ?? '',
-        '배송비': item.delivery_fee ?? '',
-        '서비스비': item.service_fee ?? '',
-        '기타비용': item.extra_fee ?? '',
+        '총금액': formatAmountForExcel(item.amount, item.transaction_type),
+        '금액': formatAmountForExcel(item.price, item.transaction_type),
+        '배송비': formatAmountForExcel(item.delivery_fee, item.transaction_type),
+        '서비스비': formatAmountForExcel(item.service_fee, item.transaction_type),
+        '기타비용': formatAmountForExcel(item.extra_fee, item.transaction_type),
         '잔액': item.balance_after ?? '',
         '상태': item.status || '',
         '관리자비고': item.admin_note || '',
-        '생성일': formatDateTime(item.created_at),
-        '수정일': formatDateTime(item.updated_at),
+        '날짜': item.date || '',
       }));
 
       // 워크북 생성
@@ -516,7 +548,8 @@ const PaymentHistory: React.FC = () => {
           transaction_type: '충전',
           description: chargeForm.description || null,
           amount: Number(chargeForm.amount),
-          admin_note: chargeForm.adminNote || null
+          admin_note: chargeForm.adminNote || null,
+          date: getCurrentDate()
         })
       });
 
@@ -575,7 +608,8 @@ const PaymentHistory: React.FC = () => {
           delivery_fee: deductForm.deliveryFee ? Number(deductForm.deliveryFee) : null,
           service_fee: deductForm.serviceFee ? Number(deductForm.serviceFee) : null,
           extra_fee: deductForm.extraFee ? Number(deductForm.extraFee) : null,
-          admin_note: deductForm.adminNote || null
+          admin_note: deductForm.adminNote || null,
+          date: getCurrentDate()
         })
       });
 
@@ -733,7 +767,8 @@ const PaymentHistory: React.FC = () => {
           extra_fee: null,
           price,
           status: '정상',
-          admin_note: null
+          admin_note: null,
+          date: getCurrentDate()
         })
       });
 
@@ -768,6 +803,52 @@ const PaymentHistory: React.FC = () => {
       handleSaveDeduct();
     } else if (addModalType === '1688order') {
       handleSave1688Order();
+    }
+  };
+
+  // 날짜 편집 핸들러
+  const handleDateClick = (item: PaymentHistoryData) => {
+    setEditingDateId(item.id);
+    setEditingDateValue(item.date || getCurrentDate());
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditingDateValue(e.target.value);
+  };
+
+  const handleDateCancel = () => {
+    setEditingDateId(null);
+    setEditingDateValue('');
+  };
+
+  const handleDateSave = async (itemId: string) => {
+    try {
+      const response = await fetch('/api/update-payment-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: itemId,
+          date: editingDateValue
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 로컬 데이터 업데이트
+        const updatedData = itemData.map(item =>
+          item.id === itemId ? { ...item, date: editingDateValue } : item
+        );
+        setItemData(updatedData);
+        setFilteredData(updatedData);
+        setEditingDateId(null);
+        setEditingDateValue('');
+      } else {
+        alert(`날짜 수정 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('날짜 수정 오류:', error);
+      alert('날짜 수정 중 오류가 발생했습니다.');
     }
   };
 
@@ -1016,15 +1097,38 @@ const PaymentHistory: React.FC = () => {
                             ) : '-'}
                           </td>
                           <td>{item.status || '-'}</td>
-                          <td>
-                            {item.created_at ? new Date(item.created_at).toLocaleDateString('ko-KR') : '-'}
-                            {item.updated_at && (
-                              <>
-                                <br />
-                                <span className="payment-history-updated-at">
-                                  {new Date(item.updated_at).toLocaleDateString('ko-KR')}
-                                </span>
-                              </>
+                          <td className="payment-history-date-cell">
+                            {editingDateId === item.id ? (
+                              <div className="payment-history-date-edit">
+                                <input
+                                  type="date"
+                                  className="payment-history-date-input"
+                                  value={editingDateValue}
+                                  onChange={handleDateChange}
+                                  autoFocus
+                                />
+                                <div className="payment-history-date-buttons">
+                                  <button
+                                    className="payment-history-date-save-btn"
+                                    onClick={() => handleDateSave(item.id)}
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    className="payment-history-date-cancel-btn"
+                                    onClick={handleDateCancel}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <span
+                                className="payment-history-date-text"
+                                onClick={() => handleDateClick(item)}
+                              >
+                                {item.date || '-'}
+                              </span>
                             )}
                           </td>
                         </tr>

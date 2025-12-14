@@ -106,6 +106,28 @@
   cursor: not-allowed;
 }
 
+.order-history-update-btn {
+  background-color: #f59e0b;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.order-history-update-btn:hover {
+  background-color: #d97706;
+}
+
+.order-history-update-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
 .order-history-download-btn {
   background-color: #3b82f6;
   color: white;
@@ -458,8 +480,9 @@
 
 .order-history-table th:nth-child(7),
 .order-history-table td:nth-child(7) {
-  width: 180px;
-  text-align: center;
+  width: 250px;
+  min-width: 250px;
+  text-align: left;
 }
 
 .order-history-table th:nth-child(8),
@@ -729,6 +752,15 @@
   margin: 0;
 }
 
+/* 선택된 행 스타일 */
+.order-history-table tbody tr.selected {
+  background-color: #e0f2fe !important;
+}
+
+.order-history-table tbody tr.selected:hover {
+  background-color: #bae6fd !important;
+}
+
 /* 수량 배지 색상 */
 .order-history-progress-qty {
   background-color: #fef3c7 !important;
@@ -851,30 +883,44 @@
 /* 반품사유 셀 */
 .order-history-refund-description-cell {
   cursor: pointer;
-  padding: 16px !important;
+  padding: 8px !important;
+  position: relative;
 }
 
 .order-history-refund-description-cell:hover {
   background-color: #f9fafb;
 }
 
-/* 반품사유 입력 필드 */
+/* 반품사유 입력 필드 (textarea) */
 .order-history-refund-description-input {
   width: 100%;
-  padding: 0;
-  border: none;
-  font-size: 15px;
+  min-height: 60px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
   color: #000;
   text-align: left;
   background-color: transparent;
   box-sizing: border-box;
   cursor: pointer;
+  resize: none;
+  line-height: 1.4;
+  font-family: inherit;
+  overflow: hidden;
+}
+
+.order-history-refund-description-input:hover {
+  border-color: #ddd;
+  background-color: #fafafa;
 }
 
 .order-history-refund-description-input:focus {
   outline: none;
-  background-color: transparent;
+  border-color: #6366f1;
+  background-color: #fff;
   cursor: text;
+  overflow: auto;
 }
 
 .order-history-refund-description-input::placeholder {

@@ -1646,7 +1646,11 @@ const ChinaOrderNew: React.FC = () => {
 
         // 취소 여부에 따라 분리 (cancelStatus에 [취소] 문구가 있을 때만)
         if (item.cancelStatus && item.cancelStatus.includes('[취소]')) {
-          canceledData.push(rowData);
+          // 취소 시트용 데이터: M열(index 12), O열(index 14) 비우기
+          const cancelRowData = [...rowData];
+          cancelRowData[12] = ''; // M열 (진행) 비우기
+          cancelRowData[14] = ''; // O열 (취소) 비우기
+          canceledData.push(cancelRowData);
         } else {
           successData.push(rowData);
         }

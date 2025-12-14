@@ -10,9 +10,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'orderData 배열이 필요합니다.' }, { status: 400 });
     }
 
-    // order_number 추출
+    // order_number 추출 (# 또는 C 앞부분만 사용)
+    const extractBaseOrderNumber = (orderNumber: string): string => {
+      // # 또는 C 중 먼저 나오는 위치에서 자르기
+      let result = orderNumber;
+      const hashIndex = orderNumber.indexOf('#');
+      const cIndex = orderNumber.search(/C\d*$/); // 끝에 C와 숫자가 붙는 패턴
+
+      if (hashIndex > 0) {
+        result = orderNumber.substring(0, hashIndex);
+      }
+      if (cIndex > 0) {
+        const tempResult = orderNumber.substring(0, cIndex);
+        if (tempResult.length < result.length) {
+          result = tempResult;
+        }
+      }
+      return result;
+    };
+
     const orderNumbers = orderData
-      .map((item: { id: string; order_number: string | null }) => item.order_number)
+      .map((item: { id: string; order_number: string | null }) => {
+        if (!item.order_number) return null;
+        return extractBaseOrderNumber(item.order_number);
+      })
       .filter((num): num is string => num !== null && num !== '');
 
     if (orderNumbers.length === 0) {
@@ -60,7 +81,9 @@ export async function POST(request: NextRequest) {
       const batch = orderData.slice(i, i + updateBatchSize);
 
       const updatePromises = batch.map((item: { id: string; order_number: string | null }) => {
-        const orderId = item.order_number ? orderMapping[item.order_number] : null;
+        // # 또는 C 앞부분만 추출하여 매핑 조회
+        const searchKey = item.order_number ? extractBaseOrderNumber(item.order_number) : null;
+        const orderId = searchKey ? orderMapping[searchKey] : null;
 
         if (!orderId) {
           return Promise.resolve({ error: null, data: null, notFound: item.order_number });
@@ -90,8 +113,10 @@ export async function POST(request: NextRequest) {
 
     // 찾지 못한 주문번호
     const notFound = orderData
-      .filter((item: { id: string; order_number: string | null }) =>
-        item.order_number && !orderMapping[item.order_number]
+      .filter((item: { id: string; order_number: string | null }) => {
+        const searchKey = item.order_number ? extractBaseOrderNumber(item.order_number) : null;
+        return item.order_number && searchKey && !orderMapping[searchKey];
+      }
       )
       .map((item: { id: string; order_number: string | null }) => item.order_number);
 

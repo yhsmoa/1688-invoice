@@ -15,16 +15,17 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('invoiceManager_transactions')
-      .select('id, order_code, user_id, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, created_at, updated_at')
+      .select('id, order_code, user_id, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, date, created_at, updated_at')
       .eq('user_id', userId)
+      .order('date', { ascending: false })
       .order('created_at', { ascending: false });
 
-    // 기간 필터
+    // 기간 필터 (date 기준)
     if (startDate) {
-      query = query.gte('created_at', `${startDate}T00:00:00`);
+      query = query.gte('date', startDate);
     }
     if (endDate) {
-      query = query.lte('created_at', `${endDate}T23:59:59`);
+      query = query.lte('date', endDate);
     }
 
     // 타입 필터

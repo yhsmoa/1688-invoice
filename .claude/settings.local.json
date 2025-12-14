@@ -32,7 +32,8 @@
       "Bash(del InvoiceSave.css)",
       "Bash(mv:*)",
       "Bash(xcopy:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }

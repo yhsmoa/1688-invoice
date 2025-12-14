@@ -14,10 +14,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'status가 필요합니다.' }, { status: 400 });
     }
 
+    // 업데이트할 데이터 구성
+    const updateData: {
+      refund_status: string;
+      updated_at: string;
+      confirm_date?: string;
+    } = {
+      refund_status: status,
+      updated_at: new Date().toISOString()
+    };
+
+    // '완료' 상태로 변경 시 confirm_date에 현재 시간 기록
+    if (status === '완료') {
+      updateData.confirm_date = new Date().toISOString();
+    }
+
     // 여러 항목의 상태를 업데이트
     const { data, error } = await supabase
       .from('invoiceManager_refundOrder')
-      .update({ refund_status: status, updated_at: new Date().toISOString() })
+      .update(updateData)
       .in('id', ids)
       .select();
 
