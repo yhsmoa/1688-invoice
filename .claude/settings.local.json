@@ -33,7 +33,8 @@
       "Bash(mv:*)",
       "Bash(xcopy:*)",
       "Bash(cp:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(d:)"
     ],
     "deny": []
   }

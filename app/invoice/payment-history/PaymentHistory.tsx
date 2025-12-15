@@ -750,7 +750,7 @@ const PaymentHistory: React.FC = () => {
       const finalAmount = totalAmount + serviceFee;  // 최종 차감 금액 (I열 합 + 서비스비)
 
       // description 생성
-      const description = `${orderCode} 구매대행`;
+      const description = `${orderCode} 주문`;
 
       // API 호출하여 저장
       const response = await fetch('/api/save-payment-transaction', {
