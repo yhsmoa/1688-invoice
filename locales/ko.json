@@ -13,6 +13,26 @@
     "orderSearch": "주문 검색",
     "orderCheck": "주문 검사"
   },
+  "orderSearch": {
+    "title": "주문 검색",
+    "excelUpload": "엑셀 업로드",
+    "orderNumber": "주문번호",
+    "other": "기타",
+    "search": "검색",
+    "searchPlaceholder": "상품명, 옵션 등으로 검색하세요...",
+    "noResults": "검색 결과가 없습니다.",
+    "table": {
+      "shop": "업체명 (Shop)",
+      "offerId": "상품코드 (Offer ID)",
+      "deliveryStatus": "배송상태 (Delivery Status)",
+      "orderId": "주문번호 (Order ID)"
+    },
+    "pagination": {
+      "previous": "이전",
+      "next": "다음"
+    },
+    "copyToast": "복사되었습니다!"
+  },
   "importProduct": {
     "title": "상품 입고",
     "refresh": "업데이트",

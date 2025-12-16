@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import './order-search.css';
@@ -15,10 +16,11 @@ interface OrderSearchData {
 }
 
 const OrderSearch: React.FC = () => {
+  const { t } = useTranslation();
   const [orderData, setOrderData] = useState<OrderSearchData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<OrderSearchData[]>([]);
-  const [viewMode, setViewMode] = useState<string>('주문번호');
+  const [viewMode, setViewMode] = useState<string>('orderNumber');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const [paginatedData, setPaginatedData] = useState<OrderSearchData[]>([]);
@@ -76,7 +78,7 @@ const OrderSearch: React.FC = () => {
     }
 
     // 주문번호 모드일 때만 API 호출
-    if (viewMode === '주문번호') {
+    if (viewMode === 'orderNumber') {
       try {
         // 주문번호 가공
         const processedOrderNumber = preprocessOrderNumber(searchTerm);
@@ -241,14 +243,14 @@ const OrderSearch: React.FC = () => {
         <LeftsideMenu />
         <main className="order-search-content">
           <div className="order-search-container">
-            <h1 className="order-search-title">주문 검색</h1>
+            <h1 className="order-search-title">{t('orderSearch.title')}</h1>
 
             {/* 컨트롤 섹션 */}
             <div className="order-search-control-section">
               <div className="order-search-left-controls"></div>
               <div className="order-search-right-controls">
                 <button className="order-search-excel-upload-btn" onClick={handleExcelUpload}>
-                  엑셀 업로드
+                  {t('orderSearch.excelUpload')}
                 </button>
               </div>
             </div>
@@ -262,23 +264,23 @@ const OrderSearch: React.FC = () => {
                       <input
                         type="radio"
                         name="order-search-viewMode"
-                        value="주문번호"
-                        checked={viewMode === '주문번호'}
+                        value="orderNumber"
+                        checked={viewMode === 'orderNumber'}
                         onChange={(e) => handleViewModeChange(e.target.value)}
                         className="order-search-radio-input"
                       />
-                      주문번호
+                      {t('orderSearch.orderNumber')}
                     </label>
                     <label className="order-search-radio-label">
                       <input
                         type="radio"
                         name="order-search-viewMode"
-                        value="기타"
-                        checked={viewMode === '기타'}
+                        value="other"
+                        checked={viewMode === 'other'}
                         onChange={(e) => handleViewModeChange(e.target.value)}
                         className="order-search-radio-input"
                       />
-                      기타
+                      {t('orderSearch.other')}
                     </label>
                   </div>
                 </div>
@@ -286,14 +288,14 @@ const OrderSearch: React.FC = () => {
                 <div className="order-search-form-container">
                   <input
                     type="text"
-                    placeholder="상품명, 옵션 등으로 검색하세요..."
+                    placeholder={t('orderSearch.searchPlaceholder')}
                     value={searchTerm}
                     onChange={handleSearchInputChange}
                     onKeyPress={handleSearchKeyPress}
                     className="order-search-input"
                   />
                   <button onClick={handleSearchClick} className="order-search-button">
-                    검색
+                    {t('orderSearch.search')}
                   </button>
                 </div>
               </div>
@@ -302,7 +304,7 @@ const OrderSearch: React.FC = () => {
             {/* 테이블 영역 */}
             <div className="order-search-table-board">
               {filteredData.length === 0 ? (
-                <div className="order-search-empty-data">검색 결과가 없습니다.</div>
+                <div className="order-search-empty-data">{t('orderSearch.noResults')}</div>
               ) : (
                 <table className="order-search-table">
                   <thead>
@@ -315,10 +317,10 @@ const OrderSearch: React.FC = () => {
                           className="order-search-table-checkbox"
                         />
                       </th>
-                      <th>업체명 (Shop)</th>
-                      <th>상품코드 (Offer ID)</th>
-                      <th>배송상태 (Delivery Status)</th>
-                      <th>주문번호 (Order ID)</th>
+                      <th>{t('orderSearch.table.shop')}</th>
+                      <th>{t('orderSearch.table.offerId')}</th>
+                      <th>{t('orderSearch.table.deliveryStatus')}</th>
+                      <th>{t('orderSearch.table.orderId')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -375,7 +377,7 @@ const OrderSearch: React.FC = () => {
                   disabled={currentPage === 1}
                   className="order-search-pagination-button"
                 >
-                  이전
+                  {t('orderSearch.pagination.previous')}
                 </button>
                 <div className="order-search-page-numbers">
                   {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
@@ -400,7 +402,7 @@ const OrderSearch: React.FC = () => {
                   disabled={currentPage === totalPages}
                   className="order-search-pagination-button"
                 >
-                  다음
+                  {t('orderSearch.pagination.next')}
                 </button>
                 <div className="order-search-page-info">
                   {currentPage} / {totalPages}
@@ -414,7 +416,7 @@ const OrderSearch: React.FC = () => {
       {/* 복사 완료 토스트 */}
       {showCopyToast && (
         <div className="order-search-copy-toast">
-          복사되었습니다!
+          {t('orderSearch.copyToast')}
         </div>
       )}
     </div>

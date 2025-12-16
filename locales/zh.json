@@ -12,6 +12,26 @@
     "barcodeSettings": "条码设置",
     "orderSearch": "订单查询"
   },
+  "orderSearch": {
+    "title": "订单查询",
+    "excelUpload": "Excel上传",
+    "orderNumber": "订单号",
+    "other": "其他",
+    "search": "搜索",
+    "searchPlaceholder": "请输入商品名称、选项等进行搜索...",
+    "noResults": "没有搜索结果。",
+    "table": {
+      "shop": "商家名称 (Shop)",
+      "offerId": "商品代码 (Offer ID)",
+      "deliveryStatus": "配送状态 (Delivery Status)",
+      "orderId": "订单号 (Order ID)"
+    },
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页"
+    },
+    "copyToast": "已复制!"
+  },
   "importProduct": {
     "title": "商品入库",
     "refresh": "刷新",
