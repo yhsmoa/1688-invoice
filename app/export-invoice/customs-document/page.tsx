@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import GoogleSheetModal from '../../../component/GoogleSheetModal';
@@ -36,6 +36,13 @@ const CustomsDocument: React.FC = () => {
   const [currentMoveLocation, setCurrentMoveLocation] = useState<string>('');
   const [isExcelDownloading, setIsExcelDownloading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 택배사 정리 모달 관련 상태
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryExcelFile, setDeliveryExcelFile] = useState<File | null>(null);
+  const [isProcessingDelivery, setIsProcessingDelivery] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const deliveryFileInputRef = useRef<HTMLInputElement>(null);
 
   // 위치별로 데이터 그룹화
   const groupedDataByLocation = filteredData.reduce((acc, item) => {
@@ -238,6 +245,114 @@ const CustomsDocument: React.FC = () => {
     }
   };
 
+  // 택배사 정리 모달 열기
+  const handleDeliveryModalOpen = () => {
+    setShowDeliveryModal(true);
+    setDeliveryExcelFile(null);
+    if (deliveryFileInputRef.current) {
+      deliveryFileInputRef.current.value = '';
+    }
+  };
+
+  // 택배사 정리 모달 닫기
+  const handleDeliveryModalClose = () => {
+    setShowDeliveryModal(false);
+    setDeliveryExcelFile(null);
+    if (deliveryFileInputRef.current) {
+      deliveryFileInputRef.current.value = '';
+    }
+  };
+
+  // 택배사 정리 엑셀 파일 선택
+  const handleDeliveryFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      validateAndSetDeliveryFile(file);
+      e.target.value = '';
+    }
+  };
+
+  // 파일 유효성 검사 및 설정
+  const validateAndSetDeliveryFile = (file: File) => {
+    const validExtensions = ['.xlsx', '.xls'];
+    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+
+    if (!validExtensions.includes(fileExtension)) {
+      alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+      return;
+    }
+    setDeliveryExcelFile(file);
+  };
+
+  // 드래그앤드롭 핸들러
+  const handleDeliveryDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDeliveryDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDeliveryDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      validateAndSetDeliveryFile(file);
+    }
+  };
+
+  // 택배사 정리 엑셀 다운로드
+  const handleDeliveryExcelDownload = async () => {
+    if (!deliveryExcelFile) {
+      alert('엑셀 파일을 먼저 업로드해주세요.');
+      return;
+    }
+
+    setIsProcessingDelivery(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', deliveryExcelFile);
+
+      const response = await fetch('/api/process-delivery-excel', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '처리 중 오류가 발생했습니다.');
+      }
+
+      // Blob으로 변환하여 다운로드
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      a.download = `택배사정리_${timestamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // 성공 후 모달 닫기
+      handleDeliveryModalClose();
+
+    } catch (error) {
+      console.error('택배사 정리 처리 오류:', error);
+      alert(error instanceof Error ? error.message : '택배사 정리 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessingDelivery(false);
+    }
+  };
+
   const handleGoogleSheetOpen = () => {
     setShowGoogleSheetModal(true);
   };
@@ -364,6 +479,12 @@ const CustomsDocument: React.FC = () => {
                   ) : (
                     '↓ 엑셀 다운'
                   )}
+                </button>
+                <button
+                  className="customs-document-delivery-btn"
+                  onClick={handleDeliveryModalOpen}
+                >
+                  택배사 정리
                 </button>
               </div>
             </div>
@@ -583,6 +704,62 @@ const CustomsDocument: React.FC = () => {
         availableLocations={availableLocations}
         onMove={handleLocationMove}
       />
+
+      {/* 택배사 정리 모달 */}
+      {showDeliveryModal && (
+        <div className="delivery-modal-overlay" onClick={handleDeliveryModalClose}>
+          <div className="delivery-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="delivery-modal-header">
+              <h2 className="delivery-modal-title">택배사 정리</h2>
+              <button className="delivery-modal-close-btn" onClick={handleDeliveryModalClose}>
+                닫기
+              </button>
+            </div>
+
+            <div className="delivery-modal-content">
+              <div
+                className={`delivery-upload-box ${isDragging ? 'drag-over' : ''}`}
+                onClick={() => deliveryFileInputRef.current?.click()}
+                onDragOver={handleDeliveryDragOver}
+                onDragLeave={handleDeliveryDragLeave}
+                onDrop={handleDeliveryDrop}
+              >
+                <input
+                  ref={deliveryFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleDeliveryFileSelect}
+                  style={{ display: 'none' }}
+                />
+                <div className="delivery-upload-icon">
+                  {deliveryExcelFile ? '✅' : '📁'}
+                </div>
+                <div className="delivery-upload-text">
+                  {deliveryExcelFile ? deliveryExcelFile.name : '클릭하여 엑셀 파일을 선택하세요'}
+                </div>
+                <div className="delivery-upload-hint">
+                  {deliveryExcelFile ? '다른 파일을 선택하려면 클릭하세요' : '클릭 또는 드래그앤드롭으로 파일을 업로드하세요'}
+                </div>
+              </div>
+
+              <button
+                className={`delivery-download-btn ${deliveryExcelFile ? 'active' : ''}`}
+                onClick={handleDeliveryExcelDownload}
+                disabled={!deliveryExcelFile || isProcessingDelivery}
+              >
+                {isProcessingDelivery ? (
+                  <>
+                    <span style={{ marginRight: '8px' }}>처리 중...</span>
+                    <span className="spinner"></span>
+                  </>
+                ) : (
+                  '택배사 정리 엑셀 다운로드'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

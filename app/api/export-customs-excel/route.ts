@@ -241,7 +241,8 @@ export async function POST(request: NextRequest) {
             if (colNumber >= 1 && colNumber <= 21) {
               cell.alignment = {
                 horizontal: 'center',
-                vertical: 'middle'
+                vertical: 'middle',
+                wrapText: colNumber === 21 // U열(쉬퍼)은 텍스트 줄바꿈 적용
               };
               cell.border = {
                 top: { style: 'thin' },
@@ -295,7 +296,7 @@ export async function POST(request: NextRequest) {
         itemSheet.mergeCells(`U${startRow}:U${endRow}`);
       }
 
-      // 위치별 F열(마킹), H열(C/T) 병합
+      // 위치별 F열(마킹), H열(C/T), I열(KG), J열(CBM) 병합
       locationMergeRanges.forEach(range => {
         if (range.endRow > range.startRow) {
           // F열 병합 (위치)
@@ -303,6 +304,12 @@ export async function POST(request: NextRequest) {
 
           // H열 병합 (C/T)
           itemSheet.mergeCells(`H${range.startRow}:H${range.endRow}`);
+
+          // I열 병합 (KG)
+          itemSheet.mergeCells(`I${range.startRow}:I${range.endRow}`);
+
+          // J열 병합 (CBM)
+          itemSheet.mergeCells(`J${range.startRow}:J${range.endRow}`);
         }
       });
     }

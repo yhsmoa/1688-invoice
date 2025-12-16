@@ -450,3 +450,142 @@ button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* 택배사 정리 버튼 - 다른 버튼들과 동일한 스타일 */
+.customs-document-delivery-btn {
+  background-color: #38a169;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.customs-document-delivery-btn:hover {
+  background-color: #2f855a;
+}
+
+/* 택배사 정리 모달 */
+.delivery-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.delivery-modal {
+  background: white;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.delivery-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.delivery-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.delivery-modal-close-btn {
+  padding: 8px 16px;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.delivery-modal-close-btn:hover {
+  background-color: #4b5563;
+}
+
+.delivery-modal-content {
+  padding: 24px;
+}
+
+.delivery-upload-box {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #f9fafb;
+  margin-bottom: 20px;
+}
+
+.delivery-upload-box:hover,
+.delivery-upload-box.drag-over {
+  border-color: #38a169;
+  background-color: #f0fff4;
+}
+
+.delivery-upload-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.delivery-upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.delivery-upload-hint {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.delivery-download-btn {
+  width: 100%;
+  padding: 14px 20px;
+  background-color: #d1d5db;
+  color: #6b7280;
+  border: none;
+  border-radius: 8px;
+  cursor: not-allowed;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delivery-download-btn.active {
+  background-color: #6366f1;
+  color: white;
+  cursor: pointer;
+}
+
+.delivery-download-btn.active:hover {
+  background-color: #4f46e5;
+}
+
+.delivery-download-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
