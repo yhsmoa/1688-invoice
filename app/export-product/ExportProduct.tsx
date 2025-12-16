@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
@@ -48,6 +49,7 @@ interface ScanSheetData {
 }
 
 const ExportProduct: React.FC = () => {
+  const { t } = useTranslation();
   const { hasUnsavedChanges, setHasUnsavedChanges } = useSaveContext();
 
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -993,7 +995,7 @@ const ExportProduct: React.FC = () => {
         <LeftsideMenu />
         <main className="export-content">
           <div className="export-container">
-            <h1 className="export-title">상품 출고</h1>
+            <h1 className="export-title">{t('exportProduct.title')}</h1>
 
             {/* 상단 버튼 영역 */}
             <div className="export-header-buttons">
@@ -1003,7 +1005,7 @@ const ExportProduct: React.FC = () => {
                   value={selectedCoupangUser}
                   onChange={handleCoupangUserChange}
                 >
-                  <option value="">쿠팡 사용자 선택</option>
+                  <option value="">Coupang {t('exportProduct.selectUser')}</option>
                   {coupangUsers.map((user) => (
                     <option key={user.coupang_name} value={user.coupang_name}>
                       {user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name}
@@ -1015,7 +1017,7 @@ const ExportProduct: React.FC = () => {
                   onClick={handleLoadGoogleSheet}
                   disabled={loading}
                 >
-                  시트 불러오기
+                  {t('exportProduct.loadSheet')}
                 </button>
               </div>
               <div className="export-right-buttons">
@@ -1023,13 +1025,13 @@ const ExportProduct: React.FC = () => {
                   className="export-history-btn"
                   onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
                 >
-                  기록
+                  {t('exportProduct.record')}
                 </button>
                 <button
                   className={`export-download-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
                   onClick={saveAllData}
                 >
-                  저장{hasUnsavedChanges ? ' !' : ''}
+                  {t('exportProduct.save')}{hasUnsavedChanges ? ' !' : ''}
                 </button>
               </div>
             </div>
@@ -1039,7 +1041,7 @@ const ExportProduct: React.FC = () => {
               <div className="export-dropdown-row" style={{ marginBottom: '10px' }}>
                 <input
                   type="text"
-                  placeholder="박스 번호 입력"
+                  placeholder={t('exportProduct.boxNumberInput')}
                   className="export-box-input"
                   value={selectedBox}
                   onChange={(e) => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
@@ -1052,13 +1054,13 @@ const ExportProduct: React.FC = () => {
                   onChange={(e) => setSelectedSize(e.target.value)}
                   disabled
                 >
-                  <option value="">크기 선택 (비활성화)</option>
-                  <option value="극소">극소</option>
-                  <option value="소">소</option>
-                  <option value="중">중</option>
-                  <option value="대1">대1</option>
-                  <option value="대2">대2</option>
-                  <option value="이형">이형</option>
+                  <option value="">{t('exportProduct.selectSize')}</option>
+                  <option value="극소">{t('exportProduct.sizeXSmall')}</option>
+                  <option value="소">{t('exportProduct.sizeSmall')}</option>
+                  <option value="중">{t('exportProduct.sizeMedium')}</option>
+                  <option value="대1">{t('exportProduct.sizeLarge1')}</option>
+                  <option value="대2">{t('exportProduct.sizeLarge2')}</option>
+                  <option value="이형">{t('exportProduct.sizeIrregular')}</option>
                 </select>
               </div>
             </div>
@@ -1204,7 +1206,7 @@ const ExportProduct: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <p>주문번호를 입력해주세요</p>
+                        <p>{t('exportProduct.enterOrderNumber')}</p>
                         {orderData.length > 0 && (
                           <p className="export-data-status">
                             로드된 주문: {orderData.length}개
@@ -1243,7 +1245,7 @@ const ExportProduct: React.FC = () => {
                     <input
                       ref={barcodeInputRef}
                       type="text"
-                      placeholder="주문번호를 입력하세요"
+                      placeholder={t('exportProduct.enterOrderNumber')}
                       className="export-barcode-input"
                       value={barcodeInput}
                       onChange={(e) => {
@@ -1261,7 +1263,7 @@ const ExportProduct: React.FC = () => {
                     <input
                       ref={quantityInputRef}
                       type="number"
-                      placeholder="개수"
+                      placeholder={t('exportProduct.quantityInput')}
                       className="export-quantity-input"
                       value={quantityInput}
                       onChange={(e) => setQuantityInput(e.target.value)}
@@ -1276,7 +1278,7 @@ const ExportProduct: React.FC = () => {
                       onClick={handleScan}
                       disabled={!barcodeInput.trim() || !quantityInput.trim()}
                     >
-                      스캔
+                      {t('exportProduct.scan')}
                     </button>
                   </div>
                 </div>

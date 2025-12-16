@@ -104,5 +104,23 @@
       "save": "保存",
       "emptyMessage": "无待处理项目。"
     }
+  },
+  "exportProduct": {
+    "title": "商品出库",
+    "selectUser": "用户选择",
+    "loadSheet": "导入表单",
+    "record": "记录",
+    "save": "保存记录",
+    "selectSize": "选择尺寸",
+    "sizeXSmall": "极小",
+    "sizeSmall": "小",
+    "sizeMedium": "中",
+    "sizeLarge1": "大1",
+    "sizeLarge2": "大2",
+    "sizeIrregular": "异形",
+    "enterOrderNumber": "请输入订单号",
+    "scan": "扫描",
+    "boxNumberInput": "箱号输入",
+    "quantityInput": "数量"
   }
 }

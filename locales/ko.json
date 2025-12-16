@@ -110,5 +110,23 @@
       "emptyMessage": "배송누락 항목이 없습니다.",
       "missing": "누락"
     }
+  },
+  "exportProduct": {
+    "title": "상품 출고",
+    "selectUser": "쿠팡 사용자 선택",
+    "loadSheet": "시트 불러오기",
+    "record": "기록",
+    "save": "저장",
+    "selectSize": "크기 선택",
+    "sizeXSmall": "극소",
+    "sizeSmall": "소",
+    "sizeMedium": "중",
+    "sizeLarge1": "대1",
+    "sizeLarge2": "대2",
+    "sizeIrregular": "이형",
+    "enterOrderNumber": "주문번호를 입력해주세요",
+    "scan": "스캔",
+    "boxNumberInput": "박스 번호 입력",
+    "quantityInput": "개수"
   }
 }
