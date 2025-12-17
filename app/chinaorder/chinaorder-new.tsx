@@ -605,7 +605,16 @@ const ChinaOrderNew: React.FC = () => {
   // URL 정리 함수 (쿼리 파라미터 제거)
   const cleanUrl = (url: string): string => {
     if (!url) return '';
-    // URL에서 쿼리 파라미터 제거
+
+    // 타오바오 링크인 경우: id 파라미터만 남기고 나머지 제거
+    if (url.includes('item.taobao.com/item.htm')) {
+      const idMatch = url.match(/[?&]id=(\d+)/);
+      if (idMatch) {
+        return `https://item.taobao.com/item.htm?id=${idMatch[1]}`;
+      }
+    }
+
+    // 1688 링크 및 기타: 쿼리 파라미터 제거
     const urlWithoutQuery = url.split('?')[0];
     return urlWithoutQuery;
   };
@@ -613,8 +622,16 @@ const ChinaOrderNew: React.FC = () => {
   // URL에서 offerId 추출 함수
   const extractOfferId = (url: string): string => {
     if (!url) return '';
-    const match = url.match(/\/offer\/(\d+)\.html/);
-    return match ? match[1] : '';
+
+    // 1688 링크: /offer/숫자.html
+    const match1688 = url.match(/\/offer\/(\d+)\.html/);
+    if (match1688) return match1688[1];
+
+    // 타오바오 링크: item.taobao.com/item.htm?...id=숫자
+    const matchTaobao = url.match(/item\.taobao\.com\/item\.htm.*[?&]id=(\d+)/);
+    if (matchTaobao) return `taobao_${matchTaobao[1]}`;
+
+    return '';
   };
 
   // 주문 검수 모달 저장 함수
