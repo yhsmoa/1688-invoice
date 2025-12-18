@@ -22,7 +22,7 @@ export const GET = async (request: NextRequest) => {
       const { data, error } = await supabase
         .from('1688_invoice_deliveryInfo_check')
         .select('*')
-        .order('delivery_code', { ascending: true })
+        .order('id', { ascending: true })
         .range(from, from + pageSize - 1);
 
       if (error) {
