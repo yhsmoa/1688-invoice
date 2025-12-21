@@ -15,6 +15,7 @@ export interface RefundOrderData {
   option_name_cn: string | null;
   qty: number | null;
   refund_amount: number | null;
+  product_price: number | null;
   refund_type: string | null;
   refund_description: string | null;
   refund_status: string | null;
@@ -45,7 +46,7 @@ const OrderHistory: React.FC = () => {
   const [balance, setBalance] = useState<number | null>(null);
   const [liveBalance, setLiveBalance] = useState<number | null>(null);
   const [activeStatus, setActiveStatus] = useState<string>('all');
-  const [editingRefundAmount, setEditingRefundAmount] = useState<{[key: string]: number | null}>({});
+  const [editingProductPrice, setEditingProductPrice] = useState<{[key: string]: number | null}>({});
   const [editingRefundDescription, setEditingRefundDescription] = useState<{[key: string]: string}>({});
   const [editingDeliveryFee, setEditingDeliveryFee] = useState<{[key: string]: number | null}>({});
   const [editingServiceFee, setEditingServiceFee] = useState<{[key: string]: number | null}>({});
@@ -404,10 +405,10 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // 반품금액 수정 핸들러
-  const handleRefundAmountChange = (itemId: string, value: string) => {
+  // 가격 수정 핸들러
+  const handleProductPriceChange = (itemId: string, value: string) => {
     const numValue = value === '' ? null : Number(value);
-    setEditingRefundAmount(prev => ({ ...prev, [itemId]: numValue }));
+    setEditingProductPrice(prev => ({ ...prev, [itemId]: numValue }));
   };
 
   // 반품사유 수정 핸들러
@@ -466,28 +467,28 @@ const OrderHistory: React.FC = () => {
     return '';
   };
 
-  // 반품금액 및 반품사유 저장 (상태 업데이트 시 함께 저장)
+  // 데이터 저장 (상태 업데이트 시 함께 저장)
   const saveRefundAmounts = async () => {
-    const amountUpdates = Object.entries(editingRefundAmount);
+    const priceUpdates = Object.entries(editingProductPrice);
     const descriptionUpdates = Object.entries(editingRefundDescription);
     const deliveryFeeUpdates = Object.entries(editingDeliveryFee);
     const serviceFeeUpdates = Object.entries(editingServiceFee);
     const confirmDateUpdates = Object.entries(editingConfirmDate);
 
-    if (amountUpdates.length === 0 && descriptionUpdates.length === 0 && deliveryFeeUpdates.length === 0 && serviceFeeUpdates.length === 0 && confirmDateUpdates.length === 0) return true;
+    if (priceUpdates.length === 0 && descriptionUpdates.length === 0 && deliveryFeeUpdates.length === 0 && serviceFeeUpdates.length === 0 && confirmDateUpdates.length === 0) return true;
 
     try {
-      // 반품금액 저장
-      for (const [id, amount] of amountUpdates) {
+      // 가격 저장 (product_price)
+      for (const [id, price] of priceUpdates) {
         const response = await fetch('/api/update-refund-amount', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, refund_amount: amount })
+          body: JSON.stringify({ id, product_price: price })
         });
 
         const result = await response.json();
         if (!result.success) {
-          console.error(`반품금액 저장 실패 (${id}):`, result.error);
+          console.error(`가격 저장 실패 (${id}):`, result.error);
           return false;
         }
       }
@@ -553,28 +554,44 @@ const OrderHistory: React.FC = () => {
         }
       }
 
-      setEditingRefundAmount({});
+      setEditingProductPrice({});
       setEditingRefundDescription({});
       setEditingDeliveryFee({});
       setEditingServiceFee({});
       setEditingConfirmDate({});
       return true;
     } catch (error) {
-      console.error('반품 정보 저장 오류:', error);
+      console.error('데이터 저장 오류:', error);
       return false;
     }
   };
 
-  // 선택된 항목들의 반품금액 검증
-  const validateRefundAmounts = (): boolean => {
+  // 선택된 항목들의 가격 검증
+  const validateProductPrice = (): boolean => {
     const selectedIds = Array.from(selectedItems);
     for (const id of selectedIds) {
       const item = itemData.find(i => i.id === id);
-      const editedAmount = editingRefundAmount[id];
-      const currentAmount = editedAmount !== undefined ? editedAmount : item?.refund_amount;
+      const editedPrice = editingProductPrice[id];
+      const currentPrice = editedPrice !== undefined ? editedPrice : item?.product_price;
 
-      if (currentAmount === null || currentAmount === undefined || currentAmount <= 0) {
-        alert('반품금액을 입력해주세요.');
+      if (currentPrice === null || currentPrice === undefined || currentPrice <= 0) {
+        alert('가격을 입력해주세요.');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 선택된 항목들의 날짜 검증 (완료 시)
+  const validateConfirmDate = (): boolean => {
+    const selectedIds = Array.from(selectedItems);
+    for (const id of selectedIds) {
+      const item = itemData.find(i => i.id === id);
+      const editedDate = editingConfirmDate[id];
+      const hasDate = (editedDate && editedDate.length === 6) || item?.confirm_date;
+
+      if (!hasDate) {
+        alert('날짜를 입력해주세요.');
         return false;
       }
     }
@@ -587,50 +604,10 @@ const OrderHistory: React.FC = () => {
     await updateRefundStatus('진행');
   };
 
-  // [완료] 버튼 클릭 (진행 -> 완료) - confirm_date 자동 설정
+  // [완료] 버튼 클릭 (진행 -> 완료)
   const handleCompleteClick = async () => {
-    if (!validateRefundAmounts()) return;
-
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-    const selectedIds = Array.from(selectedItems);
-
-    // 각 선택된 항목에 대해 confirm_date 설정
-    for (const id of selectedIds) {
-      const item = itemData.find(i => i.id === id);
-      const editedDate = editingConfirmDate[id];
-
-      // 사용자가 날짜를 입력했으면 그 값 사용, 아니면 기존 값 또는 현재 날짜
-      let dateToSave: string | null = null;
-
-      if (editedDate && editedDate.length === 6) {
-        // 사용자가 입력한 YYMMDD 형식 -> YYYY-MM-DD 변환
-        dateToSave = convertToDateFormat(editedDate);
-      } else if (item?.confirm_date) {
-        // 기존에 저장된 날짜가 있으면 그대로 유지
-        dateToSave = null; // 업데이트 안함
-      } else {
-        // 기존 날짜도 없고 입력도 없으면 현재 날짜
-        dateToSave = todayStr;
-      }
-
-      if (dateToSave !== null) {
-        try {
-          await fetch('/api/update-refund-amount', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, confirm_date: dateToSave })
-          });
-        } catch (error) {
-          console.error(`confirm_date 설정 실패 (${id}):`, error);
-        }
-      }
-    }
-
-    // 날짜 편집 상태 초기화 (이미 저장됨)
-    const newEditingConfirmDate = { ...editingConfirmDate };
-    selectedIds.forEach(id => delete newEditingConfirmDate[id]);
-    setEditingConfirmDate(newEditingConfirmDate);
+    if (!validateProductPrice()) return;
+    if (!validateConfirmDate()) return;
 
     await saveRefundAmounts();
     await updateRefundStatus('완료');
@@ -1131,12 +1108,12 @@ const OrderHistory: React.FC = () => {
                             <input
                               type="number"
                               className="order-history-refund-amount-input"
-                              value={editingRefundAmount[item.id] !== undefined ? editingRefundAmount[item.id] ?? '' : item.refund_amount ?? ''}
-                              onChange={(e) => handleRefundAmountChange(item.id, e.target.value)}
+                              value={editingProductPrice[item.id] !== undefined ? editingProductPrice[item.id] ?? '' : item.product_price ?? ''}
+                              onChange={(e) => handleProductPriceChange(item.id, e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  const currentValue = editingRefundAmount[item.id] !== undefined ? editingRefundAmount[item.id] : item.refund_amount;
+                                  const currentValue = editingProductPrice[item.id] !== undefined ? editingProductPrice[item.id] : item.product_price;
                                   if (currentValue !== null && currentValue !== undefined) {
                                     const serviceFee = Math.round(currentValue * 0.06 * 100) / 100;
                                     setEditingServiceFee(prev => ({ ...prev, [item.id]: serviceFee }));

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     while (hasMore) {
       const { data, error } = await supabase
         .from('invoiceManager_refundOrder')
-        .select('id, order_number, product_name, option_name_cn, qty, refund_amount, refund_type, refund_description, refund_status, "1688_order_number", site_url, img_url, created_at, updated_at, confirm_date, delivery_fee, service_fee')
+        .select('id, order_number, product_name, option_name_cn, qty, refund_amount, product_price, refund_type, refund_description, refund_status, "1688_order_number", site_url, img_url, created_at, updated_at, confirm_date, delivery_fee, service_fee')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .range(from, from + batchSize - 1);
