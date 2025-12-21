@@ -450,7 +450,7 @@
 
 .order-history-table th:nth-child(2),
 .order-history-table td:nth-child(2) {
-  width: 150px;
+  width: 165px;
   text-align: center;
 }
 
@@ -466,34 +466,46 @@
   text-align: center;
 }
 
+/* 가격 */
 .order-history-table th:nth-child(5),
 .order-history-table td:nth-child(5) {
   width: 80px;
   text-align: center;
 }
 
+/* 배송비 */
 .order-history-table th:nth-child(6),
 .order-history-table td:nth-child(6) {
   width: 80px;
   text-align: center;
 }
 
+/* 서비스 */
 .order-history-table th:nth-child(7),
 .order-history-table td:nth-child(7) {
-  width: 250px;
-  min-width: 250px;
-  text-align: left;
-}
-
-.order-history-table th:nth-child(8),
-.order-history-table td:nth-child(8) {
   width: 80px;
   text-align: center;
 }
 
+/* 반품사유 */
+.order-history-table th:nth-child(8),
+.order-history-table td:nth-child(8) {
+  width: 220px;
+  min-width: 220px;
+  text-align: left;
+}
+
+/* 상태 */
 .order-history-table th:nth-child(9),
 .order-history-table td:nth-child(9) {
-  width: 120px;
+  width: 80px;
+  text-align: center;
+}
+
+/* 날짜 */
+.order-history-table th:nth-child(10),
+.order-history-table td:nth-child(10) {
+  width: 105px;
 }
 
 .order-history-table th {
@@ -584,6 +596,11 @@
   color: #000 !important;
   font-weight: normal !important;
   font-family: Arial, sans-serif !important;
+}
+
+.order-history-option-name {
+  color: #666;
+  font-size: 13px;
 }
 
 .order-history-china-options {

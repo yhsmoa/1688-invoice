@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, refund_amount, refund_description } = body;
+    const { id, refund_amount, refund_description, delivery_fee, service_fee, confirm_date } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'id가 필요합니다.' }, { status: 400 });
@@ -19,6 +19,18 @@ export async function POST(request: NextRequest) {
 
     if (refund_description !== undefined) {
       updateData.refund_description = refund_description;
+    }
+
+    if (delivery_fee !== undefined) {
+      updateData.delivery_fee = delivery_fee;
+    }
+
+    if (service_fee !== undefined) {
+      updateData.service_fee = service_fee;
+    }
+
+    if (confirm_date !== undefined) {
+      updateData.confirm_date = confirm_date;
     }
 
     const { data, error } = await supabase

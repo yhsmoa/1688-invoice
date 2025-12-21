@@ -24,6 +24,8 @@ export interface RefundOrderData {
   created_at: string | null;
   updated_at: string | null;
   confirm_date: string | null;
+  delivery_fee: number | null;
+  service_fee: number | null;
 }
 
 const OrderHistory: React.FC = () => {
@@ -45,6 +47,10 @@ const OrderHistory: React.FC = () => {
   const [activeStatus, setActiveStatus] = useState<string>('all');
   const [editingRefundAmount, setEditingRefundAmount] = useState<{[key: string]: number | null}>({});
   const [editingRefundDescription, setEditingRefundDescription] = useState<{[key: string]: string}>({});
+  const [editingDeliveryFee, setEditingDeliveryFee] = useState<{[key: string]: number | null}>({});
+  const [editingServiceFee, setEditingServiceFee] = useState<{[key: string]: number | null}>({});
+  const [editingConfirmDate, setEditingConfirmDate] = useState<{[key: string]: string}>({});
+  const [focusedDateCell, setFocusedDateCell] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(30);
@@ -409,12 +415,66 @@ const OrderHistory: React.FC = () => {
     setEditingRefundDescription(prev => ({ ...prev, [itemId]: value }));
   };
 
+  // 배송비 수정 핸들러
+  const handleDeliveryFeeChange = (itemId: string, value: string) => {
+    const numValue = value === '' ? null : Number(value);
+    setEditingDeliveryFee(prev => ({ ...prev, [itemId]: numValue }));
+  };
+
+  // 서비스비 수정 핸들러
+  const handleServiceFeeChange = (itemId: string, value: string) => {
+    const numValue = value === '' ? null : Number(value);
+    setEditingServiceFee(prev => ({ ...prev, [itemId]: numValue }));
+  };
+
+  // 확정일 수정 핸들러 (YYMMDD 형식 입력 -> YYYY-MM-DD 변환)
+  const handleConfirmDateChange = (itemId: string, value: string) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/\D/g, '');
+    setEditingConfirmDate(prev => ({ ...prev, [itemId]: numericValue }));
+  };
+
+  // YYMMDD를 YYYY-MM-DD 형식으로 변환
+  const convertToDateFormat = (yymmdd: string): string | null => {
+    if (!yymmdd || yymmdd.length !== 6) return null;
+    const yy = yymmdd.substring(0, 2);
+    const mm = yymmdd.substring(2, 4);
+    const dd = yymmdd.substring(4, 6);
+    const year = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
+    return `${year}-${mm}-${dd}`;
+  };
+
+  // 날짜 표시용 (YYYY-MM-DD -> YY.MM.DD) - 일반 표시
+  const formatConfirmDateDisplay = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    const date = dateStr.split('T')[0];
+    if (date.length === 10) {
+      const parts = date.split('-');
+      return `${parts[0].substring(2)}.${parts[1]}.${parts[2]}`;
+    }
+    return '';
+  };
+
+  // 날짜 편집용 (YYYY-MM-DD -> YYMMDD) - 수정 시
+  const formatConfirmDateEdit = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    const date = dateStr.split('T')[0];
+    if (date.length === 10) {
+      const parts = date.split('-');
+      return `${parts[0].substring(2)}${parts[1]}${parts[2]}`;
+    }
+    return '';
+  };
+
   // 반품금액 및 반품사유 저장 (상태 업데이트 시 함께 저장)
   const saveRefundAmounts = async () => {
     const amountUpdates = Object.entries(editingRefundAmount);
     const descriptionUpdates = Object.entries(editingRefundDescription);
+    const deliveryFeeUpdates = Object.entries(editingDeliveryFee);
+    const serviceFeeUpdates = Object.entries(editingServiceFee);
+    const confirmDateUpdates = Object.entries(editingConfirmDate);
 
-    if (amountUpdates.length === 0 && descriptionUpdates.length === 0) return true;
+    if (amountUpdates.length === 0 && descriptionUpdates.length === 0 && deliveryFeeUpdates.length === 0 && serviceFeeUpdates.length === 0 && confirmDateUpdates.length === 0) return true;
 
     try {
       // 반품금액 저장
@@ -447,8 +507,57 @@ const OrderHistory: React.FC = () => {
         }
       }
 
+      // 배송비 저장
+      for (const [id, deliveryFee] of deliveryFeeUpdates) {
+        const response = await fetch('/api/update-refund-amount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, delivery_fee: deliveryFee })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`배송비 저장 실패 (${id}):`, result.error);
+          return false;
+        }
+      }
+
+      // 서비스비 저장
+      for (const [id, serviceFee] of serviceFeeUpdates) {
+        const response = await fetch('/api/update-refund-amount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, service_fee: serviceFee })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`서비스비 저장 실패 (${id}):`, result.error);
+          return false;
+        }
+      }
+
+      // 확정일 저장 (YYMMDD -> YYYY-MM-DD 변환)
+      for (const [id, confirmDateInput] of confirmDateUpdates) {
+        const convertedDate = confirmDateInput ? convertToDateFormat(confirmDateInput) : null;
+        const response = await fetch('/api/update-refund-amount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, confirm_date: convertedDate })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`확정일 저장 실패 (${id}):`, result.error);
+          return false;
+        }
+      }
+
       setEditingRefundAmount({});
       setEditingRefundDescription({});
+      setEditingDeliveryFee({});
+      setEditingServiceFee({});
+      setEditingConfirmDate({});
       return true;
     } catch (error) {
       console.error('반품 정보 저장 오류:', error);
@@ -478,9 +587,51 @@ const OrderHistory: React.FC = () => {
     await updateRefundStatus('진행');
   };
 
-  // [완료] 버튼 클릭 (진행 -> 완료)
+  // [완료] 버튼 클릭 (진행 -> 완료) - confirm_date 자동 설정
   const handleCompleteClick = async () => {
     if (!validateRefundAmounts()) return;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+    const selectedIds = Array.from(selectedItems);
+
+    // 각 선택된 항목에 대해 confirm_date 설정
+    for (const id of selectedIds) {
+      const item = itemData.find(i => i.id === id);
+      const editedDate = editingConfirmDate[id];
+
+      // 사용자가 날짜를 입력했으면 그 값 사용, 아니면 기존 값 또는 현재 날짜
+      let dateToSave: string | null = null;
+
+      if (editedDate && editedDate.length === 6) {
+        // 사용자가 입력한 YYMMDD 형식 -> YYYY-MM-DD 변환
+        dateToSave = convertToDateFormat(editedDate);
+      } else if (item?.confirm_date) {
+        // 기존에 저장된 날짜가 있으면 그대로 유지
+        dateToSave = null; // 업데이트 안함
+      } else {
+        // 기존 날짜도 없고 입력도 없으면 현재 날짜
+        dateToSave = todayStr;
+      }
+
+      if (dateToSave !== null) {
+        try {
+          await fetch('/api/update-refund-amount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, confirm_date: dateToSave })
+          });
+        } catch (error) {
+          console.error(`confirm_date 설정 실패 (${id}):`, error);
+        }
+      }
+    }
+
+    // 날짜 편집 상태 초기화 (이미 저장됨)
+    const newEditingConfirmDate = { ...editingConfirmDate };
+    selectedIds.forEach(id => delete newEditingConfirmDate[id]);
+    setEditingConfirmDate(newEditingConfirmDate);
+
     await saveRefundAmounts();
     await updateRefundStatus('완료');
   };
@@ -895,8 +1046,9 @@ const OrderHistory: React.FC = () => {
                       <th>주문번호</th>
                       <th>상품명</th>
                       <th>수량</th>
-                      <th>반품금액</th>
-                      <th>반품요청</th>
+                      <th>가격</th>
+                      <th>배송비</th>
+                      <th>서비스</th>
                       <th>반품사유</th>
                       <th>상태</th>
                       <th>날짜</th>
@@ -905,7 +1057,7 @@ const OrderHistory: React.FC = () => {
                   <tbody>
                     {paginatedData.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="order-history-empty-data">
+                        <td colSpan={10} className="order-history-empty-data">
                           {t('importProduct.table.noData')}
                         </td>
                       </tr>
@@ -981,10 +1133,55 @@ const OrderHistory: React.FC = () => {
                               className="order-history-refund-amount-input"
                               value={editingRefundAmount[item.id] !== undefined ? editingRefundAmount[item.id] ?? '' : item.refund_amount ?? ''}
                               onChange={(e) => handleRefundAmountChange(item.id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const currentValue = editingRefundAmount[item.id] !== undefined ? editingRefundAmount[item.id] : item.refund_amount;
+                                  if (currentValue !== null && currentValue !== undefined) {
+                                    const serviceFee = Math.round(currentValue * 0.06 * 100) / 100;
+                                    setEditingServiceFee(prev => ({ ...prev, [item.id]: serviceFee }));
+                                  }
+                                  // 배송비 입력 필드로 포커스 이동
+                                  const currentCell = e.currentTarget.closest('td');
+                                  const nextCell = currentCell?.nextElementSibling;
+                                  const nextInput = nextCell?.querySelector('input') as HTMLInputElement;
+                                  nextInput?.focus();
+                                  nextInput?.select();
+                                }
+                              }}
                               placeholder="금액"
                             />
                           </td>
-                          <td>{item.refund_type || '-'}</td>
+                          <td
+                            className="order-history-refund-amount-cell"
+                            onClick={(e) => {
+                              const input = e.currentTarget.querySelector('input');
+                              input?.focus();
+                            }}
+                          >
+                            <input
+                              type="number"
+                              className="order-history-refund-amount-input"
+                              value={editingDeliveryFee[item.id] !== undefined ? editingDeliveryFee[item.id] ?? '' : item.delivery_fee ?? ''}
+                              onChange={(e) => handleDeliveryFeeChange(item.id, e.target.value)}
+                              placeholder="배송비"
+                            />
+                          </td>
+                          <td
+                            className="order-history-refund-amount-cell"
+                            onClick={(e) => {
+                              const input = e.currentTarget.querySelector('input');
+                              input?.focus();
+                            }}
+                          >
+                            <input
+                              type="number"
+                              className="order-history-refund-amount-input"
+                              value={editingServiceFee[item.id] !== undefined ? editingServiceFee[item.id] ?? '' : item.service_fee ?? ''}
+                              onChange={(e) => handleServiceFeeChange(item.id, e.target.value)}
+                              placeholder="서비스"
+                            />
+                          </td>
                           <td
                             className="order-history-refund-description-cell"
                             onClick={(e) => {
@@ -1005,16 +1202,34 @@ const OrderHistory: React.FC = () => {
                               {item.refund_status || '-'}
                             </span>
                           </td>
-                          <td>
-                            {formatDate(item.created_at)}
-                            {item.updated_at && item.updated_at !== item.created_at && (
-                              <>
-                                <br />
-                                <span className="order-history-updated-at">
-                                  {formatDate(item.updated_at)}
-                                </span>
-                              </>
-                            )}
+                          <td
+                            className="order-history-refund-amount-cell"
+                            onClick={(e) => {
+                              const input = e.currentTarget.querySelector('input');
+                              input?.focus();
+                            }}
+                          >
+                            <input
+                              type="text"
+                              className="order-history-refund-amount-input"
+                              value={
+                                focusedDateCell === item.id
+                                  ? (editingConfirmDate[item.id] !== undefined ? editingConfirmDate[item.id] : formatConfirmDateEdit(item.confirm_date))
+                                  : (editingConfirmDate[item.id] !== undefined
+                                      ? (editingConfirmDate[item.id].length === 6 ? `${editingConfirmDate[item.id].substring(0,2)}.${editingConfirmDate[item.id].substring(2,4)}.${editingConfirmDate[item.id].substring(4,6)}` : editingConfirmDate[item.id])
+                                      : formatConfirmDateDisplay(item.confirm_date))
+                              }
+                              onChange={(e) => handleConfirmDateChange(item.id, e.target.value)}
+                              onFocus={() => {
+                                setFocusedDateCell(item.id);
+                                if (editingConfirmDate[item.id] === undefined && item.confirm_date) {
+                                  setEditingConfirmDate(prev => ({ ...prev, [item.id]: formatConfirmDateEdit(item.confirm_date) }));
+                                }
+                              }}
+                              onBlur={() => setFocusedDateCell(null)}
+                              placeholder="YYMMDD"
+                              maxLength={6}
+                            />
                           </td>
                         </tr>
                       ))
