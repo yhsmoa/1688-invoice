@@ -566,30 +566,39 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // 선택된 항목들의 가격 검증
-  const validateProductPrice = (): boolean => {
+  // 선택된 항목들의 완료 조건 검증 (가격, 배송비, 서비스, 날짜)
+  const validateForComplete = (): boolean => {
     const selectedIds = Array.from(selectedItems);
     for (const id of selectedIds) {
       const item = itemData.find(i => i.id === id);
+
+      // 가격 검증
       const editedPrice = editingProductPrice[id];
       const currentPrice = editedPrice !== undefined ? editedPrice : item?.product_price;
-
       if (currentPrice === null || currentPrice === undefined || currentPrice <= 0) {
         alert('가격을 입력해주세요.');
         return false;
       }
-    }
-    return true;
-  };
 
-  // 선택된 항목들의 날짜 검증 (완료 시)
-  const validateConfirmDate = (): boolean => {
-    const selectedIds = Array.from(selectedItems);
-    for (const id of selectedIds) {
-      const item = itemData.find(i => i.id === id);
+      // 배송비 검증
+      const editedDeliveryFee = editingDeliveryFee[id];
+      const currentDeliveryFee = editedDeliveryFee !== undefined ? editedDeliveryFee : item?.delivery_fee;
+      if (currentDeliveryFee === null || currentDeliveryFee === undefined) {
+        alert('배송비를 입력해주세요.');
+        return false;
+      }
+
+      // 서비스비 검증 (0은 허용, null/undefined만 불허)
+      const editedServiceFee = editingServiceFee[id];
+      const currentServiceFee = editedServiceFee !== undefined ? editedServiceFee : item?.service_fee;
+      if (currentServiceFee === null || currentServiceFee === undefined) {
+        alert('서비스를 입력해주세요.');
+        return false;
+      }
+
+      // 날짜 검증
       const editedDate = editingConfirmDate[id];
       const hasDate = (editedDate && editedDate.length === 6) || item?.confirm_date;
-
       if (!hasDate) {
         alert('날짜를 입력해주세요.');
         return false;
@@ -606,8 +615,7 @@ const OrderHistory: React.FC = () => {
 
   // [완료] 버튼 클릭 (진행 -> 완료)
   const handleCompleteClick = async () => {
-    if (!validateProductPrice()) return;
-    if (!validateConfirmDate()) return;
+    if (!validateForComplete()) return;
 
     await saveRefundAmounts();
     await updateRefundStatus('완료');
