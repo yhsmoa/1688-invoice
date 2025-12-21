@@ -1149,6 +1149,16 @@ const OrderHistory: React.FC = () => {
                               className="order-history-refund-amount-input"
                               value={editingDeliveryFee[item.id] !== undefined ? editingDeliveryFee[item.id] ?? '' : item.delivery_fee ?? ''}
                               onChange={(e) => handleDeliveryFeeChange(item.id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  // 날짜 입력 필드로 포커스 이동 (서비스, 반품사유, 상태를 건너뛰고)
+                                  const currentRow = e.currentTarget.closest('tr');
+                                  const dateInput = currentRow?.querySelector('td:last-child input') as HTMLInputElement;
+                                  dateInput?.focus();
+                                  dateInput?.select();
+                                }
+                              }}
                               placeholder="배송비"
                             />
                           </td>
