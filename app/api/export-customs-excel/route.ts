@@ -156,23 +156,25 @@ export async function POST(request: NextRequest) {
 
     // 9행부터 품목별 데이터 입력
     if (data && data.length > 0) {
-      // 전체 데이터에서 품목별 평균 단가 계산 (위치와 무관하게)
-      const globalItemPrices: Record<string, number[]> = {};
+      // 전체 데이터에서 품목별 총 금액과 총 수량 계산 (위치와 무관하게)
+      const globalItemData: Record<string, { totalPrice: number; totalQty: number }> = {};
       data.forEach((item: any) => {
         const itemKey = `${item.item_category || ''}_${item.blend_ratio || ''}`;
-        if (!globalItemPrices[itemKey]) {
-          globalItemPrices[itemKey] = [];
+        if (!globalItemData[itemKey]) {
+          globalItemData[itemKey] = { totalPrice: 0, totalQty: 0 };
         }
         if (item.unit_price && !isNaN(parseFloat(item.unit_price))) {
-          globalItemPrices[itemKey].push(parseFloat(item.unit_price));
+          globalItemData[itemKey].totalPrice += parseFloat(item.unit_price);
         }
+        const qty = parseInt(item.out_quantity) || 0;
+        globalItemData[itemKey].totalQty += qty;
       });
 
-      // 품목별 전체 평균 단가 계산
-      const globalAvgPrices: Record<string, number> = {};
-      for (const [itemKey, prices] of Object.entries(globalItemPrices)) {
-        globalAvgPrices[itemKey] = prices.length > 0
-          ? prices.reduce((sum, price) => sum + price, 0) / prices.length
+      // 품목별 단가 계산: 총 금액 / 총 수량 * 환율
+      const globalUnitPrices: Record<string, number> = {};
+      for (const [itemKey, itemData] of Object.entries(globalItemData)) {
+        globalUnitPrices[itemKey] = itemData.totalQty > 0
+          ? (itemData.totalPrice / itemData.totalQty) * CNY_TO_USD
           : 0;
       }
 
@@ -209,12 +211,9 @@ export async function POST(request: NextRequest) {
           const firstItem = itemList[0];
           const totalQuantity = itemList.reduce((sum, item) => sum + (parseInt(item.out_quantity) || 0), 0);
 
-          // 전체 데이터 기준 품목별 평균 단가 사용 (위안화)
-          const avgPriceCNY = globalAvgPrices[itemKey] || 0;
-
-          // 위안화를 달러로 환산
-          const avgPriceUSD = avgPriceCNY * CNY_TO_USD;
-          const totalPriceUSD = avgPriceUSD * totalQuantity;
+          // 전체 데이터 기준 품목별 단가 사용 (이미 달러로 환산됨)
+          const unitPriceUSD = globalUnitPrices[itemKey] || 0;
+          const totalPriceUSD = unitPriceUSD * totalQuantity;
 
           // Supabase에서 품목 정보 조회 (여러 개 있을 경우 첫 번째만 사용)
           const { data: customsDataArray } = await supabase
@@ -241,7 +240,7 @@ export async function POST(request: NextRequest) {
             '',                          // L: 단위
             totalQuantity,               // M: 총수량 (동일품목 개수)
             'EA',                        // N: 단위
-            avgPriceUSD.toFixed(2),      // O: 단가 (달러로 환산)
+            unitPriceUSD.toFixed(2),     // O: 단가 (달러로 환산)
             totalPriceUSD.toFixed(2),    // P: 합계 (달러로 환산)
             '',                          // Q: 사업자명
             '',                          // R: 비고
