@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
             '',                          // R: 비고
             '',                          // S: 재질
             customsData?.CO || '',       // T: 원산지발급
-            'LINYI FEIDA INTERNATIONAL TRADE CO.,LTD' // U: 쉬퍼
+            'LINYI JIEYUN TONG IMPORT AND EXPORT CO., LTD' // U: 쉬퍼
           ];
 
           // 위치별 마지막 행 여부 확인
