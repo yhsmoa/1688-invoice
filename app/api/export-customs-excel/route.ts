@@ -156,6 +156,26 @@ export async function POST(request: NextRequest) {
 
     // 9행부터 품목별 데이터 입력
     if (data && data.length > 0) {
+      // 전체 데이터에서 품목별 평균 단가 계산 (위치와 무관하게)
+      const globalItemPrices: Record<string, number[]> = {};
+      data.forEach((item: any) => {
+        const itemKey = `${item.item_category || ''}_${item.blend_ratio || ''}`;
+        if (!globalItemPrices[itemKey]) {
+          globalItemPrices[itemKey] = [];
+        }
+        if (item.unit_price && !isNaN(parseFloat(item.unit_price))) {
+          globalItemPrices[itemKey].push(parseFloat(item.unit_price));
+        }
+      });
+
+      // 품목별 전체 평균 단가 계산
+      const globalAvgPrices: Record<string, number> = {};
+      for (const [itemKey, prices] of Object.entries(globalItemPrices)) {
+        globalAvgPrices[itemKey] = prices.length > 0
+          ? prices.reduce((sum, price) => sum + price, 0) / prices.length
+          : 0;
+      }
+
       // 위치별로 그룹화하고 품목별로 집계
       const locationGroups: Record<string, Record<string, any[]>> = {};
 
@@ -189,11 +209,8 @@ export async function POST(request: NextRequest) {
           const firstItem = itemList[0];
           const totalQuantity = itemList.reduce((sum, item) => sum + (parseInt(item.out_quantity) || 0), 0);
 
-          // 평균 단가 계산 (단가의 합 / 개수) - 위안화
-          const validPrices = itemList.filter((item: any) => item.unit_price && !isNaN(parseFloat(item.unit_price)));
-          const avgPriceCNY = validPrices.length > 0
-            ? validPrices.reduce((sum: number, item: any) => sum + parseFloat(item.unit_price), 0) / validPrices.length
-            : 0;
+          // 전체 데이터 기준 품목별 평균 단가 사용 (위안화)
+          const avgPriceCNY = globalAvgPrices[itemKey] || 0;
 
           // 위안화를 달러로 환산
           const avgPriceUSD = avgPriceCNY * CNY_TO_USD;
