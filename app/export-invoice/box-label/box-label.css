@@ -1,0 +1,240 @@
+/* 박스 라벨 페이지 - 독립적인 스타일 */
+
+.box-label-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.box-label-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.box-label-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+.box-label-container {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.box-label-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* 컨트롤 섹션 */
+.box-label-control-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.box-label-left-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.box-label-right-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 날짜 입력 박스 */
+.box-label-date-input {
+  width: 120px;
+  padding: 10px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 2px;
+  transition: border-color 0.2s ease;
+}
+
+.box-label-date-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.box-label-date-input::placeholder {
+  color: #9ca3af;
+  letter-spacing: 1px;
+}
+
+/* 엑셀 업로드 버튼 */
+.box-label-upload-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  background-color: #d1d5db;
+  color: #6b7280;
+}
+
+.box-label-upload-btn.active {
+  background-color: #3182ce;
+  color: white;
+  cursor: pointer;
+}
+
+.box-label-upload-btn.active:hover {
+  background-color: #2c5aa0;
+}
+
+/* 인쇄 버튼 */
+.box-label-print-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  background-color: #d1d5db;
+  color: #6b7280;
+}
+
+.box-label-print-btn.active {
+  background-color: #38a169;
+  color: white;
+  cursor: pointer;
+}
+
+.box-label-print-btn.active:hover {
+  background-color: #2f855a;
+}
+
+/* 테이블 섹션 */
+.box-label-table-section {
+  margin-top: 20px;
+}
+
+/* 테이블 보드 */
+.box-label-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 테이블 */
+.box-label-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.box-label-table th {
+  background-color: #f8f9fa;
+  padding: 14px 16px;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.box-label-table td {
+  padding: 14px 16px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.box-label-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* 열 너비 */
+.box-label-table th:nth-child(1),
+.box-label-table td:nth-child(1) {
+  width: 150px;
+}
+
+.box-label-table th:nth-child(2),
+.box-label-table td:nth-child(2) {
+  width: auto;
+}
+
+.box-label-table th:nth-child(3),
+.box-label-table td:nth-child(3) {
+  width: 150px;
+}
+
+/* 빈 데이터 메시지 */
+.box-label-empty-data {
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 인쇄 스타일 */
+@media print {
+  .box-label-layout {
+    min-height: auto !important;
+  }
+
+  .box-label-main-content {
+    display: block !important;
+  }
+
+  /* 사이드메뉴, 탑메뉴 숨김 */
+  .leftside-menu,
+  .topside-menu,
+  .box-label-control-section,
+  .box-label-title {
+    display: none !important;
+  }
+
+  .box-label-content {
+    padding: 0 !important;
+    background-color: white !important;
+  }
+
+  .box-label-container {
+    padding: 0 !important;
+  }
+
+  .box-label-table-board {
+    box-shadow: none !important;
+  }
+
+  .box-label-table {
+    font-size: 12pt;
+  }
+
+  .box-label-table th,
+  .box-label-table td {
+    padding: 8px 12px;
+    border: 1px solid #333;
+  }
+}

@@ -118,6 +118,11 @@ const LeftsideMenu: React.FC = () => {
                   </Link>
                 </li>
                 <li className="submenu-item">
+                  <Link href="/export-invoice/box-label" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-invoice/box-label')}>
+                    <span className="submenu-text">박스 라벨</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
                   <Link href="/export-invoice/pdf-split" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-invoice/pdf-split')}>
                     <span className="submenu-text">PDF 분할</span>
                   </Link>
