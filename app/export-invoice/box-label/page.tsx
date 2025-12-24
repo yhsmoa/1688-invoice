@@ -168,46 +168,56 @@ const BoxLabel: React.FC = () => {
     setIsGeneratingPdf(true);
 
     try {
-      // PDF 생성 (가로 방향, 15x10cm - 가로로 출력)
+      // PDF 생성 (세로 방향, 10x15cm)
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
-        format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM] // 100x150 -> landscape면 150x100
+        format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM]
       });
 
       // 각 데이터에 대해 페이지 생성
       tableData.forEach((item, index) => {
         if (index > 0) {
-          pdf.addPage([PAGE_WIDTH_MM, PAGE_HEIGHT_MM], 'landscape');
+          pdf.addPage([PAGE_WIDTH_MM, PAGE_HEIGHT_MM], 'portrait');
         }
 
-        // 가로 방향 페이지: 가로 150mm, 세로 100mm
-        const pageWidth = PAGE_HEIGHT_MM; // 150mm
-        const pageHeight = PAGE_WIDTH_MM; // 100mm
+        // 세로 용지에 가로 텍스트 (90도 회전)
+        // 용지: 100mm(가로) x 150mm(세로) - portrait
+        // 90도 회전 시 텍스트 영역: 가로 150mm, 세로 100mm
 
-        // 여백 설정
-        const marginLeft = 15;
-        const marginTop = 15;
-
-        // 폰트 크기 (4배 증가: 기존 ~28pt에서 ~80pt로)
-        const fontSize = 70;
-        const lineHeight = 28; // 줄 간격
+        // 폰트 크기 설정
+        const fontSize = 72;
+        const lineSpacing = 28; // 줄 간격 (mm)
 
         pdf.setFontSize(fontSize);
         pdf.setFont('helvetica', 'bold');
 
-        // 좌측 정렬로 3줄 텍스트 출력
-        // 날짜 (첫 번째 줄)
+        // 텍스트 준비
         const dateText = item.date;
-        pdf.text(dateText, marginLeft, marginTop + fontSize * 0.35);
-
-        // 위치 (두 번째 줄)
         const locationText = item.location;
-        pdf.text(locationText, marginLeft, marginTop + fontSize * 0.35 + lineHeight + fontSize * 0.35);
+        const weightText = item.weight || '';
 
-        // 중량 (세 번째 줄)
-        const weightText = item.weight ? `${item.weight}KG` : '';
-        pdf.text(weightText, marginLeft, marginTop + fontSize * 0.35 + (lineHeight + fontSize * 0.35) * 2);
+        // 90도 회전 텍스트에서:
+        // x좌표 = 회전 후 세로 위치 (원래 페이지의 가로 위치)
+        // y좌표 = 회전 후 가로 위치 (원래 페이지의 세로 위치, 위에서 시작)
+
+        // 3줄을 페이지 가로(100mm) 중앙에 배치
+        // 첫줄, 둘째줄, 셋째줄 위치 계산
+        const line1X = 30;  // 첫 번째 줄 (위쪽)
+        const line2X = 30 + lineSpacing;  // 두 번째 줄
+        const line3X = 30 + lineSpacing * 2;  // 세 번째 줄 (아래쪽)
+
+        // 텍스트 시작 위치 (좌측 정렬 - 회전 후 상단)
+        const textY = PAGE_HEIGHT_MM - 15;
+
+        // 첫 번째 줄: 날짜
+        pdf.text(dateText, line1X, textY, { angle: 90 });
+
+        // 두 번째 줄: 위치
+        pdf.text(locationText, line2X, textY, { angle: 90 });
+
+        // 세 번째 줄: 중량
+        pdf.text(weightText, line3X, textY, { angle: 90 });
       });
 
       // PDF 저장
