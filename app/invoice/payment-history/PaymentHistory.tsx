@@ -746,7 +746,7 @@ const PaymentHistory: React.FC = () => {
 
       // 금액 계산
       const price = totalAmount - totalDeliveryFee;  // 구매비용 (I열 합 - 배송비)
-      const serviceFee = Math.round(price * 0.05);   // 서비스비용 (구매비용 * 5%)
+      const serviceFee = Math.round(price * 0.06);   // 서비스비용 (구매비용 * 6%)
       const finalAmount = totalAmount + serviceFee;  // 최종 차감 금액 (I열 합 + 서비스비)
 
       // description 생성
