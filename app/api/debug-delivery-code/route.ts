@@ -44,8 +44,10 @@ export const GET = async (request: NextRequest) => {
         .select('*', { count: 'exact', head: true })
         .lt('id', row.id);
 
-      console.log(`📌 위치: ${positionCount}번째 행 (0-based index)`);
-      console.log(`🔢 range 계산: ${Math.floor(positionCount / 1000)} 번째 페이지 (0부터 시작)`);
+      const position = positionCount || 0;
+
+      console.log(`📌 위치: ${position}번째 행 (0-based index)`);
+      console.log(`🔢 range 계산: ${Math.floor(position / 1000)} 번째 페이지 (0부터 시작)`);
 
       return NextResponse.json({
         success: true,
@@ -53,10 +55,10 @@ export const GET = async (request: NextRequest) => {
         totalCount,
         matchedCount: matchedData.length,
         data: row,
-        position: positionCount,
-        pageNumber: Math.floor(positionCount / 1000),
-        rangeStart: Math.floor(positionCount / 1000) * 1000,
-        rangeEnd: Math.floor(positionCount / 1000) * 1000 + 999
+        position: position,
+        pageNumber: Math.floor(position / 1000),
+        rangeStart: Math.floor(position / 1000) * 1000,
+        rangeEnd: Math.floor(position / 1000) * 1000 + 999
       });
     } else {
       console.log(`❌ 데이터를 찾을 수 없음`);
