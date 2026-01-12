@@ -6,6 +6,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Next.js 캐시 비활성화
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // 모든 배송정보 조회 API (초기 로딩용)
 export const GET = async (request: NextRequest) => {
   console.log('모든 배송정보 조회 API 호출');
