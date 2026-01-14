@@ -283,6 +283,9 @@ export async function POST(request: NextRequest) {
       const isSpecialLocation = group.section === 'P' || group.section === 'X';
       const useSpecialInfo = isSpecialLocation && SPECIAL_LOCATION_BUSINESSES.includes(group.businessName);
 
+      // 섹션에 따라 진행방법 결정: X는 '이우 합배송', 나머지(A,B,C,P 등)는 '롯데택배 신용'
+      const deliveryMethod = group.section === 'X' ? '이우 합배송' : '롯데택배 신용';
+
       row.values = [
         group.businessName,                                    // A: 사업자명
         group.marking,                                         // B: 마킹
@@ -290,7 +293,7 @@ export async function POST(request: NextRequest) {
         useSpecialInfo ? group.businessName : '',             // D: 받는사람
         useSpecialInfo ? SPECIAL_LOCATION_INFO.phone : '',    // E: 연락처
         useSpecialInfo ? SPECIAL_LOCATION_INFO.address : '',  // F: 주소
-        '롯데택배 신용',                                        // G: 진행방법
+        deliveryMethod,                                        // G: 진행방법
         ''                                                     // H: 출고번호건
       ];
 
