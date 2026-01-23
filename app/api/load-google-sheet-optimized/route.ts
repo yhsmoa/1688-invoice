@@ -253,31 +253,33 @@ export async function GET(request: NextRequest) {
           console.log(`${coupangName} 사용자의 기존 데이터 삭제 완료`);
         }
 
-        // 2. 새로운 데이터 준비 (Supabase 저장용)
-        const supabaseData = processedData.map(item => ({
-          coupang_name: coupangName,
-          googlesheet_id: googleSheetId,
-          row_id: item.row_number,
-          img_url: item.img_url,
-          order_number_prefix: item.order_number_prefix,
-          order_number: item.order_number,
-          product_name: item.product_name,
-          product_name_sub: item.product_name_sub,
-          barcode: item.barcode,
-          china_option1: item.china_option1,
-          china_option2: item.china_option2,
-          order_qty: item.order_qty,
-          cost_main: item.cost_main,
-          cost_sub: item.cost_sub,
-          progress_qty: item.progress_qty,
-          import_qty: item.import_qty,
-          cancel_qty: item.cancel_qty,
-          export_qty: item.export_qty,
-          note: item.note,
-          offer_id: item.barcode // 바코드를 offer_id로 사용
-        }));
+        // 2. 새로운 데이터 준비 (Supabase 저장용) - import_qty > 0인 데이터만 저장
+        const supabaseData = processedData
+          .filter(item => item.import_qty && item.import_qty > 0)
+          .map(item => ({
+            coupang_name: coupangName,
+            googlesheet_id: googleSheetId,
+            row_id: item.row_number,
+            img_url: item.img_url,
+            order_number_prefix: item.order_number_prefix,
+            order_number: item.order_number,
+            product_name: item.product_name,
+            product_name_sub: item.product_name_sub,
+            barcode: item.barcode,
+            china_option1: item.china_option1,
+            china_option2: item.china_option2,
+            order_qty: item.order_qty,
+            cost_main: item.cost_main,
+            cost_sub: item.cost_sub,
+            progress_qty: item.progress_qty,
+            import_qty: item.import_qty,
+            cancel_qty: item.cancel_qty,
+            export_qty: item.export_qty,
+            note: item.note,
+            offer_id: item.barcode // 바코드를 offer_id로 사용
+          }));
 
-        console.log(`${coupangName} 사용자의 새 데이터 ${supabaseData.length}개 저장 시작...`);
+        console.log(`${coupangName} 사용자의 새 데이터 ${supabaseData.length}개 저장 시작 (입고 > 0 필터 적용)...`);
 
         // 3. 새 데이터 저장 (배치로 나누어서 저장)
         const batchSize = 100;
