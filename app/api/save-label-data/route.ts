@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
           range: `${SHEET_NAME}!A1:H1`,
           valueInputOption: 'RAW',
           requestBody: {
-            values: [['브랜드', '상품명', '바코드', '수량', '주문번호', '혼용률', '추천연령', '사이즈']]
+            values: [['브랜드', '상품명', '바코드', '수량', '주문번호', '혼용률', '추천연령', '입고사이즈']]
           }
         });
       } catch (headerError) {
