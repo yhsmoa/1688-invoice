@@ -901,12 +901,20 @@ const ItemCheck: React.FC = () => {
     // 사용자가 '설온'인지 확인
     const isSeolOn = selectedCoupangUser === '설온';
 
+    // 주문번호에서 세번째 '-' 이후 제거 (BZ-260120-0045-A01 → BZ-260120-0045)
+    const truncateOrderNumber = (orderNum: string): string => {
+      if (!orderNum) return '';
+      const parts = orderNum.split('-');
+      return parts.slice(0, 3).join('-');
+    };
+
     // 바코드 데이터 준비 및 시트별 분류
     interface LabelDataItem {
       name: string;
       barcode: string;
       qty: number;
       order_number: string;
+      sizeCode: string;
       targetSheet: 'LABEL' | 'LABEL_kids';
     }
 
@@ -915,12 +923,14 @@ const ItemCheck: React.FC = () => {
     Object.entries(productQuantities).forEach(([id, quantity]) => {
       const item = filteredData.find(item => item.id === id);
       if (item && item.barcode) {
-        // 주문번호에 상품 입고 사이즈 변환하여 추가
-        let orderNumber = item.order_number || '';
+        // 주문번호 정리: 세번째 '-' 이후 제거
+        const orderNumber = truncateOrderNumber(item.order_number || '');
+
+        // H열용 사이즈 코드 결정 (주문번호에 추가하지 않고 별도 저장)
+        let sizeCode = '';
         if (item.product_size && typeof item.product_size === 'string' && item.product_size.trim()) {
           const sizeText = item.product_size.trim();
           const sizeLower = sizeText.toLowerCase();
-          let sizeCode = '';
 
           if (sizeLower.includes('small')) {
             sizeCode = 'A';
@@ -932,10 +942,6 @@ const ItemCheck: React.FC = () => {
             sizeCode = 'P';
           } else if (sizeLower.includes('direct')) {
             sizeCode = 'X';
-          }
-
-          if (sizeCode) {
-            orderNumber = `${orderNumber}-${sizeCode}`;
           }
         }
 
@@ -951,6 +957,7 @@ const ItemCheck: React.FC = () => {
           barcode: item.barcode,
           qty: quantity,
           order_number: orderNumber,
+          sizeCode: sizeCode,
           targetSheet: targetSheet
         });
       }
@@ -962,9 +969,20 @@ const ItemCheck: React.FC = () => {
       return;
     }
 
+    // 중복 주문번호 제거 (동일한 order_number는 하나만 유지)
+    const uniqueLabelData: typeof labelDataWithTarget = [];
+    const seenOrderNumbers = new Set<string>();
+
+    labelDataWithTarget.forEach(item => {
+      if (!seenOrderNumbers.has(item.order_number)) {
+        seenOrderNumbers.add(item.order_number);
+        uniqueLabelData.push(item);
+      }
+    });
+
     // 시트별로 데이터 그룹핑
-    const labelSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL');
-    const labelKidsSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL_kids');
+    const labelSheetData = uniqueLabelData.filter(item => item.targetSheet === 'LABEL');
+    const labelKidsSheetData = uniqueLabelData.filter(item => item.targetSheet === 'LABEL_kids');
 
     console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
 
