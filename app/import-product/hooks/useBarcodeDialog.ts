@@ -128,40 +128,66 @@ export const useBarcodeDialog = () => {
       return;
     }
 
-    const labelData: Array<{name: string, barcode: string, qty: number, order_number: string}> = [];
+    // 주문번호에서 세번째 '-' 이후 제거 (BZ-260120-0045-A01 → BZ-260120-0045)
+    const truncateOrderNumber = (orderNum: string): string => {
+      if (!orderNum) return '';
+      const parts = orderNum.split('-');
+      return parts.slice(0, 3).join('-');
+    };
+
+    const labelData: Array<{name: string, barcode: string, qty: number, order_number: string, sizeCode: string}> = [];
 
     Object.entries(productQuantities).forEach(([id, quantity]) => {
       const item = filteredData.find(item => item.id === id);
       if (item && item.barcode) {
-        let orderNumber = item.order_number || '';
+        // 주문번호 정리: 세번째 '-' 이후 제거
+        const orderNumber = truncateOrderNumber(item.order_number || '');
+
+        // H열용 사이즈 코드 결정 (주문번호에 추가하지 않고 별도 저장)
+        let sizeCode = '';
         if (item.product_size && item.product_size.trim()) {
           const sizeText = item.product_size.trim();
-          let sizeCode = '';
-          if (sizeText.toLowerCase().includes('small')) {
+          const sizeLower = sizeText.toLowerCase();
+          if (sizeLower.includes('small')) {
             sizeCode = 'A';
-          } else if (sizeText.toLowerCase().includes('medium')) {
+          } else if (sizeLower.includes('medium')) {
             sizeCode = 'B';
-          } else if (sizeText.toLowerCase().includes('large')) {
+          } else if (sizeLower.includes('large')) {
             sizeCode = 'C';
-          } else {
-            sizeCode = sizeText.charAt(0);
+          } else if (sizeLower.includes('p-')) {
+            sizeCode = 'P';
+          } else if (sizeLower.includes('direct')) {
+            sizeCode = 'X';
           }
-          orderNumber = `${orderNumber}-${sizeCode}`;
         }
 
         labelData.push({
           name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
           barcode: item.barcode,
           qty: quantity,
-          order_number: orderNumber
+          order_number: orderNumber,
+          sizeCode: sizeCode
         });
       }
     });
 
-    if (labelData.length > 0) {
+    // 중복 주문번호 제거 (동일한 order_number는 하나만 유지)
+    const uniqueLabelData: typeof labelData = [];
+    const seenOrderNumbers = new Set<string>();
+
+    labelData.forEach(item => {
+      if (!seenOrderNumbers.has(item.order_number)) {
+        seenOrderNumbers.add(item.order_number);
+        uniqueLabelData.push(item);
+      }
+    });
+
+    const finalLabelData = uniqueLabelData;
+
+    if (finalLabelData.length > 0) {
       try {
         console.log('LABEL 시트에 데이터 저장 시작...');
-        console.log('저장할 데이터:', labelData);
+        console.log('저장할 데이터:', finalLabelData);
 
         const response = await fetch('/api/save-label-data', {
           method: 'POST',
@@ -169,7 +195,7 @@ export const useBarcodeDialog = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            labelData: labelData,
+            labelData: finalLabelData,
             googlesheet_id: googlesheetId,
             coupang_name: selectedCoupangUser
           }),
