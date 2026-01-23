@@ -1134,8 +1134,17 @@ const ItemCheck: React.FC = () => {
       barcode: string;
       qty: number;
       order_number: string;
+      sizeCode: string;  // H열: 사이즈 코드 (A, B, C, P, X)
       targetSheet: 'LABEL' | 'LABEL_kids';
     }
+
+    // 주문번호에서 세번째 '-' 이후 제거 (BZ-260120-0045-A01 → BZ-260120-0045)
+    const truncateOrderNumber = (orderNum: string): string => {
+      if (!orderNum) return '';
+      const parts = orderNum.split('-');
+      // 첫 3개 부분만 유지 (사업자코드-날짜-순서)
+      return parts.slice(0, 3).join('-');
+    };
 
     const labelDataWithTarget: LabelDataItem[] = [];
 
@@ -1144,12 +1153,14 @@ const ItemCheck: React.FC = () => {
         // 원본 데이터에서 product_size와 recommended_age 가져오기
         const originalItem = itemData.find(dataItem => dataItem.id === item.id);
 
-        // 주문번호에 상품 입고 사이즈 변환하여 추가
-        let orderNumber = item.order_number || '';
+        // 주문번호 정리: 세번째 '-' 이후 제거
+        const orderNumber = truncateOrderNumber(item.order_number || '');
+
+        // H열용 사이즈 코드 결정 (주문번호에 추가하지 않고 별도 저장)
+        let sizeCode = '';
         if (originalItem?.product_size && typeof originalItem.product_size === 'string' && originalItem.product_size.trim()) {
           const sizeText = originalItem.product_size.trim();
           const sizeLower = sizeText.toLowerCase();
-          let sizeCode = '';
 
           if (sizeLower.includes('small')) {
             sizeCode = 'A';
@@ -1161,10 +1172,6 @@ const ItemCheck: React.FC = () => {
             sizeCode = 'P';
           } else if (sizeLower.includes('direct')) {
             sizeCode = 'X';
-          }
-
-          if (sizeCode) {
-            orderNumber = `${orderNumber}-${sizeCode}`;
           }
         }
 
@@ -1180,19 +1187,36 @@ const ItemCheck: React.FC = () => {
           barcode: item.barcode,
           qty: item.barcode_qty,
           order_number: orderNumber,
+          sizeCode: sizeCode,
           targetSheet: targetSheet
         });
       }
     });
 
-    if (labelDataWithTarget.length === 0) {
+    // 중복 주문번호 제거 (동일한 order_number는 하나만 유지)
+    const uniqueLabelData: LabelDataItem[] = [];
+    const seenOrderNumbers = new Set<string>();
+
+    labelDataWithTarget.forEach(item => {
+      // targetSheet + order_number 조합으로 중복 체크
+      const uniqueKey = `${item.targetSheet}|${item.order_number}`;
+      if (!seenOrderNumbers.has(uniqueKey)) {
+        seenOrderNumbers.add(uniqueKey);
+        uniqueLabelData.push(item);
+      }
+    });
+
+    // 중복 제거된 데이터 사용
+    const finalLabelData = uniqueLabelData;
+
+    if (finalLabelData.length === 0) {
       console.log('저장할 라벨 데이터 없음');
       return;
     }
 
-    // 시트별로 데이터 그룹핑
-    const labelSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL');
-    const labelKidsSheetData = labelDataWithTarget.filter(item => item.targetSheet === 'LABEL_kids');
+    // 시트별로 데이터 그룹핑 (중복 제거된 데이터 사용)
+    const labelSheetData = finalLabelData.filter(item => item.targetSheet === 'LABEL');
+    const labelKidsSheetData = finalLabelData.filter(item => item.targetSheet === 'LABEL_kids');
 
     console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
 

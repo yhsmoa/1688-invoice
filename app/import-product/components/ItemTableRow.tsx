@@ -87,6 +87,47 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           {item.order_number_prefix || ''}
           {item.order_number_prefix && item.order_number && <br />}
           {item.order_number || ''}
+          {/* SET 상품 표시: 주문번호 4번째 부분이 S로 시작하면 세트 상품 */}
+          {(() => {
+            const orderNum = item.order_number || '';
+            const parts = orderNum.split('-');
+            // 4번째 부분이 S로 시작하는지 확인 (예: BZ-260120-0088-S21)
+            if (parts.length >= 4 && parts[3].startsWith('S')) {
+              const setCode = parts[3].substring(1); // "S21" → "21"
+              if (setCode.length >= 2) {
+                const totalCount = setCode[0]; // 첫번째 숫자: 총 세트 개수
+                const currentNum = setCode[1]; // 두번째 숫자: 현재 아이템 번호
+                return (
+                  <div style={{ marginTop: '4px' }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span
+                        style={{
+                          backgroundColor: '#FFD700',
+                          color: '#333',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        🛒 SET
+                      </span>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                        {totalCount} 中 {currentNum}
+                      </span>
+                    </span>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
         </div>
       </td>
       <td>

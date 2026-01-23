@@ -48,12 +48,12 @@ export async function POST(request: NextRequest) {
       // 구글 시트 API 클라이언트 생성
       const sheets = google.sheets({ version: 'v4', auth: jwtClient });
 
-      // 기존 데이터 초기화 (최적화된 방식) - G열까지 확장
+      // 기존 데이터 초기화 (최적화된 방식) - H열까지 확장
       try {
-        // 고정된 범위로 빠르게 초기화 (A2:G1000)
+        // 고정된 범위로 빠르게 초기화 (A2:H1000)
         await sheets.spreadsheets.values.clear({
           spreadsheetId: googlesheet_id,
-          range: `${SHEET_NAME}!A2:G1000`
+          range: `${SHEET_NAME}!A2:H1000`
         });
       } catch (clearError) {
         // 에러 무시하고 계속 진행
@@ -63,17 +63,17 @@ export async function POST(request: NextRequest) {
       try {
         await sheets.spreadsheets.values.update({
           spreadsheetId: googlesheet_id,
-          range: `${SHEET_NAME}!A1:G1`,
+          range: `${SHEET_NAME}!A1:H1`,
           valueInputOption: 'RAW',
           requestBody: {
-            values: [['브랜드', '상품명', '바코드', '수량', '주문번호', '혼용률', '추천연령']]
+            values: [['브랜드', '상품명', '바코드', '수량', '주문번호', '혼용률', '추천연령', '사이즈']]
           }
         });
       } catch (headerError) {
         console.warn('헤더 설정 실패:', headerError);
       }
 
-      // 새로운 데이터 준비 - F열, G열 수식 추가
+      // 새로운 데이터 준비 - F열, G열 수식 추가, H열 사이즈 코드 추가
       const values = labelData.map((item: any, index: number) => [
         coupang_name,           // A열: 브랜드
         item.name || '',        // B열: 상품명
@@ -81,11 +81,12 @@ export async function POST(request: NextRequest) {
         item.qty || 0,          // D열: 수량
         item.order_number || '', // E열: 주문번호
         `=XLOOKUP(LEFT(E${index + 2},14),'진행'!B:B,'진행'!W:W,"",0)`, // F열: 혼용률 수식 (E열에서 앞 14자리만 사용)
-        `=XLOOKUP(LEFT(E${index + 2},14),'진행'!B:B,'진행'!X:X,"",0)`  // G열: 추천연령 수식 (E열에서 앞 14자리만 사용)
+        `=XLOOKUP(LEFT(E${index + 2},14),'진행'!B:B,'진행'!X:X,"",0)`, // G열: 추천연령 수식 (E열에서 앞 14자리만 사용)
+        item.sizeCode || ''     // H열: 사이즈 코드 (A, B, C, P, X)
       ]);
 
-      // LABEL 시트에 데이터 추가 (2행부터) - G열까지 확장
-      const range = `${SHEET_NAME}!A2:G${values.length + 1}`;
+      // LABEL 시트에 데이터 추가 (2행부터) - H열까지 확장
+      const range = `${SHEET_NAME}!A2:H${values.length + 1}`;
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: googlesheet_id,
