@@ -149,24 +149,31 @@ export async function GET(request: NextRequest) {
         chunks.push(dataRows.slice(i, i + chunkSize));
       }
       
+      // 주문번호 정규화 함수 (BZ-260120-0045-A01 → BZ-260120-0045)
+      const truncateOrderNumber = (orderNum: string): string => {
+        if (!orderNum) return '';
+        const parts = orderNum.toString().split('-');
+        return parts.slice(0, 3).join('-');
+      };
+
       // 각 청크를 병렬로 처리
       const processedChunks = await Promise.all(
         chunks.map(async (chunk, chunkIndex) => {
           return chunk.map((row: any[], rowIndex: number) => {
             const globalIndex = chunkIndex * chunkSize + rowIndex;
-            
+
             // 빈 행 체크 - B열(order_number)이 없고 A열도 없으면 스킵
             if ((!row[1] || row[1].toString().trim() === '') && (!row[0] || row[0].toString().trim() === '')) {
               return null;
             }
-            
+
             const item = {
               id: uuidv4(),
               row_number: (globalIndex + 2).toString(),
               img_url: row[10] || null, // K열 - 이미지
               site_url: row[11] || null, // L열 - 사이트 URL
               order_number_prefix: row[0] || '', // A열 - 글번호 앞부분
-              order_number: row[1] || '', // B열 - 글번호 뒷부분
+              order_number: truncateOrderNumber(row[1] || ''), // B열 - 글번호 (정규화: 세번째 '-' 이후 제거)
               product_name: row[2] || null, // C열 - 상품명 첫 줄
               product_name_sub: row[3] || null, // D열 - 상품명 둘째 줄
               barcode: row[5] || null, // F열 - 바코드
