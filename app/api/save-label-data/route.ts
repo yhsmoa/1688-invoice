@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         item.barcode || '',     // C열: 바코드
         item.qty || 0,          // D열: 수량
         item.order_number || '', // E열: 주문번호
-        `=XLOOKUP(LEFT(E${index + 2},14),'진행'!B:B,'진행'!W:W,"",0)`, // F열: 혼용률 수식 (E열에서 앞 14자리만 사용)
-        `=XLOOKUP(LEFT(E${index + 2},14),'진행'!B:B,'진행'!X:X,"",0)`, // G열: 추천연령 수식 (E열에서 앞 14자리만 사용)
+        `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!W:W, "", 0)`, // F열: 혼용률 수식
+        `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!X:X, "", 0)`, // G열: 추천연령 수식
         item.sizeCode || ''     // H열: 사이즈 코드 (A, B, C, P, X)
       ]);
 
