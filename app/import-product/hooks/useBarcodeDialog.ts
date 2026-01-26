@@ -135,6 +135,19 @@ export const useBarcodeDialog = () => {
       return parts.slice(0, 3).join('-');
     };
 
+    // 바코드 정규화 함수 (주문번호 형태인 경우만 정규화: BZ-260123-0006-S21 → BZ-260123-0006)
+    const normalizeBarcode = (barcode: string): string => {
+      if (!barcode) return '';
+      // 주문번호 형태인지 확인 (XX-XXXXXX-XXXX 패턴)
+      const parts = barcode.split('-');
+      if (parts.length >= 3 && /^[A-Z]{2}$/.test(parts[0]) && /^\d{6}$/.test(parts[1])) {
+        // 주문번호 형태이면 세번째 '-' 이후 제거
+        return parts.slice(0, 3).join('-');
+      }
+      // 일반 바코드는 그대로 반환
+      return barcode;
+    };
+
     const labelData: Array<{name: string, barcode: string, qty: number, order_number: string, sizeCode: string}> = [];
 
     Object.entries(productQuantities).forEach(([id, quantity]) => {
@@ -163,7 +176,7 @@ export const useBarcodeDialog = () => {
 
         labelData.push({
           name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
-          barcode: item.barcode,
+          barcode: normalizeBarcode(item.barcode),
           qty: quantity,
           order_number: orderNumber,
           sizeCode: sizeCode
