@@ -196,9 +196,9 @@ export const useSearch = (
           console.log('\n3단계: sheet_order_number로 itemData 검색 (정규화 적용)');
           console.log('검색할 주문번호들:', sheetOrderNumbers);
 
-          // itemData에서 매칭
+          // itemData에서 매칭 (양쪽 모두 정규화해서 비교)
           searchResults = itemData.filter(item =>
-            sheetOrderNumbers.includes(item.order_number)
+            sheetOrderNumbers.includes(truncateOrderNumber(item.order_number || ''))
           );
 
           console.log(`✅ 배송번호 검색 완료: ${searchResults.length}개 발견`);
