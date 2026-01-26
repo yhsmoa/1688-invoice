@@ -68,9 +68,11 @@ const ItemCheck: React.FC = () => {
     originalData,
     setOriginalData,
     deliveryInfoData,
+    orders1688Data,
     statusCounts,
     mapDeliveryInfoToItems,
-    fetchAllDeliveryInfo
+    fetchAllDeliveryInfo,
+    fetchAll1688Orders
   } = useItemData();
 
   const [filteredData, setFilteredData] = useState<ItemData[]>([]);
@@ -92,8 +94,9 @@ const ItemCheck: React.FC = () => {
     setSearchType,
     performSearch: performSearchHook,
     searchDeliveryInfo: searchDeliveryInfoHook,
+    searchBy1688OrderId: searchBy1688OrderIdHook,
     parseOrderInfoAndSearch: parseOrderInfoAndSearchHook
-  } = useSearch(itemData, deliveryInfoData);
+  } = useSearch(itemData, deliveryInfoData, orders1688Data);
 
   const {
     editingCell,
@@ -284,6 +287,7 @@ const ItemCheck: React.FC = () => {
     fetchItemData();
     fetchCoupangUsers();
     fetchAllDeliveryInfo();
+    fetchAll1688Orders(); // invoiceManager_1688_orders 데이터 로딩
   }, []);
 
   // 드롭다운 선택 시 구글 시트 데이터 자동 로드

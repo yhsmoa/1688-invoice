@@ -1,12 +1,73 @@
 import { useState } from 'react';
-import { ItemData } from './useItemData';
+import { ItemData, Order1688Data } from './useItemData';
 
 export const useSearch = (
   itemData: ItemData[],
-  deliveryInfoData: any[]
+  deliveryInfoData: any[],
+  orders1688Data: Order1688Data[] = []
 ) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<string>('배송번호');
+
+  // 주문번호 정규화 함수 (전역에서 사용)
+  const truncateOrderNumber = (orderNum: string): string => {
+    if (!orderNum) return '';
+    const parts = orderNum.toString().split('-');
+    return parts.slice(0, 3).join('-');
+  };
+
+  // 배송번호 → order_id → 1688_order_id → order_number 매칭 검색
+  const searchBy1688OrderId = (deliveryCode: string) => {
+    console.log('=== searchBy1688OrderId 시작 ===');
+    console.log('1. 검색할 배송번호:', deliveryCode);
+    console.log('2. deliveryInfoData 배열 길이:', deliveryInfoData.length);
+    console.log('3. orders1688Data 배열 길이:', orders1688Data.length);
+
+    // 1단계: 배송번호로 deliveryInfoData에서 order_id 찾기
+    const matchingDeliveryInfos = deliveryInfoData.filter((info: any) =>
+      info.delivery_code?.toLowerCase().includes(deliveryCode.toLowerCase())
+    );
+
+    if (matchingDeliveryInfos.length === 0) {
+      console.log('4. ❌ deliveryInfoData에서 매칭 실패');
+      return [];
+    }
+
+    console.log(`4. ✅ deliveryInfo ${matchingDeliveryInfos.length}개 찾음`);
+
+    // order_id 추출
+    const orderIds = matchingDeliveryInfos
+      .map((info: any) => info.order_id)
+      .filter((id: any) => id);
+
+    console.log('5. 추출된 order_id들:', orderIds);
+
+    if (orderIds.length === 0) {
+      console.log('6. ❌ order_id가 없음');
+      return [];
+    }
+
+    // 2단계: order_id로 orders1688Data에서 1688_order_id 매칭하여 order_number 찾기
+    const matchingOrders = orders1688Data.filter((order: Order1688Data) =>
+      orderIds.includes(order['1688_order_id'])
+    );
+
+    console.log(`6. ✅ 1688_order_id 매칭된 주문: ${matchingOrders.length}개`);
+
+    if (matchingOrders.length === 0) {
+      console.log('7. ❌ 1688_order_id 매칭 실패');
+      return [];
+    }
+
+    // order_number 추출 및 정규화
+    const orderNumbers = matchingOrders.map((order: Order1688Data) =>
+      truncateOrderNumber(order.order_number)
+    );
+
+    console.log('7. 추출된 order_number들 (정규화):', orderNumbers);
+
+    return orderNumbers;
+  };
 
   // 배송번호로 메모리에서 배송정보 조회 (모든 매칭 항목 반환)
   const searchDeliveryInfo = (deliveryCode: string) => {
@@ -174,20 +235,13 @@ export const useSearch = (
 
       if (searchType === '배송번호') {
         console.log('\n📦 배송번호 검색 모드');
-        console.log('1단계: searchDeliveryInfo 호출');
+        console.log('1단계: searchDeliveryInfo 호출 (기존 방식)');
 
         const deliveryInfos = searchDeliveryInfo(searchTerm);
 
         console.log('\n2단계: deliveryInfos 결과 확인');
         if (deliveryInfos.length > 0) {
           console.log(`✅ deliveryInfo ${deliveryInfos.length}개 찾음`);
-
-          // 주문번호 정규화 함수 (BZ-260120-0045-A01 → BZ-260120-0045)
-          const truncateOrderNumber = (orderNum: string): string => {
-            if (!orderNum) return '';
-            const parts = orderNum.toString().split('-');
-            return parts.slice(0, 3).join('-');
-          };
 
           // 모든 sheet_order_number 추출 및 정규화
           const sheetOrderNumbers = deliveryInfos.map((info: any) =>
@@ -201,10 +255,27 @@ export const useSearch = (
             sheetOrderNumbers.includes(truncateOrderNumber(item.order_number || ''))
           );
 
-          console.log(`✅ 배송번호 검색 완료: ${searchResults.length}개 발견`);
-        } else {
-          console.log('❌ deliveryInfo를 찾을 수 없음');
-          searchResults = [];
+          console.log(`✅ 배송번호 검색 완료 (기존 방식): ${searchResults.length}개 발견`);
+        }
+
+        // 기존 방식으로 결과가 없으면 1688_order_id 방식으로 시도
+        if (searchResults.length === 0) {
+          console.log('\n📦 1688_order_id 매칭 방식 시도');
+          const orderNumbersFrom1688 = searchBy1688OrderId(searchTerm);
+
+          if (orderNumbersFrom1688.length > 0) {
+            console.log('검색할 주문번호들 (1688):', orderNumbersFrom1688);
+
+            // itemData에서 매칭 (양쪽 모두 정규화해서 비교)
+            searchResults = itemData.filter(item =>
+              orderNumbersFrom1688.includes(truncateOrderNumber(item.order_number || ''))
+            );
+
+            console.log(`✅ 배송번호 검색 완료 (1688 방식): ${searchResults.length}개 발견`);
+          } else {
+            console.log('❌ 1688_order_id 방식으로도 찾을 수 없음');
+            searchResults = [];
+          }
         }
       } else if (searchType === '일반검색') {
         console.log('\n🔎 일반검색 모드');
@@ -257,6 +328,7 @@ export const useSearch = (
     setSearchType,
     performSearch,
     searchDeliveryInfo,
+    searchBy1688OrderId,
     parseOrderInfoAndSearch
   };
 };

@@ -31,11 +31,32 @@ export interface ItemData {
   confirm_qty?: number | null;
 }
 
+// 1688 주문 데이터 인터페이스
+export interface Order1688Data {
+  id: string;
+  order_number: string;
+  '1688_order_id': string | null;
+  barcode: string | null;
+  item_name: string | null;
+  option_name: string | null;
+  china_option1: string | null;
+  china_option2: string | null;
+  order_qty: number | null;
+  status_import: number | null;
+  status_cancel: number | null;
+  img_url: string | null;
+  site_url: string | null;
+  coupang_shipment_size: string | null;
+  composition: string | null;
+  recomanded_age: string | null;
+}
+
 export const useItemData = () => {
   const [itemData, setItemData] = useState<ItemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [originalData, setOriginalData] = useState<ItemData[]>([]);
   const [deliveryInfoData, setDeliveryInfoData] = useState<any[]>([]);
+  const [orders1688Data, setOrders1688Data] = useState<Order1688Data[]>([]);
 
   // 발송전 카운트를 useMemo로 캐싱 (무한 렌더링 방지)
   const statusCounts = useMemo(() => {
@@ -141,6 +162,28 @@ export const useItemData = () => {
     }
   };
 
+  // invoiceManager_1688_orders 데이터 로딩
+  const fetchAll1688Orders = async () => {
+    try {
+      console.log('1688 주문 데이터 전체 로딩 시작...');
+
+      const response = await fetch('/api/get-1688-orders');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // 처음 3개 샘플 데이터 출력
+        console.log('샘플 1688 주문 데이터:', result.data.slice(0, 3));
+
+        setOrders1688Data(result.data);
+        console.log(`1688 주문 데이터 ${result.data.length}개 로딩 완료`);
+      } else {
+        console.log('1688 주문 데이터 로딩 실패 또는 데이터 없음');
+      }
+    } catch (error) {
+      console.error('1688 주문 데이터 로딩 오류:', error);
+    }
+  };
+
   // 데이터 가져오기 - 초기에는 빈 데이터
   const fetchItemData = async () => {
     console.log('fetchItemData 시작');
@@ -161,8 +204,10 @@ export const useItemData = () => {
     originalData,
     setOriginalData,
     deliveryInfoData,
+    orders1688Data,
     statusCounts,
     mapDeliveryInfoToItems,
-    fetchAllDeliveryInfo
+    fetchAllDeliveryInfo,
+    fetchAll1688Orders
   };
 };
