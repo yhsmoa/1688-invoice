@@ -182,9 +182,18 @@ export const useSearch = (
         if (deliveryInfos.length > 0) {
           console.log(`✅ deliveryInfo ${deliveryInfos.length}개 찾음`);
 
-          // 모든 sheet_order_number 추출
-          const sheetOrderNumbers = deliveryInfos.map((info: any) => info.sheet_order_number);
-          console.log('\n3단계: sheet_order_number로 itemData 검색');
+          // 주문번호 정규화 함수 (BZ-260120-0045-A01 → BZ-260120-0045)
+          const truncateOrderNumber = (orderNum: string): string => {
+            if (!orderNum) return '';
+            const parts = orderNum.toString().split('-');
+            return parts.slice(0, 3).join('-');
+          };
+
+          // 모든 sheet_order_number 추출 및 정규화
+          const sheetOrderNumbers = deliveryInfos.map((info: any) =>
+            truncateOrderNumber(info.sheet_order_number)
+          );
+          console.log('\n3단계: sheet_order_number로 itemData 검색 (정규화 적용)');
           console.log('검색할 주문번호들:', sheetOrderNumbers);
 
           // itemData에서 매칭
