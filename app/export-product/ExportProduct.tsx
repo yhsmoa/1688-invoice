@@ -276,7 +276,76 @@ const ExportProduct: React.FC = () => {
         product_size: item.product_size || '' // V열 분류상자코드 추가
       }));
 
-      const transformedOrderData: OrderData[] = rawTransformed.filter((item: OrderData) => item.order_number.trim() !== '');
+      // 빈 주문번호 제외
+      const filteredData = rawTransformed.filter((item: any) => {
+        const orderNum = item.order_number.trim();
+        return orderNum !== '';
+      });
+
+      // 세트상품 처리: 정규화된 주문번호로 그룹핑 후 최소 수량 계산
+      // 세트상품 패턴: -S21, -S22, -S31, -S32, ... (마지막이 -Sxx 형태)
+      const isSetProduct = (orderNum: string): boolean => {
+        const parts = orderNum.split('-');
+        if (parts.length >= 4) {
+          const lastPart = parts[parts.length - 1].toUpperCase();
+          return /^S\d{2}$/.test(lastPart); // S21, S22, S31 등
+        }
+        return false;
+      };
+
+      // 정규화 함수 (로컬)
+      const normalizeOrderNum = (orderNum: string): string => {
+        const parts = orderNum.split('-');
+        if (parts.length > 3) {
+          return parts.slice(0, 3).join('-');
+        }
+        return orderNum;
+      };
+
+      // 주문번호별 그룹핑
+      const orderGroups = new Map<string, any[]>();
+      filteredData.forEach((item: any) => {
+        const normalized = normalizeOrderNum(item.order_number);
+        if (!orderGroups.has(normalized)) {
+          orderGroups.set(normalized, []);
+        }
+        orderGroups.get(normalized)!.push(item);
+      });
+
+      // 그룹별 처리: 세트상품은 최소 수량, 그 외는 첫 번째 아이템 사용
+      const processedData: any[] = [];
+      orderGroups.forEach((items, normalizedOrderNum) => {
+        // 세트상품 여부 확인 (그룹 내 모든 아이템이 -Sxx 패턴인지)
+        const setItems = items.filter((item: any) => isSetProduct(item.order_number));
+
+        if (setItems.length > 1) {
+          // 세트상품: 최소 입고 수량 계산
+          const minImportQty = Math.min(...setItems.map((item: any) => item.import_qty));
+          const minCancelQty = Math.min(...setItems.map((item: any) => item.cancel_qty));
+
+          // 첫 번째 아이템 기준으로 정규화된 주문번호 사용
+          const baseItem = setItems[0];
+          processedData.push({
+            ...baseItem,
+            order_number: normalizedOrderNum, // 정규화된 주문번호 사용
+            import_qty: minImportQty,
+            cancel_qty: minCancelQty,
+            available_qty: minImportQty
+          });
+
+          console.log(`세트상품 처리: ${normalizedOrderNum} (${setItems.length}개 아이템) → 입고수량: ${minImportQty}`);
+        } else {
+          // 일반 상품: 정규화된 주문번호로 저장
+          items.forEach((item: any) => {
+            processedData.push({
+              ...item,
+              order_number: normalizedOrderNum // 정규화된 주문번호 사용
+            });
+          });
+        }
+      });
+
+      const transformedOrderData: OrderData[] = processedData.filter((item: OrderData) => item.order_number.trim() !== '');
       setOrderData(transformedOrderData);
 
       console.log(`진행 시트에서 ${transformedOrderData.length}개 주문 로드 완료`);
@@ -423,11 +492,13 @@ const ExportProduct: React.FC = () => {
   };
 
   // 바코드 정규화 함수: 세 번째 - 이후 제거
+  // 예: BZ-250926-0049-A01 → BZ-250926-0049
+  // 예: BZ-250926-0049#1-S21 → BZ-250926-0049#1
   const normalizeBarcodeToOrderNumber = (barcode: string): string => {
     const trimmed = barcode.trim();
     const parts = trimmed.split('-');
 
-    // - 가 3개 이상이면 앞의 3개만 사용 (BZ-250926-0049-A -> BZ-250926-0049)
+    // - 가 3개 이상이면 앞의 3개만 사용
     if (parts.length > 3) {
       return parts.slice(0, 3).join('-');
     }
@@ -485,33 +556,21 @@ const ExportProduct: React.FC = () => {
   };
 
   const findOrderByNumber = (orderNumber: string) => {
-    const trimmed = orderNumber.trim();
-    const parts = trimmed.split('-');
-
-    // 1. 정규화된 주문번호 (BZ-250926-0049)
+    // 1. 입력값 정규화 (BZ-250926-0049-A01 → BZ-250926-0049, BZ-250926-0049#1-S21 → BZ-250926-0049#1)
     const normalized = normalizeBarcodeToOrderNumber(orderNumber);
 
-    // 2. '-'가 3개 미만이면 (예: BZ-251005-0012)
-    if (parts.length === 3) {
-      // 먼저 정규화된 주문번호로 주문 찾기
-      const matchedOrder = orderData.find(order => order.order_number === normalized);
+    // 2. orderData에서 매칭 (orderData도 이미 정규화되어 있음)
+    const matchedOrder = orderData.find(order => order.order_number === normalized);
 
-      if (matchedOrder) {
-        // product_size 확인하여 사이즈 코드 추가
-        const sizeCode = getSizeCodeFromProductSize(matchedOrder.product_size);
-
-        if (sizeCode) {
-          // 사이즈 코드가 있으면 임시로 사이즈 코드를 붙여서 처리
-          console.log(`주문번호 ${normalized}에 사이즈 코드 ${sizeCode} 자동 추가`);
-          // 실제로는 정규화된 주문번호로 저장되지만, 사이즈 코드는 UI 표시용으로만 사용
-        }
+    if (matchedOrder) {
+      // product_size 확인하여 사이즈 코드 추가 (UI 표시용)
+      const sizeCode = getSizeCodeFromProductSize(matchedOrder.product_size);
+      if (sizeCode) {
+        console.log(`주문번호 ${normalized}에 사이즈 코드 ${sizeCode} 자동 추가`);
       }
-
-      return matchedOrder;
     }
 
-    // 3. '-'가 3개 이상이면 (예: BZ-251005-0012-A) 정규화해서 찾기
-    return orderData.find(order => order.order_number === normalized);
+    return matchedOrder;
   };
 
   // 보드용 스캔 처리 함수 (개수 자동 1)
@@ -573,7 +632,7 @@ const ExportProduct: React.FC = () => {
 
   // 공통 스캔 처리 로직
   const processScan = (orderNumber: string, quantity: number, scanMethod: '스캔' | '입력') => {
-    // 바코드 정규화 (BZ-250926-0049-A -> BZ-250926-0049)
+    // 바코드 정규화 (BZ-250926-0049-A01 → BZ-250926-0049, BZ-250926-0049#1-S21 → BZ-250926-0049#1)
     const normalizedOrderNumber = normalizeBarcodeToOrderNumber(orderNumber);
     console.log('원본 바코드:', orderNumber, '→ 정규화:', normalizedOrderNumber);
 
