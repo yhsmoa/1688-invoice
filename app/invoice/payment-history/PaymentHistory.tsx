@@ -5,8 +5,6 @@ import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import './PaymentHistory.css';
-import PaymentHistoryStatusCard from './PaymentHistoryStatusCard';
-
 // 데이터 타입 정의 - invoiceManager_transactions 테이블
 export interface PaymentHistoryData {
   id: string;
@@ -33,14 +31,6 @@ export interface PaymentHistoryData {
 const PaymentHistory: React.FC = () => {
   const { t } = useTranslation();
 
-  // 카드 데이터 정의
-  const cardData = [
-    { key: 'new', label: '신규' },
-    { key: 'progress', label: '진행' },
-    { key: 'cancel_received', label: '취소접수' },
-    { key: 'cancel_completed', label: '취소완료' }
-  ];
-
   // State 관리
   const [itemData, setItemData] = useState<PaymentHistoryData[]>([]);
   const [filteredData, setFilteredData] = useState<PaymentHistoryData[]>([]);
@@ -50,7 +40,6 @@ const PaymentHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [activeStatus, setActiveStatus] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
@@ -158,28 +147,6 @@ const PaymentHistory: React.FC = () => {
     setStartDate(start);
     setEndDate(end);
   }, []);
-
-  // 상태별 카운트 계산 함수
-  const getStatusCount = (statusKey: string): number => {
-    if (statusKey === 'all') {
-      return itemData.length;
-    }
-    if (statusKey === 'unmatched') {
-      return itemData.filter(item => !item.delivery_status).length;
-    }
-    return itemData.filter(item => item.delivery_status === statusKey).length;
-  };
-
-  // 상태별 필터링 함수
-  const filterByStatus = (statusKey: string): PaymentHistoryData[] => {
-    if (statusKey === 'all') {
-      return itemData;
-    }
-    if (statusKey === 'unmatched') {
-      return itemData.filter(item => !item.delivery_status);
-    }
-    return itemData.filter(item => item.delivery_status === statusKey);
-  };
 
   // 쿠팡 사용자 목록 가져오기
   const fetchCoupangUsers = async () => {
@@ -420,15 +387,6 @@ const PaymentHistory: React.FC = () => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
-  // 상태 카드 클릭 핸들러
-  const handleStatusCardClick = (statusKey: string) => {
-    setActiveStatus(statusKey);
-    setSearchTerm('');
-    const filtered = filterByStatus(statusKey);
-    setFilteredData(filtered);
-    setCurrentPage(1);
-  };
-
   // 비용 클릭 시 URL 열기
   const handleCostClick = (e: React.MouseEvent, item: PaymentHistoryData) => {
     e.preventDefault();
@@ -649,11 +607,12 @@ const PaymentHistory: React.FC = () => {
   };
 
   // AD열에서 order_code 추출 함수
+  // 형식: "ORBO260127-S54 | BO-260127 | 0029-A01:1, 0030-A01:1" - " | " 기준으로 분리, 0번째가 주문코드
   const extractOrderCodes = (adValue: string): string[] => {
     if (!adValue) return [];
     const lines = adValue.split('\n').filter(line => line.trim());
     return lines.map(line => {
-      const parts = line.split('//');
+      const parts = line.split(' | ');
       return parts[0]?.trim() || '';
     }).filter(code => code);
   };
@@ -933,24 +892,6 @@ const PaymentHistory: React.FC = () => {
                   </span>
                 </div>
               </div>
-            </div>
-
-            {/* 상태 카드들 */}
-            <div className="payment-history-status-cards">
-              {cardData.map((statusCard, index) => {
-                const count = getStatusCount(statusCard.key);
-                const isActive = activeStatus === statusCard.key;
-
-                return (
-                  <PaymentHistoryStatusCard
-                    key={index}
-                    label={statusCard.label}
-                    count={count}
-                    isActive={isActive}
-                    onClick={() => handleStatusCardClick(statusCard.key)}
-                  />
-                );
-              })}
             </div>
 
             {/* 검색 영역 */}
