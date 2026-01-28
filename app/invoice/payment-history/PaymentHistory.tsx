@@ -721,7 +721,6 @@ const PaymentHistory: React.FC = () => {
           order_code: orderCode,
           transaction_type: '차감',
           description,
-          item_qty: totalItemQty,
           amount: finalAmount,
           delivery_fee: totalDeliveryFee,
           service_fee: serviceFee,
