@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       admin_note,
       price,
       status: inputStatus,
-      date
+      date,
+      '1688_order_id': order1688Id
     } = body;
 
     // 필수값 검증
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         transaction_type,
         description: description || null,
         item_qty: item_qty || null,
+        '1688_order_id': order1688Id || null,
         amount: amountNumber,
         delivery_fee: delivery_fee || null,
         service_fee: service_fee || null,

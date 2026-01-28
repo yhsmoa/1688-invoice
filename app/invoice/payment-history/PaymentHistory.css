@@ -424,6 +424,28 @@
   gap: 16px;
 }
 
+.payment-history-modal-form-deduct .form-row-quick-select {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.payment-history-modal-form-deduct .form-row-quick-select button {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.payment-history-modal-form-deduct .form-row-quick-select button:hover {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+}
+
 .payment-history-modal-form-deduct .form-item {
   display: flex;
   flex-direction: column;

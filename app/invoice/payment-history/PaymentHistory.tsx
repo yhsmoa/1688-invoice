@@ -72,7 +72,7 @@ const PaymentHistory: React.FC = () => {
   const [deductForm, setDeductForm] = useState({
     description: '',
     amount: '',
-    itemQty: '',
+    order1688Id: '',  // 1688 주문번호 (1688_order_id 컬럼에 저장)
     deliveryFee: '',
     serviceFee: '',
     extraFee: '',
@@ -473,7 +473,7 @@ const PaymentHistory: React.FC = () => {
   const handleCloseModal = () => {
     setShowAddModal(false);
     setChargeForm({ description: '', amount: '', adminNote: '' });
-    setDeductForm({ description: '', amount: '', itemQty: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
+    setDeductForm({ description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
     setOrderExcelFile(null);
     if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
   };
@@ -564,7 +564,7 @@ const PaymentHistory: React.FC = () => {
           transaction_type: '차감',
           description: deductForm.description || null,
           amount: Number(deductForm.amount),
-          item_qty: deductForm.itemQty ? Number(deductForm.itemQty) : null,
+          '1688_order_id': deductForm.order1688Id || null,
           delivery_fee: deductForm.deliveryFee ? Number(deductForm.deliveryFee) : null,
           service_fee: deductForm.serviceFee ? Number(deductForm.serviceFee) : null,
           extra_fee: deductForm.extraFee ? Number(deductForm.extraFee) : null,
@@ -1223,8 +1223,24 @@ const PaymentHistory: React.FC = () => {
                       />
                     </div>
                   </div>
-                  {/* 전체금액, 수량 - 1/2씩 */}
+                  {/* 항목 빠른선택 버튼 */}
+                  <div className="form-row-quick-select">
+                    <button type="button" onClick={() => setDeductForm({ ...deductForm, description: '속포장 비닐' })}>속포장 비닐</button>
+                    <button type="button" onClick={() => setDeductForm({ ...deductForm, description: '겉포장 비닐' })}>겉포장 비닐</button>
+                    <button type="button" onClick={() => setDeductForm({ ...deductForm, description: '택배박스' })}>택배박스</button>
+                    <button type="button" onClick={() => setDeductForm({ ...deductForm, description: '감열지 라벨' })}>감열지 라벨</button>
+                  </div>
+                  {/* 주문번호, 전체금액 - 1/2씩 */}
                   <div className="form-row-half">
+                    <div className="form-item">
+                      <label>주문번호</label>
+                      <input
+                        type="text"
+                        placeholder="1688 주문번호"
+                        value={deductForm.order1688Id}
+                        onChange={(e) => setDeductForm({ ...deductForm, order1688Id: e.target.value })}
+                      />
+                    </div>
                     <div className="form-item">
                       <label>전체금액</label>
                       <input
@@ -1232,15 +1248,6 @@ const PaymentHistory: React.FC = () => {
                         placeholder="(배송비, 서비스, 기타.. 모든 비용 포함)"
                         value={deductForm.amount}
                         onChange={(e) => setDeductForm({ ...deductForm, amount: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-item">
-                      <label>수량</label>
-                      <input
-                        type="number"
-                        placeholder="수량"
-                        value={deductForm.itemQty}
-                        onChange={(e) => setDeductForm({ ...deductForm, itemQty: e.target.value })}
                       />
                     </div>
                   </div>
