@@ -617,7 +617,48 @@ const OrderHistory: React.FC = () => {
   const handleCompleteClick = async () => {
     if (!validateForComplete()) return;
 
-    await saveRefundAmounts();
+    // 1. 먼저 가격/배송비/서비스 저장
+    const saved = await saveRefundAmounts();
+    if (!saved) {
+      alert('데이터 저장 중 오류가 발생했습니다.');
+      return;
+    }
+
+    // 2. refund_amount 계산 및 저장
+    const selectedIds = Array.from(selectedItems);
+    for (const id of selectedIds) {
+      const item = itemData.find(i => i.id === id);
+
+      // 최신 값 가져오기 (편집 중인 값 우선)
+      const productPrice = editingProductPrice[id] !== undefined ? editingProductPrice[id] : item?.product_price;
+      const deliveryFee = editingDeliveryFee[id] !== undefined ? editingDeliveryFee[id] : item?.delivery_fee;
+      const serviceFee = editingServiceFee[id] !== undefined ? editingServiceFee[id] : item?.service_fee;
+
+      // refund_amount 계산
+      const refundAmount = (productPrice || 0) + (deliveryFee || 0) + (serviceFee || 0);
+
+      // refund_amount 저장
+      try {
+        const response = await fetch('/api/update-refund-amount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, refund_amount: refundAmount })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`refund_amount 저장 실패 (${id}):`, result.error);
+          alert('환불금액 계산 저장 중 오류가 발생했습니다.');
+          return;
+        }
+      } catch (error) {
+        console.error('refund_amount 저장 오류:', error);
+        alert('환불금액 계산 저장 중 오류가 발생했습니다.');
+        return;
+      }
+    }
+
+    // 3. 상태 변경
     await updateRefundStatus('완료');
   };
 
