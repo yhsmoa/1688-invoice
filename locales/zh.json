@@ -90,7 +90,9 @@
       "quantity": "数量",
       "cancel": "取消",
       "confirm": "保存到LABEL表",
-      "saving": "保存中..."
+      "saving": "保存中...",
+      "mixRate": "混用率",
+      "backRef": "参见背面"
     },
     "processReady": {
       "button": "加工准备",
@@ -102,7 +104,9 @@
       "totalItems": "共",
       "itemsCount": "项",
       "save": "保存",
-      "emptyMessage": "无待处理项目。"
+      "emptyMessage": "无待处理项目。",
+      "mixRate": "混用率",
+      "backRef": "参见背面"
     }
   },
   "exportProduct": {

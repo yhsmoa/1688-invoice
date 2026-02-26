@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { ItemData } from './useItemData';
 
+// F열 혼용률 타입: 'mixRate' = XLOOKUP 수식, 'backRef' = '뒷장 참조' 텍스트
+export type LabelFormulaType = 'mixRate' | 'backRef' | '';
+
 export const useBarcodeDialog = () => {
   const [showQuantityDialog, setShowQuantityDialog] = useState(false);
   const [productQuantities, setProductQuantities] = useState<{ [key: string]: number }>({});
   const [isSavingLabel, setIsSavingLabel] = useState(false);
+  const [labelFormulaType, setLabelFormulaType] = useState<LabelFormulaType>('');
 
   // 바코드 버튼 클릭 핸들러 (Sheet)
   const handleBarcodeClick = (
@@ -29,6 +33,7 @@ export const useBarcodeDialog = () => {
       initialQuantities[item.id] = item.import_qty || 1;
     });
     setProductQuantities(initialQuantities);
+    setLabelFormulaType('');  // 다이얼로그 열 때 초기화
     setShowQuantityDialog(true);
   };
 
@@ -210,7 +215,8 @@ export const useBarcodeDialog = () => {
           body: JSON.stringify({
             labelData: finalLabelData,
             googlesheet_id: googlesheetId,
-            coupang_name: selectedCoupangUser
+            coupang_name: selectedCoupangUser,
+            labelFormulaType: labelFormulaType || 'mixRate'
           }),
         });
 
@@ -245,6 +251,8 @@ export const useBarcodeDialog = () => {
     setProductQuantities,
     isSavingLabel,
     setIsSavingLabel,
+    labelFormulaType,
+    setLabelFormulaType,
     handleBarcodeClick,
     handleBarcodeDBClick,
     handleQuantityConfirm

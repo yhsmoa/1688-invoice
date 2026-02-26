@@ -13,10 +13,12 @@ export async function POST(request: NextRequest) {
 
     // 요청 본문에서 데이터 추출
     const body = await request.json();
-    const { labelData, googlesheet_id, coupang_name, targetSheet } = body;
+    const { labelData, googlesheet_id, coupang_name, targetSheet, labelFormulaType } = body;
 
     // 시트명 동적 선택 (기본값: LABEL)
     const SHEET_NAME = targetSheet || 'LABEL';
+    // F열 혼용률 타입: 'backRef'이면 '뒷장 참조' 텍스트, 그 외 XLOOKUP 수식
+    const useBackRef = labelFormulaType === 'backRef';
 
     // 1. 필수 파라미터 체크
     if (!googlesheet_id || !coupang_name || !labelData || !Array.isArray(labelData)) {
@@ -80,15 +82,19 @@ export async function POST(request: NextRequest) {
           )
         : labelData;
 
-      // 새로운 데이터 준비 - F열, G열 수식 추가, H열 사이즈 코드 추가
+      // 새로운 데이터 준비 - F열(혼용률), G열(추천연령) 수식 또는 텍스트, H열 사이즈 코드
       const values = expandedData.map((item: any, index: number) => [
         coupang_name,           // A열: 브랜드
         item.name || '',        // B열: 상품명
         item.barcode || '',     // C열: 바코드
         item.qty || 0,          // D열: 수량
         item.order_number || '', // E열: 주문번호
-        `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!W:W, "", 0)`, // F열: 혼용률 수식
-        `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!X:X, "", 0)`, // G열: 추천연령 수식
+        // F열: '뒷장 참조' 선택 시 텍스트, 기본은 XLOOKUP 수식
+        useBackRef
+          ? '뒷장 참조'
+          : `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!W:W, "", 0)`,
+        // G열: 추천연령 (항상 XLOOKUP 수식)
+        `=XLOOKUP(LEFT(E${index + 2},14), ARRAYFORMULA(REGEXREPLACE('진행'!B:B, "-[^-]*$", "")), '진행'!X:X, "", 0)`,
         item.sizeCode || ''     // H열: 사이즈 코드 (A, B, C, P, X)
       ]);
 

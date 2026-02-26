@@ -24,12 +24,15 @@ interface ReadyItem {
   };
 }
 
+// F열 혼용률 타입
+type LabelFormulaType = 'mixRate' | 'backRef' | '';
+
 interface ProcessReadyModalProps {
   isOpen: boolean;
   onClose: () => void;
   readyItems: ReadyItem[];
   onBarcodeQtyChange: (itemId: string, newQty: number) => void;
-  onSave: () => void;
+  onSave: (labelFormulaType: string) => void;
 }
 
 const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
@@ -43,15 +46,17 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
   const [editingBarcodeId, setEditingBarcodeId] = useState<string | null>(null);
   const [barcodeInputValue, setBarcodeInputValue] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [labelFormulaType, setLabelFormulaType] = useState<LabelFormulaType>('');
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave();
+      await onSave(labelFormulaType || 'mixRate');
     } finally {
       setIsSaving(false);
+      setLabelFormulaType('');  // 저장 후 초기화
     }
   };
 
@@ -240,13 +245,38 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
         </div>
 
         <div className="process-ready-footer">
-          <div className="footer-info">
-            {t('importProduct.processReady.totalItems')} {readyItems.length}{t('importProduct.processReady.itemsCount')}
+          <div className="footer-top-row">
+            {/* F열 혼용률 타입 선택 라디오 */}
+            <div className="label-formula-radio-group">
+              <label className={`label-formula-radio ${labelFormulaType === 'mixRate' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="processReadyFormulaType"
+                  value="mixRate"
+                  checked={labelFormulaType === 'mixRate'}
+                  onChange={() => setLabelFormulaType('mixRate')}
+                />
+                {t('importProduct.processReady.mixRate')}
+              </label>
+              <label className={`label-formula-radio ${labelFormulaType === 'backRef' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="processReadyFormulaType"
+                  value="backRef"
+                  checked={labelFormulaType === 'backRef'}
+                  onChange={() => setLabelFormulaType('backRef')}
+                />
+                {t('importProduct.processReady.backRef')}
+              </label>
+            </div>
+            <div className="footer-info">
+              {t('importProduct.processReady.totalItems')} {readyItems.length}{t('importProduct.processReady.itemsCount')}
+            </div>
           </div>
           <button
             className="save-ready-button"
             onClick={handleSave}
-            disabled={readyItems.length === 0 || isSaving}
+            disabled={readyItems.length === 0 || isSaving || !labelFormulaType}
           >
             {isSaving ? (
               <span className="button-loading">

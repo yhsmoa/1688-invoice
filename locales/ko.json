@@ -91,7 +91,9 @@
       "quantity": "수량",
       "cancel": "취소",
       "confirm": "LABEL 시트에 저장",
-      "saving": "저장 중..."
+      "saving": "저장 중...",
+      "mixRate": "혼용률",
+      "backRef": "뒷장 참조"
     },
     "processReady": {
       "button": "처리준비",
@@ -103,7 +105,9 @@
       "totalItems": "총",
       "itemsCount": "개 항목",
       "save": "저장",
-      "emptyMessage": "처리할 항목이 없습니다."
+      "emptyMessage": "처리할 항목이 없습니다.",
+      "mixRate": "혼용률",
+      "backRef": "뒷장 참조"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",

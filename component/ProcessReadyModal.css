@@ -342,15 +342,58 @@
   border-top: 1px solid #e0e0e0;
   background-color: #f8f9fa;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 라디오 + 항목수 행 */
+.footer-top-row {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  width: 100%;
 }
 
 .footer-info {
   font-size: 14px;
   color: #666;
   font-weight: 500;
+}
+
+/* F열 혼용률 타입 라디오 버튼 (처리준비 모달) */
+.process-ready-footer .label-formula-radio-group {
+  display: flex;
+  gap: 6px;
+}
+
+.process-ready-footer .label-formula-radio {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.process-ready-footer .label-formula-radio:hover {
+  border-color: #9ca3af;
+  background-color: #f9fafb;
+}
+
+.process-ready-footer .label-formula-radio.active {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.process-ready-footer .label-formula-radio input[type="radio"] {
+  margin: 0;
+  accent-color: #3b82f6;
 }
 
 /* 저장 버튼 - 너비 3배 */

@@ -119,6 +119,8 @@ const ItemCheck: React.FC = () => {
     setProductQuantities,
     isSavingLabel,
     setIsSavingLabel,
+    labelFormulaType,
+    setLabelFormulaType,
     handleBarcodeClick: handleBarcodeClickHook,
     handleBarcodeDBClick: handleBarcodeDBClickHook,
     handleQuantityConfirm: handleQuantityConfirmHook
@@ -1096,17 +1098,18 @@ const ItemCheck: React.FC = () => {
   };
 
   // 처리준비 모달에서 저장 버튼 클릭 핸들러
-  const handleReadySave = async () => {
+  const handleReadySave = async (formulaType: string = 'mixRate') => {
     console.log('=== handleReadySave 시작 ===');
     console.log('modifiedData:', modifiedData);
     console.log('readyItems 개수:', readyItems.length);
+    console.log('labelFormulaType:', formulaType);
 
     try {
       // 1. 구글 시트 저장
       await handleSaveClick();
 
       // 2. LABEL 시트에 바코드 데이터 저장
-      await saveBarcodeToLabel();
+      await saveBarcodeToLabel(formulaType);
 
       console.log('저장 완료, 처리준비 목록 초기화');
 
@@ -1125,7 +1128,7 @@ const ItemCheck: React.FC = () => {
   };
 
   // LABEL 시트에 바코드 데이터 저장
-  const saveBarcodeToLabel = async () => {
+  const saveBarcodeToLabel = async (formulaType: string = 'mixRate') => {
     // 바코드 수량이 0보다 큰 항목만 필터링
     const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
 
@@ -1270,7 +1273,8 @@ const ItemCheck: React.FC = () => {
             labelData: labelSheetData,
             googlesheet_id: googlesheetId,
             coupang_name: selectedCoupangUser,
-            targetSheet: 'LABEL'
+            targetSheet: 'LABEL',
+            labelFormulaType: formulaType
           }),
         }).then(async response => {
           const result = await response.json();
@@ -1296,7 +1300,8 @@ const ItemCheck: React.FC = () => {
             labelData: labelKidsSheetData,
             googlesheet_id: googlesheetId,
             coupang_name: selectedCoupangUser,
-            targetSheet: 'LABEL_kids'
+            targetSheet: 'LABEL_kids',
+            labelFormulaType: formulaType
           }),
         }).then(async response => {
           const result = await response.json();
@@ -1738,13 +1743,36 @@ const ItemCheck: React.FC = () => {
               </table>
             </div>
             <div className="quantity-dialog-actions">
+              {/* F열 혼용률 타입 선택 라디오 */}
+              <div className="label-formula-radio-group">
+                <label className={`label-formula-radio ${labelFormulaType === 'mixRate' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="labelFormulaType"
+                    value="mixRate"
+                    checked={labelFormulaType === 'mixRate'}
+                    onChange={() => setLabelFormulaType('mixRate')}
+                  />
+                  {t('importProduct.dialog.mixRate')}
+                </label>
+                <label className={`label-formula-radio ${labelFormulaType === 'backRef' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="labelFormulaType"
+                    value="backRef"
+                    checked={labelFormulaType === 'backRef'}
+                    onChange={() => setLabelFormulaType('backRef')}
+                  />
+                  {t('importProduct.dialog.backRef')}
+                </label>
+              </div>
               <button className="cancel-btn" onClick={() => setShowQuantityDialog(false)}>
                 {t('importProduct.dialog.cancel')}
               </button>
               <button
                 className="confirm-btn"
                 onClick={handleQuantityConfirm}
-                disabled={isSavingLabel}
+                disabled={isSavingLabel || !labelFormulaType}
               >
                 {isSavingLabel ? t('importProduct.dialog.saving') : t('importProduct.dialog.confirm')}
               </button>
