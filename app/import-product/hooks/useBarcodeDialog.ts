@@ -228,6 +228,7 @@ export const useBarcodeDialog = () => {
           setShowQuantityDialog(false);
           setProductQuantities({});
           setSelectedRows(new Set());
+          setLabelFormulaType('');  // 라디오 선택 초기화
         } else {
           console.error('LABEL 시트 저장 실패:', result);
           alert(`LABEL 시트 저장에 실패했습니다.\n오류: ${result.message || result.error || '알 수 없는 오류'}`);

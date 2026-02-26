@@ -1021,7 +1021,8 @@ const ItemCheck: React.FC = () => {
               labelData: labelSheetData,
               googlesheet_id: googlesheetId,
               coupang_name: selectedCoupangUser,
-              targetSheet: 'LABEL'
+              targetSheet: 'LABEL',
+              labelFormulaType: labelFormulaType || 'mixRate'
             }),
           }).then(async response => {
             const result = await response.json();
@@ -1046,7 +1047,8 @@ const ItemCheck: React.FC = () => {
               labelData: labelKidsSheetData,
               googlesheet_id: googlesheetId,
               coupang_name: selectedCoupangUser,
-              targetSheet: 'LABEL_kids'
+              targetSheet: 'LABEL_kids',
+              labelFormulaType: labelFormulaType || 'mixRate'
             }),
           }).then(async response => {
             const result = await response.json();
@@ -1078,6 +1080,7 @@ const ItemCheck: React.FC = () => {
       setShowQuantityDialog(false);
       setProductQuantities({});
       setSelectedRows(new Set());
+      setLabelFormulaType('');  // 라디오 선택 초기화
 
     } catch (error) {
       console.error('LABEL 시트 저장 중 오류:', error);
