@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`${SHEET_NAME} 저장: ${labelData.length}개 아이템`);
+    console.log(`${SHEET_NAME} 저장 요청: ${labelData.length}개 아이템`);
 
     // 2. 구글 시트에 데이터 저장
     try {
@@ -73,8 +73,15 @@ export async function POST(request: NextRequest) {
         console.warn('헤더 설정 실패:', headerError);
       }
 
+      // 2개 이상 아이템인 경우: 수량만큼 개별 행으로 확장 (각 qty=1)
+      const expandedData = labelData.length >= 2
+        ? labelData.flatMap((item: any) =>
+            Array.from({ length: item.qty || 1 }, () => ({ ...item, qty: 1 }))
+          )
+        : labelData;
+
       // 새로운 데이터 준비 - F열, G열 수식 추가, H열 사이즈 코드 추가
-      const values = labelData.map((item: any, index: number) => [
+      const values = expandedData.map((item: any, index: number) => [
         coupang_name,           // A열: 브랜드
         item.name || '',        // B열: 상품명
         item.barcode || '',     // C열: 바코드
