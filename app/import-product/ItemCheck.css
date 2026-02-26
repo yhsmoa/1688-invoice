@@ -1163,8 +1163,15 @@
   min-width: 140px; /* 버튼 크기 고정 */
 }
 
-.confirm-btn:hover {
-  background-color: #0056b3; /* 파란색 호버 색상 */
+.confirm-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.confirm-btn:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 /* 모달창 정보 태그 스타일 */
