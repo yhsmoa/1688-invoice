@@ -134,6 +134,10 @@ const ItemCheck: React.FC = () => {
   const [savingNote, setSavingNote] = useState<string | null>(null);
   const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
+
+  // 담당자(operator) 선택
+  const OPERATOR_OPTIONS = ['소현', '장뢰', '3'];
+  const [selectedOperator, setSelectedOperator] = useState<string>('');
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sortType, setSortType] = useState<string>('주문순서');
@@ -1518,10 +1522,24 @@ const ItemCheck: React.FC = () => {
             
             {/* 시트 불러오기 버튼 - 카드 위로 이동 */}
             <div className="excel-upload-section">
+              {/* 담당자(operator) 선택 드롭박스 */}
+              <select
+                className="coupang-user-dropdown"
+                value={selectedOperator}
+                onChange={(e) => setSelectedOperator(e.target.value)}
+              >
+                <option value="">{t('importProduct.selectOperator')}</option>
+                {OPERATOR_OPTIONS.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+
+              {/* 쿠팡 사용자 선택 드롭박스 (담당자 선택 후 활성화) */}
               <select
                 className="coupang-user-dropdown"
                 value={selectedCoupangUser}
                 onChange={(e) => setSelectedCoupangUser(e.target.value)}
+                disabled={!selectedOperator}
               >
                 <option value="">{t('importProduct.selectUser')}</option>
                 {coupangUsers.map((user) => {
@@ -1539,7 +1557,7 @@ const ItemCheck: React.FC = () => {
               <button
                 className="excel-upload-btn"
                 onClick={handleLoadGoogleSheet}
-                disabled={loading}
+                disabled={loading || !selectedOperator || !selectedCoupangUser}
               >
                 {loading ? (
                   <span className="button-loading">

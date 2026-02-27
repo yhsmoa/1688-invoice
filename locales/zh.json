@@ -37,6 +37,7 @@
     "refresh": "刷新",
     "uploadExcel": "导入Excel",
     "uploading": "上传中...",
+    "selectOperator": "选择负责人",
     "selectUser": "选择用户",
     "sortOrder": "订单顺序",
     "sortByProduct": "按商品",
