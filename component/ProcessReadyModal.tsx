@@ -33,6 +33,7 @@ interface ProcessReadyModalProps {
   readyItems: ReadyItem[];
   onBarcodeQtyChange: (itemId: string, newQty: number) => void;
   onSave: (labelFormulaType: string) => void;
+  onSavePostgre: () => void;
 }
 
 const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
@@ -41,22 +42,40 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
   readyItems,
   onBarcodeQtyChange,
   onSave,
+  onSavePostgre,
 }) => {
   const { t } = useTranslation();
   const [editingBarcodeId, setEditingBarcodeId] = useState<string | null>(null);
   const [barcodeInputValue, setBarcodeInputValue] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [savingType, setSavingType] = useState<'postgre' | 'google' | null>(null);
   const [labelFormulaType, setLabelFormulaType] = useState<LabelFormulaType>('');
 
   if (!isOpen) return null;
 
-  const handleSave = async () => {
+  // Google 시트 저장 (기존 로직)
+  const handleSaveGoogle = async () => {
     setIsSaving(true);
+    setSavingType('google');
     try {
       await onSave(labelFormulaType || 'mixRate');
     } finally {
       setIsSaving(false);
-      setLabelFormulaType('');  // 저장 후 초기화
+      setSavingType(null);
+      setLabelFormulaType('');
+    }
+  };
+
+  // PostgreSQL 저장
+  const handleSavePostgre = async () => {
+    setIsSaving(true);
+    setSavingType('postgre');
+    try {
+      await onSavePostgre();
+    } finally {
+      setIsSaving(false);
+      setSavingType(null);
+      setLabelFormulaType('');
     }
   };
 
@@ -273,20 +292,37 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
               {t('importProduct.processReady.totalItems')} {readyItems.length}{t('importProduct.processReady.itemsCount')}
             </div>
           </div>
-          <button
-            className="save-ready-button"
-            onClick={handleSave}
-            disabled={readyItems.length === 0 || isSaving || !labelFormulaType}
-          >
-            {isSaving ? (
-              <span className="button-loading">
-                <span className="spinner"></span>
-                {t('importProduct.processReady.save')}
-              </span>
-            ) : (
-              t('importProduct.processReady.save')
-            )}
-          </button>
+          {/* 저장 버튼 2개: postgre + google */}
+          <div className="save-buttons-row">
+            <button
+              className="save-ready-button save-postgre-button"
+              onClick={handleSavePostgre}
+              disabled={readyItems.length === 0 || isSaving}
+            >
+              {savingType === 'postgre' ? (
+                <span className="button-loading">
+                  <span className="spinner"></span>
+                  postgre + 저장
+                </span>
+              ) : (
+                'postgre + 저장'
+              )}
+            </button>
+            <button
+              className="save-ready-button save-google-button"
+              onClick={handleSaveGoogle}
+              disabled={readyItems.length === 0 || isSaving || !labelFormulaType}
+            >
+              {savingType === 'google' ? (
+                <span className="button-loading">
+                  <span className="spinner"></span>
+                  google + 저장
+                </span>
+              ) : (
+                'google + 저장'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </>

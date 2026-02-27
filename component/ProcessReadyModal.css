@@ -396,22 +396,40 @@
   accent-color: #3b82f6;
 }
 
-/* 저장 버튼 - 너비 3배 */
+/* 저장 버튼 행 */
+.save-buttons-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+/* 저장 버튼 공통 */
 .save-ready-button {
-  background-color: #10b981;
+  flex: 1;
   color: white;
-  padding: 10px 72px;
+  padding: 10px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s ease;
-  min-width: 168px;
   min-height: 40px;
 }
 
-.save-ready-button:hover:not(:disabled) {
+/* postgre 버튼: 파란색 */
+.save-postgre-button {
+  background-color: #3b82f6;
+}
+.save-postgre-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+/* google 버튼: 녹색 (기존) */
+.save-google-button {
+  background-color: #10b981;
+}
+.save-google-button:hover:not(:disabled) {
   background-color: #059669;
 }
 
