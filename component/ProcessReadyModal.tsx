@@ -311,7 +311,7 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
             <button
               className="save-ready-button save-google-button"
               onClick={handleSaveGoogle}
-              disabled={readyItems.length === 0 || isSaving || !labelFormulaType}
+              disabled={readyItems.length === 0 || isSaving}
             >
               {savingType === 'google' ? (
                 <span className="button-loading">

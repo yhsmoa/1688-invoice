@@ -1936,7 +1936,7 @@ const ItemCheck: React.FC = () => {
               <button
                 className="confirm-btn"
                 onClick={handleQuantityConfirm}
-                disabled={isSavingLabel || !labelFormulaType}
+                disabled={isSavingLabel}
               >
                 {isSavingLabel ? t('importProduct.dialog.saving') : t('importProduct.dialog.confirm')}
               </button>
