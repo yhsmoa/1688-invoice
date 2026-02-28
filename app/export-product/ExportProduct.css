@@ -465,6 +465,13 @@
   font-size: 14px;
 }
 
+/* 대문자 안내 문구 */
+.export-caps-warning {
+  color: #ef4444;
+  font-size: 13px;
+  margin: 0 0 6px 0;
+}
+
 .export-input-row {
   display: flex;
   gap: 15px;
