@@ -12,6 +12,7 @@ import './LeftsideMenu.css';
 const LeftsideMenu: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isInvoiceMenuOpen, setIsInvoiceMenuOpen] = useState(false);
+  const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const { checkUnsavedChanges } = useSaveContext();
@@ -23,6 +24,10 @@ const LeftsideMenu: React.FC = () => {
 
   const toggleInvoiceMenu = () => {
     setIsInvoiceMenuOpen(!isInvoiceMenuOpen);
+  };
+
+  const toggleHrMenu = () => {
+    setIsHrMenuOpen(!isHrMenuOpen);
   };
 
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -125,6 +130,28 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/export-invoice/pdf-split" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-invoice/pdf-split')}>
                     <span className="submenu-text">PDF 분할</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
+          </li>
+          {/* 인사 관리 (드롭다운) */}
+          <li className="menu-item">
+            <div className="menu-link" onClick={toggleHrMenu}>
+              <span className="menu-icon">👥</span>
+              <span className="menu-text">인사 관리</span>
+              <span className={`dropdown-arrow ${isHrMenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isHrMenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/hr/attendance-scan" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/attendance-scan')}>
+                    <span className="submenu-text">출퇴근 스캔</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/hr/employees" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/employees')}>
+                    <span className="submenu-text">직원관리</span>
                   </Link>
                 </li>
               </ul>
