@@ -1,58 +1,64 @@
 /* ============================================================
-   급여장부 (Payroll) - 미니멀 디자인
-   레이아웃: 좌(월별 시간표) | 우(급여 정산 요약) 2분할 그리드
+   급여장부 (Payroll)
+   레이아웃: 시간표 전체화면 + [정리] 버튼 → 오른쪽 슬라이드 패널
    ============================================================ */
 
-/* ── 메인 그리드 ── */
+/* ── 메인 컨테이너 (전체 화면) ── */
 .pr-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  position: relative; /* 슬라이드 패널 기준점 */
 }
 
 /* ============================================================
-   왼쪽: 월별 근무 시간표
+   시간표 섹션 (전체 화면 차지)
    ============================================================ */
 .pr-sheet-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #ffffff;
-  border-right: 1px solid #f0f0f0;
 }
 
-/* ── 월 네비게이션 ── */
-.pr-month-nav {
+/* ── 네비게이션 바 ── */
+.pr-nav-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 28px 32px 20px;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid #f0f0f0;
   flex-shrink: 0;
-  border-bottom: 1px solid #f4f4f5;
+  background: #ffffff;
+}
+
+.pr-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .pr-nav-btn {
   background: #ffffff;
   border: 1px solid #e4e4e7;
-  border-radius: 10px;
-  width: 36px;
-  height: 36px;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #71717a;
-  font-size: 13px;
-  transition: all 0.2s;
+  font-size: 11px;
+  transition: all 0.15s;
 }
 
 .pr-nav-btn:hover:not(:disabled) {
   background: #f4f4f5;
   color: #18181b;
-  transform: translateY(-1px);
 }
 
 .pr-nav-btn:disabled {
@@ -61,233 +67,292 @@
 }
 
 .pr-month-label {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #18181b;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
 }
 
-/* ── 시간표 테이블 영역 ── */
+/* ── [정리] 버튼 ── */
+.pr-summary-btn {
+  padding: 7px 18px;
+  background: #18181b;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pr-summary-btn:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
+}
+
+/* ── 시간표 테이블 래퍼 ── */
 .pr-table-wrapper {
   flex: 1;
-  overflow: auto; /* 가로/세로 모두 스크롤 */
-  padding: 0;
-}
-
-/* ── 시간표 테이블 ── */
-.pr-table {
-  width: max-content; /* 컬럼이 많을 때 가로 스크롤 */
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13px;
-}
-
-/* 헤더 고정 */
-.pr-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-/* 1행: 날짜 + 직원명 */
-.pr-th-date {
-  padding: 14px 20px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #71717a;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  background: #f4f4f5;
-  border-bottom: 1px solid #e4e4e7;
-  white-space: nowrap;
-  min-width: 64px;
-  /* 날짜 열 좌측 고정 */
-  position: sticky;
-  left: 0;
-  z-index: 3;
-}
-
-.pr-th-employee {
-  padding: 14px 24px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: #18181b;
-  background: #f4f4f5;
-  border-bottom: 1px solid #e4e4e7;
-  border-left: 1px solid #e4e4e7;
-  white-space: nowrap;
-}
-
-/* 2행: 시간대 / 근무 서브헤더 */
-.pr-th-sub {
-  padding: 10px 16px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: #a1a1aa;
-  background: #fafafa;
-  border-bottom: 2px solid #e4e4e7;
-  white-space: nowrap;
-}
-
-.pr-th-hours {
-  border-right: 1px solid #e4e4e7;
-}
-
-/* ── 데이터 행 ── */
-.pr-table tbody tr {
-  transition: background 0.15s;
-}
-
-.pr-table tbody tr:hover {
-  background: #fafafa;
-}
-
-/* 날짜 셀 (고정 컬럼) */
-.pr-td-date {
-  position: sticky;
-  left: 0;
-  background: #ffffff;
-  z-index: 1;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f4f4f5;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 64px;
-}
-
-/* hover 시 날짜 고정 셀도 배경 맞춤 */
-.pr-table tbody tr:hover .pr-td-date {
-  background: #fafafa;
-}
-
-.pr-day-num {
-  font-size: 14px;
-  font-weight: 700;
-  color: #18181b;
-  min-width: 20px;
-}
-
-.pr-day-dow {
-  font-size: 11px;
-  color: #a1a1aa;
-  font-weight: 500;
-}
-
-.pr-day-dow.weekend {
-  color: #ef4444;
-}
-
-/* 주말 행 */
-.pr-row-weekend .pr-td-date {
-  background: #fff7f7;
-}
-
-.pr-table .pr-row-weekend:hover .pr-td-date {
-  background: #fef2f2;
-}
-
-.pr-row-weekend td {
-  background: #fff7f7;
-}
-
-.pr-table .pr-row-weekend:hover td {
-  background: #fef2f2;
-}
-
-/* 시간대 셀 */
-.pr-td-range {
-  padding: 12px 16px;
-  text-align: center;
-  color: #52525b;
-  font-size: 13px;
-  font-weight: 500;
-  border-bottom: 1px solid #f4f4f5;
-  border-left: 1px solid #f4f4f5;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 근무 시간 셀 */
-.pr-td-hours {
-  padding: 12px 16px;
-  text-align: center;
-  color: #18181b;
-  font-size: 13px;
-  font-weight: 700;
-  border-bottom: 1px solid #f4f4f5;
-  border-right: 1px solid #e4e4e7;
-  white-space: nowrap;
-}
-
-/* ── 합계 행 ── */
-.pr-row-total {
-  background: #f9fafb;
-  border-top: 2px solid #e4e4e7;
-}
-
-.pr-row-total .pr-td-date {
-  background: #f4f4f5;
-  font-weight: 700;
-}
-
-.pr-row-total td {
-  border-top: 2px solid #e4e4e7;
-  background: #f4f4f5;
-}
-
-.pr-total-hours {
-  color: #18181b;
-  font-size: 14px;
-  font-weight: 800;
+  overflow: auto; /* 가로: 직원 많을 때 스크롤 / 세로: 안 쓰는 방향으로 컴팩트 */
 }
 
 /* ── 로딩 / 빈 상태 ── */
-.pr-loading,
-.pr-empty {
+.pr-state-msg {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 200px;
+  height: 160px;
   font-size: 14px;
   color: #a1a1aa;
   font-weight: 500;
 }
 
 /* ============================================================
-   오른쪽: 급여 정산 요약
+   시간표 테이블 - 타이트하게 배치 (한 화면에 31일 + 합계 표시)
    ============================================================ */
-.pr-summary-section {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.pr-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+/* ── 헤더 고정 ── */
+.pr-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 날짜 헤더 (좌측 고정 + rowspan) */
+.pr-th-date {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a1a1aa;
+  background: #f4f4f5;
+  border-bottom: 1px solid #e4e4e7;
+  border-right: 1px solid #e4e4e7;
+  letter-spacing: 0;
+}
+
+/* 직원명 헤더 (1행, colspan=2) */
+.pr-th-emp {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #18181b;
+  background: #f4f4f5;
+  border-bottom: 1px solid #e4e4e7;
+  border-left: 2px solid #d4d4d8;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+/* 시간/h 서브헤더 (2행) */
+.pr-th-sub {
+  padding: 6px 10px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #a1a1aa;
+  background: #fafafa;
+  border-bottom: 2px solid #e4e4e7;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pr-th-h {
+  border-right: 1px solid #e4e4e7;
+  min-width: 40px;
+}
+
+/* ── 데이터 행 (컴팩트) ── */
+.pr-table tbody tr {
+  transition: background 0.1s;
+}
+
+.pr-table tbody tr:hover td {
   background: #fafafa;
 }
 
-/* ── 섹션 헤더 ── */
-.pr-summary-header {
-  padding: 28px 32px 20px;
-  flex-shrink: 0;
+/* 날짜 셀 (좌측 고정) */
+.pr-td-date {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #ffffff;
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding: 3px 4px;
+  text-align: center;
   border-bottom: 1px solid #f4f4f5;
+  border-right: 1px solid #e4e4e7;
 }
 
-.pr-summary-title {
-  font-size: 18px;
+.pr-table tbody tr:hover .pr-td-date {
+  background: #fafafa;
+}
+
+/* 날짜 숫자 */
+.pr-dn {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #18181b;
+  line-height: 1.4;
+}
+
+.pr-dn.sun { color: #ef4444; } /* 일요일 빨간색 */
+.pr-dn.sat { color: #3b82f6; } /* 토요일 파란색 */
+
+/* 주말 행 배경 */
+.pr-row-weekend .pr-td-date {
+  background: #fdf8f8;
+}
+
+.pr-row-weekend td {
+  background: #fdf8f8;
+}
+
+.pr-table .pr-row-weekend:hover td {
+  background: #fef2f2;
+}
+
+.pr-table .pr-row-weekend:hover .pr-td-date {
+  background: #fef2f2;
+}
+
+/* 시간대 셀 */
+.pr-td-range {
+  padding: 3px 10px;
+  text-align: center;
+  color: #52525b;
+  font-size: 11px;
+  font-weight: 500;
+  border-bottom: 1px solid #f4f4f5;
+  border-left: 2px solid #f0f0f0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+/* 근무시간(h) 셀 */
+.pr-td-h {
+  padding: 3px 10px;
+  text-align: center;
+  color: #18181b;
+  font-size: 11px;
+  font-weight: 700;
+  border-bottom: 1px solid #f4f4f5;
+  border-right: 1px solid #e4e4e7;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 합계 행 ── */
+.pr-row-total td {
+  border-top: 2px solid #d4d4d8;
+  background: #f4f4f5 !important;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.pr-row-total .pr-td-date {
+  background: #e8e8ea !important;
+}
+
+.pr-total-h {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #18181b !important;
+}
+
+/* ============================================================
+   [정리] 슬라이드 패널 오버레이
+   ============================================================ */
+
+/* 반투명 배경 오버레이 */
+.pr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+  backdrop-filter: blur(2px);
+}
+
+/* 슬라이드 패널 */
+.pr-summary-panel {
+  width: 660px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  animation: prSlideIn 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes prSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* 패널 헤더 */
+.pr-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.pr-panel-title {
+  font-size: 17px;
   font-weight: 700;
   color: #18181b;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   margin: 0;
 }
 
-/* ── 정산 테이블 영역 ── */
-.pr-summary-table-wrapper {
+.pr-panel-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.pr-panel-close:hover {
+  color: #18181b;
+  background: #f4f4f5;
+}
+
+/* 패널 바디 (스크롤 가능) */
+.pr-panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 32px 32px;
+  padding: 20px 28px 28px;
 }
 
 /* ── 정산 테이블 ── */
@@ -296,7 +361,6 @@
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  margin-top: 16px;
 }
 
 .pr-summary-table thead {
@@ -310,24 +374,24 @@
 }
 
 .pr-summary-table th {
-  padding: 14px 16px;
+  padding: 11px 14px;
   text-align: left;
   font-size: 11px;
   font-weight: 700;
   color: #71717a;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   white-space: nowrap;
 }
 
 .pr-summary-table th:first-child {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
 }
 
 .pr-summary-table th:last-child {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .pr-summary-table tbody tr {
@@ -335,43 +399,43 @@
 }
 
 .pr-summary-table tbody tr:hover {
-  background: #ffffff;
+  background: #fafafa;
 }
 
 .pr-summary-table td {
-  padding: 18px 16px;
+  padding: 14px 14px;
   color: #3f3f46;
   border-bottom: 1px solid #f4f4f5;
   font-weight: 500;
   white-space: nowrap;
 }
 
-/* 특수 셀 강조 */
-.pr-name-kr {
+/* 정산 테이블 특수 셀 */
+.ps-name-kr {
   font-weight: 700;
   color: #18181b;
 }
 
-.pr-wage {
+.ps-wage {
   color: #71717a;
   font-variant-numeric: tabular-nums;
 }
 
-.pr-total-h {
+.ps-hours {
   font-weight: 700;
   color: #18181b;
   font-variant-numeric: tabular-nums;
 }
 
-.pr-calc-wage {
+.ps-calc {
   font-weight: 800;
   color: #059669; /* Emerald-600 */
   font-variant-numeric: tabular-nums;
 }
 
-.pr-bank-no {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
+.ps-bankno {
+  font-size: 11px;
   color: #71717a;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  font-variant-numeric: tabular-nums;
 }

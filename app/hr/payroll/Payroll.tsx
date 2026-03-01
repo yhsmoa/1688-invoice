@@ -21,7 +21,7 @@ interface Employee {
 interface AttendanceRecord {
   id: string;
   employee_id: string;
-  work_date: string;       // YYYY-MM-DD
+  work_date: string;        // YYYY-MM-DD
   clock_in: string | null;  // ISO timestamp
   clock_out: string | null; // ISO timestamp
   total_minutes: number | null;
@@ -41,61 +41,53 @@ const formatTime = (ts: string | null): string => {
 };
 
 /** 분 → "8.5h" 형식 */
-const minutesToHours = (minutes: number | null): string => {
+const minutesToHours = (minutes: number | null | undefined): string => {
   if (!minutes) return '-';
   const h = minutes / 60;
   return `${h % 1 === 0 ? h : h.toFixed(1)}h`;
 };
 
-/** 시급 × 총분 → 원 단위 급여 (30분 내림 적용된 total_minutes 기반) */
+/** 시급 × 총분 → 예상 급여 (30분 내림이 적용된 total_minutes 기반) */
 const calcWage = (hourlyWage: number | null, totalMinutes: number): string => {
   if (!hourlyWage || !totalMinutes) return '-';
-  const hours = totalMinutes / 60;
-  const wage = Math.floor(hourlyWage * hours);
+  const wage = Math.floor((hourlyWage * totalMinutes) / 60);
   return `₩${wage.toLocaleString()}`;
 };
 
-/** 요일 반환 */
-const getDayOfWeek = (year: number, month: number, day: number): string => {
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return days[new Date(year, month - 1, day).getDay()];
-};
+/** 날짜(숫자) → 요일 인덱스 (0=일, 6=토) */
+const getDayIndex = (year: number, month: number, day: number): number =>
+  new Date(year, month - 1, day).getDay();
 
 // ============================================================
 // 메인 컴포넌트
 // ============================================================
 const Payroll: React.FC = () => {
-  // ── 월 선택 상태 (기본: 현재 년/월) ─────────────────────────
+  // ── 월 선택 (기본: 현재 년/월) ────────────────────────────
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
+  const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
   // ── 데이터 상태 ───────────────────────────────────────────
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [employees, setEmployees]     = useState<Employee[]>([]);
+  const [records, setRecords]         = useState<AttendanceRecord[]>([]);
   const [daysInMonth, setDaysInMonth] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading]     = useState(false);
+
+  // ── 정리 패널 표시 여부 ───────────────────────────────────
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   // ── 이전/다음 월 네비게이션 ───────────────────────────────
   const goToPrevMonth = () => {
-    if (month === 1) {
-      setYear((y) => y - 1);
-      setMonth(12);
-    } else {
-      setMonth((m) => m - 1);
-    }
+    if (month === 1) { setYear((y) => y - 1); setMonth(12); }
+    else              { setMonth((m) => m - 1); }
   };
 
   const goToNextMonth = () => {
-    const todayYear = new Date().getFullYear();
+    const todayYear  = new Date().getFullYear();
     const todayMonth = new Date().getMonth() + 1;
-    if (year === todayYear && month === todayMonth) return; // 미래 월 불가
-    if (month === 12) {
-      setYear((y) => y + 1);
-      setMonth(1);
-    } else {
-      setMonth((m) => m + 1);
-    }
+    if (year === todayYear && month === todayMonth) return;
+    if (month === 12) { setYear((y) => y + 1); setMonth(1); }
+    else               { setMonth((m) => m + 1); }
   };
 
   const isCurrentMonth =
@@ -106,11 +98,10 @@ const Payroll: React.FC = () => {
     setIsLoading(true);
     setEmployees([]);
     setRecords([]);
-
+    setIsSummaryOpen(false);
     try {
-      const res = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
+      const res    = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
       const result = await res.json();
-
       if (result.success) {
         setEmployees(result.employees);
         setRecords(result.records);
@@ -132,13 +123,12 @@ const Payroll: React.FC = () => {
   // ============================================================
 
   /**
-   * recordMap: { [day: number]: { [employee_id: string]: AttendanceRecord } }
-   * 날짜(1~31) × 직원ID 기반 O(1) 조회를 위한 이중 Map
+   * recordMap: Map<day(1~31), Map<employee_id, Record>>
+   * 날짜 × 직원 O(1) 조회
    */
   const recordMap = useMemo(() => {
     const map = new Map<number, Map<string, AttendanceRecord>>();
     records.forEach((rec) => {
-      // work_date: "YYYY-MM-DD" → 날짜(일) 추출
       const day = parseInt(rec.work_date.split('-')[2], 10);
       if (!map.has(day)) map.set(day, new Map());
       map.get(day)!.set(rec.employee_id, rec);
@@ -147,8 +137,8 @@ const Payroll: React.FC = () => {
   }, [records]);
 
   /**
-   * employeeTotals: { [employee_id]: total_minutes }
-   * 직원별 월 총 근무 분 합산
+   * employeeTotals: Map<employee_id, total_minutes>
+   * 직원별 월 총 근무 분
    */
   const employeeTotals = useMemo(() => {
     const totals = new Map<string, number>();
@@ -159,7 +149,7 @@ const Payroll: React.FC = () => {
     return totals;
   }, [records]);
 
-  /** 날짜 배열 [1, 2, ..., daysInMonth] */
+  /** 날짜 배열 [1 .. daysInMonth] */
   const days = useMemo(
     () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
     [daysInMonth]
@@ -176,103 +166,110 @@ const Payroll: React.FC = () => {
         <main className="pr-main">
 
           {/* ============================================================
-              왼쪽: 월별 근무 시간표
+              근무 시간표 (전체 화면)
               ============================================================ */}
           <section className="pr-sheet-section">
 
-            {/* 월 네비게이션 */}
-            <div className="pr-month-nav">
-              <button className="pr-nav-btn" onClick={goToPrevMonth}>◀</button>
-              <span className="pr-month-label">
-                {year}년 {month}월
-              </span>
-              <button
-                className="pr-nav-btn"
-                onClick={goToNextMonth}
-                disabled={isCurrentMonth}
-              >
-                ▶
-              </button>
+            {/* ── 네비게이션 바 ── */}
+            <div className="pr-nav-bar">
+              <div className="pr-nav-left">
+                <button className="pr-nav-btn" onClick={goToPrevMonth}>◀</button>
+                <span className="pr-month-label">{year}년 {month}월</span>
+                <button
+                  className="pr-nav-btn"
+                  onClick={goToNextMonth}
+                  disabled={isCurrentMonth}
+                >
+                  ▶
+                </button>
+              </div>
+
+              {/* 정리 버튼: 데이터가 있을 때만 표시 */}
+              {!isLoading && employees.length > 0 && (
+                <button
+                  className="pr-summary-btn"
+                  onClick={() => setIsSummaryOpen(true)}
+                >
+                  정리
+                </button>
+              )}
             </div>
 
-            {/* 시간표 테이블 */}
+            {/* ── 시간표 테이블 ── */}
             <div className="pr-table-wrapper">
               {isLoading ? (
-                <div className="pr-loading">불러오는 중...</div>
+                <div className="pr-state-msg">불러오는 중...</div>
               ) : employees.length === 0 ? (
-                <div className="pr-empty">
+                <div className="pr-state-msg">
                   {year}년 {month}월 근무 기록이 없습니다.
                 </div>
               ) : (
                 <table className="pr-table">
                   <thead>
-                    {/* 1행: 날짜 + 직원명 */}
+                    {/* 1행: 날 (rowspan2) + 직원명 (colspan2) */}
                     <tr>
-                      <th className="pr-th-date" rowSpan={2}>날짜</th>
+                      <th className="pr-th-date" rowSpan={2}>날</th>
                       {employees.map((emp) => (
-                        <th
-                          key={emp.id}
-                          colSpan={2}
-                          className="pr-th-employee"
-                        >
+                        <th key={emp.id} colSpan={2} className="pr-th-emp">
                           {emp.name_kr || emp.name || '-'}
                         </th>
                       ))}
                     </tr>
-                    {/* 2행: 시간대 / 근무시간 */}
+                    {/* 2행: 직원별 시간대 / 근무 서브헤더 */}
                     <tr>
                       {employees.flatMap((emp) => [
-                        <th key={`${emp.id}-range`} className="pr-th-sub">시간대</th>,
-                        <th key={`${emp.id}-hours`} className="pr-th-sub pr-th-hours">근무</th>,
+                        <th key={`${emp.id}-r`} className="pr-th-sub">시간</th>,
+                        <th key={`${emp.id}-h`} className="pr-th-sub pr-th-h">h</th>,
                       ])}
                     </tr>
                   </thead>
 
                   <tbody>
-                    {/* 일별 데이터 행 */}
+                    {/* ── 일별 행 ── */}
                     {days.map((day) => {
-                      const dow = getDayOfWeek(year, month, day);
-                      const isWeekend = dow === '일' || dow === '토';
+                      const di         = getDayIndex(year, month, day);
+                      const isSun      = di === 0;
+                      const isSat      = di === 6;
+                      const isWeekend  = isSun || isSat;
                       return (
-                        <tr
-                          key={day}
-                          className={isWeekend ? 'pr-row-weekend' : ''}
-                        >
+                        <tr key={day} className={isWeekend ? 'pr-row-weekend' : ''}>
+                          {/* 날짜 숫자 (주말 색상 구분) */}
                           <td className="pr-td-date">
-                            <span className="pr-day-num">{day}</span>
-                            <span className={`pr-day-dow ${isWeekend ? 'weekend' : ''}`}>
-                              {dow}
+                            <span className={
+                              isSun ? 'pr-dn sun' :
+                              isSat ? 'pr-dn sat' :
+                                      'pr-dn'
+                            }>
+                              {day}
                             </span>
                           </td>
+
+                          {/* 직원별 데이터 */}
                           {employees.flatMap((emp) => {
-                            const rec = recordMap.get(day)?.get(emp.id);
+                            const rec       = recordMap.get(day)?.get(emp.id);
                             const timeRange = rec
                               ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}`
-                              : '-';
-                            const hours = rec ? minutesToHours(rec.total_minutes) : '-';
+                              : '';
+                            const hours = rec ? minutesToHours(rec.total_minutes) : '';
                             return [
-                              <td key={`${emp.id}-range`} className="pr-td-range">
-                                {timeRange}
-                              </td>,
-                              <td key={`${emp.id}-hours`} className="pr-td-hours">
-                                {hours}
-                              </td>,
+                              <td key={`${emp.id}-r`} className="pr-td-range">{timeRange}</td>,
+                              <td key={`${emp.id}-h`} className="pr-td-h">{hours}</td>,
                             ];
                           })}
                         </tr>
                       );
                     })}
 
-                    {/* 합계 행 */}
+                    {/* ── 합계 행 ── */}
                     <tr className="pr-row-total">
                       <td className="pr-td-date">
-                        <span className="pr-day-num">합계</span>
+                        <span className="pr-dn">합</span>
                       </td>
                       {employees.flatMap((emp) => {
                         const total = employeeTotals.get(emp.id) ?? 0;
                         return [
-                          <td key={`${emp.id}-range`} className="pr-td-range" />,
-                          <td key={`${emp.id}-hours`} className="pr-td-hours pr-total-hours">
+                          <td key={`${emp.id}-r`} className="pr-td-range" />,
+                          <td key={`${emp.id}-h`} className="pr-td-h pr-total-h">
                             {total > 0 ? minutesToHours(total) : '-'}
                           </td>,
                         ];
@@ -285,61 +282,74 @@ const Payroll: React.FC = () => {
           </section>
 
           {/* ============================================================
-              오른쪽: 직원별 급여 정산 요약
+              [정리] 슬라이드 패널 (오버레이)
+              클릭 배경 또는 × 버튼으로 닫기
               ============================================================ */}
-          <section className="pr-summary-section">
-            <div className="pr-summary-header">
-              <h2 className="pr-summary-title">
-                {year}년 {month}월 급여 정산
-              </h2>
-            </div>
+          {isSummaryOpen && (
+            <div
+              className="pr-overlay"
+              onClick={() => setIsSummaryOpen(false)}
+            >
+              <aside
+                className="pr-summary-panel"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* 패널 헤더 */}
+                <div className="pr-panel-header">
+                  <h2 className="pr-panel-title">
+                    {year}년 {month}월 급여 정산
+                  </h2>
+                  <button
+                    className="pr-panel-close"
+                    onClick={() => setIsSummaryOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
 
-            <div className="pr-summary-table-wrapper">
-              {isLoading ? (
-                <div className="pr-loading">불러오는 중...</div>
-              ) : employees.length === 0 ? (
-                <div className="pr-empty">데이터가 없습니다.</div>
-              ) : (
-                <table className="pr-summary-table">
-                  <thead>
-                    <tr>
-                      <th>이름 (영문)</th>
-                      <th>이름 (한글)</th>
-                      <th>시급</th>
-                      <th>총 근무시간</th>
-                      <th>예상 급여</th>
-                      <th>은행명</th>
-                      <th>계좌번호</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {employees.map((emp) => {
-                      const totalMinutes = employeeTotals.get(emp.id) ?? 0;
-                      return (
-                        <tr key={emp.id}>
-                          <td>{emp.name || '-'}</td>
-                          <td className="pr-name-kr">{emp.name_kr || '-'}</td>
-                          <td className="pr-wage">
-                            {emp.hourly_wage
-                              ? `₩${emp.hourly_wage.toLocaleString()}`
-                              : '-'}
-                          </td>
-                          <td className="pr-total-h">
-                            {totalMinutes > 0 ? minutesToHours(totalMinutes) : '-'}
-                          </td>
-                          <td className="pr-calc-wage">
-                            {calcWage(emp.hourly_wage, totalMinutes)}
-                          </td>
-                          <td>{emp.bank_name || '-'}</td>
-                          <td className="pr-bank-no">{emp.bank_no || '-'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
+                {/* 정산 테이블 */}
+                <div className="pr-panel-body">
+                  <table className="pr-summary-table">
+                    <thead>
+                      <tr>
+                        <th>이름</th>
+                        <th>한글명</th>
+                        <th>시급</th>
+                        <th>총 근무</th>
+                        <th>예상 급여</th>
+                        <th>은행</th>
+                        <th>계좌번호</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((emp) => {
+                        const totalMinutes = employeeTotals.get(emp.id) ?? 0;
+                        return (
+                          <tr key={emp.id}>
+                            <td>{emp.name || '-'}</td>
+                            <td className="ps-name-kr">{emp.name_kr || '-'}</td>
+                            <td className="ps-wage">
+                              {emp.hourly_wage
+                                ? `₩${emp.hourly_wage.toLocaleString()}`
+                                : '-'}
+                            </td>
+                            <td className="ps-hours">
+                              {totalMinutes > 0 ? minutesToHours(totalMinutes) : '-'}
+                            </td>
+                            <td className="ps-calc">
+                              {calcWage(emp.hourly_wage, totalMinutes)}
+                            </td>
+                            <td>{emp.bank_name || '-'}</td>
+                            <td className="ps-bankno">{emp.bank_no || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </aside>
             </div>
-          </section>
+          )}
 
         </main>
       </div>
