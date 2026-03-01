@@ -1,9 +1,111 @@
 /* ============================================================
    급여장부 (Payroll)
-   레이아웃: 시간표 전체화면 + [정리] 버튼 → 오른쪽 슬라이드 패널
+   구조: 잠금화면 → 시간표 전체화면 + [정리] 슬라이드 패널
    ============================================================ */
 
-/* ── 메인 컨테이너 (전체 화면) ── */
+/* ============================================================
+   잠금 화면
+   ============================================================ */
+.pr-lock-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.pr-lock-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.10);
+  padding: 52px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 320px;
+}
+
+.pr-lock-icon {
+  font-size: 40px;
+  margin-bottom: 4px;
+}
+
+.pr-lock-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+.pr-lock-desc {
+  font-size: 14px;
+  color: #71717a;
+  margin: 0;
+}
+
+.pr-lock-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 22px;
+  letter-spacing: 8px;
+  text-align: center;
+  color: #18181b;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.pr-lock-input:focus {
+  border-color: #18181b;
+}
+
+.pr-lock-input.error {
+  border-color: #ef4444;
+  animation: lockShake 0.35s ease;
+}
+
+@keyframes lockShake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
+
+.pr-lock-error {
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.pr-lock-btn {
+  width: 100%;
+  padding: 12px;
+  background: #18181b;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+
+.pr-lock-btn:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.pr-lock-btn:disabled {
+  background: #a1a1aa;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   메인 레이아웃 (시간표 전체화면)
+   ============================================================ */
 .pr-main {
   flex: 1;
   min-width: 0;
@@ -11,11 +113,11 @@
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  position: relative; /* 슬라이드 패널 기준점 */
+  position: relative;
 }
 
 /* ============================================================
-   시간표 섹션 (전체 화면 차지)
+   시간표 섹션
    ============================================================ */
 .pr-sheet-section {
   flex: 1;
@@ -29,7 +131,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid #f0f0f0;
   flex-shrink: 0;
   background: #ffffff;
@@ -45,8 +147,8 @@
   background: #ffffff;
   border: 1px solid #e4e4e7;
   border-radius: 8px;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,7 +169,7 @@
 }
 
 .pr-month-label {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #18181b;
   letter-spacing: -0.3px;
@@ -75,7 +177,7 @@
 
 /* ── [정리] 버튼 ── */
 .pr-summary-btn {
-  padding: 7px 18px;
+  padding: 6px 16px;
   background: #18181b;
   color: #ffffff;
   border: none;
@@ -89,14 +191,13 @@
 
 .pr-summary-btn:hover {
   background: #27272a;
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
 }
 
 /* ── 시간표 테이블 래퍼 ── */
 .pr-table-wrapper {
   flex: 1;
-  overflow: auto; /* 가로: 직원 많을 때 스크롤 / 세로: 안 쓰는 방향으로 컴팩트 */
+  overflow: auto;
 }
 
 /* ── 로딩 / 빈 상태 ── */
@@ -111,31 +212,32 @@
 }
 
 /* ============================================================
-   시간표 테이블 - 타이트하게 배치 (한 화면에 31일 + 합계 표시)
+   시간표 테이블
+   - table-layout: fixed → colgroup 기반 균등 분배
+   - 날짜 열: 36px 고정 / h 열: 60px 고정 / 시간 열: flex(auto)
+   - 행 padding 최소화 → 31일 + 합계 한 화면에 표시
    ============================================================ */
 .pr-table {
-  width: max-content;
-  min-width: 100%;
+  table-layout: fixed;
+  width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
 }
 
-/* ── 헤더 고정 ── */
+/* 헤더 sticky */
 .pr-table thead {
   position: sticky;
   top: 0;
   z-index: 3;
 }
 
-/* 날짜 헤더 (좌측 고정 + rowspan) */
+/* 날짜 헤더 (sticky left + rowspan) */
 .pr-th-date {
   position: sticky;
   left: 0;
   z-index: 4;
   width: 36px;
-  min-width: 36px;
-  max-width: 36px;
   padding: 8px 4px;
   text-align: center;
   font-size: 10px;
@@ -144,10 +246,9 @@
   background: #f4f4f5;
   border-bottom: 1px solid #e4e4e7;
   border-right: 1px solid #e4e4e7;
-  letter-spacing: 0;
 }
 
-/* 직원명 헤더 (1행, colspan=2) */
+/* 직원명 헤더 (colspan=2) */
 .pr-th-emp {
   padding: 8px 12px;
   text-align: center;
@@ -158,49 +259,40 @@
   border-bottom: 1px solid #e4e4e7;
   border-left: 2px solid #d4d4d8;
   white-space: nowrap;
-  letter-spacing: 0.3px;
 }
 
-/* 시간/h 서브헤더 (2행) */
+/* 시간/h 서브헤더 */
 .pr-th-sub {
-  padding: 6px 10px;
+  padding: 6px 8px;
   text-align: center;
   font-size: 10px;
   font-weight: 600;
   color: #a1a1aa;
   background: #fafafa;
   border-bottom: 2px solid #e4e4e7;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .pr-th-h {
   border-right: 1px solid #e4e4e7;
-  min-width: 40px;
 }
 
 /* ── 데이터 행 (컴팩트) ── */
-.pr-table tbody tr {
-  transition: background 0.1s;
-}
-
 .pr-table tbody tr:hover td {
   background: #fafafa;
 }
 
-/* 날짜 셀 (좌측 고정) */
+/* 날짜 셀 (sticky left) */
 .pr-td-date {
   position: sticky;
   left: 0;
   z-index: 1;
   background: #ffffff;
   width: 36px;
-  min-width: 36px;
-  max-width: 36px;
   padding: 3px 4px;
   text-align: center;
-  border-bottom: 1px solid #f4f4f5;
+  border-bottom: 1px solid #f0f0f0;
   border-right: 1px solid #e4e4e7;
 }
 
@@ -214,54 +306,59 @@
   font-size: 12px;
   font-weight: 600;
   color: #18181b;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
-.pr-dn.sun { color: #ef4444; } /* 일요일 빨간색 */
-.pr-dn.sat { color: #3b82f6; } /* 토요일 파란색 */
+.pr-dn.sun { color: #ef4444; } /* 일요일 */
+.pr-dn.sat { color: #3b82f6; } /* 토요일 */
 
-/* 주말 행 배경 */
-.pr-row-weekend .pr-td-date {
-  background: #fdf8f8;
-}
+/* 주말 행 */
+.pr-row-weekend td             { background: #fdf8f8; }
+.pr-table .pr-row-weekend:hover td { background: #fef2f2; }
+.pr-row-weekend .pr-td-date       { background: #fdf8f8; }
+.pr-table .pr-row-weekend:hover .pr-td-date { background: #fef2f2; }
 
-.pr-row-weekend td {
-  background: #fdf8f8;
-}
-
-.pr-table .pr-row-weekend:hover td {
-  background: #fef2f2;
-}
-
-.pr-table .pr-row-weekend:hover .pr-td-date {
-  background: #fef2f2;
-}
-
-/* 시간대 셀 */
+/* 시간대 셀 (일반 표시) */
 .pr-td-range {
-  padding: 3px 10px;
+  padding: 3px 8px;
   text-align: center;
   color: #52525b;
   font-size: 11px;
   font-weight: 500;
-  border-bottom: 1px solid #f4f4f5;
+  border-bottom: 1px solid #f0f0f0;
   border-left: 2px solid #f0f0f0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.3px;
+  overflow: hidden;
 }
 
-/* 근무시간(h) 셀 */
+/* 클릭 가능한 시간 셀 */
+.pr-td-clickable {
+  cursor: pointer;
+}
+
+.pr-td-clickable:hover {
+  background: #eff6ff !important;
+  color: #1d4ed8;
+}
+
+/* h(근무시간) 셀 */
 .pr-td-h {
-  padding: 3px 10px;
+  padding: 3px 8px;
   text-align: center;
   color: #18181b;
   font-size: 11px;
   font-weight: 700;
-  border-bottom: 1px solid #f4f4f5;
+  border-bottom: 1px solid #f0f0f0;
   border-right: 1px solid #e4e4e7;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* 편집 중 h 미리보기 */
+.pr-td-preview {
+  color: #2563eb;
+  background: #eff6ff;
 }
 
 /* ── 합계 행 ── */
@@ -283,10 +380,97 @@
 }
 
 /* ============================================================
+   인라인 편집 셀
+   ============================================================ */
+.pr-td-editing {
+  padding: 2px 6px !important;
+  background: #f0f9ff !important;
+}
+
+.pr-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* time input */
+.pr-time-input {
+  width: 68px;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1e3a8a;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pr-time-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.pr-edit-sep {
+  color: #94a3b8;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* 저장 버튼 */
+.pr-edit-save {
+  padding: 2px 6px;
+  background: #18181b;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.pr-edit-save:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.pr-edit-save:disabled {
+  background: #a1a1aa;
+  cursor: not-allowed;
+}
+
+/* 취소 버튼 */
+.pr-edit-cancel {
+  padding: 2px 6px;
+  background: #f4f4f5;
+  color: #71717a;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.pr-edit-cancel:hover {
+  background: #e4e4e7;
+  color: #18181b;
+}
+
+/* 편집 오류 메시지 */
+.pr-edit-error {
+  font-size: 10px;
+  color: #ef4444;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ============================================================
    [정리] 슬라이드 패널 오버레이
    ============================================================ */
 
-/* 반투명 배경 오버레이 */
+/* 반투명 배경 */
 .pr-overlay {
   position: fixed;
   inset: 0;
@@ -348,7 +532,7 @@
   background: #f4f4f5;
 }
 
-/* 패널 바디 (스크롤 가능) */
+/* 패널 바디 */
 .pr-panel-body {
   flex: 1;
   overflow-y: auto;
@@ -384,15 +568,8 @@
   white-space: nowrap;
 }
 
-.pr-summary-table th:first-child {
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
-}
-
-.pr-summary-table th:last-child {
-  border-top-right-radius: 10px;
-  border-bottom-right-radius: 10px;
-}
+.pr-summary-table th:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.pr-summary-table th:last-child  { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
 
 .pr-summary-table tbody tr {
   transition: background 0.15s;
@@ -410,32 +587,9 @@
   white-space: nowrap;
 }
 
-/* 정산 테이블 특수 셀 */
-.ps-name-kr {
-  font-weight: 700;
-  color: #18181b;
-}
-
-.ps-wage {
-  color: #71717a;
-  font-variant-numeric: tabular-nums;
-}
-
-.ps-hours {
-  font-weight: 700;
-  color: #18181b;
-  font-variant-numeric: tabular-nums;
-}
-
-.ps-calc {
-  font-weight: 800;
-  color: #059669; /* Emerald-600 */
-  font-variant-numeric: tabular-nums;
-}
-
-.ps-bankno {
-  font-size: 11px;
-  color: #71717a;
-  letter-spacing: 0.3px;
-  font-variant-numeric: tabular-nums;
-}
+/* 정산 특수 셀 */
+.ps-name-kr { font-weight: 700; color: #18181b; }
+.ps-wage    { color: #71717a; font-variant-numeric: tabular-nums; }
+.ps-hours   { font-weight: 700; color: #18181b; font-variant-numeric: tabular-nums; }
+.ps-calc    { font-weight: 800; color: #059669; font-variant-numeric: tabular-nums; }
+.ps-bankno  { font-size: 11px; color: #71717a; font-variant-numeric: tabular-nums; }
