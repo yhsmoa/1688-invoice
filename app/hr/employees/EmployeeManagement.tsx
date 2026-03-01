@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import './EmployeeManagement.css';
@@ -82,6 +82,7 @@ const EmployeeManagement: React.FC = () => {
   const [codeInput, setCodeInput] = useState('');
   const [lockError, setLockError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const lockInputRef = useRef<HTMLInputElement>(null);
 
   // ── 직원 목록 상태 ─────────────────────────────────────────
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -124,6 +125,7 @@ const EmployeeManagement: React.FC = () => {
       } else {
         setLockError(result.error || '접근이 거부되었습니다.');
         setCodeInput('');
+        setTimeout(() => lockInputRef.current?.focus(), 50);
       }
     } catch {
       setLockError('서버 오류가 발생했습니다.');
@@ -341,32 +343,41 @@ const EmployeeManagement: React.FC = () => {
   // ============================================================
   if (!isUnlocked) {
     return (
-      <div className="em-lock-screen">
-        <div className="em-lock-card">
-          <div className="em-lock-icon">🔒</div>
-          <h2 className="em-lock-title">직원관리</h2>
-          <p className="em-lock-desc">접근 코드 8자리를 입력해주세요</p>
-          <input
-            type="password"
-            className="em-lock-input"
-            value={codeInput}
-            onChange={(e) => {
-              const val = e.target.value.replace(/[^0-9]/g, '');
-              if (val.length <= 8) setCodeInput(val);
-            }}
-            onKeyDown={handleCodeKeyDown}
-            placeholder="••••••••"
-            maxLength={8}
-            autoFocus
-          />
-          {lockError && <p className="em-lock-error">{lockError}</p>}
-          <button
-            className="em-lock-btn"
-            onClick={handleVerifyCode}
-            disabled={isVerifying || codeInput.length !== 8}
-          >
-            {isVerifying ? '확인 중...' : '확인'}
-          </button>
+      <div className="app-layout">
+        <TopsideMenu />
+        <div className="main-content">
+          <LeftsideMenu />
+          <main className="em-lock-main">
+            <div className="em-lock-card">
+              <div className="em-lock-icon">🔒</div>
+              <h2 className="em-lock-title">직원관리</h2>
+              <p className="em-lock-desc">접근 코드 8자리를 입력해주세요</p>
+              <input
+                ref={lockInputRef}
+                type="password"
+                className={`em-lock-input ${lockError ? 'error' : ''}`}
+                value={codeInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  if (val.length <= 8) setCodeInput(val);
+                  setLockError('');
+                }}
+                onKeyDown={handleCodeKeyDown}
+                placeholder="••••••••"
+                maxLength={8}
+                autoFocus
+                autoComplete="off"
+              />
+              {lockError && <p className="em-lock-error">{lockError}</p>}
+              <button
+                className="em-lock-btn"
+                onClick={handleVerifyCode}
+                disabled={isVerifying || codeInput.length !== 8}
+              >
+                {isVerifying ? '확인 중...' : '확인'}
+              </button>
+            </div>
+          </main>
         </div>
       </div>
     );

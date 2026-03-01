@@ -394,8 +394,8 @@ const Payroll: React.FC = () => {
                   <colgroup>
                     <col style={{ width: '36px' }} />
                     {employees.flatMap((_, i) => [
-                      <col key={`col-r-${i}`} />,                     {/* 시간대: auto (나머지 공간 균등 분배) */}
-                      <col key={`col-h-${i}`} style={{ width: '60px' }} />, {/* h: 60px 고정 */}
+                      <col key={`col-r-${i}`} />,
+                      <col key={`col-h-${i}`} style={{ width: '60px' }} />,
                     ])}
                   </colgroup>
 
