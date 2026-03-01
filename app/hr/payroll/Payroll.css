@@ -1,6 +1,6 @@
 /* ============================================================
    급여장부 (Payroll)
-   구조: 잠금화면 → 시간표 전체화면 + [정리] 슬라이드 패널
+   구조: 잠금화면 → 시간표 전체화면 + 수정/삭제 모달 + [정리] 슬라이드 패널
    ============================================================ */
 
 /* ============================================================
@@ -309,16 +309,16 @@
   line-height: 1.5;
 }
 
-.pr-dn.sun { color: #ef4444; } /* 일요일 */
-.pr-dn.sat { color: #3b82f6; } /* 토요일 */
+.pr-dn.sun { color: #ef4444; }
+.pr-dn.sat { color: #3b82f6; }
 
 /* 주말 행 */
-.pr-row-weekend td             { background: #fdf8f8; }
-.pr-table .pr-row-weekend:hover td { background: #fef2f2; }
-.pr-row-weekend .pr-td-date       { background: #fdf8f8; }
-.pr-table .pr-row-weekend:hover .pr-td-date { background: #fef2f2; }
+.pr-row-weekend td                              { background: #fdf8f8; }
+.pr-table .pr-row-weekend:hover td             { background: #fef2f2; }
+.pr-row-weekend .pr-td-date                    { background: #fdf8f8; }
+.pr-table .pr-row-weekend:hover .pr-td-date    { background: #fef2f2; }
 
-/* 시간대 셀 (일반 표시) */
+/* 시간대 셀 */
 .pr-td-range {
   padding: 3px 8px;
   text-align: center;
@@ -355,12 +355,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 편집 중 h 미리보기 */
-.pr-td-preview {
-  color: #2563eb;
-  background: #eff6ff;
-}
-
 /* ── 합계 행 ── */
 .pr-row-total td {
   border-top: 2px solid #d4d4d8;
@@ -380,90 +374,236 @@
 }
 
 /* ============================================================
-   인라인 편집 셀
+   시간 수정/삭제 모달
+   - 화면 중앙 팝업 / 오버레이 배경 클릭으로 닫기
+   - 출근·퇴근 time 입력 + 실시간 근무 시간 미리보기
    ============================================================ */
-.pr-td-editing {
-  padding: 2px 6px !important;
-  background: #f0f9ff !important;
-}
 
-.pr-edit-row {
+/* 반투명 오버레이 (중앙 정렬) */
+.pr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.40);
+  z-index: 300;
   display: flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  backdrop-filter: blur(3px);
 }
 
-/* time input */
-.pr-time-input {
-  width: 68px;
-  padding: 2px 4px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  border: 1px solid #bfdbfe;
-  border-radius: 4px;
+/* 모달 카드 */
+.pr-modal {
   background: #ffffff;
-  color: #1e3a8a;
-  outline: none;
-  transition: border-color 0.15s;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 400px;
+  animation: prModalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.pr-time-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+@keyframes prModalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
 
-.pr-edit-sep {
-  color: #94a3b8;
-  font-size: 11px;
-  flex-shrink: 0;
+/* 모달 헤더 */
+.pr-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 24px 0;
 }
 
-/* 저장 버튼 */
-.pr-edit-save {
-  padding: 2px 6px;
-  background: #18181b;
-  color: #ffffff;
+.pr-modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0 0 4px;
+}
+
+.pr-modal-sub {
+  font-size: 13px;
+  color: #71717a;
+  margin: 0;
+}
+
+.pr-modal-close {
+  background: none;
   border: none;
-  border-radius: 4px;
-  font-size: 11px;
+  font-size: 22px;
+  color: #a1a1aa;
   cursor: pointer;
-  transition: background 0.15s;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
   flex-shrink: 0;
 }
 
-.pr-edit-save:hover:not(:disabled) {
-  background: #27272a;
+.pr-modal-close:hover {
+  color: #18181b;
 }
 
-.pr-edit-save:disabled {
-  background: #a1a1aa;
+/* 모달 바디 */
+.pr-modal-body {
+  padding: 20px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 출근/퇴근 필드 행 */
+.pr-modal-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pr-modal-label {
+  width: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+  flex-shrink: 0;
+}
+
+/* 시간 입력 */
+.pr-modal-time {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: #18181b;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pr-modal-time:focus {
+  border-color: #18181b;
+  background: #ffffff;
+}
+
+/* 실시간 근무 시간 미리보기 */
+.pr-modal-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f4f4f5;
+  border-radius: 10px;
+}
+
+.pr-modal-preview-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+}
+
+.pr-modal-preview-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #18181b;
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-modal-preview-val.invalid {
+  font-size: 18px;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+/* 에러 메시지 */
+.pr-modal-error {
+  font-size: 13px;
+  color: #ef4444;
+  font-weight: 500;
+  margin: 0;
+  text-align: center;
+}
+
+/* 모달 푸터: [삭제] 왼쪽 / [취소][저장] 오른쪽 */
+.pr-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 24px;
+  border-top: 1px solid #f4f4f5;
+}
+
+.pr-modal-footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* 삭제 버튼 */
+.pr-modal-btn-delete {
+  padding: 9px 18px;
+  background: #fff1f2;
+  color: #ef4444;
+  border: 1.5px solid #fecdd3;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pr-modal-btn-delete:hover:not(:disabled) {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.pr-modal-btn-delete:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* 취소 버튼 */
-.pr-edit-cancel {
-  padding: 2px 6px;
+.pr-modal-btn-cancel {
+  padding: 9px 18px;
   background: #f4f4f5;
   color: #71717a;
   border: none;
-  border-radius: 4px;
-  font-size: 11px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  flex-shrink: 0;
 }
 
-.pr-edit-cancel:hover {
+.pr-modal-btn-cancel:hover:not(:disabled) {
   background: #e4e4e7;
   color: #18181b;
 }
 
-/* 편집 오류 메시지 */
-.pr-edit-error {
-  font-size: 10px;
-  color: #ef4444;
-  margin-top: 2px;
-  white-space: nowrap;
+.pr-modal-btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 저장 버튼 */
+.pr-modal-btn-save {
+  padding: 9px 22px;
+  background: #18181b;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pr-modal-btn-save:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.pr-modal-btn-save:disabled {
+  background: #a1a1aa;
+  cursor: not-allowed;
 }
 
 /* ============================================================

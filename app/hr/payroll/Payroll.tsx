@@ -27,15 +27,15 @@ interface AttendanceRecord {
   total_minutes: number | null;
 }
 
-/** 인라인 편집 중인 셀 상태 */
-interface EditingCell {
-  day: number;
-  employeeId: string;
+/** 시간 수정/삭제 모달 상태 */
+interface TimeModal {
   recordId: string;
-  workDate: string;   // YYYY-MM-DD (ISO 재조합에 사용)
-  clockIn: string;    // HH:MM (로컬)
-  clockOut: string;   // HH:MM (로컬)
+  employeeName: string;
+  workDate: string;      // YYYY-MM-DD
+  clockIn: string;       // HH:MM (로컬)
+  clockOut: string;      // HH:MM (로컬)
   isSaving: boolean;
+  isDeleting: boolean;
   error: string;
 }
 
@@ -84,13 +84,17 @@ const calcMinutesFromTimes = (clockIn: string, clockOut: string): number | null 
 const getDayIndex = (year: number, month: number, day: number): number =>
   new Date(year, month - 1, day).getDay();
 
+/** YYYY-MM-DD + HH:MM → ISO string (브라우저 로컬 타임존 기준) */
+const toISO = (date: string, time: string): string =>
+  new Date(`${date}T${time}:00`).toISOString();
+
 // ============================================================
 // 메인 컴포넌트
 // ============================================================
 const Payroll: React.FC = () => {
 
   // ============================================================
-  // ① 잠금 화면 상태 (반드시 모든 hook보다 먼저, return 전에 선언)
+  // ① 잠금 화면 상태
   // ============================================================
   const [isUnlocked, setIsUnlocked]   = useState(false);
   const [lockCode, setLockCode]       = useState('');
@@ -110,9 +114,9 @@ const Payroll: React.FC = () => {
   const [isLoading, setIsLoading]     = useState(false);
 
   // ============================================================
-  // ③ 인라인 편집 상태
+  // ③ 시간 수정/삭제 모달 상태
   // ============================================================
-  const [editing, setEditing] = useState<EditingCell | null>(null);
+  const [modal, setModal] = useState<TimeModal | null>(null);
 
   // ============================================================
   // ④ 정리 패널 상태
@@ -173,7 +177,7 @@ const Payroll: React.FC = () => {
     setIsLoading(true);
     setEmployees([]);
     setRecords([]);
-    setEditing(null);
+    setModal(null);
     setIsSummaryOpen(false);
     try {
       const res    = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
@@ -232,68 +236,80 @@ const Payroll: React.FC = () => {
     [daysInMonth]
   );
 
+  /** 모달 열려있을 때 실시간 근무 시간 계산 */
+  const modalPreviewMins = modal
+    ? calcMinutesFromTimes(modal.clockIn, modal.clockOut)
+    : null;
+
   // ============================================================
-  // ⑨ 인라인 편집 핸들러
+  // ⑨ 시간 수정/삭제 모달 핸들러
   // ============================================================
 
-  /** 시간 셀 클릭 → 편집 시작 */
-  const startEditing = (day: number, emp: Employee, rec: AttendanceRecord) => {
-    setEditing({
-      day,
-      employeeId:  emp.id,
-      recordId:    rec.id,
-      workDate:    rec.work_date,
-      clockIn:     toLocalHHMM(rec.clock_in),
-      clockOut:    toLocalHHMM(rec.clock_out),
-      isSaving:    false,
-      error:       '',
+  /** 시간 셀 클릭 → 모달 열기 */
+  const openModal = (emp: Employee, rec: AttendanceRecord) => {
+    setModal({
+      recordId:     rec.id,
+      employeeName: emp.name_kr || emp.name || '-',
+      workDate:     rec.work_date,
+      clockIn:      toLocalHHMM(rec.clock_in),
+      clockOut:     toLocalHHMM(rec.clock_out),
+      isSaving:     false,
+      isDeleting:   false,
+      error:        '',
     });
   };
 
-  /** 편집 저장: ISO 재조합 → PUT update-time → 로컬 state 갱신 */
-  const handleEditSave = async () => {
-    if (!editing || editing.isSaving) return;
+  /** 저장: 출퇴근 시간 수정 → PUT /api/hr/attendance/update-time */
+  const handleModalSave = async () => {
+    if (!modal || modal.isSaving || modal.isDeleting) return;
 
-    const previewMins = calcMinutesFromTimes(editing.clockIn, editing.clockOut);
-    if (previewMins === null) {
-      setEditing((prev) => prev ? { ...prev, error: '퇴근 시간이 출근 시간보다 늦어야 합니다.' } : null);
+    if (modalPreviewMins === null) {
+      setModal((prev) => prev ? { ...prev, error: '퇴근 시간이 출근 시간보다 늦어야 합니다.' } : null);
       return;
     }
 
-    setEditing((prev) => prev ? { ...prev, isSaving: true, error: '' } : null);
-
+    setModal((prev) => prev ? { ...prev, isSaving: true, error: '' } : null);
     try {
-      // 클라이언트 로컬 시간 기준으로 ISO 재조합 (브라우저 timezone 적용)
-      const clockInISO  = new Date(`${editing.workDate}T${editing.clockIn}:00`).toISOString();
-      const clockOutISO = new Date(`${editing.workDate}T${editing.clockOut}:00`).toISOString();
-
       const res    = await fetch('/api/hr/attendance/update-time', {
         method:  'PUT',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          record_id:    editing.recordId,
-          clock_in_iso:  clockInISO,
-          clock_out_iso: clockOutISO,
+          record_id:     modal.recordId,
+          clock_in_iso:  toISO(modal.workDate, modal.clockIn),
+          clock_out_iso: toISO(modal.workDate, modal.clockOut),
         }),
       });
       const result = await res.json();
-
       if (result.success) {
-        // 로컬 records 배열에서 해당 레코드만 교체 (전체 재조회 없이 즉시 반영)
-        setRecords((prev) => prev.map((r) => r.id === editing.recordId ? result.record : r));
-        setEditing(null);
+        // 전체 재조회 없이 해당 레코드만 즉시 교체
+        setRecords((prev) => prev.map((r) => r.id === modal.recordId ? result.record : r));
+        setModal(null);
       } else {
-        setEditing((prev) => prev ? { ...prev, isSaving: false, error: result.error || '저장에 실패했습니다.' } : null);
+        setModal((prev) => prev ? { ...prev, isSaving: false, error: result.error || '저장에 실패했습니다.' } : null);
       }
     } catch {
-      setEditing((prev) => prev ? { ...prev, isSaving: false, error: '서버 오류가 발생했습니다.' } : null);
+      setModal((prev) => prev ? { ...prev, isSaving: false, error: '서버 오류가 발생했습니다.' } : null);
     }
   };
 
-  /** 편집 중 Enter/Escape 키 처리 */
-  const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter')  handleEditSave();
-    if (e.key === 'Escape') setEditing(null);
+  /** 삭제: 출퇴근 기록 삭제 → DELETE /api/hr/attendance/[id] */
+  const handleModalDelete = async () => {
+    if (!modal || modal.isSaving || modal.isDeleting) return;
+    if (!confirm('이 출퇴근 기록을 삭제하시겠습니까?')) return;
+
+    setModal((prev) => prev ? { ...prev, isDeleting: true, error: '' } : null);
+    try {
+      const res    = await fetch(`/api/hr/attendance/${modal.recordId}`, { method: 'DELETE' });
+      const result = await res.json();
+      if (result.success) {
+        setRecords((prev) => prev.filter((r) => r.id !== modal.recordId));
+        setModal(null);
+      } else {
+        setModal((prev) => prev ? { ...prev, isDeleting: false, error: result.error || '삭제에 실패했습니다.' } : null);
+      }
+    } catch {
+      setModal((prev) => prev ? { ...prev, isDeleting: false, error: '서버 오류가 발생했습니다.' } : null);
+    }
   };
 
   // ============================================================
@@ -390,7 +406,7 @@ const Payroll: React.FC = () => {
               ) : (
                 <table className="pr-table">
 
-                  {/* ── colgroup: 날짜 고정 / 직원별 시간(flex) + h(고정) ── */}
+                  {/* colgroup: 날짜 고정 / 직원별 시간(flex) + h(고정) */}
                   <colgroup>
                     <col style={{ width: '36px' }} />
                     {employees.flatMap((_, i) => [
@@ -409,7 +425,7 @@ const Payroll: React.FC = () => {
                         </th>
                       ))}
                     </tr>
-                    {/* 2행: 시간대 / h 서브헤더 */}
+                    {/* 2행: 시간 / h 서브헤더 */}
                     <tr>
                       {employees.flatMap((emp) => [
                         <th key={`${emp.id}-r`} className="pr-th-sub">시간</th>,
@@ -436,81 +452,19 @@ const Payroll: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* 직원별 시간대 + h 셀 */}
+                          {/* 직원별 시간대 + h 셀 (기록 있으면 클릭 → 모달) */}
                           {employees.flatMap((emp) => {
-                            const rec      = recordMap.get(day)?.get(emp.id);
-                            const isEdit   = editing?.day === day && editing?.employeeId === emp.id;
-
-                            if (isEdit) {
-                              // ── 편집 모드: time 입력 + 실시간 h 미리보기 ──
-                              const previewMins = calcMinutesFromTimes(editing.clockIn, editing.clockOut);
-                              return [
-                                <td key={`${emp.id}-r`} className="pr-td-range pr-td-editing">
-                                  <div className="pr-edit-row">
-                                    <input
-                                      type="time"
-                                      value={editing.clockIn}
-                                      onChange={(e) =>
-                                        setEditing((prev) =>
-                                          prev ? { ...prev, clockIn: e.target.value } : null
-                                        )
-                                      }
-                                      onKeyDown={handleEditKeyDown}
-                                      className="pr-time-input"
-                                      autoFocus
-                                    />
-                                    <span className="pr-edit-sep">~</span>
-                                    <input
-                                      type="time"
-                                      value={editing.clockOut}
-                                      onChange={(e) =>
-                                        setEditing((prev) =>
-                                          prev ? { ...prev, clockOut: e.target.value } : null
-                                        )
-                                      }
-                                      onKeyDown={handleEditKeyDown}
-                                      className="pr-time-input"
-                                    />
-                                    <button
-                                      className="pr-edit-save"
-                                      onClick={handleEditSave}
-                                      disabled={editing.isSaving}
-                                    >
-                                      {editing.isSaving ? '…' : '✓'}
-                                    </button>
-                                    <button
-                                      className="pr-edit-cancel"
-                                      onClick={() => setEditing(null)}
-                                    >
-                                      ✗
-                                    </button>
-                                  </div>
-                                  {editing.error && (
-                                    <div className="pr-edit-error">{editing.error}</div>
-                                  )}
-                                </td>,
-                                <td key={`${emp.id}-h`} className="pr-td-h pr-td-preview">
-                                  {previewMins !== null ? minutesToHours(previewMins) : '-'}
-                                </td>,
-                              ];
-                            }
-
-                            // ── 일반 표시 모드 (기록 있으면 클릭 가능) ──
-                            const timeRange = rec
-                              ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}`
-                              : '';
-                            const hours = rec ? minutesToHours(rec.total_minutes) : '';
-
+                            const rec = recordMap.get(day)?.get(emp.id);
                             return [
                               <td
                                 key={`${emp.id}-r`}
                                 className={`pr-td-range${rec ? ' pr-td-clickable' : ''}`}
-                                onClick={rec ? () => startEditing(day, emp, rec) : undefined}
+                                onClick={rec ? () => openModal(emp, rec) : undefined}
                               >
-                                {timeRange}
+                                {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
                               </td>,
                               <td key={`${emp.id}-h`} className="pr-td-h">
-                                {hours}
+                                {rec ? minutesToHours(rec.total_minutes) : ''}
                               </td>,
                             ];
                           })}
@@ -538,6 +492,98 @@ const Payroll: React.FC = () => {
               )}
             </div>
           </section>
+
+          {/* ============================================================
+              시간 수정/삭제 모달
+              - 시간 셀 클릭 시 열림 / 오버레이 클릭 or × 버튼으로 닫기
+              - 출근·퇴근 시간 수정 + 실시간 근무 시간 미리보기
+              - 삭제 버튼으로 해당 출퇴근 기록 삭제
+              ============================================================ */}
+          {modal && (
+            <div className="pr-modal-overlay" onClick={() => setModal(null)}>
+              <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
+
+                {/* 모달 헤더 */}
+                <div className="pr-modal-header">
+                  <div>
+                    <h3 className="pr-modal-title">근무 시간 수정</h3>
+                    <p className="pr-modal-sub">
+                      {modal.workDate.replace(/-/g, '.')} · {modal.employeeName}
+                    </p>
+                  </div>
+                  <button className="pr-modal-close" onClick={() => setModal(null)}>×</button>
+                </div>
+
+                {/* 모달 바디: 출근/퇴근 입력 + 미리보기 */}
+                <div className="pr-modal-body">
+
+                  <div className="pr-modal-field">
+                    <label className="pr-modal-label">출근</label>
+                    <input
+                      type="time"
+                      className="pr-modal-time"
+                      value={modal.clockIn}
+                      autoFocus
+                      onChange={(e) =>
+                        setModal((prev) => prev ? { ...prev, clockIn: e.target.value, error: '' } : null)
+                      }
+                    />
+                  </div>
+
+                  <div className="pr-modal-field">
+                    <label className="pr-modal-label">퇴근</label>
+                    <input
+                      type="time"
+                      className="pr-modal-time"
+                      value={modal.clockOut}
+                      onChange={(e) =>
+                        setModal((prev) => prev ? { ...prev, clockOut: e.target.value, error: '' } : null)
+                      }
+                    />
+                  </div>
+
+                  {/* 실시간 근무 시간 미리보기 */}
+                  <div className="pr-modal-preview">
+                    <span className="pr-modal-preview-label">근무 시간</span>
+                    <span className={`pr-modal-preview-val${modalPreviewMins === null ? ' invalid' : ''}`}>
+                      {modalPreviewMins !== null ? minutesToHours(modalPreviewMins) : '—'}
+                    </span>
+                  </div>
+
+                  {/* 에러 메시지 */}
+                  {modal.error && <p className="pr-modal-error">{modal.error}</p>}
+                </div>
+
+                {/* 모달 푸터: [삭제] 왼쪽 / [취소][저장] 오른쪽 */}
+                <div className="pr-modal-footer">
+                  <button
+                    className="pr-modal-btn-delete"
+                    onClick={handleModalDelete}
+                    disabled={modal.isSaving || modal.isDeleting}
+                  >
+                    {modal.isDeleting ? '삭제 중...' : '삭제'}
+                  </button>
+                  <div className="pr-modal-footer-right">
+                    <button
+                      className="pr-modal-btn-cancel"
+                      onClick={() => setModal(null)}
+                      disabled={modal.isSaving || modal.isDeleting}
+                    >
+                      취소
+                    </button>
+                    <button
+                      className="pr-modal-btn-save"
+                      onClick={handleModalSave}
+                      disabled={modal.isSaving || modal.isDeleting}
+                    >
+                      {modal.isSaving ? '저장 중...' : '저장'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 
           {/* ============================================================
               [정리] 슬라이드 패널 - 급여 정산 요약
