@@ -52,6 +52,42 @@ export const POST = async (request: NextRequest) => {
       DELIVERY_CODE: 31  // AF열 - 배송코드
     };
 
+    // ============================================================
+    // 병합 셀 처리: worksheet['!merges']에서 병합 범위 추출
+    // 병합된 셀인 경우에만 상위 값을 상속 (빈값과 병합을 구분)
+    // ============================================================
+    const merges: XLSX.Range[] = worksheet['!merges'] || [];
+
+    // 특정 셀(dataRow 기준 인덱스, 컬럼 인덱스)이 병합 범위에 포함되는지 확인
+    // 포함되면 병합 시작 셀의 값을 반환, 아니면 null
+    const getMergedValue = (dataRowIndex: number, colIndex: number): any => {
+      const actualRow = dataRowIndex + 1; // 헤더 1행 제외 → 실제 시트 행 (0-based)
+      for (const merge of merges) {
+        if (
+          actualRow >= merge.s.r && actualRow <= merge.e.r &&
+          colIndex >= merge.s.c && colIndex <= merge.e.c
+        ) {
+          // 병합 시작 행의 데이터 반환 (헤더 제외 보정)
+          const startDataRowIndex = merge.s.r - 1; // 시트 행 → dataRows 인덱스
+          if (startDataRowIndex >= 0 && dataRows[startDataRowIndex]) {
+            return dataRows[startDataRowIndex][colIndex];
+          }
+        }
+      }
+      return null; // 병합 범위가 아님
+    };
+
+    // 셀 값을 가져오되, 빈값이면 병합 여부 확인
+    const getCellValue = (dataRowIndex: number, colIndex: number, rawValue: any): any => {
+      if (rawValue !== undefined && rawValue !== null && rawValue.toString().trim() !== '') {
+        return rawValue; // 값이 있으면 그대로 사용
+      }
+      // 값이 없으면 → 병합 범위인지 확인 후 병합 시작 셀 값 반환
+      return getMergedValue(dataRowIndex, colIndex);
+    };
+
+    console.log(`병합 셀 범위 ${merges.length}개 감지됨`);
+
     // 디버깅: 첫 번째 데이터 행의 AD열(29)과 AF열(31) 값 출력
     if (dataRows.length > 0 && dataRows[0]) {
       console.log('=== 첫 번째 행 컬럼 확인 ===');
@@ -74,13 +110,13 @@ export const POST = async (request: NextRequest) => {
       }
 
       try {
-        // 각 컬럼 값 추출
-        const orderId = row[COLUMNS.ORDER_ID] || '';
-        const shop = row[COLUMNS.SHOP] || '';
-        const deliveryStatus = row[COLUMNS.DELIVERY_STATUS] || '';
-        const offerId = row[COLUMNS.OFFER_ID] || '';
-        const orderInfo = row[COLUMNS.ORDER_INFO] || '';
-        const deliveryCode = row[COLUMNS.DELIVERY_CODE] || '';
+        // 각 컬럼 값 추출 (병합 셀 고려)
+        const orderId = getCellValue(i, COLUMNS.ORDER_ID, row[COLUMNS.ORDER_ID]) || '';
+        const shop = getCellValue(i, COLUMNS.SHOP, row[COLUMNS.SHOP]) || '';
+        const deliveryStatus = getCellValue(i, COLUMNS.DELIVERY_STATUS, row[COLUMNS.DELIVERY_STATUS]) || '';
+        const offerId = getCellValue(i, COLUMNS.OFFER_ID, row[COLUMNS.OFFER_ID]) || '';
+        const orderInfo = getCellValue(i, COLUMNS.ORDER_INFO, row[COLUMNS.ORDER_INFO]) || '';
+        const deliveryCode = getCellValue(i, COLUMNS.DELIVERY_CODE, row[COLUMNS.DELIVERY_CODE]) || '';
 
         // 디버깅: 처음 5개 행의 모든 값 출력
         if (i < 5) {
