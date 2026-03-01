@@ -18,16 +18,19 @@ body {
 
 /* 레이아웃 안정성을 위한 추가 스타일 */
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
+  overflow: hidden;
 }
 
 .main-content {
   display: flex;
   flex: 1;
   width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .content {

@@ -274,87 +274,85 @@ const AttendanceScan: React.FC = () => {
               왼쪽: 스캐너 영역
               ============================================================ */}
           <section className="as-scanner-section">
-            <h1 className="as-scanner-title">Attendance</h1>
+            <div className="as-scanner-board">
+              <h1 className="as-scanner-title">Attendance</h1>
 
-            {/* 코드 입력폼 */}
-            <div className="as-input-wrapper">
-              <input
-                ref={inputRef}
-                type="password"
-                className={`as-code-input ${lookupError ? 'error' : ''}`}
-                value={codeInput}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  if (val.length <= 8) {
-                    setCodeInput(val);
-                    setLookupError('');
-                  }
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="• • • • • • • •"
-                maxLength={8}
-                autoFocus
-                autoComplete="off"
-              />
-              {isLookingUp && <span className="as-input-spinner">⏳</span>}
-            </div>
-            <p className="as-scanner-desc">8자리 코드 입력 후 Enter</p>
+              {/* 코드 입력폼 */}
+              <div className="as-input-wrapper">
+                <input
+                  ref={inputRef}
+                  type="password"
+                  className={`as-code-input ${lookupError ? 'error' : ''}`}
+                  value={codeInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (val.length <= 8) {
+                      setCodeInput(val);
+                      setLookupError('');
+                    }
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="••••••••"
+                  maxLength={8}
+                  autoFocus
+                  autoComplete="off"
+                />
+                {isLookingUp && <span className="as-input-spinner">⏳</span>}
+              </div>
+              <p className="as-scanner-desc">8자리 코드 입력 후 Enter</p>
 
-            {/* 오류 메시지 */}
-            {lookupError && <p className="as-error-msg">{lookupError}</p>}
+              {/* 오류 메시지 */}
+              {lookupError && <p className="as-error-msg">{lookupError}</p>}
 
-            {/* 직원 이름 표시 */}
-            {employee && (
-              <>
-                <div className="as-divider" />
+              {/* 버튼 그룹 - 항상 표시 */}
+              <div className="as-btn-group">
+                <button
+                  className={`as-action-btn as-btn-in ${(!employee || buttonStatus !== 'clock-in' || actionMessage) ? 'disabled' : 'active'}`}
+                  onClick={handleClockIn}
+                  disabled={!employee || buttonStatus !== 'clock-in' || isActing || !!actionMessage}
+                >
+                  출근 IN
+                </button>
+                <button
+                  className={`as-action-btn as-btn-out ${(!employee || buttonStatus !== 'clock-out' || actionMessage) ? 'disabled' : 'active'}`}
+                  onClick={handleClockOut}
+                  disabled={!employee || buttonStatus !== 'clock-out' || isActing || !!actionMessage}
+                >
+                  퇴근 OUT
+                </button>
+              </div>
 
-                {/* 이름 */}
-                <div className="as-employee-display">
-                  <span className="as-name-kr">
-                    {employee.name_kr || employee.name || '-'}
-                  </span>
-                  {employee.name && employee.name_kr && (
-                    <span className="as-name-en">{employee.name}</span>
-                  )}
-                </div>
+              {/* 직원 조회 결과 및 액션 메시지 */}
+              {employee && (
+                <div className="as-result-container">
+                  <div className="as-divider" />
 
-                {/* 액션 메시지 (완료/오류) */}
-                {actionMessage && (
-                  <p className={`as-action-msg ${actionMessage.startsWith('✅') ? 'success' : 'fail'}`}>
-                    {actionMessage}
-                  </p>
-                )}
-
-                {/* 출근/퇴근 버튼 - 해당 버튼만 렌더링 */}
-                {!actionMessage && (
-                  <div className="as-btn-group">
-                    {buttonStatus === 'clock-in' && (
-                      <button
-                        className="as-action-btn as-btn-in active"
-                        onClick={handleClockIn}
-                        disabled={isActing}
-                      >
-                        출근 IN
-                      </button>
-                    )}
-                    {buttonStatus === 'clock-out' && (
-                      <button
-                        className="as-action-btn as-btn-out active"
-                        onClick={handleClockOut}
-                        disabled={isActing}
-                      >
-                        퇴근 OUT
-                      </button>
-                    )}
-                    {buttonStatus === 'complete' && (
-                      <p className="as-complete-msg">오늘 출퇴근이 완료되었습니다.</p>
+                  {/* 이름 */}
+                  <div className="as-employee-display">
+                    <span className="as-name-kr">
+                      {employee.name_kr || employee.name || '-'}
+                    </span>
+                    {employee.name && employee.name_kr && (
+                      <span className="as-name-en">{employee.name}</span>
                     )}
                   </div>
-                )}
 
-                <button className="as-cancel-btn" onClick={resetScanner}>취소</button>
-              </>
-            )}
+                  {/* 액션 메시지 (완료/오류) */}
+                  {actionMessage && (
+                    <p className={`as-action-msg ${actionMessage.startsWith('✅') ? 'success' : 'fail'}`}>
+                      {actionMessage}
+                    </p>
+                  )}
+
+                  {/* 완료 메시지 */}
+                  {!actionMessage && buttonStatus === 'complete' && (
+                    <p className="as-complete-msg">오늘 출퇴근이 완료되었습니다.</p>
+                  )}
+
+                  <button className="as-cancel-btn" onClick={resetScanner}>초기화</button>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* ============================================================
