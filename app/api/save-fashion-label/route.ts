@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import pool from '../../../lib/postgres';
+import getPool from '../../../lib/postgres';
 
 export async function POST(request: NextRequest) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
 
   try {
     const body = await request.json();

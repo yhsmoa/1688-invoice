@@ -1266,6 +1266,7 @@ const ExportProduct: React.FC = () => {
                     ) : (
                       <>
                         <p>{t('exportProduct.enterOrderNumber')}</p>
+                        <p className="export-caps-warning">키보드가 대문자 인지 확인해주세요</p>
                         {orderData.length > 0 && (
                           <p className="export-data-status">
                             로드된 주문: {orderData.length}개
@@ -1299,9 +1300,6 @@ const ExportProduct: React.FC = () => {
                   }}
                   style={{ width: '100%', height: '100%' }}
                 >
-                  {/* 안내 문구 */}
-                  <p className="export-caps-warning">키보드가 대문자 인지 확인해주세요</p>
-
                   {/* 입력폼과 버튼 */}
                   <div className="export-input-row">
                     <input
