@@ -16,6 +16,39 @@
   gap: 24px;
 }
 
+/* 우측 컨트롤 묶음 (출퇴근 버튼 + 언어 선택) */
+.topside-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* 출퇴근 바로가기 버튼 */
+.attendance-shortcut-btn {
+  padding: 8px 18px;
+  background: #18181b;
+  color: #ffffff;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.attendance-shortcut-btn:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
+}
+
+.attendance-shortcut-btn.active {
+  background: #3f3f46;
+  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.3);
+}
+
 /* 햄버거 메뉴 버튼 */
 .sidebar-toggle-btn {
   background: none;

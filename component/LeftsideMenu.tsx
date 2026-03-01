@@ -154,6 +154,11 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">직원관리</span>
                   </Link>
                 </li>
+                <li className="submenu-item">
+                  <Link href="/hr/payroll" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/payroll')}>
+                    <span className="submenu-text">급여장부</span>
+                  </Link>
+                </li>
               </ul>
             )}
           </li>
