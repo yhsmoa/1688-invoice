@@ -207,12 +207,12 @@
   color: #475569;
 }
 
-.em-status-badge.em-status-재직 {
+.em-status-badge.em-status-WORKING {
   background-color: #dcfce7;
   color: #166534;
 }
 
-.em-status-badge.em-status-퇴사 {
+.em-status-badge.em-status-RESIGNED {
   background-color: #fee2e2;
   color: #991b1b;
 }
@@ -472,7 +472,8 @@
   border-radius: 16px;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
   width: 480px;
-  max-height: 85vh;
+  max-height: 80vh;
+  margin-top: 60px;
   display: flex;
   flex-direction: column;
 }

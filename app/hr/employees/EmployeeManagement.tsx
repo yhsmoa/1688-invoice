@@ -36,7 +36,7 @@ const ITEMS_PER_PAGE = 10;
 
 // 필드 레이블 정의
 const FIELD_LABELS: Record<string, string> = {
-  name: '이름 (영문)',
+  name: '이름',
   name_kr: '이름 (한국어)',
   identification: '주민번호 / 신분증',
   birth_date: '생년월일',
@@ -332,6 +332,9 @@ const EmployeeManagement: React.FC = () => {
   // 날짜 타입 필드
   const DATE_FIELDS = new Set(['birth_date', 'hire_date', 'resigned_date']);
   const NUMBER_FIELDS = new Set(['hourly_wage']);
+  const SELECT_FIELDS: Record<string, string[]> = {
+    status: ['WORKING', 'RESIGNED'],
+  };
 
   // ============================================================
   // 잠금 화면
@@ -494,6 +497,17 @@ const EmployeeManagement: React.FC = () => {
                           onChange={(e) => handleEditFormChange(field, e.target.value)}
                           rows={3}
                         />
+                      ) : SELECT_FIELDS[field] ? (
+                        <select
+                          className="em-form-input"
+                          value={(editForm[field] as string) || ''}
+                          onChange={(e) => handleEditFormChange(field, e.target.value)}
+                        >
+                          <option value="">선택</option>
+                          {SELECT_FIELDS[field].map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
                       ) : (
                         <input
                           type={
@@ -581,6 +595,17 @@ const EmployeeManagement: React.FC = () => {
                       onChange={(e) => handleAddFormChange(field, e.target.value)}
                       rows={3}
                     />
+                  ) : SELECT_FIELDS[field] ? (
+                    <select
+                      className="em-form-input"
+                      value={(addForm[field] as string) || ''}
+                      onChange={(e) => handleAddFormChange(field, e.target.value)}
+                    >
+                      <option value="">선택</option>
+                      {SELECT_FIELDS[field].map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       type={
