@@ -303,6 +303,18 @@ const EmployeeManagement: React.FC = () => {
     return date.split('T')[0]; // YYYY-MM-DD
   };
 
+  /** 생년월일 → "YYYY-MM-DD (만 XX세)" */
+  const formatBirthWithAge = (date: string | null) => {
+    if (!date) return '-';
+    const d = date.split('T')[0];
+    const birth = new Date(d);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return `${d} (${age})`;
+  };
+
   const formatValue = (key: string, value: unknown): string => {
     if (value === null || value === undefined || value === '') return '-';
     if (key === 'access_authorization') return value ? '✅ 있음' : '❌ 없음';
@@ -423,12 +435,13 @@ const EmployeeManagement: React.FC = () => {
                     <th>이름 (한국어)</th>
                     <th>상태</th>
                     <th>생년월일</th>
+                    <th>입사일</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="em-empty">데이터가 없습니다.</td>
+                      <td colSpan={5} className="em-empty">데이터가 없습니다.</td>
                     </tr>
                   ) : (
                     pagedEmployees.map((emp) => (
@@ -444,7 +457,8 @@ const EmployeeManagement: React.FC = () => {
                             {emp.status || '-'}
                           </span>
                         </td>
-                        <td>{formatDate(emp.birth_date)}</td>
+                        <td>{formatBirthWithAge(emp.birth_date)}</td>
+                        <td>{formatDate(emp.hire_date)}</td>
                       </tr>
                     ))
                   )}
