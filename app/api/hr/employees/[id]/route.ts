@@ -25,13 +25,9 @@ export async function PUT(
     // 수정 불가 필드 제거
     const { access_authorization, id: bodyId, created_at, code, ...updateFields } = body;
 
-    // 빈 문자열("")을 null로 변환 (PostgreSQL date/number 타입 호환)
-    const DATE_FIELDS = ['birth_date', 'hire_date', 'resigned_date'];
-    const NUMBER_FIELDS = ['hourly_wage'];
+    // 빈 문자열("")을 전부 null로 변환 (PostgreSQL date/number 등 타입 호환)
     for (const key of Object.keys(updateFields)) {
-      if (updateFields[key] === '') {
-        updateFields[key] = (DATE_FIELDS.includes(key) || NUMBER_FIELDS.includes(key)) ? null : updateFields[key];
-      }
+      if (updateFields[key] === '') updateFields[key] = null;
     }
 
     const { data, error } = await supabase
@@ -51,7 +47,7 @@ export async function PUT(
       {
         success: false,
         error: '직원 정보 수정 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : '알 수 없는 오류'
+        details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error)
       },
       { status: 500 }
     );
