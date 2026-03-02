@@ -41,6 +41,15 @@ export async function POST(request: NextRequest) {
     // access_authorization, id, created_at은 제거 (서버에서 관리)
     const { access_authorization, id, created_at, code, ...rest } = body;
 
+    // 빈 문자열("")을 null로 변환 (PostgreSQL date/number 타입 호환)
+    const DATE_FIELDS = ['birth_date', 'hire_date', 'resigned_date'];
+    const NUMBER_FIELDS = ['hourly_wage'];
+    for (const key of Object.keys(rest)) {
+      if (rest[key] === '') {
+        rest[key] = (DATE_FIELDS.includes(key) || NUMBER_FIELDS.includes(key)) ? null : rest[key];
+      }
+    }
+
     const { data, error } = await supabase
       .from('invoiceManager_employees')
       .insert({

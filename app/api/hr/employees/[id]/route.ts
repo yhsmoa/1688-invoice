@@ -25,6 +25,15 @@ export async function PUT(
     // 수정 불가 필드 제거
     const { access_authorization, id: bodyId, created_at, code, ...updateFields } = body;
 
+    // 빈 문자열("")을 null로 변환 (PostgreSQL date/number 타입 호환)
+    const DATE_FIELDS = ['birth_date', 'hire_date', 'resigned_date'];
+    const NUMBER_FIELDS = ['hourly_wage'];
+    for (const key of Object.keys(updateFields)) {
+      if (updateFields[key] === '') {
+        updateFields[key] = (DATE_FIELDS.includes(key) || NUMBER_FIELDS.includes(key)) ? null : updateFields[key];
+      }
+    }
+
     const { data, error } = await supabase
       .from('invoiceManager_employees')
       .update(updateFields)
