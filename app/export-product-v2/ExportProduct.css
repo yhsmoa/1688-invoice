@@ -1,0 +1,1424 @@
+/* ============================= */
+/* V2 상품 출고 페이지 전용 스타일 */
+/* ============================= */
+
+/* 레이아웃 기본 구조 */
+.v2-export-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.v2-export-main-content {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.v2-export-content {
+  flex: 1 !important;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: calc(100vh - 80px) !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.v2-export-container {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.v2-export-container > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.v2-export-title {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+/* ============================= */
+/* 상단 버튼 영역               */
+/* ============================= */
+.v2-export-header-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.v2-export-left-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 쿠팡 사용자 드롭박스 스타일 */
+.v2-export-coupang-user-dropdown {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+/* 박스 입력박스 스타일 */
+.v2-export-box-input {
+  padding: 20px 30px; /* 2배로 증가 */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 18px; /* 폰트도 크게 */
+  color: #333;
+  min-width: 150px;
+  text-align: center; /* 가운데 정렬 */
+}
+
+/* 크기 선택 드롭박스 비활성화 스타일 */
+.v2-export-size-dropdown:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* ============================= */
+/* 주문 정보 표시 3등분 레이아웃 */
+/* ============================= */
+.v2-export-order-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  max-width: 100%;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* 첫 번째: 이미지 영역 - 정확히 1/3 */
+.v2-export-order-image {
+  width: 100%;
+  max-width: 100%;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0 20px; /* 좌우 패딩 축소 */
+}
+
+.v2-export-order-image .v2-export-product-image {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+
+.v2-export-order-image .v2-export-no-image {
+  color: #999;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* 두 번째: 주문 정보 영역 - 정확히 1/3 */
+.v2-export-order-info {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.v2-export-order-number {
+  font-size: 48px;
+  font-weight: bold;
+  color: #333;
+  line-height: 1.2;
+}
+
+.v2-export-order-options {
+  font-size: 36px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* ============================= */
+/* 세 번째: 수량 정보 영역       */
+/* ============================= */
+.v2-export-order-quantity {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.v2-export-qty-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* 둥근 사각형 배경 스타일 - 텍스트 길이에 유연한 "1/1" 형태 */
+.v2-export-qty-circle {
+  min-width: 140px;
+  min-height: 140px;
+  padding: 15px 25px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  line-height: 1;
+}
+
+/* 수량과 사이즈 코드 가로 배치 */
+.v2-export-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* 화살표 스타일 */
+.v2-export-size-arrow {
+  font-size: 72px;
+  font-weight: bold;
+  color: #666;
+}
+
+/* ============================= */
+/* 사이즈 코드 표시 스타일       */
+/* ============================= */
+.v2-export-size-code {
+  font-size: 72px;
+  font-weight: bold;
+  padding: 15px 25px;
+  border-radius: 20px;
+  min-width: 140px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* A: 검은색 */
+.v2-export-size-code-a {
+  background-color: black;
+  color: white;
+}
+
+/* B, C: 보라색 */
+.v2-export-size-code-b,
+.v2-export-size-code-c {
+  background-color: purple;
+  color: white;
+}
+
+/* P: 빨간색 */
+.v2-export-size-code-p {
+  background-color: red;
+  color: white;
+}
+
+/* X: 검은색 배경에 흰색 폰트 */
+.v2-export-size-code-x {
+  background-color: black;
+  color: white;
+}
+
+/* ============================= */
+/* 사이즈 코드 불일치 경고 스타일 */
+/* ============================= */
+.v2-export-size-mismatch-warning {
+  text-align: center;
+  padding: 20px;
+  animation: v2-pulse 2s infinite;
+}
+
+.v2-export-mismatch-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #dc3545;
+  margin-bottom: 30px;
+}
+
+.v2-export-mismatch-codes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+}
+
+.v2-export-mismatch-box,
+.v2-export-mismatch-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.v2-export-mismatch-label {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+.v2-export-mismatch-arrow {
+  font-size: 48px;
+  font-weight: bold;
+  color: #dc3545;
+}
+
+/* 올바른 코드를 2배 크게 */
+.v2-export-size-code-large {
+  font-size: 144px; /* 원래의 2배 */
+  font-weight: bold;
+  padding: 30px 50px;
+  border-radius: 20px;
+  min-width: 280px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================= */
+/* 애니메이션                    */
+/* ============================= */
+@keyframes v2-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ============================= */
+/* 스캔 개수 색상 조건 (상태 표시) */
+/* ============================= */
+.v2-export-qty-circle.scanned {
+  background-color: #ffc107; /* 노란색 - 실입고개수 > 스캔개수 > 0 */
+}
+
+.v2-export-qty-circle.completed {
+  background-color: #28a745; /* 초록색 - 실입고개수 = 스캔개수 > 0 */
+}
+
+.v2-export-qty-circle.exceeded {
+  background-color: #dc3545; /* 빨간색 - 실입고개수 < 스캔개수 */
+}
+
+.v2-export-qty-circle.default {
+  background-color: #6c757d; /* 회색 - 기본 */
+}
+
+.v2-export-qty-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  display: none; /* 숨김 처리 */
+}
+
+.v2-export-box-scan-count {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.v2-export-box-info-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.v2-export-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.v2-export-data-status {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.v2-export-right-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* ============================= */
+/* 시트 불러오기 버튼 스타일     */
+/* ============================= */
+.v2-export-upload-btn {
+  padding: 10px 20px;
+  background-color: #18181b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+  min-width: 120px;
+}
+
+.v2-export-upload-btn:hover {
+  background-color: #27272a;
+}
+
+.v2-export-upload-btn.loaded {
+  background-color: #a1a1aa;
+  cursor: default;
+}
+
+.v2-export-upload-btn.loaded:hover {
+  background-color: #a1a1aa;
+}
+
+.v2-export-upload-btn.loading {
+  background-color: #27272a;
+  cursor: wait;
+  position: relative;
+  color: transparent;
+}
+
+.v2-export-upload-btn.loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: v2-spinner 0.6s linear infinite;
+}
+
+@keyframes v2-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================= */
+/* 바코드 입력 영역              */
+/* ============================= */
+.v2-export-barcode-section {
+  margin-bottom: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.v2-export-barcode-board {
+  background: white;
+  padding: 60px 20px; /* 높이 3배 증가 (상하 패딩) */
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 180px; /* 최소 높이 지정 */
+}
+
+.v2-export-dropdown-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.v2-export-box-dropdown,
+.v2-export-size-dropdown {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* 대문자 안내 문구 */
+.v2-export-caps-warning {
+  color: #ef4444;
+  font-size: 13px;
+  margin: 0 0 6px 0;
+}
+
+.v2-export-input-row {
+  display: flex;
+  gap: 15px;
+}
+
+.v2-export-barcode-input,
+.v2-export-quantity-input,
+.v2-export-scan-button {
+  flex: 1;
+  padding: 20px; /* 크기 2배 */
+  border-radius: 4px;
+  font-size: 18px; /* 폰트 크기 증가 */
+}
+
+.v2-export-barcode-input,
+.v2-export-quantity-input {
+  border: 1px solid #ddd;
+  text-align: center; /* 가운데 정렬 */
+}
+
+/* 스캔 버튼 스타일 */
+.v2-export-scan-button {
+  background-color: #18181b;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.v2-export-scan-button:hover {
+  background-color: #27272a;
+}
+
+.v2-export-scan-button.disabled {
+  background-color: #a1a1aa;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.v2-export-scan-button.disabled:hover {
+  background-color: #a1a1aa;
+}
+
+/* ============================= */
+/* 스캔 보드 스타일              */
+/* ============================= */
+.v2-export-scan-board {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0px;
+  margin-bottom: 20px;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.v2-export-scan-info {
+  text-align: center;
+  color: #666;
+}
+
+.v2-export-scan-info p {
+  margin: 5px 0;
+  font-size: 1.1rem;
+}
+
+.v2-export-scanned-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  gap: 30px;
+  background: white;
+  border-radius: 8px;
+}
+
+/* 이미지 영역 - 첫 번째 */
+.v2-export-scanned-image {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.v2-export-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.v2-export-no-image {
+  color: #999;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* 상품명 및 중국옵션 영역 - 두 번째 */
+.v2-export-product-info {
+  flex: 1;
+  max-width: 400px;
+  text-align: left;
+}
+
+.v2-export-product-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.v2-export-china-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v2-export-china-option1,
+.v2-export-china-option2 {
+  font-size: 1.1rem;
+  color: #666;
+  line-height: 1.3;
+}
+
+.v2-export-china-option1 {
+  font-weight: 500;
+}
+
+/* 스캔 가능 수량 영역 - 세 번째 */
+.v2-export-scan-qty {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.v2-export-qty-number {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+  line-height: 1;
+  margin: 0 auto 8px auto;
+  background-color: #007bff; /* 기본: 파란색 (10개 이상) */
+}
+
+/* 수량별 색상 변경 (상태 표시 색상 유지) */
+.v2-export-qty-number.warning {
+  background-color: #ffc107; /* 노란색 (5-9개) */
+}
+
+.v2-export-qty-number.danger {
+  background-color: #fd7e14; /* 주황색 (1-4개) */
+}
+
+.v2-export-qty-label {
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+}
+
+/* ============================= */
+/* 정보 결과 보드                */
+/* ============================= */
+.v2-export-info-section {
+  margin-bottom: 20px;
+}
+
+.v2-export-info-board {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  min-height: 100px;
+}
+
+/* ============================= */
+/* 저장 버튼 스타일              */
+/* ============================= */
+.v2-export-download-btn {
+  padding: 10px 20px;
+  background-color: #a1a1aa;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  opacity: 0.6;
+  min-width: 120px;
+}
+
+.v2-export-download-btn:hover {
+  background-color: #a1a1aa;
+}
+
+/* 저장 필요 상태 스타일 */
+.v2-export-download-btn.has-changes {
+  background-color: #18181b;
+  cursor: pointer;
+  opacity: 1;
+  animation: v2-pulse-success 2s infinite;
+}
+
+.v2-export-download-btn.has-changes:hover {
+  background-color: #27272a;
+}
+
+@keyframes v2-pulse-success {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 24, 27, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(24, 24, 27, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 24, 27, 0);
+  }
+}
+
+@keyframes v2-pulse-warning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 126, 20, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(253, 126, 20, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 126, 20, 0);
+  }
+}
+
+/* ============================= */
+/* 바코드 버튼 스타일            */
+/* ============================= */
+.v2-export-barcode-btn {
+  padding: 10px 20px;
+  background-color: #18181b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.v2-export-barcode-btn:hover {
+  background-color: #27272a;
+}
+
+/* ============================= */
+/* 테이블 스타일                 */
+/* ============================= */
+.v2-export-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.v2-export-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  box-sizing: border-box;
+}
+
+/* 메인 테이블 컬럼 너비 조정 */
+.v2-export-table th:nth-child(1),
+.v2-export-table td:nth-child(1) {
+  width: 60px; /* 체크박스 - 더 크게 */
+}
+
+.v2-export-table th:nth-child(2),
+.v2-export-table td:nth-child(2) {
+  width: 100px; /* 박스번호 */
+}
+
+.v2-export-table th:nth-child(3),
+.v2-export-table td:nth-child(3) {
+  width: 150px; /* 주문번호 - 2글자 더 */
+}
+
+.v2-export-table th:nth-child(4),
+.v2-export-table td:nth-child(4) {
+  width: 345px; /* 상품명 - 3글자 더 */
+}
+
+.v2-export-table th:nth-child(5),
+.v2-export-table td:nth-child(5) {
+  width: 200px; /* 주문옵션 */
+}
+
+.v2-export-table th:nth-child(6),
+.v2-export-table td:nth-child(6) {
+  width: 70px; /* 출고개수 - 4글자만 */
+  text-align: center;
+  padding: 8px 4px !important; /* 좌우 패딩 최소화 */
+}
+
+.v2-export-table th:nth-child(7),
+.v2-export-table td:nth-child(7) {
+  width: 70px; /* 입고개수 - 4글자만 */
+  text-align: center;
+  padding: 8px 4px !important; /* 좌우 패딩 최소화 */
+}
+
+/* 열 너비 클래스 */
+.v2-export-order-number-column {
+  width: 150px;
+}
+
+.v2-export-product-name-column {
+  width: 345px;
+}
+
+.v2-export-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* 체크박스 헤더도 가운데 정렬 */
+.v2-export-table th.v2-export-checkbox-column {
+  text-align: center;
+}
+
+.v2-export-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.v2-export-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* 조건부 행 배경색 (상태 표시 색상 유지) */
+.v2-export-row-completed {
+  background-color: #d4edda !important;
+}
+
+.v2-export-row-completed:hover {
+  background-color: #c3e6cb !important;
+}
+
+.v2-export-row-no-import {
+  background-color: #f8f9fa !important;
+  color: #6c757d;
+}
+
+.v2-export-row-no-import:hover {
+  background-color: #e9ecef !important;
+}
+
+/* ============================= */
+/* 출고 값 편집 스타일           */
+/* ============================= */
+.v2-export-qty-cell {
+  text-align: center;
+  position: relative;
+}
+
+.v2-export-qty-value {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: inline-block;
+  min-width: 30px;
+  text-align: center;
+}
+
+.v2-export-qty-value:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.v2-export-qty-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.v2-export-qty-input:focus {
+  outline: none;
+  border-color: #0056b3;
+}
+
+/* ============================= */
+/* 쉽먼트 섹션 스타일            */
+/* ============================= */
+.v2-export-shipment-section {
+  margin-top: 30px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.v2-export-shipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.v2-export-shipment-title {
+  color: #333;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+/* ============================= */
+/* 삭제 버튼 스타일              */
+/* ============================= */
+.v2-export-delete-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.v2-export-delete-btn.active {
+  background-color: #18181b;
+  color: white;
+}
+
+.v2-export-delete-btn.active:hover {
+  background-color: #27272a;
+}
+
+.v2-export-delete-btn.disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border: 1px solid #dee2e6;
+}
+
+/* ============================= */
+/* 체크박스 열 스타일            */
+/* ============================= */
+.v2-export-checkbox-column {
+  width: 60px;
+  text-align: center;
+  padding: 8px !important;
+  vertical-align: middle;
+}
+
+.v2-export-checkbox-column input[type="checkbox"] {
+  cursor: pointer;
+  transform: scale(1.6);
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* ============================= */
+/* 이미지 관련 스타일            */
+/* ============================= */
+.v2-export-image-container {
+  display: inline-block;
+}
+
+.v2-export-product-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  padding: 2px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.v2-export-product-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.v2-export-no-image {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 12px;
+  margin: 0 auto;
+  border: 1px solid #ddd;
+}
+
+/* ============================= */
+/* 테이블 셀 스타일              */
+/* ============================= */
+.v2-export-order-number {
+  line-height: 1.3;
+}
+
+.v2-export-product-name {
+  text-align: left;
+  line-height: 1.3;
+}
+
+.v2-export-china-options {
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* 빈 데이터 스타일 */
+.v2-export-empty-data {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
+}
+
+/* ============================= */
+/* 알림 모달 스타일              */
+/* ============================= */
+.v2-export-alert-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.v2-export-alert-content {
+  background: white;
+  padding: 20px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  text-align: center;
+  min-width: 200px;
+  animation: v2-export-alert-fade-in 0.3s ease-out;
+}
+
+@keyframes v2-export-alert-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================= */
+/* 토스트 알림 스타일            */
+/* ============================= */
+.v2-export-toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #28a745;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1001;
+  animation: v2-export-toast-slide-in 0.3s ease-out;
+}
+
+@keyframes v2-export-toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ============================= */
+/* 반응형 디자인                 */
+/* ============================= */
+@media (max-width: 1200px) {
+  .v2-export-content {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .v2-export-table {
+    font-size: 12px;
+  }
+
+  .v2-export-table th,
+  .v2-export-table td {
+    padding: 6px 4px;
+  }
+
+  .v2-export-search-form-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .v2-export-search-input {
+    width: 100%;
+  }
+}
+
+/* ============================= */
+/* 기록 버튼 스타일              */
+/* ============================= */
+.v2-export-history-btn {
+  padding: 10px 20px;
+  background-color: white;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.v2-export-history-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+/* ============================= */
+/* 쉽먼트 슬라이드 패널          */
+/* ============================= */
+.v2-export-history-panel {
+  position: fixed;
+  top: 0;
+  right: -50%;
+  width: 50%;
+  height: 100vh;
+  background-color: white;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s ease;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.v2-export-history-panel.open {
+  right: 0;
+}
+
+.v2-export-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #ddd;
+  background-color: #f8f9fa;
+}
+
+.v2-export-history-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.v2-export-history-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.v2-export-history-close:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.v2-export-history-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* flex 아이템의 overflow 활성화 */
+}
+
+/* 모달창 테이블 전용 스타일 */
+.v2-export-history-panel .v2-export-table-board {
+  overflow-y: auto; /* 테이블 보드에 세로 스크롤 */
+  max-height: calc(100vh - 200px); /* 헤더와 삭제 버튼 영역 제외한 높이 */
+  margin-bottom: 0;
+}
+
+/* 모달창 테이블 열 너비 최적화 */
+.v2-export-history-panel .v2-export-table th:nth-child(1),
+.v2-export-history-panel .v2-export-table td:nth-child(1) {
+  width: 50px !important; /* 체크박스 */
+}
+
+.v2-export-history-panel .v2-export-table th:nth-child(2),
+.v2-export-history-panel .v2-export-table td:nth-child(2) {
+  width: 110px !important; /* 박스번호 - 2글자 더 */
+}
+
+.v2-export-history-panel .v2-export-table th:nth-child(3),
+.v2-export-history-panel .v2-export-table td:nth-child(3) {
+  width: 170px !important; /* 주문번호 - 4글자 더 */
+}
+
+.v2-export-history-panel .v2-export-table th:nth-child(4),
+.v2-export-history-panel .v2-export-table td:nth-child(4) {
+  width: auto !important; /* 상품명 - 남은 공간의 3/4 */
+  max-width: 75% !important;
+  min-width: 120px !important;
+}
+
+.v2-export-history-panel .v2-export-table th:nth-child(5),
+.v2-export-history-panel .v2-export-table td:nth-child(5) {
+  width: 60px !important; /* 출고 */
+  text-align: center !important;
+  padding: 8px 4px !important;
+  background-color: #e3f2fd !important; /* 연한 파란색 */
+}
+
+.v2-export-history-panel .v2-export-table th:nth-child(6),
+.v2-export-history-panel .v2-export-table td:nth-child(6) {
+  width: 60px !important; /* 입고 */
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.v2-export-history-empty {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+}
+
+.v2-export-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.v2-export-history-item {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  border-left: 4px solid #007bff;
+  transition: border-color 0.2s;
+}
+
+.v2-export-history-item.error {
+  border-left-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.v2-export-history-item-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.v2-export-history-box-order {
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.v2-export-history-qty-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+  background-color: #007bff;
+  white-space: nowrap;
+}
+
+.v2-export-history-item.error .v2-export-history-qty-badge {
+  color: white;
+  background-color: #dc3545;
+}
+
+.v2-export-history-box {
+  font-weight: bold;
+  color: #007bff;
+  font-size: 15px;
+}
+
+.v2-export-history-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  color: white;
+}
+
+.v2-export-history-badge.scan {
+  background-color: #28a745;
+}
+
+.v2-export-history-badge.input {
+  background-color: #6c757d;
+}
+
+.v2-export-history-badge.error {
+  background-color: #dc3545;
+}
+
+.v2-export-history-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v2-export-history-order {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.v2-export-history-product {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.v2-export-history-option-name {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.v2-export-history-options {
+  font-size: 12px;
+  color: #777;
+}
+
+.v2-export-history-qty {
+  font-size: 14px;
+  color: #007bff;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.v2-export-history-box-count {
+  font-size: 13px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.v2-export-history-time {
+  font-size: 11px;
+  color: #999;
+  text-align: right;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* ============================= */
+/* 기록 패널 오버레이            */
+/* ============================= */
+.v2-export-history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+/* 편집 가능 셀 스타일 */
+.v2-export-editable-cell {
+  cursor: pointer;
+}
