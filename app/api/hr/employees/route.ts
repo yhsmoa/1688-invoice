@@ -46,11 +46,18 @@ export async function POST(request: NextRequest) {
       if (rest[key] === '') rest[key] = null;
     }
 
+    // identification 뒤 8자리를 code로 자동 생성
+    const identification = rest.identification as string | null;
+    const generatedCode = identification && identification.length >= 8
+      ? identification.slice(-8)
+      : identification ?? null;
+
     const { data, error } = await supabase
       .from('invoiceManager_employees')
       .insert({
         ...rest,
         access_authorization: false, // 항상 false 고정
+        code: generatedCode,
       })
       .select()
       .single();
