@@ -111,10 +111,22 @@
 /* 엑셀 업로드 섹션 */
 .v2-excel-upload-section {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.v2-control-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-control-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .v2-coupang-user-dropdown {

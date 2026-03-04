@@ -1,0 +1,165 @@
+'use client';
+
+import React, { useState } from 'react';
+import type { FtOrderItem } from '../hooks/useFtData';
+import './V2ReadyModal.css';
+
+// ============================================================
+// V2 처리준비 모달 - 수정된 입고 데이터 리스트 표시
+// "postgre + 저장" 클릭 시:
+//   1) invoice_fashion_label 저장 (LABEL postgre 동일 로직)
+//   2) ft_fulfillments 저장 (ARRIVAL)
+// ============================================================
+
+export interface V2ReadyItem {
+  item: FtOrderItem;
+  import_qty: number;
+}
+
+interface V2ReadyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  readyItems: V2ReadyItem[];
+  /** postgre + 저장 핸들러 (ItemCheck에서 전달) */
+  onSavePostgre: () => Promise<void>;
+}
+
+const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
+  isOpen,
+  onClose,
+  readyItems,
+  onSavePostgre,
+}) => {
+  // ============================================================
+  // 저장 로딩 상태
+  // ============================================================
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ============================================================
+  // postgre + 저장 클릭 핸들러
+  // ============================================================
+  const handleSavePostgre = async () => {
+    setIsSaving(true);
+    try {
+      await onSavePostgre();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <>
+      {/* ============================================================ */}
+      {/* 배경 오버레이 */}
+      {/* ============================================================ */}
+      {isOpen && (
+        <div className="v2-process-ready-overlay" onClick={onClose} />
+      )}
+
+      {/* ============================================================ */}
+      {/* 슬라이드 모달 */}
+      {/* ============================================================ */}
+      <div className={`v2-process-ready-modal ${isOpen ? 'open' : ''}`}>
+        {/* 헤더 */}
+        <div className="v2-process-ready-header">
+          <h2>처리준비목록</h2>
+          <button className="v2-pr-close-button" onClick={onClose}>✕</button>
+        </div>
+
+        {/* 컨텐츠 */}
+        <div className="v2-process-ready-content">
+          {readyItems.length === 0 ? (
+            <div className="v2-pr-empty-message">수정된 항목이 없습니다.</div>
+          ) : (
+            <div className="v2-ready-items-list">
+              {readyItems.map(({ item, import_qty }) => (
+                <div key={item.id} className="v2-ready-item">
+                  {/* 이미지 */}
+                  <div className="v2-ready-item-image">
+                    {item.img_url ? (
+                      <img
+                        src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                        alt="상품 이미지"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                    ) : (
+                      <div className="v2-pr-no-image">이미지 없음</div>
+                    )}
+                  </div>
+
+                  {/* 상품 정보 */}
+                  <div className="v2-ready-item-info">
+                    {/* 글번호 | 바코드 */}
+                    <div className="v2-pr-order-barcode-row">
+                      <span>{item.item_no || ''}</span>
+                      {item.barcode && (
+                        <>
+                          <span className="v2-pr-separator">|</span>
+                          <span>{item.barcode}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* 상품명 */}
+                    <div className="v2-pr-product-name">
+                      {item.item_name || ''}
+                      {item.option_name && ` ${item.option_name}`}
+                    </div>
+
+                    {/* 주문옵션 배지 */}
+                    {(item.china_option1 || item.china_option2) && (
+                      <div className="v2-pr-order-option-badge">
+                        {item.china_option1 || ''}{item.china_option2 ? ` ${item.china_option2}` : ''}
+                      </div>
+                    )}
+
+                    {/* 진행 / 입고 */}
+                    <div className="v2-pr-stats-row">
+                      <div className="v2-pr-stat-item">
+                        <span className="v2-pr-stat-label">진행</span>
+                        <span className={`v2-pr-stat-value ${(item.order_qty || 0) === 0 ? 'zero' : ''}`}>
+                          {item.order_qty || 0}
+                        </span>
+                      </div>
+                      <div className="v2-pr-stat-item">
+                        <span className="v2-pr-stat-label">입고</span>
+                        <span className={`v2-pr-stat-value import ${import_qty === 0 ? 'zero' : ''}`}>
+                          {import_qty}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 푸터 */}
+        <div className="v2-process-ready-footer">
+          <div className="v2-pr-footer-info">총 {readyItems.length}개</div>
+          <div className="v2-pr-save-buttons-row">
+            <button
+              className="v2-pr-save-button v2-pr-save-postgre"
+              disabled={readyItems.length === 0 || isSaving}
+              onClick={handleSavePostgre}
+            >
+              {isSaving ? (
+                <span className="v2-pr-button-loading">
+                  <span className="v2-pr-spinner"></span>
+                  저장 중...
+                </span>
+              ) : (
+                'postgre + 저장'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default V2ReadyModal;

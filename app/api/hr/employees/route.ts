@@ -46,10 +46,10 @@ export async function POST(request: NextRequest) {
       if (rest[key] === '') rest[key] = null;
     }
 
-    // identification 뒤 8자리를 code로 자동 생성
+    // identification 뒤 8자리를 code로 자동 생성 (X → 1 변환 포함)
     const identification = rest.identification as string | null;
     const generatedCode = identification && identification.length >= 8
-      ? identification.slice(-8)
+      ? identification.slice(-8).replace(/X/gi, '1')
       : identification ?? null;
 
     const { data, error } = await supabase

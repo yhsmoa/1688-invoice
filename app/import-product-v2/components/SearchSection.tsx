@@ -20,7 +20,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   onSearchTypeChange,
   onSearchInputChange,
   onSearchKeyPress,
-  onSearchClick
+  onSearchClick,
 }) => {
   const { t } = useTranslation();
 

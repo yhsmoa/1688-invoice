@@ -3,46 +3,44 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ItemTableRow from './ItemTableRow';
-import type { ItemData } from '../../import-product/hooks';
+import type { FtOrderItem } from '../hooks/useFtData';
 
-/* V2 전용 ItemTable 컴포넌트 - 모든 className에 v2- 접두사 */
+/* V2 전용 ItemTable 컴포넌트 - 원래 13열 헤더 유지 */
 
 interface ItemTableProps {
   loading: boolean;
-  paginatedData: ItemData[];
+  paginatedData: FtOrderItem[];
   selectedRows: Set<string>;
-  editingCell: {id: string, field: string} | null;
-  cellValue: string;
-  mousePosition: { x: number, y: number };
+  mousePosition: { x: number; y: number };
   isAllSelected: boolean;
   isIndeterminate: boolean;
+  editingCell: { id: string; field: string } | null;
+  cellValue: string;
+  modifiedImportQty: Map<string, number>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onHandleCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onFinishEditingCell: (moveToNext: boolean) => void;
-  onSetCellValue: (value: string) => void;
-  onCostClick: (e: React.MouseEvent, item: ItemData) => void;
+  onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onFinishEditingCell: () => void;
 }
 
 const ItemTable: React.FC<ItemTableProps> = ({
   loading,
   paginatedData,
   selectedRows,
-  editingCell,
-  cellValue,
   mousePosition,
   isAllSelected,
   isIndeterminate,
+  editingCell,
+  cellValue,
+  modifiedImportQty,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
   onCellValueChange,
-  onHandleCellKeyDown,
+  onCellKeyDown,
   onFinishEditingCell,
-  onSetCellValue,
-  onCostClick
 }) => {
   const { t } = useTranslation();
 
@@ -79,11 +77,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={13} className="v2-empty-data">{t('importProduct.table.loading')}</td>
+              <td colSpan={13} className="empty-data">{t('importProduct.table.loading')}</td>
             </tr>
           ) : paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={13} className="v2-empty-data">{t('importProduct.table.noData')}</td>
+              <td colSpan={13} className="empty-data">{t('importProduct.table.noData')}</td>
             </tr>
           ) : (
             paginatedData.map((item) => (
@@ -91,16 +89,15 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 key={item.id}
                 item={item}
                 isSelected={selectedRows.has(item.id)}
+                mousePosition={mousePosition}
                 editingCell={editingCell}
                 cellValue={cellValue}
-                mousePosition={mousePosition}
+                importQtyValue={modifiedImportQty.get(item.id)}
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}
-                onHandleCellKeyDown={onHandleCellKeyDown}
+                onCellKeyDown={onCellKeyDown}
                 onFinishEditingCell={onFinishEditingCell}
-                onSetCellValue={onSetCellValue}
-                onCostClick={onCostClick}
               />
             ))
           )}

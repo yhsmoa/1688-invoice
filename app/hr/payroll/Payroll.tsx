@@ -263,7 +263,8 @@ const Payroll: React.FC = () => {
   const handleModalSave = async () => {
     if (!modal || modal.isSaving || modal.isDeleting) return;
 
-    if (modalPreviewMins === null) {
+    // clockOut이 입력된 경우에만 대소 비교 검증 (미퇴근 직원은 clockOut이 빈 값)
+    if (modal.clockOut && modalPreviewMins === null) {
       setModal((prev) => prev ? { ...prev, error: '퇴근 시간이 출근 시간보다 늦어야 합니다.' } : null);
       return;
     }
@@ -276,7 +277,8 @@ const Payroll: React.FC = () => {
         body:    JSON.stringify({
           record_id:     modal.recordId,
           clock_in_iso:  toISO(modal.workDate, modal.clockIn),
-          clock_out_iso: toISO(modal.workDate, modal.clockOut),
+          // clockOut이 없으면 null 전달 → API에서 clock_out 유지
+          clock_out_iso: modal.clockOut ? toISO(modal.workDate, modal.clockOut) : null,
         }),
       });
       const result = await res.json();
