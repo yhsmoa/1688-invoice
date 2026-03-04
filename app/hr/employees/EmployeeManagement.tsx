@@ -431,8 +431,8 @@ const EmployeeManagement: React.FC = () => {
               <table className="em-table">
                 <thead>
                   <tr>
-                    <th>이름 (영문)</th>
-                    <th>이름 (한국어)</th>
+                    <th>이름</th>
+                    <th>직책</th>
                     <th>상태</th>
                     <th>생년월일</th>
                     <th>입사일</th>
@@ -450,8 +450,8 @@ const EmployeeManagement: React.FC = () => {
                         className="em-table-row"
                         onClick={() => handleRowClick(emp)}
                       >
-                        <td>{emp.name || '-'}</td>
-                        <td>{emp.name_kr || '-'}</td>
+                        <td>{[emp.name, emp.name_kr].filter(Boolean).join(' | ') || '-'}</td>
+                        <td>{emp.role || '-'}</td>
                         <td>
                           <span className={`em-status-badge em-status-${emp.status || 'none'}`}>
                             {emp.status || '-'}
