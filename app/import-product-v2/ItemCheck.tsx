@@ -295,18 +295,37 @@ const ItemCheck: React.FC = () => {
     setCellValue('');
   }, [editingCell, cellValue]);
 
-  // 키보드 핸들러 (Enter → 완료, Escape → 취소)
+  // 키보드 핸들러 (Enter → 완료 + 다음 행 이동, Escape → 취소)
   const handleCellKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+
+        // 현재 편집 중인 셀 정보 보관
+        const currentId = editingCell?.id;
+        const currentField = editingCell?.field;
+
+        // 현재 셀 편집 완료
         finishEditingCell();
+
+        // 다음 행의 같은 필드로 이동
+        if (currentId && currentField) {
+          const idx = paginatedData.findIndex((item) => item.id === currentId);
+          if (idx >= 0 && idx < paginatedData.length - 1) {
+            const nextItem = paginatedData[idx + 1];
+            const nextValue = modifiedImportQty.get(nextItem.id) ?? 0;
+            // setTimeout: finishEditingCell의 state 업데이트 이후 실행
+            setTimeout(() => {
+              startEditingCell(nextItem.id, currentField, nextValue);
+            }, 0);
+          }
+        }
       } else if (e.key === 'Escape') {
         setEditingCell(null);
         setCellValue('');
       }
     },
-    [finishEditingCell]
+    [finishEditingCell, editingCell, paginatedData, modifiedImportQty, startEditingCell]
   );
 
   // ============================================================
@@ -395,7 +414,7 @@ const ItemCheck: React.FC = () => {
         .filter(({ item }) => item.barcode)
         .map(({ item, import_qty }) => ({
           brand: currentUser?.brand || null,
-          item_name: item.item_name || '',
+          item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
           barcode: item.barcode || '',
           qty: import_qty,
           order_no: item.item_no || '',
@@ -450,7 +469,6 @@ const ItemCheck: React.FC = () => {
       }
 
       // ── 5) 성공 → 상태 초기화 + 모달 닫기 + 테이블 갱신 ──
-      alert('PostgreSQL 저장이 완료되었습니다.');
       setModifiedImportQty(new Map());
       setSelectedRows(new Set());
       setIsReadyModalOpen(false);

@@ -78,7 +78,7 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
       // 저장할 데이터 구성
       const labelItems = items.map((item) => ({
         brand: selectedUser?.brand || null,
-        item_name: item.item_name || '',
+        item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
         barcode: item.barcode || '',
         qty: getQty(item),
         order_no: item.item_no || '',
@@ -104,7 +104,6 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert(`LABEL PostgreSQL 저장 완료: ${result.count}개`);
         setProductQuantities({});
         onSaveComplete();
         onClose();
