@@ -91,7 +91,7 @@ const ItemCheck: React.FC = () => {
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
-  const { arrivalMap, packedMap, cancelMap, shipmentMap } = useFtFulfillmentSummary(activeItems);
+  const { arrivalMap, packedMap, cancelMap, shipmentMap, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
 
   // ============================================================
   // 5) 담당자 드롭박스 (UI 유지, 현재 단계에서 기능 미연결)
@@ -366,7 +366,8 @@ const ItemCheck: React.FC = () => {
   // 라벨 저장 완료 콜백
   const handleLabelSaveComplete = useCallback(() => {
     setSelectedRows(new Set());
-  }, []);
+    refreshFulfillments();
+  }, [refreshFulfillments]);
 
   // ============================================================
   // 14) [저장] 모달 → postgre + 저장 핸들러
@@ -448,17 +449,18 @@ const ItemCheck: React.FC = () => {
         }
       }
 
-      // ── 5) 성공 → 상태 초기화 + 모달 닫기 ──
+      // ── 5) 성공 → 상태 초기화 + 모달 닫기 + 테이블 갱신 ──
       alert('PostgreSQL 저장이 완료되었습니다.');
       setModifiedImportQty(new Map());
       setSelectedRows(new Set());
       setIsReadyModalOpen(false);
+      refreshFulfillments();
 
     } catch (error) {
       console.error('postgre + 저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
     }
-  }, [readyItems, selectedOperator, selectedUserId, users]);
+  }, [readyItems, selectedOperator, selectedUserId, users, refreshFulfillments]);
 
   // ============================================================
   // 15) 1688 xlsx 업로드

@@ -165,8 +165,12 @@ const EMPTY_MAPS: FulfillmentMaps = {
 export function useFtFulfillmentSummary(items: FtOrderItem[]) {
   const [maps, setMaps] = useState<FulfillmentMaps>(EMPTY_MAPS);
   const [loadingFulfillments, setLoadingFulfillments] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // items id 목록이 실제로 바뀔 때만 fetch
+  // 외부에서 호출하여 강제 re-fetch
+  const refreshFulfillments = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  // items id 목록이 실제로 바뀔 때 또는 refreshKey 변경 시 fetch
   const itemIdsKey = items.map((i) => i.id).join(',');
 
   useEffect(() => {
@@ -227,9 +231,9 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
 
     // cleanup: race condition 방지
     return () => { cancelled = true; };
-  }, [itemIdsKey]);
+  }, [itemIdsKey, refreshKey]);
 
-  return { ...maps, loadingFulfillments };
+  return { ...maps, loadingFulfillments, refreshFulfillments };
 }
 
 // ============================================================
