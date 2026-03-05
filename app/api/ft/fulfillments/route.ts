@@ -53,21 +53,32 @@ export async function POST(request: NextRequest) {
     const { items, order_item_ids } = body;
 
     // ── [1] 조회 모드 ──────────────────────────────────────────
+    //    Supabase .in()도 내부적으로 URL 쿼리 파라미터 → ID 수가 많으면 실패
+    //    100개 단위로 배치 조회 후 합산
+    // ──────────────────────────────────────────────────────────────
     if (order_item_ids && Array.isArray(order_item_ids)) {
       try {
         if (order_item_ids.length === 0) {
           return NextResponse.json({ success: true, data: [] });
         }
 
-        const { data, error } = await supabase
-          .from('ft_fulfillments')
-          .select('order_item_id, quantity, type')
-          .in('order_item_id', order_item_ids)
-          .in('type', FULFILLMENT_TYPES);
+        const BATCH_SIZE = 100;
+        const allData: { order_item_id: string; quantity: number; type: string }[] = [];
 
-        if (error) throw error;
+        for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
+          const batch = order_item_ids.slice(i, i + BATCH_SIZE);
 
-        return NextResponse.json({ success: true, data: data || [] });
+          const { data, error } = await supabase
+            .from('ft_fulfillments')
+            .select('order_item_id, quantity, type')
+            .in('order_item_id', batch)
+            .in('type', FULFILLMENT_TYPES);
+
+          if (error) throw error;
+          if (data) allData.push(...data);
+        }
+
+        return NextResponse.json({ success: true, data: allData });
       } catch (queryError) {
         console.error('ft_fulfillments POST 조회 오류:', queryError);
         return NextResponse.json(
