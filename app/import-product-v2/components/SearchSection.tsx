@@ -12,6 +12,8 @@ interface SearchSectionProps {
   onSearchInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearchKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onSearchClick: () => void;
+  /** 배송번호 서버 조회 중 로딩 상태 */
+  isSearching?: boolean;
 }
 
 const SearchSection: React.FC<SearchSectionProps> = ({
@@ -21,6 +23,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   onSearchInputChange,
   onSearchKeyPress,
   onSearchClick,
+  isSearching = false,
 }) => {
   const { t } = useTranslation();
 
@@ -44,8 +47,12 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onChange={onSearchInputChange}
             onKeyPress={onSearchKeyPress}
           />
-          <button className="v2-search-button" onClick={onSearchClick}>
-            {t('importProduct.search')}
+          <button
+            className="v2-search-button"
+            onClick={onSearchClick}
+            disabled={isSearching}
+          >
+            {isSearching ? '조회 중...' : t('importProduct.search')}
           </button>
         </div>
       </div>

@@ -17,6 +17,14 @@ interface ItemTableProps {
   editingCell: { id: string; field: string } | null;
   cellValue: string;
   modifiedImportQty: Map<string, number>;
+  /** item_id → ARRIVAL quantity 합계 */
+  arrivalMap: Map<string, number>;
+  /** item_id → PACKED quantity 합계 */
+  packedMap: Map<string, number>;
+  /** item_id → CANCEL quantity 합계 */
+  cancelMap: Map<string, number>;
+  /** item_id → SHIPMENT quantity 합계 */
+  shipmentMap: Map<string, number>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
@@ -35,6 +43,10 @@ const ItemTable: React.FC<ItemTableProps> = ({
   editingCell,
   cellValue,
   modifiedImportQty,
+  arrivalMap,
+  packedMap,
+  cancelMap,
+  shipmentMap,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
@@ -67,11 +79,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
             <th>{t('importProduct.table.quantity')}</th>
             <th>{t('importProduct.table.cost')}</th>
             <th>{t('importProduct.table.progress')}</th>
-            <th>{t('importProduct.table.import')}</th>
+            <th className="v2-work-cell">작업</th>
+            <th>입고</th>
+            <th>포장</th>
             <th>{t('importProduct.table.cancel')}</th>
             <th>{t('importProduct.table.export')}</th>
-            <th>{t('importProduct.table.note')}</th>
-            <th>{t('importProduct.table.info')}</th>
           </tr>
         </thead>
         <tbody>
@@ -93,6 +105,10 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 editingCell={editingCell}
                 cellValue={cellValue}
                 importQtyValue={modifiedImportQty.get(item.id)}
+                arrivalQty={arrivalMap.get(item.id) ?? 0}
+                packedQty={packedMap.get(item.id) ?? 0}
+                cancelQty={cancelMap.get(item.id) ?? 0}
+                shipmentQty={shipmentMap.get(item.id) ?? 0}
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}

@@ -303,7 +303,7 @@
   text-align: center;
 }
 
-/* 진행, 입고, 취소, 출고 열 너비 조정 */
+/* 진행, 작업, 입고, 포장, 취소, 출고 열 너비 조정 (13열 기준) */
 .v2-item-table th:nth-child(8),
 .v2-item-table td:nth-child(8),
 .v2-item-table th:nth-child(9),
@@ -311,24 +311,14 @@
 .v2-item-table th:nth-child(10),
 .v2-item-table td:nth-child(10),
 .v2-item-table th:nth-child(11),
-.v2-item-table td:nth-child(11) {
+.v2-item-table td:nth-child(11),
+.v2-item-table th:nth-child(12),
+.v2-item-table td:nth-child(12),
+.v2-item-table th:nth-child(13),
+.v2-item-table td:nth-child(13) {
   width: 35px;
   text-align: center;
   padding: 0 !important;
-}
-
-/* 비고 열 */
-.v2-item-table th:nth-child(12),
-.v2-item-table td:nth-child(12) {
-  width: 120px;
-  text-align: left;
-}
-
-/* 정보 열 */
-.v2-item-table th:nth-child(13),
-.v2-item-table td:nth-child(13) {
-  width: 127px;
-  text-align: left;
 }
 
 .v2-item-table th {
@@ -518,6 +508,12 @@
 .v2-import-qty {
   background-color: #ffcc80;
   color: #333;
+}
+
+/* 포장 - 연한 보라색 배경 */
+.v2-packed-qty {
+  background-color: #ce93d8;
+  color: #fff;
 }
 
 /* 취소 - 연한 빨강 배경 */
@@ -884,8 +880,13 @@
   padding: 16px !important; /* 전체 셀 영역을 클릭 가능하게 */
 }
 
+/* 작업 열 — 입력 가능한 셀임을 파스텔 노란색으로 표시 */
+.v2-work-cell {
+  background-color: #fffde7 !important;
+}
+
 .v2-editable-qty-cell:hover {
-  background-color: #f8f9fa;
+  background-color: #fff9c4 !important; /* hover 시 조금 더 진한 노란색 */
 }
 
 /* 시각적으로 보이지 않는 디스플레이 */

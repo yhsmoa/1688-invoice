@@ -13,6 +13,14 @@ interface ItemTableRowProps {
   editingCell: { id: string; field: string } | null;
   cellValue: string;
   importQtyValue: number | undefined;
+  /** ft_fulfillments type=ARRIVAL quantity 합계 */
+  arrivalQty: number;
+  /** ft_fulfillments type=PACKED quantity 합계 */
+  packedQty: number;
+  /** ft_fulfillments type=CANCEL quantity 합계 */
+  cancelQty: number;
+  /** ft_fulfillments type=SHIPMENT quantity 합계 */
+  shipmentQty: number;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -27,6 +35,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   editingCell,
   cellValue,
   importQtyValue,
+  arrivalQty,
+  packedQty,
+  cancelQty,
+  shipmentQty,
   onSelectRow,
   onStartEditingCell,
   onCellValueChange,
@@ -144,7 +156,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         )}
       </td>
 
-      {/* 입고 — 편집 가능 (V1 EditableCell 방식 동일) */}
+      {/* 작업 — 편집 가능 셀, 파스텔 노란 배경 */}
       <EditableCell
         id={item.id}
         field="import_qty"
@@ -156,20 +168,36 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         onValueChange={onCellValueChange}
         onKeyDown={onCellKeyDown}
         onFinishEdit={() => onFinishEditingCell()}
-        className="v2-qty-cell v2-editable-qty-cell"
+        className="v2-qty-cell v2-editable-qty-cell v2-work-cell"
       />
 
-      {/* 취소 - 미연결 */}
-      <td className="v2-qty-cell"></td>
+      {/* 입고 — ft_fulfillments type=ARRIVAL quantity 합계 */}
+      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
+        {arrivalQty > 0 && (
+          <span className="v2-qty-badge v2-import-qty">{arrivalQty}</span>
+        )}
+      </td>
 
-      {/* 출고 - 미연결 */}
-      <td className="v2-qty-cell"></td>
+      {/* 포장 — ft_fulfillments type=PACKED quantity 합계 */}
+      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
+        {packedQty > 0 && (
+          <span className="v2-qty-badge v2-packed-qty">{packedQty}</span>
+        )}
+      </td>
 
-      {/* 비고 - 미연결 */}
-      <td></td>
+      {/* 취소 — ft_fulfillments type=CANCEL quantity 합계 */}
+      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
+        {cancelQty > 0 && (
+          <span className="v2-qty-badge v2-cancel-qty">{cancelQty}</span>
+        )}
+      </td>
 
-      {/* 정보 - 미연결 */}
-      <td></td>
+      {/* 출고 — ft_fulfillments type=SHIPMENT quantity 합계 */}
+      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
+        {shipmentQty > 0 && (
+          <span className="v2-qty-badge v2-export-qty">{shipmentQty}</span>
+        )}
+      </td>
     </tr>
   );
 };

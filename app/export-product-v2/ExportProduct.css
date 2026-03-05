@@ -1422,3 +1422,73 @@
 .v2-export-editable-cell {
   cursor: pointer;
 }
+
+/* ============================= */
+/* V2 박스 번호 + 크기 입력 영역  */
+/* ============================= */
+
+.v2-export-box-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* 박스 번호 입력 — 2배 너비 */
+.v2-export-box-row .v2-export-box-input {
+  flex: 2;
+  min-width: 0;
+}
+
+.v2-export-box-divider {
+  color: #bbb;
+  font-size: 22px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+/* 프리셋 버튼 — 균등 1배 */
+.v2-export-size-preset-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.v2-export-size-preset-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.v2-export-size-preset-btn.active {
+  background-color: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
+}
+
+/* 박스크기 직접 입력 — 1배 너비 */
+.v2-export-custom-size-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 보드 비활성화 상태 (박스번호 or 크기 미입력) */
+.v2-export-scan-board.board-disabled,
+.v2-export-barcode-board.board-disabled {
+  opacity: 0.45;
+  pointer-events: auto;
+}

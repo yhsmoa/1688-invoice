@@ -133,6 +133,103 @@ export function useFtSearch(items: FtOrderItem[]) {
 }
 
 // ============================================================
+// useFtFulfillmentSummary — ARRIVAL / CANCEL / SHIPMENT 합산
+//
+// items가 변경될 때마다 ft_fulfillments를 일괄 조회 (1회 fetch)
+// type별로 order_item_id → quantity 합계 Map을 각각 반환
+//
+// arrivalMap  : type=ARRIVAL  → 입고 열
+// cancelMap   : type=CANCEL   → 취소 열
+// shipmentMap : type=SHIPMENT → 출고 열
+// ============================================================
+type FulfillmentRow = {
+  order_item_id: string;
+  quantity: number;
+  type: string;
+};
+
+type FulfillmentMaps = {
+  arrivalMap: Map<string, number>;
+  packedMap: Map<string, number>;
+  cancelMap: Map<string, number>;
+  shipmentMap: Map<string, number>;
+};
+
+const EMPTY_MAPS: FulfillmentMaps = {
+  arrivalMap: new Map(),
+  packedMap: new Map(),
+  cancelMap: new Map(),
+  shipmentMap: new Map(),
+};
+
+export function useFtFulfillmentSummary(items: FtOrderItem[]) {
+  const [maps, setMaps] = useState<FulfillmentMaps>(EMPTY_MAPS);
+  const [loadingFulfillments, setLoadingFulfillments] = useState(false);
+
+  // items id 목록이 실제로 바뀔 때만 fetch
+  const itemIdsKey = items.map((i) => i.id).join(',');
+
+  useEffect(() => {
+    if (!itemIdsKey) {
+      setMaps(EMPTY_MAPS);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchSummary = async () => {
+      setLoadingFulfillments(true);
+      try {
+        const res = await fetch(
+          `/api/ft/fulfillments?order_item_ids=${encodeURIComponent(itemIdsKey)}`
+        );
+        const json = await res.json();
+
+        if (cancelled) return;
+
+        if (json.success) {
+          // ── 타입별 클라이언트 집계 ──────────────────────────
+          const arrival  = new Map<string, number>();
+          const packed   = new Map<string, number>();
+          const cancel   = new Map<string, number>();
+          const shipment = new Map<string, number>();
+
+          for (const row of json.data as FulfillmentRow[]) {
+            const { order_item_id, quantity, type } = row;
+            const qty = quantity ?? 0;
+
+            if (type === 'ARRIVAL') {
+              arrival.set(order_item_id, (arrival.get(order_item_id) ?? 0) + qty);
+            } else if (type === 'PACKED') {
+              packed.set(order_item_id, (packed.get(order_item_id) ?? 0) + qty);
+            } else if (type === 'CANCEL') {
+              cancel.set(order_item_id, (cancel.get(order_item_id) ?? 0) + qty);
+            } else if (type === 'SHIPMENT') {
+              shipment.set(order_item_id, (shipment.get(order_item_id) ?? 0) + qty);
+            }
+          }
+
+          setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment });
+        } else {
+          console.error('fulfillment 조회 실패:', json.error);
+        }
+      } catch (err) {
+        if (!cancelled) console.error('fulfillment fetch 오류:', err);
+      } finally {
+        if (!cancelled) setLoadingFulfillments(false);
+      }
+    };
+
+    fetchSummary();
+
+    // cleanup: race condition 방지
+    return () => { cancelled = true; };
+  }, [itemIdsKey]);
+
+  return { ...maps, loadingFulfillments };
+}
+
+// ============================================================
 // useFtPagination — 간단한 페이지네이션
 // ============================================================
 export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20) {

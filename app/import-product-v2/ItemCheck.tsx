@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 
 // ============================================================
 // 공유 컴포넌트
@@ -21,6 +21,7 @@ import {
   useFtOrderItems,
   useFtSearch,
   useFtPagination,
+  useFtFulfillmentSummary,
   type FtOrderItem,
 } from './hooks/useFtData';
 
@@ -51,9 +52,28 @@ const ItemCheck: React.FC = () => {
   const { items, loading: itemsLoading, fetchItems } = useFtOrderItems();
 
   // ============================================================
-  // 3) 검색 (item_name, barcode, item_no)
+  // 2-1) 검색 타입 — 기본값: 배송번호 (hook 순서 때문에 여기 선언)
   // ============================================================
-  const { searchTerm, setSearchTerm, filteredItems, clearSearch } = useFtSearch(items);
+  const [searchType, setSearchType] = useState('배송번호');
+
+  // ============================================================
+  // 2-2) 배송번호 서버 조회 결과
+  //      null = 아직 검색 안 함 → 기본 items 표시
+  //      FtOrderItem[] = 검색 완료 → 해당 결과 표시
+  // ============================================================
+  const [deliveryItems, setDeliveryItems] = useState<FtOrderItem[] | null>(null);
+  const [isDeliverySearching, setIsDeliverySearching] = useState(false);
+
+  // activeItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
+  const activeItems =
+    searchType === '배송번호' && deliveryItems !== null ? deliveryItems : items;
+
+  // ============================================================
+  // 3) 검색
+  //    - 일반검색: useFtSearch가 activeItems를 client-side 필터
+  //    - 배송번호: 서버 조회 결과(deliveryItems)를 그대로 표시
+  // ============================================================
+  const { searchTerm, setSearchTerm, filteredItems, clearSearch } = useFtSearch(activeItems);
 
   // ============================================================
   // 4) 페이지네이션
@@ -68,14 +88,17 @@ const ItemCheck: React.FC = () => {
   } = useFtPagination(filteredItems);
 
   // ============================================================
+  // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
+  //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
+  // ============================================================
+  const { arrivalMap, packedMap, cancelMap, shipmentMap } = useFtFulfillmentSummary(activeItems);
+
+  // ============================================================
   // 5) 담당자 드롭박스 (UI 유지, 현재 단계에서 기능 미연결)
   // ============================================================
   const [selectedOperator, setSelectedOperator] = useState('');
 
-  // ============================================================
-  // 5-1) 검색 타입 드롭박스 (배송번호 / 일반검색)
-  // ============================================================
-  const [searchType, setSearchType] = useState('일반검색');
+  // 5-1) searchType은 2-1 섹션에서 선언됨 (hook 순서)
 
   // ============================================================
   // 6) 체크박스 선택 관리
@@ -120,7 +143,7 @@ const ItemCheck: React.FC = () => {
   }, []);
 
   // ============================================================
-  // 8) ft_users 드롭박스 변경 → 자동 데이터 조회
+  // 8) ft_users 드롭박스 변경 → 자동 데이터 조회 + 배송번호 결과 초기화
   // ============================================================
   const handleUserChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -128,6 +151,8 @@ const ItemCheck: React.FC = () => {
       setSelectedUserId(userId);
       setSelectedRows(new Set());
       setModifiedImportQty(new Map());
+      setDeliveryItems(null);
+      setSearchInput('');
       clearSearch();
 
       if (userId) {
@@ -139,34 +164,90 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 9) 검색 핸들러
+  //
+  // 입력값(searchInput)과 적용값(setSearchTerm)을 분리하여
+  // Enter / [검색] 버튼 클릭 시에만 필터/조회 실행
   // ============================================================
-  const handleSearchTypeChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setSearchType(e.target.value);
-      clearSearch();
-    },
-    [clearSearch]
-  );
 
-  const handleSearchInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchTerm(e.target.value);
-    },
-    [setSearchTerm]
-  );
+  // 9-0) 입력 필드 live 값 (표시용) — setSearchTerm은 적용 시에만 호출
+  const [searchInput, setSearchInput] = useState('');
 
-  const handleSearchKeyPress = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
+  // 9-1) 배송번호 서버 조회 (delivery_code → order_id → ft_order_items)
+  const handleDeliverySearch = useCallback(
+    async (code: string) => {
+      const trimmed = code.trim();
+      if (!trimmed) return;
+
+      setIsDeliverySearching(true);
+      try {
+        const res = await fetch(
+          `/api/ft/order-items/by-delivery-code?delivery_code=${encodeURIComponent(trimmed)}`
+        );
+        const json = await res.json();
+
+        if (json.success) {
+          setDeliveryItems(json.data);
+          if (json.data.length === 0) {
+            alert('해당 배송번호로 조회된 아이템이 없습니다.');
+          }
+        } else {
+          alert(json.error || '배송번호 조회 중 오류가 발생했습니다.');
+        }
+      } catch {
+        alert('배송번호 조회 중 오류가 발생했습니다.');
+      } finally {
+        setIsDeliverySearching(false);
       }
     },
     []
   );
 
+  // 9-2) 검색 타입 변경 → 입력값·결과 초기화
+  const handleSearchTypeChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setSearchType(e.target.value);
+      setDeliveryItems(null);
+      setSearchInput('');
+      clearSearch(); // useFtSearch 내부 searchTerm 초기화
+    },
+    [clearSearch]
+  );
+
+  // 9-3) 입력값 변경 → searchInput만 업데이트 (필터 미적용)
+  const handleSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchInput(e.target.value);
+    },
+    []
+  );
+
+  // 9-4) 검색 실행 공통 함수
+  const applySearch = useCallback(
+    (value: string) => {
+      if (searchType === '배송번호') {
+        handleDeliverySearch(value);
+      } else {
+        setSearchTerm(value); // 일반검색: useFtSearch 필터 적용
+      }
+    },
+    [searchType, handleDeliverySearch, setSearchTerm]
+  );
+
+  // 9-5) Enter 키 → 검색 실행
+  const handleSearchKeyPress = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applySearch(searchInput);
+      }
+    },
+    [searchInput, applySearch]
+  );
+
+  // 9-6) [검색] 버튼 클릭 → 검색 실행
   const handleSearchClick = useCallback(() => {
-    // useFtSearch 실시간 필터링
-  }, []);
+    applySearch(searchInput);
+  }, [searchInput, applySearch]);
 
   // ============================================================
   // 10) 입고(import_qty) 셀 편집 — V1 useEditCell 방식 동일
@@ -380,6 +461,52 @@ const ItemCheck: React.FC = () => {
   }, [readyItems, selectedOperator, selectedUserId, users]);
 
   // ============================================================
+  // 15) 1688 xlsx 업로드
+  // ============================================================
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+
+  const handleXlsxClick = useCallback(() => {
+    excelFileInputRef.current?.click();
+  }, []);
+
+  const handleXlsxFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
+        return;
+      }
+
+      setIsUploadingExcel(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/upload-delivery-excel', {
+          method: 'POST',
+          body: formData,
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+          alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
+        } else {
+          alert(result.error || '업로드 중 오류가 발생했습니다.');
+        }
+      } catch {
+        alert('업로드 중 오류가 발생했습니다.');
+      } finally {
+        setIsUploadingExcel(false);
+        if (excelFileInputRef.current) excelFileInputRef.current.value = '';
+      }
+    },
+    []
+  );
+
+  // ============================================================
   // 로딩 상태
   // ============================================================
   const loading = usersLoading || itemsLoading;
@@ -446,9 +573,27 @@ const ItemCheck: React.FC = () => {
                 </button>
 
                 {/* 1688 xlsx 버튼 */}
-                <button className="v2-excel-upload-btn">
-                  1688 xlsx
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={handleXlsxClick}
+                  disabled={isUploadingExcel}
+                >
+                  {isUploadingExcel ? (
+                    <span className="v2-button-loading">
+                      <span className="v2-spinner"></span>
+                      업로드 중
+                    </span>
+                  ) : (
+                    '1688 xlsx'
+                  )}
                 </button>
+                <input
+                  ref={excelFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={handleXlsxFileChange}
+                />
               </div>
 
               <div className="v2-control-right">
@@ -458,12 +603,12 @@ const ItemCheck: React.FC = () => {
                 {/* 라벨 버튼 */}
                 <button className="v2-excel-upload-btn" onClick={handleLabelClick}>라벨</button>
 
-                {/* 저장 버튼 (수정 개수 표시) */}
+                {/* 입고 버튼 (작업 수량 입력된 개수 표시) */}
                 <button
                   className={`v2-excel-upload-btn ${readyItems.length > 0 ? 'has-items' : ''}`}
                   onClick={() => setIsReadyModalOpen(true)}
                 >
-                  저장{readyItems.length > 0 && ` (${readyItems.length})`}
+                  입고{readyItems.length > 0 && ` (${readyItems.length})`}
                 </button>
               </div>
             </div>
@@ -473,11 +618,12 @@ const ItemCheck: React.FC = () => {
             {/* ============================================================ */}
             <SearchSection
               searchType={searchType}
-              searchTerm={searchTerm}
+              searchTerm={searchInput}
               onSearchTypeChange={handleSearchTypeChange}
               onSearchInputChange={handleSearchInputChange}
               onSearchKeyPress={handleSearchKeyPress}
               onSearchClick={handleSearchClick}
+              isSearching={isDeliverySearching}
             />
 
             {/* ============================================================ */}
@@ -493,6 +639,10 @@ const ItemCheck: React.FC = () => {
               editingCell={editingCell}
               cellValue={cellValue}
               modifiedImportQty={modifiedImportQty}
+              arrivalMap={arrivalMap}
+              packedMap={packedMap}
+              cancelMap={cancelMap}
+              shipmentMap={shipmentMap}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
               onStartEditingCell={startEditingCell}

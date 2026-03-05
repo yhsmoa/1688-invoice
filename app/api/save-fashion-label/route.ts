@@ -29,6 +29,29 @@ export async function POST(request: NextRequest) {
     console.log(`invoice_fashion_label 저장 시작: ${items.length}개 아이템, user_id: ${user_id}`);
 
     // ============================================================
+    // 헬퍼: order_no 정규화 (BZ-260224-0202-A01 → BZ-260224-0202)
+    //        앞 3개 파트(dash 기준)만 유지
+    // ============================================================
+    const normalizeOrderNo = (value: string | null): string | null => {
+      if (!value) return null;
+      const parts = value.split('-');
+      return parts.length > 3 ? parts.slice(0, 3).join('-') : value;
+    };
+
+    // ============================================================
+    // 헬퍼: shipment_size → shipment_size_code 변환
+    //        Small → A, Medium → B, Large → C, 그 외 → X
+    // ============================================================
+    const toShipmentSizeCode = (size: string | null | undefined): string => {
+      if (!size) return 'X';
+      const lower = size.toLowerCase().trim();
+      if (lower.includes('small'))  return 'A';
+      if (lower.includes('medium')) return 'B';
+      if (lower.includes('large'))  return 'C';
+      return 'X';
+    };
+
+    // ============================================================
     // 2. 다건 상품 수량 확장 (LABEL 시트 룰과 동일)
     //    - 1개 상품: qty 그대로 유지
     //    - 2개 이상 상품: 각 상품을 qty만큼 개별 행으로 확장 (qty=1)
@@ -54,7 +77,7 @@ export async function POST(request: NextRequest) {
     // ============================================================
     // 4. 배치 INSERT (id: uuid, seq: 순번)
     // ============================================================
-    const columns = ['id', 'seq', 'brand', 'item_name', 'barcode', 'qty', 'order_no', 'composition', 'recommanded_age', 'shipment_size', 'user_id'];
+    const columns = ['id', 'seq', 'brand', 'item_name', 'barcode', 'qty', 'order_no', 'composition', 'recommanded_age', 'shipment_size', 'shipment_size_code', 'user_id'];
     const valuePlaceholders: string[] = [];
     const values: any[] = [];
 
@@ -64,16 +87,17 @@ export async function POST(request: NextRequest) {
       valuePlaceholders.push(`(${placeholders.join(', ')})`);
 
       values.push(
-        randomUUID(),           // id: UUID 랜덤 생성
-        idx + 1,                // seq: 순번 (1, 2, 3...)
+        randomUUID(),                              // id: UUID 랜덤 생성
+        idx + 1,                                   // seq: 순번 (1, 2, 3...)
         item.brand || null,
         item.item_name || null,
         item.barcode || null,
         item.qty || 0,
-        item.order_no || null,
+        normalizeOrderNo(item.order_no || null),   // BZ-260224-0202-A01 → BZ-260224-0202
         item.composition || null,
         item.recommanded_age || null,
         item.shipment_size || null,
+        toShipmentSizeCode(item.shipment_size),    // Small→A, Medium→B, Large→C, else→X
         item.user_id || null
       );
     });

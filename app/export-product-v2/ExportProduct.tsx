@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
+import { useFtUsers } from '../import-product-v2/hooks/useFtData';
 import './ExportProduct.css';
 
 interface CoupangUser {
@@ -57,6 +58,9 @@ const ExportProduct: React.FC = () => {
   const [selectedBox, setSelectedBox] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
+  const [selectedFtUserId, setSelectedFtUserId] = useState<string>('');
+  const [customBoxSize, setCustomBoxSize] = useState<string>('');
+  const [selectedPresetSize, setSelectedPresetSize] = useState<string>('');
   const [isResultBoardActive, setIsResultBoardActive] = useState(false); // 스캔결과 보드 활성화 상태
   const [isInputFormActive, setIsInputFormActive] = useState(false); // 입력폼 보드 활성화 상태
   const [boardBarcodeInput, setBoardBarcodeInput] = useState(''); // 보드용 바코드 입력
@@ -78,6 +82,9 @@ const ExportProduct: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
+
+  // ft_users (V2 전용)
+  const { users: ftUsers } = useFtUsers();
 
   // 쿠팡 사용자 목록
   const [coupangUsers, setCoupangUsers] = useState<CoupangUser[]>([]);
@@ -1047,6 +1054,9 @@ const ExportProduct: React.FC = () => {
     }
   };
 
+  // 박스번호 + 크기 둘 다 입력돼야 보드 활성화 가능
+  const canActivateBoards = selectedBox.trim() !== '' && selectedSize.trim() !== '';
+
   return (
     <div className="v2-export-layout">
       <TopsideMenu />
@@ -1059,15 +1069,16 @@ const ExportProduct: React.FC = () => {
             {/* 상단 버튼 영역 */}
             <div className="v2-export-header-buttons">
               <div className="v2-export-left-buttons">
+                {/* V2 전용 ft_users 드롭박스 */}
                 <select
                   className="v2-export-coupang-user-dropdown"
-                  value={selectedCoupangUser}
-                  onChange={handleCoupangUserChange}
+                  value={selectedFtUserId}
+                  onChange={(e) => setSelectedFtUserId(e.target.value)}
                 >
-                  <option value="">Coupang {t('exportProduct.selectUser')}</option>
-                  {coupangUsers.map((user) => (
-                    <option key={user.coupang_name} value={user.coupang_name}>
-                      {user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name}
+                  <option value="">사용자 선택</option>
+                  {ftUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.user_code} {user.full_name}
                     </option>
                   ))}
                 </select>
@@ -1095,9 +1106,10 @@ const ExportProduct: React.FC = () => {
               </div>
             </div>
 
-            {/* 박스 번호 입력 영역 */}
+            {/* 박스 번호 + 크기 입력 영역 */}
             <div className="v2-export-barcode-section">
-              <div className="v2-export-dropdown-row" style={{ marginBottom: '10px' }}>
+              <div className="v2-export-box-row">
+                {/* 박스 번호 입력 */}
                 <input
                   type="text"
                   placeholder={t('exportProduct.boxNumberInput')}
@@ -1107,30 +1119,58 @@ const ExportProduct: React.FC = () => {
                   style={{ textTransform: 'uppercase' }}
                 />
 
-                <select
-                  className="v2-export-size-dropdown"
-                  value={selectedSize}
-                  onChange={(e) => setSelectedSize(e.target.value)}
-                  disabled
-                >
-                  <option value="">{t('exportProduct.selectSize')}</option>
-                  <option value="극소">{t('exportProduct.sizeXSmall')}</option>
-                  <option value="소">{t('exportProduct.sizeSmall')}</option>
-                  <option value="중">{t('exportProduct.sizeMedium')}</option>
-                  <option value="대1">{t('exportProduct.sizeLarge1')}</option>
-                  <option value="대2">{t('exportProduct.sizeLarge2')}</option>
-                  <option value="이형">{t('exportProduct.sizeIrregular')}</option>
-                </select>
+                <span className="v2-export-box-divider">|</span>
+
+                {/* 프리셋 크기 버튼 3개 */}
+                {[
+                  { label: '150', size: '60*50*40' },
+                  { label: '145', size: '50*50*45' },
+                  { label: '120', size: '50*40*30' },
+                ].map(({ label, size }) => (
+                  <button
+                    key={label}
+                    className={`v2-export-size-preset-btn ${selectedPresetSize === size ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedPresetSize(size);
+                      setCustomBoxSize('');
+                      setSelectedSize(size);
+                    }}
+                  >
+                    {label} {size}
+                  </button>
+                ))}
+
+                {/* 박스크기 직접 입력 */}
+                <input
+                  type="text"
+                  placeholder="박스크기"
+                  className="v2-export-custom-size-input"
+                  value={customBoxSize}
+                  onFocus={() => {
+                    setSelectedPresetSize('');
+                  }}
+                  onChange={(e) => {
+                    setCustomBoxSize(e.target.value);
+                    setSelectedPresetSize('');
+                    setSelectedSize(e.target.value);
+                  }}
+                />
               </div>
             </div>
 
             {/* 스캔 정보 보드 (결과 표시) */}
             <div
-              className={`v2-export-scan-board ${isResultBoardActive ? 'active' : ''}`}
+              className={`v2-export-scan-board ${isResultBoardActive ? 'active' : ''} ${!canActivateBoards ? 'board-disabled' : ''}`}
               onMouseDown={(e) => {
+                if (!canActivateBoards) {
+                  setAlertMessage(!selectedBox.trim() ? '박스 번호를 입력해주세요.' : '박스 크기를 선택해주세요.');
+                  setShowAlert(true);
+                  setTimeout(() => setShowAlert(false), 2000);
+                  return;
+                }
                 console.log('결과보드 mousedown');
-                e.stopPropagation(); // 전역 클릭 이벤트 전파 방지
-                e.nativeEvent.stopImmediatePropagation(); // 추가: 네이티브 이벤트도 차단
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
                 setIsResultBoardActive(true);
                 setIsInputFormActive(false);
                 setTimeout(() => {
@@ -1138,7 +1178,7 @@ const ExportProduct: React.FC = () => {
                 }, 0);
               }}
               style={{
-                cursor: 'pointer',
+                cursor: canActivateBoards ? 'pointer' : 'not-allowed',
                 border: isResultBoardActive ? '3px solid #4CAF50' : undefined,
                 boxShadow: isResultBoardActive ? '0 0 10px rgba(76, 175, 80, 0.3)' : undefined,
                 position: 'relative'
@@ -1282,13 +1322,20 @@ const ExportProduct: React.FC = () => {
             {/* 바코드 입력 영역 */}
             <div className="v2-export-barcode-section">
               <div
-                className="v2-export-barcode-board"
+                className={`v2-export-barcode-board ${!canActivateBoards ? 'board-disabled' : ''}`}
                 onMouseDown={(e) => {
-                  e.stopPropagation(); // 전역 클릭 이벤트 전파 방지
+                  if (!canActivateBoards) {
+                    setAlertMessage(!selectedBox.trim() ? '박스 번호를 입력해주세요.' : '박스 크기를 선택해주세요.');
+                    setShowAlert(true);
+                    setTimeout(() => setShowAlert(false), 2000);
+                    return;
+                  }
+                  e.stopPropagation();
                   setIsInputFormActive(true);
                   setIsResultBoardActive(false);
                 }}
                 style={{
+                  cursor: canActivateBoards ? 'default' : 'not-allowed',
                   border: isInputFormActive ? '3px solid #2196F3' : undefined,
                   boxShadow: isInputFormActive ? '0 0 10px rgba(33, 150, 243, 0.3)' : undefined
                 }}
@@ -1308,17 +1355,16 @@ const ExportProduct: React.FC = () => {
                       placeholder={t('exportProduct.enterOrderNumber')}
                       className="v2-export-barcode-input"
                       value={barcodeInput}
+                      disabled={!canActivateBoards}
                       onChange={(e) => {
                         setBarcodeInput(e.target.value);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
-                          // 개수 입력 필드로 포커스 이동
                           quantityInputRef.current?.focus();
                         }
                       }}
-                      autoFocus
                     />
                     <input
                       ref={quantityInputRef}
@@ -1326,6 +1372,7 @@ const ExportProduct: React.FC = () => {
                       placeholder={t('exportProduct.quantityInput')}
                       className="v2-export-quantity-input"
                       value={quantityInput}
+                      disabled={!canActivateBoards}
                       onChange={(e) => setQuantityInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -1334,9 +1381,9 @@ const ExportProduct: React.FC = () => {
                       }}
                     />
                     <button
-                      className={`v2-export-scan-button ${!barcodeInput.trim() || !quantityInput.trim() ? 'disabled' : ''}`}
+                      className={`v2-export-scan-button ${!canActivateBoards || !barcodeInput.trim() || !quantityInput.trim() ? 'disabled' : ''}`}
                       onClick={handleScan}
-                      disabled={!barcodeInput.trim() || !quantityInput.trim()}
+                      disabled={!canActivateBoards || !barcodeInput.trim() || !quantityInput.trim()}
                     >
                       {t('exportProduct.scan')}
                     </button>
