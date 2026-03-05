@@ -410,19 +410,44 @@ const ItemCheck: React.FC = () => {
 
     try {
       // ── 1) invoice_fashion_label 저장 데이터 구성 ──
-      const labelItems = readyItems
-        .filter(({ item }) => item.barcode)
-        .map(({ item, import_qty }) => ({
-          brand: currentUser?.brand || null,
-          item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
-          barcode: item.barcode || '',
-          qty: import_qty,
-          order_no: item.item_no || '',
-          composition: item.composition || null,
-          recommanded_age: item.recommanded_age || null,
-          shipment_size: item.coupang_shipment_size || null,
-          user_id: currentOperatorId,
-        }));
+      //    세트상품(set_total > 1): 동일 product_no 중 max qty 1건만 저장
+      //    일반상품: 그대로 저장
+      const barcodeItems = readyItems.filter(({ item }) => item.barcode);
+
+      const normalLabelItems: typeof barcodeItems = [];
+      const setGroupMap = new Map<string, { item: FtOrderItem; import_qty: number }>();
+
+      for (const entry of barcodeItems) {
+        const isSet = (entry.item.set_total ?? 0) > 1;
+        const productNo = entry.item.product_no;
+
+        if (isSet && productNo) {
+          const existing = setGroupMap.get(productNo);
+          if (!existing || entry.import_qty > existing.import_qty) {
+            setGroupMap.set(productNo, entry);
+          }
+        } else {
+          normalLabelItems.push(entry);
+        }
+      }
+
+      // 일반 + 세트(병합) 결합
+      const mergedLabelEntries = [
+        ...normalLabelItems,
+        ...Array.from(setGroupMap.values()),
+      ];
+
+      const labelItems = mergedLabelEntries.map(({ item, import_qty }) => ({
+        brand: currentUser?.brand || null,
+        item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
+        barcode: item.barcode || '',
+        qty: import_qty,
+        order_no: item.item_no || '',
+        composition: item.composition || null,
+        recommanded_age: item.recommanded_age || null,
+        shipment_size: item.coupang_shipment_size || null,
+        user_id: currentOperatorId,
+      }));
 
       // ── 2) ft_fulfillments 저장 데이터 구성 ──
       const fulfillmentItems = readyItems.map(({ item, import_qty }) => ({
@@ -527,6 +552,44 @@ const ItemCheck: React.FC = () => {
   );
 
   // ============================================================
+  // 16) XLSX 다운로드
+  // ============================================================
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
+  const handleXlsxDownload = useCallback(async () => {
+    if (!selectedUserId) {
+      alert('사용자를 선택해주세요.');
+      return;
+    }
+
+    setIsDownloadingExcel(true);
+    try {
+      const response = await fetch('/api/ft/order-items/export-xlsx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: selectedUserId, status: 'PROCESSING' }),
+      });
+
+      if (!response.ok) throw new Error('XLSX 다운로드 실패');
+
+      const blob = await response.blob();
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ft_order_items_${today}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('XLSX 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsDownloadingExcel(false);
+    }
+  }, [selectedUserId]);
+
+  // ============================================================
   // 로딩 상태
   // ============================================================
   const loading = usersLoading || itemsLoading;
@@ -592,7 +655,7 @@ const ItemCheck: React.FC = () => {
                   )}
                 </button>
 
-                {/* 1688 xlsx 버튼 */}
+                {/* ⬆️ 1688 XLSX 업로드 버튼 */}
                 <button
                   className="v2-excel-upload-btn"
                   onClick={handleXlsxClick}
@@ -604,7 +667,7 @@ const ItemCheck: React.FC = () => {
                       업로드 중
                     </span>
                   ) : (
-                    '1688 xlsx'
+                    '⬆️ 1688 XLSX'
                   )}
                 </button>
                 <input
@@ -614,6 +677,22 @@ const ItemCheck: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={handleXlsxFileChange}
                 />
+
+                {/* ⬇️ XLSX 다운 버튼 */}
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={handleXlsxDownload}
+                  disabled={isDownloadingExcel || !selectedUserId}
+                >
+                  {isDownloadingExcel ? (
+                    <span className="v2-button-loading">
+                      <span className="v2-spinner"></span>
+                      다운로드 중
+                    </span>
+                  ) : (
+                    '⬇️ XLSX 다운'
+                  )}
+                </button>
               </div>
 
               <div className="v2-control-right">

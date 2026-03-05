@@ -62,6 +62,37 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
   }, []);
 
   // ============================================================
+  // 헬퍼: 세트상품 병합 — 동일 product_no 그룹 중 max qty로 1건만 유지
+  //
+  // set_total > 1 인 항목: product_no 기준으로 그룹핑 → qty 최대값 1건
+  // set_total <= 1 인 항목(일반 상품): 그대로 유지
+  // ============================================================
+  const mergeSetItems = useCallback(
+    (rawItems: typeof items) => {
+      const normal: typeof items = [];
+      const setGroups = new Map<string, { item: FtOrderItem; qty: number }>();
+
+      for (const item of rawItems) {
+        const isSet = (item.set_total ?? 0) > 1;
+        const productNo = item.product_no;
+
+        if (isSet && productNo) {
+          const qty = getQty(item);
+          const existing = setGroups.get(productNo);
+          if (!existing || qty > existing.qty) {
+            setGroups.set(productNo, { item, qty });
+          }
+        } else {
+          normal.push(item);
+        }
+      }
+
+      return { normal, setGroups };
+    },
+    [getQty]
+  );
+
+  // ============================================================
   // LABEL postgre 저장 핸들러
   // → 기존 /api/save-fashion-label API 재사용
   // ============================================================
@@ -75,8 +106,11 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
     setIsSaving(true);
 
     try {
-      // 저장할 데이터 구성
-      const labelItems = items.map((item) => ({
+      // ── 세트상품 병합 처리 ──
+      const { normal, setGroups } = mergeSetItems(items);
+
+      // 일반 상품 → 그대로 매핑
+      const labelItems = normal.map((item) => ({
         brand: selectedUser?.brand || null,
         item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
         barcode: item.barcode || '',
@@ -87,6 +121,21 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
         shipment_size: item.coupang_shipment_size || null,
         user_id: operatorId,
       }));
+
+      // 세트상품 → product_no 그룹당 1건 (max qty)
+      for (const [, { item, qty }] of setGroups) {
+        labelItems.push({
+          brand: selectedUser?.brand || null,
+          item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
+          barcode: item.barcode || '',
+          qty,
+          order_no: item.item_no || '',
+          composition: item.composition || null,
+          recommanded_age: item.recommanded_age || null,
+          shipment_size: item.coupang_shipment_size || null,
+          user_id: operatorId,
+        });
+      }
 
       if (labelItems.length === 0) {
         alert('저장할 데이터가 없습니다.');
@@ -117,7 +166,7 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [items, selectedUser, operatorId, getQty, onSaveComplete, onClose]);
+  }, [items, selectedUser, operatorId, getQty, mergeSetItems, onSaveComplete, onClose]);
 
   // ============================================================
   // 모달이 닫혀있으면 렌더링하지 않음

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('ft_order_items')
       .select(
-        'id, order_no, item_no, item_name, option_name, order_qty, barcode, china_option1, china_option2, price_cny, price_total_cny, img_url, coupang_shipment_size, status, composition, recommanded_age'
+        'id, order_no, item_no, item_name, option_name, order_qty, barcode, china_option1, china_option2, price_cny, price_total_cny, img_url, coupang_shipment_size, status, composition, recommanded_age, set_total, set_seq, product_no, site_url'
       )
       .eq('user_id', userId)
       .eq('status', status)

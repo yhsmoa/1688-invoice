@@ -27,6 +27,10 @@ export interface FtOrderItem {
   status: string | null;
   composition: string | null;
   recommanded_age: string | null;
+  set_total: number | null;
+  set_seq: number | null;
+  product_no: string | null;
+  site_url: string | null;
 }
 
 // ============================================================

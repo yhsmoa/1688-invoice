@@ -93,9 +93,31 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         )}
       </td>
 
-      {/* 글번호 (item_no) */}
+      {/* 글번호 (item_no) — 세트상품 배지(위) + site_url 링크(아래) */}
       <td>
-        <div className="v2-order-number-text">{item.item_no || ''}</div>
+        <div className="v2-order-number-text">
+          {/* 세트상품 배지: set_total > 1 인 경우 글번호 위에 표시 */}
+          {item.set_total != null && item.set_total > 1 && (
+            <>
+              <span className="v2-set-badge">
+                🎁 {item.set_total} 中 {item.set_seq ?? '?'}
+              </span>
+              <br />
+            </>
+          )}
+          {item.site_url ? (
+            <a
+              href={item.site_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="v2-item-no-link"
+            >
+              {item.item_no || ''}
+            </a>
+          ) : (
+            item.item_no || ''
+          )}
+        </div>
       </td>
 
       {/* 상품명 (item_name + option_name + barcode + coupang_shipment_size) */}
@@ -136,9 +158,9 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         {item.order_qty ?? ''}
       </td>
 
-      {/* 비용 (price_cny / price_total_cny) */}
+      {/* 비용 (price_cny / price_total_cny) — 가운데 정렬 */}
       <td style={{ textAlign: 'center' }}>
-        <div className="v2-cost-display">
+        <div className="v2-cost-display" style={{ textAlign: 'center' }}>
           {item.price_cny != null ? `¥${item.price_cny}` : ''}
           {item.price_total_cny != null && (
             <>
