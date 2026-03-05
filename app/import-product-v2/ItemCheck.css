@@ -484,6 +484,14 @@
   text-decoration: none;
 }
 
+/* 1688 주문 ID — 글번호 아래 회색 작은 폰트 */
+.v2-order-id-sub {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
 /* 세트상품 배지 (set_total > 1) — 주황색 배경 */
 .v2-set-badge {
   display: inline-block;

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         'id, order_no, item_no, item_name, option_name, order_qty, barcode,' +
         ' china_option1, china_option2, price_cny, price_total_cny,' +
         ' img_url, coupang_shipment_size, status, composition, recommanded_age,' +
-        ' set_total, set_seq, product_no, site_url'
+        ' set_total, set_seq, product_no, site_url, 1688_order_id'
       )
       .in('1688_order_id', orderIds)
       .order('created_at', { ascending: false });

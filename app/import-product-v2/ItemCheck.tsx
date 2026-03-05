@@ -552,7 +552,55 @@ const ItemCheck: React.FC = () => {
   );
 
   // ============================================================
-  // 16) XLSX 다운로드
+  // 16) 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭
+  // ============================================================
+  const orderIdFileInputRef = useRef<HTMLInputElement>(null);
+  const [isMatchingOrderId, setIsMatchingOrderId] = useState(false);
+
+  const handleOrderIdClick = useCallback(() => {
+    orderIdFileInputRef.current?.click();
+  }, []);
+
+  const handleOrderIdFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
+        return;
+      }
+
+      setIsMatchingOrderId(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/ft/order-items/match-order-id', {
+          method: 'POST',
+          body: formData,
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert(`${result.matched}개 항목 매칭 완료\n(전체 미매칭: ${result.total_null}개)`);
+          // 데이터 새로고침
+          if (selectedUserId) fetchItems(selectedUserId);
+        } else {
+          alert(result.error || '주문 ID 매칭 중 오류가 발생했습니다.');
+        }
+      } catch {
+        alert('주문 ID 매칭 중 오류가 발생했습니다.');
+      } finally {
+        setIsMatchingOrderId(false);
+        if (orderIdFileInputRef.current) orderIdFileInputRef.current.value = '';
+      }
+    },
+    [selectedUserId, fetchItems]
+  );
+
+  // ============================================================
+  // 17) XLSX 다운로드
   // ============================================================
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
 
@@ -639,22 +687,6 @@ const ItemCheck: React.FC = () => {
                   ))}
                 </select>
 
-                {/* 새로고침 버튼 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={() => selectedUserId && fetchItems(selectedUserId)}
-                  disabled={loading || !selectedUserId}
-                >
-                  {itemsLoading ? (
-                    <span className="v2-button-loading">
-                      <span className="v2-spinner"></span>
-                      새로고침
-                    </span>
-                  ) : (
-                    '새로고침'
-                  )}
-                </button>
-
                 {/* ⬆️ 1688 XLSX 업로드 버튼 */}
                 <button
                   className="v2-excel-upload-btn"
@@ -693,6 +725,29 @@ const ItemCheck: React.FC = () => {
                     '⬇️ XLSX 다운'
                   )}
                 </button>
+
+                {/* 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭 */}
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={handleOrderIdClick}
+                  disabled={isMatchingOrderId}
+                >
+                  {isMatchingOrderId ? (
+                    <span className="v2-button-loading">
+                      <span className="v2-spinner"></span>
+                      매칭 중
+                    </span>
+                  ) : (
+                    '🔗 주문 ID'
+                  )}
+                </button>
+                <input
+                  ref={orderIdFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={handleOrderIdFileChange}
+                />
               </div>
 
               <div className="v2-control-right">

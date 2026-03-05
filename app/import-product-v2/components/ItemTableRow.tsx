@@ -117,6 +117,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           ) : (
             item.item_no || ''
           )}
+          {/* 1688 주문 ID — 회색, 작은 폰트로 글번호 아래 표시 */}
+          {item['1688_order_id'] && (
+            <div className="v2-order-id-sub">{item['1688_order_id']}</div>
+          )}
         </div>
       </td>
 

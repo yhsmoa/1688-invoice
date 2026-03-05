@@ -31,6 +31,7 @@ export interface FtOrderItem {
   set_seq: number | null;
   product_no: string | null;
   site_url: string | null;
+  '1688_order_id': string | null;
 }
 
 // ============================================================
