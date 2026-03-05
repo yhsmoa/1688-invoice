@@ -214,7 +214,7 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
 
           setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment });
         } else {
-          console.error('fulfillment 조회 실패:', json.error);
+          console.error('fulfillment 조회 실패:', json.error, json.details);
         }
       } catch (err) {
         if (!cancelled) console.error('fulfillment fetch 오류:', err);
