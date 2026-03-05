@@ -180,9 +180,12 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
     const fetchSummary = async () => {
       setLoadingFulfillments(true);
       try {
-        const res = await fetch(
-          `/api/ft/fulfillments?order_item_ids=${encodeURIComponent(itemIdsKey)}`
-        );
+        // POST body로 전송 — GET 쿼리 파라미터는 ID 수가 많으면 414 URI Too Long 발생
+        const res = await fetch('/api/ft/fulfillments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_item_ids: itemIdsKey.split(',').filter(Boolean) }),
+        });
         const json = await res.json();
 
         if (cancelled) return;

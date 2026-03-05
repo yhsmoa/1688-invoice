@@ -43,13 +43,32 @@ export async function GET(request: NextRequest) {
 
 // ============================================================
 // POST /api/ft/fulfillments
-// ft_fulfillments 테이블에 입고(ARRIVAL) 데이터 일괄 저장
+// [1] { order_item_ids: string[] }  → 집계 조회 (GET 대체, URI 길이 제한 회피)
+// [2] { items: FulfillmentItem[] }  → 입고 데이터 일괄 저장
 // ============================================================
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items } = body;
+    const { items, order_item_ids } = body;
 
+    // ── [1] 조회 모드 ──────────────────────────────────────────
+    if (order_item_ids && Array.isArray(order_item_ids)) {
+      if (order_item_ids.length === 0) {
+        return NextResponse.json({ success: true, data: [] });
+      }
+
+      const { data, error } = await supabase
+        .from('ft_fulfillments')
+        .select('order_item_id, quantity, type')
+        .in('order_item_id', order_item_ids)
+        .in('type', FULFILLMENT_TYPES);
+
+      if (error) throw error;
+
+      return NextResponse.json({ success: true, data: data || [] });
+    }
+
+    // ── [2] 저장 모드 ──────────────────────────────────────────
     // ============================================================
     // 1. 입력 데이터 검증
     // ============================================================
