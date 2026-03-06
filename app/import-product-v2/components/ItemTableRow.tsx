@@ -26,6 +26,7 @@ interface ItemTableRowProps {
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: () => void;
+  onProductNameClick: (item: FtOrderItem) => void;
 }
 
 const ItemTableRow: React.FC<ItemTableRowProps> = ({
@@ -44,7 +45,11 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   onCellValueChange,
   onCellKeyDown,
   onFinishEditingCell,
+  onProductNameClick,
 }) => {
+  // 진행 = 개수 - 입고 - 취소
+  const progressQty = (item.order_qty ?? 0) - arrivalQty - cancelQty;
+
   // 입고 열에 표시할 값: 수정값 > 0이면 수정값, 아니면 빈칸
   const displayImportQty = importQtyValue != null ? importQtyValue : null;
 
@@ -124,8 +129,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         </div>
       </td>
 
-      {/* 상품명 (item_name + option_name + barcode + coupang_shipment_size) */}
-      <td>
+      {/* 상품명 (item_name + option_name + barcode + coupang_shipment_size) — 클릭 시 로그 모달 */}
+      <td onClick={() => onProductNameClick(item)} style={{ cursor: 'pointer' }}>
         <div className="v2-product-name">
           {item.item_name || ''}
           {item.option_name && (
@@ -175,10 +180,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         </div>
       </td>
 
-      {/* 진행 (= order_qty 임시) */}
+      {/* 진행 = 개수 - 입고 - 취소 */}
       <td className="v2-qty-cell">
-        {item.order_qty != null && item.order_qty > 0 && (
-          <span className="v2-qty-badge v2-progress-qty">{item.order_qty}</span>
+        {progressQty > 0 && (
+          <span className="v2-qty-badge v2-progress-qty">{progressQty}</span>
         )}
       </td>
 

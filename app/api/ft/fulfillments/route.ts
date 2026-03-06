@@ -7,6 +7,43 @@ import { supabase } from '../../../../lib/supabase';
 const FULFILLMENT_TYPES = ['ARRIVAL', 'PACKED', 'CANCEL', 'SHIPMENT'];
 
 // ============================================================
+// DELETE /api/ft/fulfillments?id=xxx
+// ft_fulfillments 단건 삭제
+// ============================================================
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'id 파라미터가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase
+      .from('ft_fulfillments')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('ft_fulfillments DELETE 오류:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'ft_fulfillments 삭제 중 오류가 발생했습니다.',
+        details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================
 // GET /api/ft/fulfillments?order_item_ids=id1,id2,...
 // (소량 조회 시 사용 가능, 다량은 POST 사용 권장)
 // ============================================================
@@ -63,14 +100,14 @@ export async function POST(request: NextRequest) {
         }
 
         const BATCH_SIZE = 100;
-        const allData: { order_item_id: string; quantity: number; type: string }[] = [];
+        const allData: { id: string; order_item_id: string; quantity: number; type: string; created_at: string; operator_name: string | null }[] = [];
 
         for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
           const batch = order_item_ids.slice(i, i + BATCH_SIZE);
 
           const { data, error } = await supabase
             .from('ft_fulfillments')
-            .select('order_item_id, quantity, type')
+            .select('id, order_item_id, quantity, type, created_at, operator_name')
             .in('order_item_id', batch)
             .in('type', FULFILLMENT_TYPES);
 

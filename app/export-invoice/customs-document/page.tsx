@@ -391,6 +391,13 @@ const CustomsDocument: React.FC = () => {
           };
         });
 
+      // '알 수 없음' 품목 검증
+      const unknownItems = parsedData.filter(item => item.item_category === '알 수 없음');
+      if (unknownItems.length > 0) {
+        alert(`"알 수 없음" 품목이 ${unknownItems.length}건 존재합니다. 확인해주세요.`);
+        return;
+      }
+
       // 기존 데이터에 추가
       setOrderData([...orderData, ...parsedData]);
       setFilteredData([...filteredData, ...parsedData]);

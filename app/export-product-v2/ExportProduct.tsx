@@ -55,7 +55,12 @@ const ExportProduct: React.FC = () => {
 
   const [barcodeInput, setBarcodeInput] = useState('');
   const [quantityInput, setQuantityInput] = useState('');
-  const [selectedBox, setSelectedBox] = useState('');
+  // ── 박스번호 3분할 입력 (prefix-type-seq → selectedBox 합성) ──
+  const [boxPrefix, setBoxPrefix] = useState('');   // ft_users.user_code 자동입력
+  const [boxType, setBoxType] = useState('');       // 한 글자 대문자 (A~Z)
+  const [boxSeq, setBoxSeq] = useState('');         // 박스 일련번호
+  const selectedBox = [boxPrefix, boxType, boxSeq].filter(Boolean).join('-');
+
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [selectedFtUserId, setSelectedFtUserId] = useState<string>('');
@@ -77,6 +82,10 @@ const ExportProduct: React.FC = () => {
   const barcodeInputRef = React.useRef<HTMLInputElement>(null);
   const quantityInputRef = React.useRef<HTMLInputElement>(null);
   const boardBarcodeInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Ref for box number split inputs
+  const boxTypeInputRef = React.useRef<HTMLInputElement>(null);
+  const boxSeqInputRef = React.useRef<HTMLInputElement>(null);
 
   // 기본 상태
   const [loading, setLoading] = useState(false);
@@ -1069,11 +1078,16 @@ const ExportProduct: React.FC = () => {
             {/* 상단 버튼 영역 */}
             <div className="v2-export-header-buttons">
               <div className="v2-export-left-buttons">
-                {/* V2 전용 ft_users 드롭박스 */}
+                {/* V2 전용 ft_users 드롭박스 — 선택 시 박스번호 prefix 자동입력 */}
                 <select
                   className="v2-export-coupang-user-dropdown"
                   value={selectedFtUserId}
-                  onChange={(e) => setSelectedFtUserId(e.target.value)}
+                  onChange={(e) => {
+                    const userId = e.target.value;
+                    setSelectedFtUserId(userId);
+                    const user = ftUsers.find((u) => u.id === userId);
+                    setBoxPrefix(user?.user_code?.toUpperCase() || '');
+                  }}
                 >
                   <option value="">사용자 선택</option>
                   {ftUsers.map((user) => (
@@ -1106,20 +1120,74 @@ const ExportProduct: React.FC = () => {
               </div>
             </div>
 
-            {/* 박스 번호 + 크기 입력 영역 */}
+            {/* ============================================================ */}
+            {/* 박스번호 3분할 입력: [prefix] - [타입(1글자)] - [번호] */}
+            {/* ============================================================ */}
             <div className="v2-export-barcode-section">
               <div className="v2-export-box-row">
-                {/* 박스 번호 입력 */}
+                {/* 1) prefix — ft_users.user_code 자동입력 */}
                 <input
                   type="text"
-                  placeholder={t('exportProduct.boxNumberInput')}
-                  className="v2-export-box-input"
-                  value={selectedBox}
-                  onChange={(e) => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
+                  placeholder="코드"
+                  className="v2-export-box-input v2-export-box-prefix"
+                  value={boxPrefix}
+                  onChange={(e) => setBoxPrefix(e.target.value.replace(/\s/g, '').toUpperCase())}
                   style={{ textTransform: 'uppercase' }}
                 />
+                <span className="v2-export-box-divider">-</span>
 
-                <span className="v2-export-box-divider">|</span>
+                {/* 2) 박스 타입 — 한/영 무관 1글자, 대문자 자동 변환, 입력 즉시 다음 폼 이동 */}
+                <input
+                  ref={boxTypeInputRef}
+                  type="text"
+                  placeholder="타입"
+                  className="v2-export-box-input v2-export-box-type"
+                  value={boxType}
+                  maxLength={1}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\s/g, '');
+                    if (raw.length === 0) {
+                      setBoxType('');
+                      return;
+                    }
+                    const char = raw.slice(-1).toUpperCase();
+                    setBoxType(char);
+                    // 1글자 입력 즉시 다음 입력폼으로 포커스 이동
+                    setTimeout(() => boxSeqInputRef.current?.focus(), 0);
+                  }}
+                  style={{ textTransform: 'uppercase' }}
+                />
+                <span className="v2-export-box-divider">-</span>
+
+                {/* 3) 박스 일련번호 */}
+                <input
+                  ref={boxSeqInputRef}
+                  type="text"
+                  placeholder="번호"
+                  className="v2-export-box-input v2-export-box-seq"
+                  value={boxSeq}
+                  onChange={(e) => setBoxSeq(e.target.value.replace(/\s/g, '').toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
+                />
+              </div>
+
+              {/* ============================================================ */}
+              {/* 박스크기 영역: [직접입력] | [프리셋 150] [145] [120] */}
+              {/* ============================================================ */}
+              <div className="v2-export-box-row">
+                {/* 박스크기 직접 입력 (왼쪽) */}
+                <input
+                  type="text"
+                  placeholder="박스크기"
+                  className="v2-export-custom-size-input"
+                  value={customBoxSize}
+                  onFocus={() => setSelectedPresetSize('')}
+                  onChange={(e) => {
+                    setCustomBoxSize(e.target.value);
+                    setSelectedPresetSize('');
+                    setSelectedSize(e.target.value);
+                  }}
+                />
 
                 {/* 프리셋 크기 버튼 3개 */}
                 {[
@@ -1139,22 +1207,6 @@ const ExportProduct: React.FC = () => {
                     {label} {size}
                   </button>
                 ))}
-
-                {/* 박스크기 직접 입력 */}
-                <input
-                  type="text"
-                  placeholder="박스크기"
-                  className="v2-export-custom-size-input"
-                  value={customBoxSize}
-                  onFocus={() => {
-                    setSelectedPresetSize('');
-                  }}
-                  onChange={(e) => {
-                    setCustomBoxSize(e.target.value);
-                    setSelectedPresetSize('');
-                    setSelectedSize(e.target.value);
-                  }}
-                />
               </div>
             </div>
 

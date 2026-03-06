@@ -147,10 +147,13 @@ export function useFtSearch(items: FtOrderItem[]) {
 // cancelMap   : type=CANCEL   → 취소 열
 // shipmentMap : type=SHIPMENT → 출고 열
 // ============================================================
-type FulfillmentRow = {
+export type FulfillmentRow = {
+  id: string;
   order_item_id: string;
   quantity: number;
   type: string;
+  created_at: string;
+  operator_name: string | null;
 };
 
 type FulfillmentMaps = {
@@ -158,6 +161,8 @@ type FulfillmentMaps = {
   packedMap: Map<string, number>;
   cancelMap: Map<string, number>;
   shipmentMap: Map<string, number>;
+  /** 원본 fulfillment 데이터 (로그 모달 표시용) */
+  rawFulfillments: FulfillmentRow[];
 };
 
 const EMPTY_MAPS: FulfillmentMaps = {
@@ -165,6 +170,7 @@ const EMPTY_MAPS: FulfillmentMaps = {
   packedMap: new Map(),
   cancelMap: new Map(),
   shipmentMap: new Map(),
+  rawFulfillments: [],
 };
 
 export function useFtFulfillmentSummary(items: FtOrderItem[]) {
@@ -221,7 +227,7 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
             }
           }
 
-          setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment });
+          setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment, rawFulfillments: json.data as FulfillmentRow[] });
         } else {
           console.error('fulfillment 조회 실패:', json.error, json.details);
         }

@@ -1434,9 +1434,11 @@
   margin-bottom: 10px;
 }
 
-/* 박스 번호 입력 — 2배 너비 */
-.v2-export-box-row .v2-export-box-input {
-  flex: 2;
+/* 박스번호 3분할 입력 — 균등 비율 */
+.v2-export-box-row .v2-export-box-prefix,
+.v2-export-box-row .v2-export-box-type,
+.v2-export-box-row .v2-export-box-seq {
+  flex: 1;
   min-width: 0;
 }
 
@@ -1450,19 +1452,20 @@
   flex-shrink: 0;
 }
 
-/* 프리셋 버튼 — 균등 1배 */
+/* 프리셋 버튼 — 균등 비율, 박스번호 입력폼과 동일 높이 */
 .v2-export-size-preset-btn {
   flex: 1;
   min-width: 0;
-  padding: 12px 8px;
+  padding: 20px 8px;
   border: 1px solid #bbb;
   border-radius: 4px;
   background-color: #fff;
-  font-size: 13px;
+  font-size: 18px;
   color: #333;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 0.15s, border-color 0.15s;
+  box-sizing: border-box;
 }
 
 .v2-export-size-preset-btn:hover {
@@ -1475,15 +1478,16 @@
   color: #fff;
 }
 
-/* 박스크기 직접 입력 — 1배 너비 */
+/* 박스크기 직접 입력 — 균등 비율, 박스번호 입력폼과 동일 높이 */
 .v2-export-custom-size-input {
   flex: 1;
   min-width: 0;
-  padding: 12px 10px;
+  padding: 20px 30px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 18px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 /* 보드 비활성화 상태 (박스번호 or 크기 미입력) */

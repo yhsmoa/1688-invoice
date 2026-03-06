@@ -151,30 +151,41 @@ export async function POST(request: NextRequest) {
       { width: 20 }  // 쉬퍼 (2배로 증가)
     ];
 
-    // 위안-달러 환율 (대략적인 환율, 필요시 API로 실시간 환율 가져오기 가능)
-    const CNY_TO_USD = 0.14; // 1 CNY ≈ 0.14 USD
+    // 위안-달러 환율 — 실시간 API 조회, 실패 시 폴백 0.14
+    let CNY_TO_USD = 0.14;
+    try {
+      const rateRes = await fetch('https://open.er-api.com/v6/latest/CNY');
+      if (rateRes.ok) {
+        const rateJson = await rateRes.json();
+        if (rateJson.result === 'success' && rateJson.rates?.USD) {
+          CNY_TO_USD = rateJson.rates.USD;
+          console.log(`실시간 환율 적용: 1 CNY = ${CNY_TO_USD} USD`);
+        }
+      }
+    } catch (e) {
+      console.warn('환율 API 조회 실패, 폴백 환율 사용:', e);
+    }
 
     // 9행부터 품목별 데이터 입력
     if (data && data.length > 0) {
-      // 전체 데이터에서 품목별 총 금액과 총 수량 계산 (위치와 무관하게)
-      const globalItemData: Record<string, { totalPrice: number; totalQty: number }> = {};
+      // 전체 데이터에서 품목별 가중합(unit_price × qty)과 총 수량 계산
+      const globalItemData: Record<string, { weightedSum: number; totalQty: number }> = {};
       data.forEach((item: any) => {
         const itemKey = `${item.item_category || ''}_${item.blend_ratio || ''}`;
         if (!globalItemData[itemKey]) {
-          globalItemData[itemKey] = { totalPrice: 0, totalQty: 0 };
-        }
-        if (item.unit_price && !isNaN(parseFloat(item.unit_price))) {
-          globalItemData[itemKey].totalPrice += parseFloat(item.unit_price);
+          globalItemData[itemKey] = { weightedSum: 0, totalQty: 0 };
         }
         const qty = parseInt(item.out_quantity) || 0;
+        const price = parseFloat(item.unit_price) || 0;
+        globalItemData[itemKey].weightedSum += price * qty;
         globalItemData[itemKey].totalQty += qty;
       });
 
-      // 품목별 단가 계산: 총 금액 / 총 수량 * 환율
+      // 품목별 단가 계산: Σ(unit_price × qty) / Σ(qty) × 환율
       const globalUnitPrices: Record<string, number> = {};
       for (const [itemKey, itemData] of Object.entries(globalItemData)) {
         globalUnitPrices[itemKey] = itemData.totalQty > 0
-          ? (itemData.totalPrice / itemData.totalQty) * CNY_TO_USD
+          ? (itemData.weightedSum / itemData.totalQty) * CNY_TO_USD
           : 0;
       }
 

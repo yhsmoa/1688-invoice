@@ -31,6 +31,7 @@ interface ItemTableProps {
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: () => void;
+  onProductNameClick: (item: FtOrderItem) => void;
 }
 
 const ItemTable: React.FC<ItemTableProps> = ({
@@ -53,6 +54,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   onCellValueChange,
   onCellKeyDown,
   onFinishEditingCell,
+  onProductNameClick,
 }) => {
   const { t } = useTranslation();
 
@@ -114,6 +116,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 onCellValueChange={onCellValueChange}
                 onCellKeyDown={onCellKeyDown}
                 onFinishEditingCell={onFinishEditingCell}
+                onProductNameClick={onProductNameClick}
               />
             ))
           )}

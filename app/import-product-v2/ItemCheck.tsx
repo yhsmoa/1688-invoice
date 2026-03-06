@@ -32,6 +32,7 @@ import ItemTable from './components/ItemTable';
 import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
+import FulfillmentLogModal from './components/FulfillmentLogModal';
 
 // ============================================================
 // 담당자 옵션 + 담당자 → user_id 매핑 (invoice_fashion_label용)
@@ -91,7 +92,7 @@ const ItemCheck: React.FC = () => {
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
-  const { arrivalMap, packedMap, cancelMap, shipmentMap, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
+  const { arrivalMap, packedMap, cancelMap, shipmentMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
 
   // ============================================================
   // 5) 담당자 드롭박스 (UI 유지, 현재 단계에서 기능 미연결)
@@ -274,12 +275,23 @@ const ItemCheck: React.FC = () => {
     []
   );
 
-  // 편집 완료 (blur / Enter)
+  // 편집 완료 (blur / Enter) — 진행(order_qty - 입고 - 취소)보다 큰 값 입력 불가
   const finishEditingCell = useCallback(() => {
     if (!editingCell) return;
 
     const { id } = editingCell;
     const numValue = cellValue.trim() === '' ? 0 : parseInt(cellValue, 10);
+
+    // 진행 = 개수 - 입고 - 취소
+    const item = activeItems.find((i) => i.id === id);
+    const progressQty = (item?.order_qty ?? 0) - (arrivalMap.get(id) ?? 0) - (cancelMap.get(id) ?? 0);
+
+    if (numValue > progressQty) {
+      alert(`작업 수량(${numValue})이 진행 수량(${progressQty})을 초과할 수 없습니다.`);
+      setEditingCell(null);
+      setCellValue('');
+      return;
+    }
 
     setModifiedImportQty((prev) => {
       const next = new Map(prev);
@@ -293,7 +305,7 @@ const ItemCheck: React.FC = () => {
 
     setEditingCell(null);
     setCellValue('');
-  }, [editingCell, cellValue]);
+  }, [editingCell, cellValue, activeItems, arrivalMap, cancelMap]);
 
   // 키보드 핸들러 (Enter → 완료 + 다음 행 이동, Escape → 취소)
   const handleCellKeyDown = useCallback(
@@ -638,6 +650,30 @@ const ItemCheck: React.FC = () => {
   }, [selectedUserId]);
 
   // ============================================================
+  // 18) 상품명 클릭 → 처리 로그 슬라이드 모달
+  // ============================================================
+  const [logModalItem, setLogModalItem] = useState<FtOrderItem | null>(null);
+
+  const handleProductNameClick = useCallback((item: FtOrderItem) => {
+    setLogModalItem(item);
+  }, []);
+
+  const handleLogModalClose = useCallback(() => {
+    setLogModalItem(null);
+  }, []);
+
+  // 로그 삭제 → supabase 삭제 + fulfillment 갱신
+  const handleFulfillmentDelete = useCallback(async (fulfillmentId: string) => {
+    const res = await fetch(`/api/ft/fulfillments?id=${fulfillmentId}`, { method: 'DELETE' });
+    const result = await res.json();
+    if (!result.success) {
+      alert(result.error || '삭제 실패');
+      return;
+    }
+    refreshFulfillments();
+  }, [refreshFulfillments]);
+
+  // ============================================================
   // 로딩 상태
   // ============================================================
   const loading = usersLoading || itemsLoading;
@@ -803,6 +839,7 @@ const ItemCheck: React.FC = () => {
               onCellValueChange={handleCellValueChange}
               onCellKeyDown={handleCellKeyDown}
               onFinishEditingCell={finishEditingCell}
+              onProductNameClick={handleProductNameClick}
             />
 
             {/* ============================================================ */}
@@ -888,6 +925,17 @@ const ItemCheck: React.FC = () => {
         operatorId={operatorId}
         modifiedImportQty={modifiedImportQty}
         onSaveComplete={handleLabelSaveComplete}
+      />
+
+      {/* ============================================================ */}
+      {/* 처리 로그 슬라이드 모달 — 상품명 클릭 시 */}
+      {/* ============================================================ */}
+      <FulfillmentLogModal
+        isOpen={logModalItem !== null}
+        item={logModalItem}
+        rawFulfillments={rawFulfillments}
+        onClose={handleLogModalClose}
+        onDelete={handleFulfillmentDelete}
       />
     </div>
   );
