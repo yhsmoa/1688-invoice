@@ -1,0 +1,354 @@
+/* ============================================================ */
+/* V2 취소 접수 모달 스타일                                      */
+/* ============================================================ */
+
+/* ── 배경 오버레이 */
+.v2-cancel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── 모달 박스 */
+.v2-cancel-dialog {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 헤더 */
+.v2-cancel-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.v2-cancel-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #111;
+  font-weight: 700;
+}
+
+.v2-cancel-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.v2-cancel-close-btn:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+/* ── 바디 (스크롤 영역) */
+.v2-cancel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── 빈 상태 */
+.v2-cancel-empty {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* ── 아이템 카드 */
+.v2-cancel-item-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafafa;
+}
+
+/* ── 카드 헤더: 배지 + 상품 정보 */
+.v2-cancel-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── [접수] 배지 */
+.v2-cancel-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #374151;
+  flex-shrink: 0;
+  border: 1px solid #d1d5db;
+}
+
+.v2-cancel-item-no {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.v2-cancel-item-name {
+  font-size: 14px;
+  color: #111;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-cancel-option-name {
+  font-weight: 400;
+  color: #6b7280;
+}
+
+/* ── 4열 입력 그리드 */
+.v2-cancel-item-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+/* ── 필드 그룹 */
+.v2-cancel-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v2-cancel-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.v2-cancel-required {
+  color: #ef4444;
+}
+
+/* 수량 라벨 — 필수 강조 */
+.v2-cancel-field-label-required {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* ── 인풋 공통 */
+.v2-cancel-input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #111;
+  background: white;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.v2-cancel-input:focus {
+  outline: none;
+  border-color: #18181b;
+  box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.1);
+}
+
+/* 스핀 버튼 제거 */
+.v2-cancel-input::-webkit-outer-spin-button,
+.v2-cancel-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.v2-cancel-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* 자동 계산 필드 — 연한 배경 */
+.v2-cancel-input-auto {
+  background: #f9fafb;
+  color: #374151;
+}
+
+/* ── 반품사유 그룹 */
+.v2-cancel-reason-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v2-cancel-textarea {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 13px;
+  color: #111;
+  background: white;
+  resize: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.v2-cancel-textarea:focus {
+  outline: none;
+  border-color: #18181b;
+  box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.1);
+}
+
+/* ── 공통 필드 섹션 (요청자) */
+.v2-cancel-global-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ── 요청자 토글 버튼 그룹 */
+.v2-cancel-requester-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.v2-cancel-requester-btn {
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: white;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.v2-cancel-requester-btn:hover {
+  border-color: #18181b;
+  background: #f9fafb;
+}
+
+.v2-cancel-requester-btn.active {
+  background: #18181b;
+  color: white;
+  border-color: #18181b;
+}
+
+/* ── 푸터 */
+.v2-cancel-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── 닫기 버튼 (secondary) */
+.v2-cancel-btn-secondary {
+  padding: 9px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.v2-cancel-btn-secondary:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.v2-cancel-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 취소 접수 버튼 (primary) */
+.v2-cancel-btn-primary {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 5px;
+  background: #18181b;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  min-width: 90px;
+}
+
+.v2-cancel-btn-primary:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.v2-cancel-btn-primary:disabled {
+  background: #a1a1aa;
+  cursor: not-allowed;
+}
+
+/* ── 저장 중 스피너 */
+.v2-cancel-saving {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v2-cancel-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: v2-cancel-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes v2-cancel-spin {
+  to { transform: rotate(360deg); }
+}

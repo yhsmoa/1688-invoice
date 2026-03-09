@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
-import getPool from '../../../lib/postgres';
+import { supabase } from '../../../lib/supabase';
 
 export async function POST(request: NextRequest) {
-  const client = await getPool().connect();
-
   try {
     const body = await request.json();
-    const { items, user_id } = body;
+    const { items, operator_no } = body;
 
     // ============================================================
     // 1. 입력 데이터 검증
@@ -19,36 +16,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user_id) {
+    if (!operator_no) {
       return NextResponse.json(
-        { success: false, error: '담당자(user_id)가 선택되지 않았습니다.' },
+        { success: false, error: '담당자(operator_no)가 선택되지 않았습니다.' },
         { status: 400 }
       );
     }
 
-    console.log(`invoice_fashion_label 저장 시작: ${items.length}개 아이템, user_id: ${user_id}`);
+    console.log(`invoiceManager_label 저장 시작: ${items.length}개 아이템, operator_no: ${operator_no}`);
 
     // ============================================================
-    // 헬퍼: order_no 정규화 (BZ-260224-0202-A01 → BZ-260224-0202)
+    // 헬퍼: product_no 정규화 (BZ-260224-0202-A01 → BZ-260224-0202)
     //        앞 3개 파트(dash 기준)만 유지
     // ============================================================
-    const normalizeOrderNo = (value: string | null): string | null => {
+    const normalizeProductNo = (value: string | null): string | null => {
       if (!value) return null;
       const parts = value.split('-');
       return parts.length > 3 ? parts.slice(0, 3).join('-') : value;
-    };
-
-    // ============================================================
-    // 헬퍼: shipment_size → shipment_size_code 변환
-    //        Small → A, Medium → B, Large → C, 그 외 → X
-    // ============================================================
-    const toShipmentSizeCode = (size: string | null | undefined): string => {
-      if (!size) return 'X';
-      const lower = size.toLowerCase().trim();
-      if (lower.includes('small'))  return 'A';
-      if (lower.includes('medium')) return 'B';
-      if (lower.includes('large'))  return 'C';
-      return 'X';
     };
 
     // ============================================================
@@ -63,77 +47,62 @@ export async function POST(request: NextRequest) {
       : items;
 
     // ============================================================
-    // 3. 트랜잭션 시작: 기존 user_id 데이터 삭제 후 신규 INSERT
+    // 3. 기존 operator_no 데이터 삭제
     // ============================================================
-    await client.query('BEGIN');
+    const { error: deleteError } = await supabase
+      .from('invoiceManager_label')
+      .delete()
+      .eq('operator_no', operator_no);
 
-    // 동일 user_id 기존 데이터 삭제
-    const deleteResult = await client.query(
-      'DELETE FROM invoice_fashion_label WHERE user_id = $1',
-      [user_id]
-    );
-    console.log(`기존 데이터 ${deleteResult.rowCount}개 삭제 (user_id: ${user_id})`);
+    if (deleteError) {
+      console.error('기존 데이터 삭제 오류:', deleteError);
+      throw deleteError;
+    }
 
     // ============================================================
-    // 4. 배치 INSERT (id: uuid, seq: 순번)
+    // 4. INSERT 데이터 구성
     // ============================================================
-    const columns = ['id', 'seq', 'brand', 'item_name', 'barcode', 'qty', 'order_no', 'composition', 'recommanded_age', 'shipment_size', 'shipment_size_code', 'user_id'];
-    const valuePlaceholders: string[] = [];
-    const values: any[] = [];
+    const insertRows = expandedItems.map((item: any, idx: number) => ({
+      seq: idx + 1,
+      brand: item.brand || null,
+      item_name: item.item_name || null,
+      barcode: item.barcode || null,
+      qty: item.qty || 0,
+      product_no: normalizeProductNo(item.product_no || null),
+      composition: item.composition || null,
+      recommanded_age: item.recommanded_age || null,
+      shipment_size: item.shipment_size || null,
+      operator_no: operator_no,
+    }));
 
-    expandedItems.forEach((item: any, idx: number) => {
-      const offset = idx * columns.length;
-      const placeholders = columns.map((_, i) => `$${offset + i + 1}`);
-      valuePlaceholders.push(`(${placeholders.join(', ')})`);
+    const { data, error: insertError } = await supabase
+      .from('invoiceManager_label')
+      .insert(insertRows)
+      .select('id');
 
-      values.push(
-        randomUUID(),                              // id: UUID 랜덤 생성
-        idx + 1,                                   // seq: 순번 (1, 2, 3...)
-        item.brand || null,
-        item.item_name || null,
-        item.barcode || null,
-        item.qty || 0,
-        normalizeOrderNo(item.order_no || null),   // BZ-260224-0202-A01 → BZ-260224-0202
-        item.composition || null,
-        item.recommanded_age || null,
-        item.shipment_size || null,
-        toShipmentSizeCode(item.shipment_size),    // Small→A, Medium→B, Large→C, else→X
-        item.user_id || null
-      );
-    });
+    if (insertError) {
+      console.error('invoiceManager_label 저장 오류:', insertError);
+      throw insertError;
+    }
 
-    const query = `
-      INSERT INTO invoice_fashion_label (${columns.join(', ')})
-      VALUES ${valuePlaceholders.join(', ')}
-      RETURNING id
-    `;
-
-    const result = await client.query(query, values);
-
-    // 트랜잭션 커밋
-    await client.query('COMMIT');
-
-    console.log(`invoice_fashion_label 저장 완료: ${result.rowCount}개`);
+    const count = data?.length || 0;
+    console.log(`invoiceManager_label 저장 완료: ${count}개`);
 
     return NextResponse.json({
       success: true,
-      count: result.rowCount,
-      message: `${result.rowCount}개 데이터가 저장되었습니다.`
+      count,
+      message: `${count}개 데이터가 저장되었습니다.`
     });
 
-  } catch (error) {
-    // 트랜잭션 롤백
-    await client.query('ROLLBACK');
-    console.error('invoice_fashion_label 저장 오류:', error);
+  } catch (error: any) {
+    console.error('invoiceManager_label 저장 오류:', JSON.stringify(error, null, 2));
     return NextResponse.json(
       {
         success: false,
-        error: 'invoice_fashion_label 저장 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : '알 수 없는 오류'
+        error: 'invoiceManager_label 저장 중 오류가 발생했습니다.',
+        details: error?.message || error?.details || JSON.stringify(error)
       },
       { status: 500 }
     );
-  } finally {
-    client.release();
   }
 }

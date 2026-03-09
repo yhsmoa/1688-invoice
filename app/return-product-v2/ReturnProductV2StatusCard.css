@@ -1,0 +1,48 @@
+.return-v2-status-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.return-v2-status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.return-v2-status-card.active {
+  border-color: #18181b;
+  background-color: #f4f4f5;
+  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.2);
+}
+
+.return-v2-status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.return-v2-status-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.return-v2-status-card.active .return-v2-status-text {
+  color: #18181b;
+  font-weight: 600;
+}
+
+.return-v2-status-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.return-v2-status-card.active .return-v2-status-count {
+  color: #18181b;
+}

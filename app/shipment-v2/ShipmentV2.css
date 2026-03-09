@@ -1,0 +1,434 @@
+/* ============================================================
+   쉽먼트 V2 페이지 전용 스타일
+   ============================================================ */
+
+/* ── 레이아웃 ── */
+.shipment-v2-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.shipment-v2-main-content {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.shipment-v2-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0;
+  min-height: calc(100vh - 80px);
+}
+
+.shipment-v2-container {
+  padding: 20px;
+  width: 100%;
+}
+
+/* ── 헤더 (타이틀 + 드롭다운) ── */
+.shipment-v2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.shipment-v2-title {
+  color: #333;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.shipment-v2-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shipment-v2-user-dropdown {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.shipment-v2-count {
+  font-size: 13px;
+  color: #666;
+}
+
+/* ── 액션 바 ([이동] + [엑셀] 버튼) ── */
+.shipment-v2-action-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.shipment-v2-move-btn,
+.shipment-v2-merge-btn,
+.shipment-v2-excel-btn {
+  padding: 6px 18px;
+  background-color: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.shipment-v2-move-btn:hover:not(:disabled),
+.shipment-v2-merge-btn:hover:not(:disabled),
+.shipment-v2-excel-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.shipment-v2-move-btn:disabled,
+.shipment-v2-merge-btn:disabled,
+.shipment-v2-excel-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ── 확정 버튼 ── */
+.shipment-v2-confirm-btn {
+  padding: 6px 18px;
+  background-color: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.shipment-v2-confirm-btn:hover:not(:disabled) {
+  background-color: #15803d;
+}
+
+.shipment-v2-confirm-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ── 출고 버튼 ── */
+.shipment-v2-ship-btn {
+  padding: 6px 18px;
+  background-color: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.shipment-v2-ship-btn:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.shipment-v2-ship-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ── 테이블 영역 ── */
+.shipment-v2-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.shipment-v2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+}
+
+.shipment-v2-table th {
+  background-color: #f8f9fa;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.shipment-v2-table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+  vertical-align: middle;
+}
+
+.shipment-v2-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* ── 체크된 행 하이라이트 ── */
+.shipment-v2-row--checked {
+  background-color: #eff6ff !important;
+}
+
+/* ── 주문번호 클릭 가능 ── */
+.shipment-v2-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.shipment-v2-clickable:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* ── 박스번호 배지 ── */
+.shipment-v2-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 10pt;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.shipment-v2-badge--blue {
+  background-color: #2563eb;
+}
+
+.shipment-v2-badge--orange {
+  background-color: #ea580c;
+}
+
+.shipment-v2-badge--black {
+  background-color: #111827;
+}
+
+.shipment-v2-badge--gray {
+  background-color: #6b7280;
+}
+
+/* ── 병합 셀 스타일 ── */
+.shipment-v2-table td[rowspan] {
+  vertical-align: middle;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* ── 합배송 화살표 (박스번호 셀 내) ── */
+.shipment-v2-merge-arrow {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 4px 0;
+}
+
+/* ── 합배송 모달 내 화살표 라벨 ── */
+.shipment-v2-merge-arrow-label {
+  text-align: center;
+  font-size: 20px;
+  color: #6b7280;
+  margin: 4px 0 12px;
+}
+
+/* ── 수량 열 중앙정렬 ── */
+.shipment-v2-qty {
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ── 입고 인라인 편집 ── */
+.shipment-v2-editable {
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.shipment-v2-editable:hover {
+  background-color: #f0f4ff;
+}
+
+.shipment-v2-editable--active {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  background-color: #fff !important;
+  cursor: text;
+}
+
+/* ── 빈 데이터 ── */
+.shipment-v2-empty {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* ── 이동 모달 ── */
+.shipment-v2-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.shipment-v2-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.shipment-v2-modal-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+
+.shipment-v2-modal-desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #666;
+}
+
+.shipment-v2-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.shipment-v2-modal-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.shipment-v2-modal-select,
+.shipment-v2-modal-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.shipment-v2-modal-input {
+  text-transform: uppercase;
+}
+
+.shipment-v2-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.shipment-v2-modal-cancel {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.shipment-v2-modal-confirm {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shipment-v2-modal-confirm:hover {
+  background: #1d4ed8;
+}
+
+/* ── 출고 모달: 쉽먼트 번호 미리보기 ── */
+.shipment-v2-ship-preview {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc2626;
+  text-align: center;
+  padding: 8px;
+  background: #fef2f2;
+  border-radius: 6px;
+  letter-spacing: 2px;
+  font-family: monospace;
+}
+
+.shipment-v2-ship-input {
+  padding: 10px 14px;
+  border: 2px solid #dc2626;
+  border-radius: 6px;
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 8px;
+  font-family: monospace;
+  font-weight: 700;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.shipment-v2-ship-input:focus {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+/* ── 출고완료 V2: 필터 드롭다운 ── */
+.sc-v2-filter-dropdown {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 80px;
+  background: white;
+}
+
+.sc-v2-filter-dropdown--wide {
+  min-width: 180px;
+}
+
+.sc-v2-filter-dropdown:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 768px) {
+  .shipment-v2-table {
+    font-size: 9pt;
+  }
+
+  .shipment-v2-table th,
+  .shipment-v2-table td {
+    padding: 2px 4px;
+  }
+
+  .shipment-v2-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}

@@ -27,6 +27,12 @@ interface ItemTableRowProps {
   onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: () => void;
   onProductNameClick: (item: FtOrderItem) => void;
+  categoryEditing: { id: string } | null;
+  categoryValue: string;
+  onStartCategoryEdit: (id: string, currentValue: string | null) => void;
+  onCategoryValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCategoryKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFinishCategoryEdit: () => void;
 }
 
 const ItemTableRow: React.FC<ItemTableRowProps> = ({
@@ -46,6 +52,12 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   onCellKeyDown,
   onFinishEditingCell,
   onProductNameClick,
+  categoryEditing,
+  categoryValue,
+  onStartCategoryEdit,
+  onCategoryValueChange,
+  onCategoryKeyDown,
+  onFinishCategoryEdit,
 }) => {
   // 진행 = 개수 - 입고 - 취소
   const progressQty = (item.order_qty ?? 0) - arrivalQty - cancelQty;

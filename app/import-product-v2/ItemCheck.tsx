@@ -32,7 +32,9 @@ import ItemTable from './components/ItemTable';
 import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
+import V2CancelModal from './components/V2CancelModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
+import { saveLabelData } from './utils/saveLabelData';
 
 // ============================================================
 // 담당자 옵션 + 담당자 → user_id 매핑 (invoice_fashion_label용)
@@ -48,9 +50,10 @@ const ItemCheck: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
 
   // ============================================================
-  // 2) ft_order_items 데이터 (선택된 user_id + PROCESSING)
+  // 2) ft_order_items 데이터 (선택된 user_id + status 필터)
   // ============================================================
   const { items, loading: itemsLoading, fetchItems } = useFtOrderItems();
+  const [statusFilter, setStatusFilter] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
 
   // ============================================================
   // 2-1) 검색 타입 — 기본값: 배송번호 (hook 순서 때문에 여기 선언)
@@ -157,10 +160,29 @@ const ItemCheck: React.FC = () => {
       clearSearch();
 
       if (userId) {
-        fetchItems(userId);
+        fetchItems(userId, statusFilter);
       }
     },
-    [fetchItems, clearSearch]
+    [fetchItems, clearSearch, statusFilter]
+  );
+
+  // ============================================================
+  // 8-1) 상태 필터 변경 → 데이터 재조회
+  // ============================================================
+  const handleStatusFilterChange = useCallback(
+    (newStatus: 'PROCESSING' | 'ALL') => {
+      setStatusFilter(newStatus);
+      setSelectedRows(new Set());
+      setModifiedImportQty(new Map());
+      setDeliveryItems(null);
+      setSearchInput('');
+      clearSearch();
+
+      if (selectedUserId) {
+        fetchItems(selectedUserId, newStatus);
+      }
+    },
+    [fetchItems, clearSearch, selectedUserId]
   );
 
   // ============================================================
@@ -359,7 +381,19 @@ const ItemCheck: React.FC = () => {
   const [isReadyModalOpen, setIsReadyModalOpen] = useState(false);
 
   // ============================================================
-  // 13) 라벨 모달 — 선택된 항목 중 barcode 있는 것만 표시
+  // 13) 반품 모달 — 체크박스 선택 시 선택 항목, 미선택 시 전체 항목
+  // ============================================================
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
+  const cancelItems = useMemo(
+    () => selectedRows.size > 0
+      ? items.filter((item) => selectedRows.has(item.id))
+      : items,
+    [items, selectedRows]
+  );
+
+  // ============================================================
+  // 14) 라벨 모달 — 선택된 항목 중 barcode 있는 것만 표시
   // ============================================================
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
@@ -401,13 +435,10 @@ const ItemCheck: React.FC = () => {
   }, [refreshFulfillments]);
 
   // ============================================================
-  // 14) [저장] 모달 → postgre + 저장 핸들러
-  //     동시에 두 가지 처리:
-  //     1) invoice_fashion_label 저장 (LABEL postgre 동일 로직)
-  //     2) ft_fulfillments 저장 (ARRIVAL)
+  // 14) [저장] 모달 → ft_fulfillments(ARRIVAL) + 라벨 저장
+  //     라벨 저장은 saveLabelData 공통 유틸 사용 ([라벨] 버튼과 동일)
   // ============================================================
-  const handleReadySavePostgre = useCallback(async () => {
-    // 필수 값 검증
+  const handleReadySave = useCallback(async () => {
     if (!selectedOperator) {
       alert('담당자를 선택해주세요.');
       return;
@@ -421,47 +452,7 @@ const ItemCheck: React.FC = () => {
     const currentUser = users.find((u) => u.id === selectedUserId) || null;
 
     try {
-      // ── 1) invoice_fashion_label 저장 데이터 구성 ──
-      //    세트상품(set_total > 1): 동일 product_no 중 max qty 1건만 저장
-      //    일반상품: 그대로 저장
-      const barcodeItems = readyItems.filter(({ item }) => item.barcode);
-
-      const normalLabelItems: typeof barcodeItems = [];
-      const setGroupMap = new Map<string, { item: FtOrderItem; import_qty: number }>();
-
-      for (const entry of barcodeItems) {
-        const isSet = (entry.item.set_total ?? 0) > 1;
-        const productNo = entry.item.product_no;
-
-        if (isSet && productNo) {
-          const existing = setGroupMap.get(productNo);
-          if (!existing || entry.import_qty > existing.import_qty) {
-            setGroupMap.set(productNo, entry);
-          }
-        } else {
-          normalLabelItems.push(entry);
-        }
-      }
-
-      // 일반 + 세트(병합) 결합
-      const mergedLabelEntries = [
-        ...normalLabelItems,
-        ...Array.from(setGroupMap.values()),
-      ];
-
-      const labelItems = mergedLabelEntries.map(({ item, import_qty }) => ({
-        brand: currentUser?.brand || null,
-        item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
-        barcode: item.barcode || '',
-        qty: import_qty,
-        order_no: item.item_no || '',
-        composition: item.composition || null,
-        recommanded_age: item.recommanded_age || null,
-        shipment_size: item.coupang_shipment_size || null,
-        user_id: currentOperatorId,
-      }));
-
-      // ── 2) ft_fulfillments 저장 데이터 구성 ──
+      // ── 1) ft_fulfillments 저장 ──
       const fulfillmentItems = readyItems.map(({ item, import_qty }) => ({
         order_item_id: item.id,
         type: 'ARRIVAL',
@@ -469,50 +460,51 @@ const ItemCheck: React.FC = () => {
         operator_name: selectedOperator,
         order_no: item.order_no || null,
         item_no: item.item_no || null,
+        product_no: item.product_no || null,
+        product_id: item.product_id || null,
         user_id: selectedUserId,
       }));
 
-      // ── 3) 두 API 동시 호출 ──
-      const promises: Promise<Response>[] = [];
+      // ── 2) 라벨 저장 데이터 (barcode 있는 항목만) ──
+      const barcodeReadyItems = readyItems
+        .filter(({ item }) => item.barcode)
+        .map(({ item, import_qty }) => ({ item, qty: import_qty }));
 
-      // 3-1) invoice_fashion_label (바코드 있는 항목만)
-      if (labelItems.length > 0) {
-        promises.push(
-          fetch('/api/save-fashion-label', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: labelItems, user_id: currentOperatorId }),
-          })
-        );
-      }
-
-      // 3-2) ft_fulfillments (모든 항목)
-      promises.push(
+      // ── 3) 동시 호출 ──
+      const promises: Promise<any>[] = [
         fetch('/api/ft/fulfillments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items: fulfillmentItems }),
-        })
-      );
+        }).then(async (res) => {
+          const json = await res.json();
+          if (!res.ok || !json.success) throw new Error(json.error || '입고 저장 실패');
+          return json;
+        }),
+      ];
 
-      const responses = await Promise.all(promises);
-
-      // ── 4) 응답 확인 ──
-      for (const res of responses) {
-        const result = await res.json();
-        if (!res.ok || !result.success) {
-          throw new Error(result.error || '저장 실패');
-        }
+      if (barcodeReadyItems.length > 0 && currentOperatorId) {
+        promises.push(
+          saveLabelData({
+            items: barcodeReadyItems,
+            brand: currentUser?.brand || null,
+            operatorNo: currentOperatorId,
+          }).then((result) => {
+            if (!result.success) console.error('라벨 저장 실패:', result.error);
+            return result;
+          })
+        );
       }
 
-      // ── 5) 성공 → 상태 초기화 + 모달 닫기 + 테이블 갱신 ──
+      await Promise.all(promises);
+
       setModifiedImportQty(new Map());
       setSelectedRows(new Set());
       setIsReadyModalOpen(false);
       refreshFulfillments();
 
     } catch (error) {
-      console.error('postgre + 저장 오류:', error);
+      console.error('저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
     }
   }, [readyItems, selectedOperator, selectedUserId, users, refreshFulfillments]);
@@ -650,7 +642,103 @@ const ItemCheck: React.FC = () => {
   }, [selectedUserId]);
 
   // ============================================================
-  // 18) 상품명 클릭 → 처리 로그 슬라이드 모달
+  // 18) 품목 분류 (Gemini AI)
+  // ============================================================
+  const [isClassifying, setIsClassifying] = useState(false);
+
+  const handleClassifyProducts = useCallback(async () => {
+    if (activeItems.length === 0) {
+      alert('분류할 데이터가 없습니다.');
+      return;
+    }
+
+    // customs_category가 비어있는 항목의 unique item_name 추출
+    const uniqueNames = [
+      ...new Set(
+        activeItems
+          .filter((item) => !item.customs_category && item.item_name)
+          .map((item) => item.item_name!)
+      ),
+    ];
+
+    if (uniqueNames.length === 0) {
+      alert('분류할 항목이 없습니다. (이미 모두 분류됨)');
+      return;
+    }
+
+    setIsClassifying(true);
+    try {
+      const res = await fetch('/api/ft/classify-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_names: uniqueNames }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || '분류 실패');
+
+      alert(`${json.classified}개 품목 분류 완료`);
+
+      // 데이터 새로고침
+      if (selectedUserId) fetchItems(selectedUserId);
+    } catch (error) {
+      console.error('품목 분류 오류:', error);
+      alert(error instanceof Error ? error.message : '품목 분류 중 오류가 발생했습니다.');
+    } finally {
+      setIsClassifying(false);
+    }
+  }, [activeItems, selectedUserId, fetchItems]);
+
+  // ============================================================
+  // 18-1) 품목(customs_category) 인라인 편집
+  // ============================================================
+  const [categoryEditing, setCategoryEditing] = useState<{ id: string } | null>(null);
+  const [categoryValue, setCategoryValue] = useState('');
+
+  const startCategoryEdit = useCallback((id: string, currentValue: string | null) => {
+    setCategoryEditing({ id });
+    setCategoryValue(currentValue || '');
+  }, []);
+
+  const finishCategoryEdit = useCallback(async () => {
+    if (!categoryEditing) return;
+    const { id } = categoryEditing;
+    const trimmed = categoryValue.trim();
+
+    setCategoryEditing(null);
+    setCategoryValue('');
+
+    // 서버에 저장
+    try {
+      const res = await fetch('/api/ft/order-items', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, fields: { customs_category: trimmed || null } }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      // 로컬 상태 갱신 (새로고침 없이)
+      if (selectedUserId) fetchItems(selectedUserId);
+    } catch (error) {
+      console.error('품목 저장 오류:', error);
+    }
+  }, [categoryEditing, categoryValue, selectedUserId, fetchItems]);
+
+  const handleCategoryKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishCategoryEdit();
+      } else if (e.key === 'Escape') {
+        setCategoryEditing(null);
+        setCategoryValue('');
+      }
+    },
+    [finishCategoryEdit]
+  );
+
+  // ============================================================
+  // 19) 상품명 클릭 → 처리 로그 슬라이드 모달
   // ============================================================
   const [logModalItem, setLogModalItem] = useState<FtOrderItem | null>(null);
 
@@ -787,6 +875,15 @@ const ItemCheck: React.FC = () => {
               </div>
 
               <div className="v2-control-right">
+                {/* 반품 버튼 — 사용자 선택 시 바로 클릭 가능 */}
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  disabled={!selectedUserId || items.length === 0}
+                >
+                  반품
+                </button>
+
                 {/* 미입고 버튼 */}
                 <button className="v2-excel-upload-btn">미입고</button>
 
@@ -801,6 +898,39 @@ const ItemCheck: React.FC = () => {
                   입고{readyItems.length > 0 && ` (${readyItems.length})`}
                 </button>
               </div>
+            </div>
+
+            {/* ============================================================ */}
+            {/* 상태 필터 (PROCESSING / ALL) */}
+            {/* ============================================================ */}
+            <div className="v2-status-filter-bar">
+              <label
+                className={`v2-status-filter-radio ${statusFilter === 'PROCESSING' ? 'active' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="statusFilter"
+                  checked={statusFilter === 'PROCESSING'}
+                  onChange={() => handleStatusFilterChange('PROCESSING')}
+                />
+                PROCESSING
+              </label>
+              <label
+                className={`v2-status-filter-radio ${statusFilter === 'ALL' ? 'active' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="statusFilter"
+                  checked={statusFilter === 'ALL'}
+                  onChange={() => handleStatusFilterChange('ALL')}
+                />
+                ALL
+              </label>
+              {statusFilter === 'ALL' && (
+                <span className="v2-status-filter-count">
+                  전체 {filteredItems.length}건
+                </span>
+              )}
             </div>
 
             {/* ============================================================ */}
@@ -840,6 +970,12 @@ const ItemCheck: React.FC = () => {
               onCellKeyDown={handleCellKeyDown}
               onFinishEditingCell={finishEditingCell}
               onProductNameClick={handleProductNameClick}
+              categoryEditing={categoryEditing}
+              categoryValue={categoryValue}
+              onStartCategoryEdit={startCategoryEdit}
+              onCategoryValueChange={(e) => setCategoryValue(e.target.value)}
+              onCategoryKeyDown={handleCategoryKeyDown}
+              onFinishCategoryEdit={finishCategoryEdit}
             />
 
             {/* ============================================================ */}
@@ -897,12 +1033,29 @@ const ItemCheck: React.FC = () => {
             {/* 데이터 없음 안내 */}
             {!loading && selectedUserId && items.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                해당 사용자의 PROCESSING 상태 주문이 없습니다.
+                해당 사용자의 {statusFilter === 'ALL' ? '' : 'PROCESSING 상태 '}주문이 없습니다.
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {/* ============================================================ */}
+      {/* 취소 접수 모달                                               */}
+      {/* ============================================================ */}
+      <V2CancelModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        items={cancelItems}
+        selectedUserId={selectedUserId}
+        selectedOperator={selectedOperator}
+        onSaveComplete={() => {
+          setIsCancelModalOpen(false);
+          setSelectedRows(new Set());
+          refreshFulfillments();
+          if (selectedUserId) fetchItems(selectedUserId, statusFilter);
+        }}
+      />
 
       {/* ============================================================ */}
       {/* 처리준비 모달 */}
@@ -911,7 +1064,7 @@ const ItemCheck: React.FC = () => {
         isOpen={isReadyModalOpen}
         onClose={() => setIsReadyModalOpen(false)}
         readyItems={readyItems}
-        onSavePostgre={handleReadySavePostgre}
+        onSavePostgre={handleReadySave}
       />
 
       {/* ============================================================ */}

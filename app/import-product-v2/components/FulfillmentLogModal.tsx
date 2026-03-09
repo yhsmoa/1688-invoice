@@ -50,9 +50,15 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
   }, [item, rawFulfillments]);
 
   // ── 삭제 핸들러 ──
+  // CANCEL 타입: ft_cancel_details 연동 삭제 + ft_order_items status 복구 포함
   const handleDelete = useCallback(
-    async (fulfillmentId: string) => {
-      if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+    async (fulfillmentId: string, logType: string) => {
+      const isCancel = logType === 'CANCEL';
+      const confirmMsg = isCancel
+        ? '반품 접수 기록을 철회하시겠습니까?\n(ft_fulfillments + ft_cancel_details 동시 삭제, DONE 상태였다면 PROCESSING으로 복구됩니다)'
+        : '이 기록을 삭제하시겠습니까?';
+
+      if (!confirm(confirmMsg)) return;
       setDeletingId(fulfillmentId);
       try {
         await onDelete(fulfillmentId);
@@ -131,13 +137,13 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
                         minute: '2-digit',
                       })}
                     </td>
-                    {/* 🗑️ 삭제 버튼 */}
+                    {/* 🗑️ 삭제 버튼 (CANCEL: 철회, 기타: 단순 삭제) */}
                     <td style={{ textAlign: 'center' }}>
                       <button
                         className="v2-log-delete-btn"
-                        onClick={() => handleDelete(log.id)}
+                        onClick={() => handleDelete(log.id, log.type)}
                         disabled={deletingId === log.id}
-                        title="삭제"
+                        title={log.type === 'CANCEL' ? '반품 철회' : '삭제'}
                       >
                         {deletingId === log.id ? '...' : '🗑️'}
                       </button>

@@ -22,18 +22,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ── Step 1: deliveryInfo에서 order_id 목록 수집 ────────────
-    const { data: deliveryRows, error: deliveryError } = await supabase
-      .from('1688_invoice_deliveryInfo_check')
-      .select('order_id')
-      .eq('delivery_code', deliveryCode);
+    // ── Step 1: deliveryInfo에서 order_id 목록 수집 (pagination) ──
+    const PAGE = 1000;
+    const allDeliveryRows: { order_id: string }[] = [];
+    let from = 0;
+    while (true) {
+      const { data: batch, error: deliveryError } = await supabase
+        .from('1688_invoice_deliveryInfo_check')
+        .select('order_id')
+        .eq('delivery_code', deliveryCode)
+        .range(from, from + PAGE - 1);
 
-    if (deliveryError) throw deliveryError;
+      if (deliveryError) throw deliveryError;
+      if (!batch || batch.length === 0) break;
+      allDeliveryRows.push(...batch);
+      if (batch.length < PAGE) break;
+      from += PAGE;
+    }
 
     // 중복 제거 + null 제외
     const orderIds = [
       ...new Set(
-        (deliveryRows || [])
+        allDeliveryRows
           .map((r) => r.order_id)
           .filter((id): id is string => Boolean(id))
       ),
@@ -43,21 +53,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    // ── Step 2: ft_order_items에서 1688_order_id 기준 조회 ─────
-    const { data, error } = await supabase
-      .from('ft_order_items')
-      .select(
-        'id, order_no, item_no, item_name, option_name, order_qty, barcode,' +
-        ' china_option1, china_option2, price_cny, price_total_cny,' +
-        ' img_url, coupang_shipment_size, status, composition, recommanded_age,' +
-        ' set_total, set_seq, product_no, site_url, 1688_order_id'
-      )
-      .in('1688_order_id', orderIds)
-      .order('created_at', { ascending: false });
+    // ── Step 2: ft_order_items에서 1688_order_id 기준 조회 (batch + pagination) ──
+    const OI_SELECT =
+      'id, order_no, item_no, item_name, option_name, order_qty, barcode,' +
+      ' china_option1, china_option2, price_cny, price_total_cny,' +
+      ' img_url, coupang_shipment_size, status, composition, recommanded_age,' +
+      ' set_total, set_seq, product_no, site_url, 1688_order_id';
 
-    if (error) throw error;
+    const BATCH = 100;
+    const allItems: Record<string, unknown>[] = [];
 
-    return NextResponse.json({ success: true, data: data || [] });
+    for (let i = 0; i < orderIds.length; i += BATCH) {
+      const idsBatch = orderIds.slice(i, i + BATCH);
+      let oiFrom = 0;
+      while (true) {
+        const { data: oiBatch, error: oiError } = await supabase
+          .from('ft_order_items')
+          .select(OI_SELECT)
+          .in('1688_order_id', idsBatch)
+          .order('created_at', { ascending: false })
+          .range(oiFrom, oiFrom + PAGE - 1);
+
+        if (oiError) throw oiError;
+        if (!oiBatch || oiBatch.length === 0) break;
+        allItems.push(...oiBatch);
+        if (oiBatch.length < PAGE) break;
+        oiFrom += PAGE;
+      }
+    }
+
+    return NextResponse.json({ success: true, data: allItems });
 
   } catch (error) {
     console.error('배송번호 조회 오류:', error);

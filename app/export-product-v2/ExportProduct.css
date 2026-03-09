@@ -49,8 +49,24 @@
 .v2-export-title {
   color: #333;
   font-size: 2rem;
-  margin-bottom: 30px;
+  margin-bottom: 0;
   margin-top: 0;
+}
+
+/* ============================= */
+/* 헤더 행: 타이틀 왼쪽 | 컨트롤 오른쪽 */
+/* ============================= */
+.v2-export-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.v2-export-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ============================= */
@@ -547,7 +563,7 @@
   border-radius: 8px;
   padding: 0px;
   margin-bottom: 20px;
-  min-height: 300px;
+  height: 390px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1495,4 +1511,347 @@
 .v2-export-barcode-board.board-disabled {
   opacity: 0.45;
   pointer-events: auto;
+}
+
+/* ============================================================ */
+/* 박스 액션: 버튼 세로 배치                                    */
+/* ============================================================ */
+.v2-export-box-action-col {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.v2-export-box-action-btn {
+  flex: 1;
+  padding: 16px 16px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.v2-export-box-action-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.v2-export-box-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.v2-export-box-action-btn--save {
+  background-color: #a1a1aa;
+  color: white;
+  border-color: #a1a1aa;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.v2-export-box-action-btn--save.has-changes {
+  background-color: #18181b;
+  border-color: #18181b;
+  cursor: pointer;
+  opacity: 1;
+  animation: v2-pulse-success 2s infinite;
+}
+
+.v2-export-box-action-btn--save.has-changes:hover {
+  background-color: #27272a;
+}
+
+/* ============================================================ */
+/* 선택된 박스 표시 (보드 없이 텍스트만, 한줄)                  */
+/* ============================================================ */
+.v2-export-active-box-text {
+  font-size: 36px;
+  font-weight: 800;
+  color: #1e40af;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.v2-export-active-box-empty {
+  font-size: 18px;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+/* ============================================================ */
+/* 박스 생성 / 선택 모달 공통                                   */
+/* ============================================================ */
+.v2-export-box-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.v2-export-box-create-modal,
+.v2-export-box-select-modal {
+  background: white;
+  padding: 28px;
+  border-radius: 12px;
+  min-width: 380px;
+  max-width: 440px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.v2-export-box-create-modal h3,
+.v2-export-box-select-modal h3 {
+  margin: 0 0 18px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+/* ============================================================ */
+/* 박스 생성 모달 — 행 레이아웃                                 */
+/* ============================================================ */
+.v2-export-box-modal-row {
+  margin-bottom: 14px;
+}
+
+.v2-export-box-modal-row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.v2-export-box-modal-row input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 16px;
+  text-align: center;
+  box-sizing: border-box;
+  font-weight: 600;
+}
+
+.v2-export-box-modal-row input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* ── 타입 버튼: 배경 없이 테두리+폰트 색상만 ── */
+.v2-export-box-type-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.v2-export-box-type-btn {
+  flex: 1;
+  padding: 12px 0;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.v2-export-box-type-btn:hover {
+  border-color: #94a3b8;
+}
+
+/* A/B/C: 파란색 테두리 + 파란색 폰트 (배경 없음) */
+.v2-export-box-type-btn.active-A,
+.v2-export-box-type-btn.active-B,
+.v2-export-box-type-btn.active-C {
+  background: #fff;
+  color: #2563eb;
+  border-color: #2563eb;
+}
+
+/* P: 주황색 테두리 + 주황색 폰트 */
+.v2-export-box-type-btn.active-P {
+  background: #fff;
+  color: #ea580c;
+  border-color: #ea580c;
+}
+
+/* X: 검은색 테두리 + 검은색 폰트 */
+.v2-export-box-type-btn.active-X {
+  background: #fff;
+  color: #111827;
+  border-color: #111827;
+}
+
+/* ── 숫자패드 (3열: 123/456/789/C 0 초기화) ── */
+.v2-export-box-numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.v2-export-box-numpad button {
+  padding: 14px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.v2-export-box-numpad button:hover {
+  background: #e2e8f0;
+}
+
+.v2-export-box-numpad button:active {
+  background: #cbd5e1;
+  transform: scale(0.97);
+}
+
+/* ── 박스크기 가로x세로x높이 입력 ── */
+.v2-export-box-size-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.v2-export-box-size-inputs input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.v2-export-box-size-inputs input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.v2-export-box-size-x {
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+/* 사이즈 프리셋 버튼 */
+.v2-export-box-size-presets {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.v2-export-box-size-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.v2-export-box-size-btn:hover {
+  background: #e2e8f0;
+}
+
+.v2-export-box-size-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* 생성 확인 버튼 */
+.v2-export-box-create-confirm {
+  width: 100%;
+  padding: 14px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+
+.v2-export-box-create-confirm:hover {
+  background: #1d4ed8;
+}
+
+/* ============================================================ */
+/* 박스 선택 모달                                               */
+/* ============================================================ */
+.v2-export-box-select-modal {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.v2-export-box-select-type-section {
+  margin-bottom: 14px;
+}
+
+.v2-export-box-select-type-section h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+}
+
+.v2-export-box-select-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.v2-export-box-select-item {
+  padding: 10px 6px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.v2-export-box-select-item:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.v2-export-box-select-item small {
+  display: block;
+  color: #94a3b8;
+  font-weight: 400;
+  margin-top: 2px;
+  font-size: 11px;
 }

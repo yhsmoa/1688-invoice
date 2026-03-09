@@ -32,6 +32,12 @@ interface ItemTableProps {
   onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: () => void;
   onProductNameClick: (item: FtOrderItem) => void;
+  categoryEditing: { id: string } | null;
+  categoryValue: string;
+  onStartCategoryEdit: (id: string, currentValue: string | null) => void;
+  onCategoryValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCategoryKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFinishCategoryEdit: () => void;
 }
 
 const ItemTable: React.FC<ItemTableProps> = ({
@@ -55,6 +61,12 @@ const ItemTable: React.FC<ItemTableProps> = ({
   onCellKeyDown,
   onFinishEditingCell,
   onProductNameClick,
+  categoryEditing,
+  categoryValue,
+  onStartCategoryEdit,
+  onCategoryValueChange,
+  onCategoryKeyDown,
+  onFinishCategoryEdit,
 }) => {
   const { t } = useTranslation();
 
@@ -117,6 +129,12 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 onCellKeyDown={onCellKeyDown}
                 onFinishEditingCell={onFinishEditingCell}
                 onProductNameClick={onProductNameClick}
+                categoryEditing={categoryEditing}
+                categoryValue={categoryValue}
+                onStartCategoryEdit={onStartCategoryEdit}
+                onCategoryValueChange={onCategoryValueChange}
+                onCategoryKeyDown={onCategoryKeyDown}
+                onFinishCategoryEdit={onFinishCategoryEdit}
               />
             ))
           )}

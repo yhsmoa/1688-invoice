@@ -30,8 +30,11 @@ export interface FtOrderItem {
   set_total: number | null;
   set_seq: number | null;
   product_no: string | null;
+  product_id: string | null;
   site_url: string | null;
   '1688_order_id': string | null;
+  shipment_type: string | null;
+  customs_category: string | null;
 }
 
 // ============================================================
@@ -73,7 +76,7 @@ export function useFtOrderItems() {
   const [items, setItems] = useState<FtOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchItems = useCallback(async (userId: string) => {
+  const fetchItems = useCallback(async (userId: string, status: string = 'PROCESSING') => {
     if (!userId) {
       setItems([]);
       return;
@@ -81,7 +84,7 @@ export function useFtOrderItems() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/ft/order-items?user_id=${userId}&status=PROCESSING`);
+      const res = await fetch(`/api/ft/order-items?user_id=${userId}&status=${status}`);
       const json = await res.json();
       if (json.success) {
         setItems(json.data);
