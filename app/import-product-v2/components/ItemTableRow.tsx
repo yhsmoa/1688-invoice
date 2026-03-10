@@ -9,6 +9,8 @@ import type { FtOrderItem } from '../hooks/useFtData';
 interface ItemTableRowProps {
   item: FtOrderItem;
   isSelected: boolean;
+  /** 다음 행과 같은 product_id 그룹이면 true → border 제거 */
+  sameGroupAsNext: boolean;
   mousePosition: { x: number; y: number };
   editingCell: { id: string; field: string } | null;
   cellValue: string;
@@ -38,6 +40,7 @@ interface ItemTableRowProps {
 const ItemTableRow: React.FC<ItemTableRowProps> = ({
   item,
   isSelected,
+  sameGroupAsNext,
   mousePosition,
   editingCell,
   cellValue,
@@ -66,7 +69,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   const displayImportQty = importQtyValue != null ? importQtyValue : null;
 
   return (
-    <tr>
+    <tr className={sameGroupAsNext ? 'v2-same-product-group' : ''}>
       {/* 체크박스 */}
       <td>
         <input

@@ -341,6 +341,11 @@
   word-break: break-all;
 }
 
+/* 같은 product_id 그룹: 행 사이 border 제거 */
+.v2-item-table tr.v2-same-product-group td {
+  border-bottom: none;
+}
+
 /* 진행 > 입고인 행 노란색 처리 */
 .v2-item-table tr.missing-delivery-row {
   background-color: #fef3c7;

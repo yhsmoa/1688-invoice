@@ -110,10 +110,15 @@ const ItemTable: React.FC<ItemTableProps> = ({
               <td colSpan={13} className="empty-data">{t('importProduct.table.noData')}</td>
             </tr>
           ) : (
-            paginatedData.map((item) => (
+            paginatedData.map((item, idx) => (
               <ItemTableRow
                 key={item.id}
                 item={item}
+                sameGroupAsNext={
+                  idx < paginatedData.length - 1
+                  && !!item.product_id
+                  && item.product_id === paginatedData[idx + 1].product_id
+                }
                 isSelected={selectedRows.has(item.id)}
                 mousePosition={mousePosition}
                 editingCell={editingCell}
