@@ -12,7 +12,6 @@ import '../shipment-v2/ShipmentV2.css';
 // ============================================================
 interface ShipmentCompleteRow {
   id: string;
-  ids: string[];
   box_code: string;
   master_box_id: string | null;
   master_box_code: string | null;
@@ -49,15 +48,31 @@ const getBoxType = (code: string): string => {
 };
 
 // ============================================================
-// 유틸: 배지 색상 클래스
+// 유틸: 배지 색상 클래스 (박스타입 & 사이즈코드 공용)
 // ============================================================
-const getBadgeClass = (boxType: string): string => {
-  switch (boxType) {
+const getBadgeClass = (code: string): string => {
+  switch (code) {
     case 'A': case 'B': case 'C': return 'shipment-v2-badge--blue';
     case 'P': return 'shipment-v2-badge--orange';
     case 'X': return 'shipment-v2-badge--black';
     default:  return 'shipment-v2-badge--gray';
   }
+};
+
+// ============================================================
+// 유틸: 쉽먼트사이즈 정규화 (프론트용 — 이미 정규화 안 된 데이터 대응)
+// Small → A, Medium → B, Large → C, P-xxx → P, Direct → X
+// ============================================================
+const normalizeSizeDisplay = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const lower = raw.trim().toLowerCase();
+  if (lower === 'small') return 'A';
+  if (lower === 'medium') return 'B';
+  if (lower === 'large') return 'C';
+  if (lower.startsWith('p-')) return 'P';
+  if (lower === 'direct') return 'X';
+  if (['a', 'b', 'c', 'p', 'x'].includes(lower)) return lower.toUpperCase();
+  return raw;
 };
 
 // ============================================================
@@ -473,16 +488,8 @@ const ShipmentCompleteV2: React.FC = () => {
                 </select>
               </div>
 
-              {/* ── 오른쪽: 확정 상태 + 버튼들 ── */}
+              {/* ── 오른쪽: 버튼들 ── */}
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                {isConfirmed && (
-                  <span style={{
-                    background: '#22c55e', color: '#fff', padding: '4px 10px',
-                    borderRadius: '4px', fontSize: '12px', fontWeight: 600,
-                  }}>
-                    확정됨
-                  </span>
-                )}
                 {isConfirmed ? (
                   <button
                     className="shipment-v2-excel-btn"
@@ -605,8 +612,15 @@ const ShipmentCompleteV2: React.FC = () => {
                           {/* ── 품목 ── */}
                           <td className="shipment-v2-qty">{row.customs_category || '-'}</td>
 
-                          {/* ── 쉽먼트사이즈 ── */}
-                          <td className="shipment-v2-qty">{row.shipment_size || '-'}</td>
+                          {/* ── 쉽먼트사이즈 (배지) ── */}
+                          <td className="shipment-v2-qty">
+                            {(() => {
+                              const code = normalizeSizeDisplay(row.shipment_size);
+                              return code
+                                ? <span className={`shipment-v2-badge ${getBadgeClass(code)}`}>{code}</span>
+                                : '-';
+                            })()}
+                          </td>
 
                           {/* ── 입고 ── */}
                           <td className="shipment-v2-qty">{row.available_qty}</td>

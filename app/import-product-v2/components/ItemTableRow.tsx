@@ -155,7 +155,18 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
             <>
               <br />
               {item.barcode}
-              {item.coupang_shipment_size && ` | ${item.coupang_shipment_size}`}
+              {item.coupang_shipment_size && (() => {
+                const raw = item.coupang_shipment_size.trim().toLowerCase();
+                let code = '';
+                let colorClass = '';
+                if (raw === 'small') { code = 'A'; colorClass = 'size-badge--blue'; }
+                else if (raw === 'medium') { code = 'B'; colorClass = 'size-badge--blue'; }
+                else if (raw === 'large') { code = 'C'; colorClass = 'size-badge--blue'; }
+                else if (raw.startsWith('p-')) { code = 'P'; colorClass = 'size-badge--orange'; }
+                else if (raw === 'direct') { code = 'X'; colorClass = 'size-badge--black'; }
+                else { code = item.coupang_shipment_size; colorClass = 'size-badge--gray'; }
+                return <span className={`size-badge ${colorClass}`} style={{ marginLeft: '4px' }}>{code}</span>;
+              })()}
             </>
           )}
         </div>

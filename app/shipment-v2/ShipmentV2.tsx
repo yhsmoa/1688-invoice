@@ -12,7 +12,6 @@ import './ShipmentV2.css';
 // ============================================================
 interface ShipmentV2Row {
   id: string;
-  ids: string[];
   box_code: string;
   master_box_id: string | null;
   master_box_code: string | null;
@@ -47,15 +46,31 @@ const getBoxType = (code: string): string => {
 };
 
 // ============================================================
-// 유틸: 배지 색상 클래스
+// 유틸: 배지 색상 클래스 (박스타입 & 사이즈코드 공용)
 // ============================================================
-const getBadgeClass = (boxType: string): string => {
-  switch (boxType) {
+const getBadgeClass = (code: string): string => {
+  switch (code) {
     case 'A': case 'B': case 'C': return 'shipment-v2-badge--blue';
     case 'P': return 'shipment-v2-badge--orange';
     case 'X': return 'shipment-v2-badge--black';
     default:  return 'shipment-v2-badge--gray';
   }
+};
+
+// ============================================================
+// 유틸: 쉽먼트사이즈 정규화 (프론트용)
+// Small → A, Medium → B, Large → C, P-xxx → P, Direct → X
+// ============================================================
+const normalizeSizeDisplay = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const lower = raw.trim().toLowerCase();
+  if (lower === 'small') return 'A';
+  if (lower === 'medium') return 'B';
+  if (lower === 'large') return 'C';
+  if (lower.startsWith('p-')) return 'P';
+  if (lower === 'direct') return 'X';
+  if (['a', 'b', 'c', 'p', 'x'].includes(lower)) return lower.toUpperCase();
+  return raw;
 };
 
 // ============================================================
@@ -325,7 +340,7 @@ const ShipmentV2: React.FC = () => {
 
     const updates = Array.from(checkedIds).flatMap((idxStr) => {
       const row = rows[parseInt(idxStr, 10)];
-      return (row.ids || [row.id]).map((rid) => ({ id: rid, fields: { box_code: moveTarget.trim() } }));
+      return [{ id: row.id, fields: { box_code: moveTarget.trim() } }];
     });
 
     try {
@@ -440,9 +455,9 @@ const ShipmentV2: React.FC = () => {
 
     const shipmentNo = `SH${selectedUser.user_code}${shipInput}`;
 
-    // 체크된 행의 fulfillment_ids, box_codes 추출
+    // 체크된 행의 fulfillment id, box_codes 추출
     const checkedRows = Array.from(checkedIds).map((idxStr) => rows[parseInt(idxStr, 10)]);
-    const fulfillmentIds = checkedRows.flatMap((r) => r.ids || [r.id]);
+    const fulfillmentIds = checkedRows.map((r) => r.id);
     const boxCodes = [...new Set(checkedRows.map((r) => r.box_code).filter(Boolean))];
 
     setIsShipping(true);
@@ -721,8 +736,15 @@ const ShipmentV2: React.FC = () => {
                             {row.customs_category || '-'}
                           </td>
 
-                          {/* ── 쉽먼트사이즈 ── */}
-                          <td className="shipment-v2-qty">{row.shipment_size || '-'}</td>
+                          {/* ── 쉽먼트사이즈 (배지) ── */}
+                          <td className="shipment-v2-qty">
+                            {(() => {
+                              const code = normalizeSizeDisplay(row.shipment_size);
+                              return code
+                                ? <span className={`shipment-v2-badge ${getBadgeClass(code)}`}>{code}</span>
+                                : '-';
+                            })()}
+                          </td>
 
                           {/* ── 입고 ── */}
                           <td className="shipment-v2-qty">{row.available_qty}</td>

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       shipment_id,
       user_id,
       order_item_id: r.order_item_id || null,
-      fulfillment_ids: r.ids || [r.id],
+      fulfillment_id: r.id || null,
       box_code: r.box_code || null,
       master_box_code: r.master_box_code || null,
       shipment_no: r.shipment_no || null,

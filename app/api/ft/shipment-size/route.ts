@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-
-// ============================================================
-// shipment_size_legacy → 사이즈 코드 매핑
-// ============================================================
-const SIZE_MAP: Record<string, string> = {
-  Small: 'A',
-  Medium: 'B',
-  Large: 'C',
-};
+import { normalizeSizeCode } from '../../../../lib/sizeCode';
 
 // ============================================================
 // POST /api/ft/shipment-size
@@ -71,7 +63,7 @@ export async function POST(request: NextRequest) {
     const result: Record<string, string | null> = {};
     for (const cpItem of cpItems) {
       const legacy = optionSizeMap.get(cpItem.option_id) || null;
-      result[cpItem.barcode] = legacy ? (SIZE_MAP[legacy] || null) : null;
+      result[cpItem.barcode] = normalizeSizeCode(legacy);
     }
 
     return NextResponse.json({ success: true, data: result });

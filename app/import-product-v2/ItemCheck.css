@@ -435,6 +435,21 @@
   font-family: Arial, sans-serif !important;
 }
 
+/* 쉽먼트 사이즈 배지 (상품명 내 barcode 옆) */
+.size-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  vertical-align: middle;
+}
+.size-badge--blue   { background: #2563eb; }
+.size-badge--orange { background: #ea580c; }
+.size-badge--black  { background: #1e293b; }
+.size-badge--gray   { background: #9ca3af; }
+
 
 /* 진행, 입고, 취소, 출고 열을 개수, 비용 열 폰트 크기에 맞춤 (기본 16px) */
 .v2-item-table td:nth-child(8),  /* 진행 열 */

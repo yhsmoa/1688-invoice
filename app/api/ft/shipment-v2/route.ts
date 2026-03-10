@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-
-// ============================================================
-// shipment_size_legacy → 사이즈 코드 매핑
-// ============================================================
-const SIZE_MAP: Record<string, string> = {
-  Small: 'A',
-  Medium: 'B',
-  Large: 'C',
-};
+import { normalizeSizeCode } from '../../../../lib/sizeCode';
 
 // ============================================================
 // Supabase 기본 limit(1000) 우회 — 전체 데이터 조회 헬퍼
@@ -213,43 +205,13 @@ export async function GET(request: NextRequest) {
 
         for (const cp of cpItems) {
           const legacy = optSizeMap.get(cp.option_id) || null;
-          sizeMap[cp.barcode] = legacy ? (SIZE_MAP[legacy] || legacy) : null;
+          sizeMap[cp.barcode] = normalizeSizeCode(legacy);
         }
       }
     }
 
-    // ── 6) 같은 (order_item_id, box_code) 합산 후 조인 결과 구성 ──
-    // 동일 박스+동일 상품이 여러 행이면 quantity 합산, id는 배열로 보존
-    const mergeKey = (f: typeof fulfillments[0]) => `${f.order_item_id}||${f.box_code ?? ''}`;
-    const mergedMap = new Map<string, {
-      ids: string[];
-      box_code: string | null;
-      order_item_id: string;
-      quantity: number;
-      product_no: string | null;
-      shipment_no: string | null;
-    }>();
-
-    for (const ff of fulfillments) {
-      const key = mergeKey(ff);
-      const existing = mergedMap.get(key);
-      if (existing) {
-        existing.ids.push(ff.id);
-        existing.quantity += ff.quantity;
-        if (!existing.shipment_no && ff.shipment_no) existing.shipment_no = ff.shipment_no;
-      } else {
-        mergedMap.set(key, {
-          ids: [ff.id],
-          box_code: ff.box_code,
-          order_item_id: ff.order_item_id,
-          quantity: ff.quantity,
-          product_no: ff.product_no,
-          shipment_no: ff.shipment_no,
-        });
-      }
-    }
-
-    const result = [...mergedMap.values()].map((ff) => {
+    // ── 6) 개별 fulfillment 행 + 조인 결과 구성 (병합 없음, 1:1) ──
+    const result = fulfillments.map((ff) => {
       const oi = orderItems[ff.order_item_id];
       const barcode = oi?.barcode || null;
       const boxInfo = ff.box_code ? boxInfoMap.get(ff.box_code) : null;
@@ -265,8 +227,7 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        id: ff.ids[0],
-        ids: ff.ids,
+        id: ff.id,
         box_code: ff.box_code,
         master_box_id: boxInfo?.master_box_id || null,
         master_box_code: boxInfo?.master_box_code || null,
