@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
         if (oiError) throw oiError;
         if (!oiBatch || oiBatch.length === 0) break;
-        allItems.push(...oiBatch);
+        allItems.push(...(oiBatch as unknown as Record<string, unknown>[]));
         if (oiBatch.length < PAGE) break;
         oiFrom += PAGE;
       }
