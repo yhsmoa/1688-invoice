@@ -155,10 +155,10 @@ export async function GET(request: NextRequest) {
 
     // ── 3) ft_fulfillments: 입고 수량 + 전체 PACKED 수량 계산용 이력 조회 ──
     const allFf = await batchIn<{
-      order_item_id: string; quantity: number; type: string; shipment: boolean;
-    }>('ft_fulfillments', 'order_item_id, quantity, type, shipment', 'order_item_id', orderItemIds);
+      order_item_id: string; quantity: number; type: string; shipment_id: string | null;
+    }>('ft_fulfillments', 'order_item_id, quantity, type, shipment_id', 'order_item_id', orderItemIds);
 
-    // 입고 = ARRIVAL - CANCEL - (shipment=true인 PACKED)
+    // 입고 = ARRIVAL - CANCEL - (PACKED where shipment_id IS NOT NULL)
     const availableMap = new Map<string, number>();
     // 전체 PACKED 수량 (box_code 무관, order_item_id 기준)
     const totalPackedMap = new Map<string, number>();
@@ -169,7 +169,8 @@ export async function GET(request: NextRequest) {
       } else if (f.type === 'CANCEL') {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
-      if (f.shipment === true) {
+      // 이미 쉽먼트에 배정된 PACKED → 입고에서 차감
+      if (f.type === 'PACKED' && f.shipment_id != null) {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
       if (f.type === 'PACKED') {

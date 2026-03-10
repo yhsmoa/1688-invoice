@@ -70,6 +70,10 @@ const ShipmentCompleteV2: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
+  // ── 확정 상태 ──
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
   // ── 쉽먼트 목록 (ft_shipments) ──
   const [shipments, setShipments] = useState<ShipmentInfo[]>([]);
 
@@ -98,21 +102,105 @@ const ShipmentCompleteV2: React.FC = () => {
 
   // ============================================================
   // 테이블 데이터 로딩 (shipment_id 기준)
+  //   1) 먼저 ft_shipment_details(확정 데이터) 조회
+  //   2) 없으면 ft_fulfillments 실시간 계산
   // ============================================================
   const fetchData = useCallback(async (userId: string, shipmentId: string) => {
-    if (!userId || !shipmentId) { setRows([]); return; }
+    if (!userId || !shipmentId) { setRows([]); setIsConfirmed(false); return; }
     setLoading(true);
     try {
+      // 1) 확정 데이터 먼저 시도
+      const detailRes = await fetch(`/api/ft/shipment-details?user_id=${userId}&shipment_id=${shipmentId}`);
+      const detailJson = await detailRes.json();
+
+      if (detailJson.success && detailJson.confirmed && detailJson.data?.length > 0) {
+        setRows(detailJson.data);
+        setIsConfirmed(true);
+        return;
+      }
+
+      // 2) 확정 데이터 없으면 실시간 계산
+      setIsConfirmed(false);
       const res = await fetch(`/api/ft/shipment-v2?user_id=${userId}&shipment_id=${shipmentId}`);
       const json = await res.json();
       setRows(json.success ? (json.data || []) : []);
     } catch (err) {
       console.error('shipment-complete-v2 fetch error:', err);
       setRows([]);
+      setIsConfirmed(false);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // ============================================================
+  // [확정] — ft_shipment_details에 스냅샷 저장
+  // ============================================================
+  const handleConfirm = useCallback(async () => {
+    if (!selectedUserId || !selectedShipmentId || rows.length === 0) return;
+    if (!window.confirm(`현재 ${rows.length}건의 데이터를 확정 저장하시겠습니까?`)) return;
+
+    setConfirmLoading(true);
+    try {
+      const res = await fetch('/api/ft/shipment-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipment_id: selectedShipmentId,
+          user_id: selectedUserId,
+          rows,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`${json.count}건 확정 저장 완료`);
+        setIsConfirmed(true);
+      } else {
+        alert(json.error || '확정 저장 실패');
+      }
+    } catch (err) {
+      console.error('confirm error:', err);
+      alert('확정 저장 중 오류가 발생했습니다.');
+    } finally {
+      setConfirmLoading(false);
+    }
+  }, [selectedUserId, selectedShipmentId, rows]);
+
+  // ============================================================
+  // [확정 취소] — ft_shipment_details 삭제 → 실시간 재조회
+  // ============================================================
+  const handleUnconfirm = useCallback(async () => {
+    if (!selectedUserId || !selectedShipmentId) return;
+    if (!window.confirm('확정을 취소하시겠습니까? 확정 데이터가 삭제되고 실시간 계산으로 전환됩니다.')) return;
+
+    setConfirmLoading(true);
+    try {
+      const res = await fetch('/api/ft/shipment-details', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipment_id: selectedShipmentId,
+          user_id: selectedUserId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('확정 취소 완료. 실시간 데이터를 다시 조회합니다.');
+        setIsConfirmed(false);
+        // 실시간 재조회
+        const liveRes = await fetch(`/api/ft/shipment-v2?user_id=${selectedUserId}&shipment_id=${selectedShipmentId}`);
+        const liveJson = await liveRes.json();
+        setRows(liveJson.success ? (liveJson.data || []) : []);
+      } else {
+        alert(json.error || '확정 취소 실패');
+      }
+    } catch (err) {
+      console.error('unconfirm error:', err);
+      alert('확정 취소 중 오류가 발생했습니다.');
+    } finally {
+      setConfirmLoading(false);
+    }
+  }, [selectedUserId, selectedShipmentId]);
 
   // ============================================================
   // 드롭다운 파생 데이터
@@ -161,6 +249,7 @@ const ShipmentCompleteV2: React.FC = () => {
     setSelectedShipmentId('');
     setRows([]);
     setCheckedIds(new Set());
+    setIsConfirmed(false);
     fetchShipments(userId);
   };
 
@@ -383,14 +472,43 @@ const ShipmentCompleteV2: React.FC = () => {
                 </select>
               </div>
 
-              {/* ── 오른쪽: 엑셀 ── */}
-              <button
-                className="shipment-v2-excel-btn"
-                onClick={handleExcelDownload}
-                disabled={rows.length === 0}
-              >
-                엑셀
-              </button>
+              {/* ── 오른쪽: 확정 상태 + 버튼들 ── */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {isConfirmed && (
+                  <span style={{
+                    background: '#22c55e', color: '#fff', padding: '4px 10px',
+                    borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                  }}>
+                    확정됨
+                  </span>
+                )}
+                {isConfirmed ? (
+                  <button
+                    className="shipment-v2-excel-btn"
+                    style={{ background: '#ef4444' }}
+                    onClick={handleUnconfirm}
+                    disabled={confirmLoading}
+                  >
+                    {confirmLoading ? '처리중...' : '확정 취소'}
+                  </button>
+                ) : (
+                  <button
+                    className="shipment-v2-excel-btn"
+                    style={{ background: '#2563eb' }}
+                    onClick={handleConfirm}
+                    disabled={rows.length === 0 || confirmLoading}
+                  >
+                    {confirmLoading ? '처리중...' : '확정'}
+                  </button>
+                )}
+                <button
+                  className="shipment-v2-excel-btn"
+                  onClick={handleExcelDownload}
+                  disabled={rows.length === 0}
+                >
+                  엑셀
+                </button>
+              </div>
             </div>
 
             {/* ── 테이블 ── */}
