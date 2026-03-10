@@ -84,36 +84,6 @@ const LeftsideMenu: React.FC = () => {
             </Link>
           </li>
           <li className="menu-item">
-            <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
-              <span className="menu-icon">📦</span>
-              <span className="menu-text">상품입고 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
-              <span className="menu-icon">📤</span>
-              <span className="menu-text">상품출고 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
-              <span className="menu-icon">🚚</span>
-              <span className="menu-text">쉽먼트 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
-              <span className="menu-icon">🚢</span>
-              <span className="menu-text">출고완료 V2</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
-              <span className="menu-icon">📦</span>
-              <span className="menu-text">반품접수 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
             <div className="menu-link" onClick={toggleInvoiceMenu}>
               <span className="menu-icon">📄</span>
               <span className="menu-text">영수증 저장</span>
@@ -191,6 +161,36 @@ const LeftsideMenu: React.FC = () => {
                 </li>
               </ul>
             )}
+          </li>
+          <li className="menu-item">
+            <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
+              <span className="menu-icon">📦</span>
+              <span className="menu-text">상품입고 V2 😈</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
+              <span className="menu-icon">📤</span>
+              <span className="menu-text">상품출고 V2 😈</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
+              <span className="menu-icon">🚚</span>
+              <span className="menu-text">쉽먼트 V2 😈</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
+              <span className="menu-icon">🚢</span>
+              <span className="menu-text">출고완료 V2</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
+              <span className="menu-icon">📦</span>
+              <span className="menu-text">반품접수 V2 😈</span>
+            </Link>
           </li>
         </ul>
       </nav>
