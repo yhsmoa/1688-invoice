@@ -159,8 +159,7 @@ export async function POST(request: NextRequest) {
       item.available_qty  // G열: 입고개수
     ]);
 
-    console.log(`구글 시트에 데이터 저장: ${range}`);
-    console.log('저장할 데이터:', sheetData);
+    console.log(`구글 시트에 데이터 저장: ${range} (${sheetData.length}건)`);
 
     // 5. 구글 시트에 새 데이터 입력
     const updateResponse = await sheets.spreadsheets.values.update({
@@ -172,7 +171,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('구글 시트 저장 완료:', updateResponse.data);
+    console.log(`구글 시트 저장 완료: ${scan_data.length}건`);
 
     const response = {
       success: true,

@@ -12,11 +12,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('쉽먼트 저장 요청:', shipmentData);
+    console.log(`쉽먼트 저장 요청: ${shipmentData.length}건`);
 
     // 각 쉽먼트 항목 처리 (upsert 방식으로 중복 방지)
     const upsertPromises = shipmentData.map(async (item: any) => {
-      console.log('저장할 개별 항목:', item);
+      // 개별 항목 upsert
       
       // Box-barcode 조합으로 고유 ID 생성
       const uniqueId = `${item.box}-${item.barcode}`;
