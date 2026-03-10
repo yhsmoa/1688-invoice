@@ -88,8 +88,7 @@ const ShipmentV2: React.FC = () => {
   const [shipInput, setShipInput] = useState('');
   const [isShipping, setIsShipping] = useState(false);
 
-  // ── 확정 처리 ──
-  const [isConfirming, setIsConfirming] = useState(false);
+
 
   // ── 합배송 모달 ──
   const [showMergeModal, setShowMergeModal] = useState(false);
@@ -521,37 +520,7 @@ const ShipmentV2: React.FC = () => {
     }
   }, [rows, selectedUserId, fetchData]);
 
-  // ============================================================
-  // 확정 처리 — PROCESSING → DONE (완료 조건 충족 시)
-  // ============================================================
-  const handleConfirmDone = useCallback(async () => {
-    if (!selectedUserId) {
-      alert('사용자를 먼저 선택해주세요.');
-      return;
-    }
 
-    if (!confirm('PROCESSING 항목 중 출고 완료된 건을 DONE 처리하시겠습니까?')) return;
-
-    setIsConfirming(true);
-    try {
-      const res = await fetch('/api/ft/confirm-done', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId }),
-      });
-      const json = await res.json();
-
-      if (json.success) {
-        alert(json.message);
-      } else {
-        alert('확정 실패: ' + (json.error || ''));
-      }
-    } catch {
-      alert('확정 처리 중 오류가 발생했습니다.');
-    } finally {
-      setIsConfirming(false);
-    }
-  }, [selectedUserId]);
 
   // ============================================================
   // box_code 기준 그룹핑 (rowSpan 계산)
@@ -642,13 +611,6 @@ const ShipmentV2: React.FC = () => {
                 disabled={checkedIds.size === 0}
               >
                 출고
-              </button>
-              <button
-                className="shipment-v2-confirm-btn"
-                onClick={handleConfirmDone}
-                disabled={isConfirming || !selectedUserId}
-              >
-                {isConfirming ? '처리 중...' : '확정'}
               </button>
             </div>
 

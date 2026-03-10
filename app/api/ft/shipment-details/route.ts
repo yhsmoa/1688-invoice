@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { confirmDoneForUser, revertDoneForShipment } from '../../../../lib/confirmDone';
 
 // ============================================================
 // GET /api/ft/shipment-details?shipment_id=X&user_id=X
@@ -124,9 +125,12 @@ export async function POST(request: NextRequest) {
       insertCount += batch.length;
     }
 
-    console.log(`shipment-details 확정 저장: ${insertCount}건 (shipment_id=${shipment_id})`);
+    // ── confirm-done: ft_order_items PROCESSING → DONE 전환 ──
+    const { updated: doneCount } = await confirmDoneForUser(user_id);
 
-    return NextResponse.json({ success: true, count: insertCount });
+    console.log(`shipment-details 확정 저장: ${insertCount}건, DONE 처리: ${doneCount}건 (shipment_id=${shipment_id})`);
+
+    return NextResponse.json({ success: true, count: insertCount, doneCount });
   } catch (error) {
     console.error('shipment-details POST 오류:', error);
     return NextResponse.json(
@@ -157,6 +161,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // ── 1) ft_shipment_details 삭제 ──
     const { error } = await supabase
       .from('ft_shipment_details')
       .delete()
@@ -165,9 +170,12 @@ export async function DELETE(request: NextRequest) {
 
     if (error) throw error;
 
-    console.log(`shipment-details 확정 취소: shipment_id=${shipment_id}`);
+    // ── 2) ft_order_items DONE → PROCESSING 복귀 + 재계산 ──
+    const { reverted } = await revertDoneForShipment(shipment_id, user_id);
 
-    return NextResponse.json({ success: true });
+    console.log(`shipment-details 확정 취소: shipment_id=${shipment_id}, 복귀: ${reverted}건`);
+
+    return NextResponse.json({ success: true, reverted });
   } catch (error) {
     console.error('shipment-details DELETE 오류:', error);
     return NextResponse.json(

@@ -97,27 +97,6 @@
   cursor: not-allowed;
 }
 
-/* ── 확정 버튼 ── */
-.shipment-v2-confirm-btn {
-  padding: 6px 18px;
-  background-color: #16a34a;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.shipment-v2-confirm-btn:hover:not(:disabled) {
-  background-color: #15803d;
-}
-
-.shipment-v2-confirm-btn:disabled {
-  background-color: #94a3b8;
-  cursor: not-allowed;
-}
 
 /* ── 출고 버튼 ── */
 .shipment-v2-ship-btn {

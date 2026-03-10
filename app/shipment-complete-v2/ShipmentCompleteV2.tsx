@@ -153,7 +153,8 @@ const ShipmentCompleteV2: React.FC = () => {
       });
       const json = await res.json();
       if (json.success) {
-        alert(`${json.count}건 확정 저장 완료`);
+        const doneMsg = json.doneCount > 0 ? ` (${json.doneCount}건 DONE 처리)` : '';
+        alert(`${json.count}건 확정 저장 완료${doneMsg}`);
         setIsConfirmed(true);
       } else {
         alert(json.error || '확정 저장 실패');
