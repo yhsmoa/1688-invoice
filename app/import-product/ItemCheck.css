@@ -968,6 +968,15 @@
   background-color: #2c5282;
 }
 
+/* 바코드 생성 sheet 버튼 — 회색 */
+.barcode-btn.barcode-btn-gray {
+  background-color: #9ca3af;
+}
+
+.barcode-btn.barcode-btn-gray:hover {
+  background-color: #6b7280;
+}
+
 .barcode-btn-db {
   background-color: #000000;
   color: white;

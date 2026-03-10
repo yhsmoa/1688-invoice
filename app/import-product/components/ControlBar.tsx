@@ -37,14 +37,14 @@ const ControlBar: React.FC<ControlBarProps> = ({
         </select>
       </div>
       <div className="right-controls">
-        <button className="barcode-btn" onClick={onBarcodeClick}>
+        <button className="barcode-btn" onClick={onLabelClick}>
+          postgre 라벨
+        </button>
+        <button className="barcode-btn barcode-btn-gray" onClick={onBarcodeClick}>
           {t('importProduct.generateBarcode')}
         </button>
         <button className="barcode-btn-db" onClick={onBarcodeDBClick}>
           {t('importProduct.generateBarcodeDB')}
-        </button>
-        <button className="barcode-btn" onClick={onLabelClick}>
-          postgre 라벨
         </button>
         <button
           className={`process-ready-btn ${readyItemsCount > 0 ? 'has-items' : ''}`}
