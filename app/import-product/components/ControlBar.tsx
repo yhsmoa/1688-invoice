@@ -10,6 +10,7 @@ interface ControlBarProps {
   onProcessReadyClick: () => void;
   onBarcodeClick: () => void;
   onBarcodeDBClick: () => void;
+  onLabelClick: () => void;
 }
 
 const ControlBar: React.FC<ControlBarProps> = ({
@@ -18,7 +19,8 @@ const ControlBar: React.FC<ControlBarProps> = ({
   onSortTypeChange,
   onProcessReadyClick,
   onBarcodeClick,
-  onBarcodeDBClick
+  onBarcodeDBClick,
+  onLabelClick
 }) => {
   const { t } = useTranslation();
 
@@ -40,6 +42,9 @@ const ControlBar: React.FC<ControlBarProps> = ({
         </button>
         <button className="barcode-btn-db" onClick={onBarcodeDBClick}>
           {t('importProduct.generateBarcodeDB')}
+        </button>
+        <button className="barcode-btn" onClick={onLabelClick}>
+          postgre 라벨
         </button>
         <button
           className={`process-ready-btn ${readyItemsCount > 0 ? 'has-items' : ''}`}

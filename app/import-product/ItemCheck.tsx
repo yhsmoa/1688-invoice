@@ -28,6 +28,10 @@ import { hasValueChanged } from './utils/dataComparison';
 import ItemTable from './components/ItemTable';
 import ControlBar from './components/ControlBar';
 import SearchSection from './components/SearchSection';
+import LabelModal from './components/LabelModal';
+
+// Import label save utility (Supabase)
+import { saveLabelDataV1 } from './utils/saveLabelDataV1';
 
 // 디바운스 함수 구현
 const debounce = <F extends (...args: any[]) => any>(
@@ -146,6 +150,7 @@ const ItemCheck: React.FC = () => {
   const [isProcessReadyModalOpen, setIsProcessReadyModalOpen] = useState(false);
   const [originalFieldValues, setOriginalFieldValues] = useState<{[itemId: string]: {import_qty: number | null, cancel_qty: number | null, note: string | null}}>({});
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
   const excelFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -599,6 +604,24 @@ const ItemCheck: React.FC = () => {
   // 마우스 위치 추적 함수
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  // ============================================================
+  // [postgre 라벨] 버튼 클릭 핸들러 — V2 [라벨] 버튼과 동일
+  // ============================================================
+  const handleLabelClick = () => {
+    if (selectedRows.size === 0) {
+      alert('항목을 선택해주세요.');
+      return;
+    }
+    const withBarcode = filteredData.filter(
+      (item) => selectedRows.has(item.id) && item.barcode
+    );
+    if (withBarcode.length === 0) {
+      alert('바코드가 있는 선택된 항목이 없습니다.');
+      return;
+    }
+    setIsLabelModalOpen(true);
   };
 
   // 바코드 버튼 클릭 핸들러 (Sheet)
@@ -1097,10 +1120,9 @@ const ItemCheck: React.FC = () => {
 
 
   // ============================================================
-  // PostgreSQL fashion_label 테이블 저장 핸들러
+  // 수량 다이얼로그 → Supabase 라벨 저장 (saveLabelDataV1 사용)
   // ============================================================
   const handleSaveToPostgre = async () => {
-    // 필수 값 검증
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
@@ -1113,55 +1135,39 @@ const ItemCheck: React.FC = () => {
     setIsSavingLabel(true);
 
     try {
-      // 다이얼로그 아이템 데이터 구성
-      const items = Object.entries(productQuantities).map(([id, quantity]) => {
-        const item = filteredData.find(d => d.id === id);
-        if (!item || !item.barcode) return null;
+      // 다이얼로그에서 선택된 아이템 + 수량 구성
+      const labelItems = Object.entries(productQuantities)
+        .map(([id, qty]) => {
+          const item = filteredData.find(d => d.id === id);
+          return item && item.barcode ? { item, qty } : null;
+        })
+        .filter((e): e is { item: ItemData; qty: number } => e !== null);
 
-        return {
-          brand: selectedCoupangUser,
-          item_name: `${item.product_name || ''}${item.product_name && item.product_name_sub ? ', ' : ''}${item.product_name_sub || ''}`.trim(),
-          barcode: item.barcode,
-          qty: quantity,
-          order_no: item.order_number || '',
-          composition: item.fabric_blend || null,
-          recommanded_age: item.recommended_age || null,
-          shipment_size: item.product_size || null,
-          user_id: OPERATOR_ID_MAP[selectedOperator] || null,
-        };
-      }).filter(Boolean);
-
-      if (items.length === 0) {
+      if (labelItems.length === 0) {
         alert('저장할 데이터가 없습니다.');
         setIsSavingLabel(false);
         return;
       }
 
-      console.log('fashion_label 저장 요청:', items);
-
-      // API 호출 (user_id를 최상위에 전달하여 기존 데이터 삭제 기준으로 사용)
-      const operatorId = OPERATOR_ID_MAP[selectedOperator] || null;
-      const response = await fetch('/api/save-fashion-label', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, user_id: operatorId }),
+      const operatorId = OPERATOR_ID_MAP[selectedOperator];
+      const result = await saveLabelDataV1({
+        items: labelItems,
+        brand: selectedCoupangUser,
+        operatorNo: operatorId,
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        alert(`PostgreSQL 저장 완료: ${result.count}개`);
+      if (result.success) {
+        alert(`Supabase 저장 완료: ${result.count}개`);
         setShowQuantityDialog(false);
         setProductQuantities({});
         setSelectedRows(new Set());
         setLabelFormulaType('');
       } else {
-        console.error('fashion_label 저장 실패:', result);
-        alert(`저장 실패: ${result.error || '알 수 없는 오류'}`);
+        alert(`저장 실패: ${result.error}`);
       }
     } catch (error) {
-      console.error('fashion_label 저장 오류:', error);
-      alert('PostgreSQL 저장 중 오류가 발생했습니다.');
+      console.error('라벨 저장 오류:', error);
+      alert('Supabase 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSavingLabel(false);
     }
@@ -1225,39 +1231,31 @@ const ItemCheck: React.FC = () => {
       // 1. 구글 시트 저장 (기존 로직 유지)
       await handleSaveClick();
 
-      // 2. PostgreSQL fashion_label 저장 (readyItems 기반)
+      // 2. Supabase 라벨 저장 (readyItems 기반, saveLabelDataV1 사용)
       const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
 
       if (itemsWithBarcode.length > 0) {
-        const items = itemsWithBarcode.map(item => {
-          // filteredData에서 원본 ItemData 조회 (fabric_blend, product_size, recommended_age)
-          const originalItem = itemData.find(d => d.id === item.id);
+        // readyItems → ItemData 원본 조회 후 saveLabelDataV1 호출
+        const labelItems = itemsWithBarcode
+          .map(item => {
+            const originalItem = itemData.find(d => d.id === item.id);
+            return originalItem ? { item: originalItem, qty: item.barcode_qty } : null;
+          })
+          .filter((e): e is { item: ItemData; qty: number } => e !== null);
 
-          return {
+        if (labelItems.length > 0) {
+          const operatorId = OPERATOR_ID_MAP[selectedOperator];
+          const result = await saveLabelDataV1({
+            items: labelItems,
             brand: selectedCoupangUser,
-            item_name: item.product_name || '',
-            barcode: item.barcode,
-            qty: item.barcode_qty,
-            order_no: item.order_number || '',
-            composition: originalItem?.fabric_blend || null,
-            recommanded_age: originalItem?.recommended_age || null,
-            shipment_size: originalItem?.product_size || null,
-            user_id: OPERATOR_ID_MAP[selectedOperator] || null,
-          };
-        });
+            operatorNo: operatorId,
+          });
 
-        const operatorId = OPERATOR_ID_MAP[selectedOperator] || null;
-        const response = await fetch('/api/save-fashion-label', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items, user_id: operatorId }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'PostgreSQL 저장 실패');
+          if (!result.success) {
+            throw new Error(result.error || 'Supabase 라벨 저장 실패');
+          }
+          console.log(`Supabase 라벨 저장 완료: ${result.count}개`);
         }
-        console.log(`PostgreSQL 저장 완료: ${result.count}개`);
       }
 
       // 3. 처리준비 목록 초기화 + 모달 닫기
@@ -1265,10 +1263,10 @@ const ItemCheck: React.FC = () => {
       setModifiedData({});
       setIsProcessReadyModalOpen(false);
 
-      alert('PostgreSQL 저장이 완료되었습니다.');
+      alert('Supabase 라벨 저장이 완료되었습니다.');
       console.log('=== handleReadySavePostgre 완료 ===');
     } catch (error) {
-      console.error('처리준비 PostgreSQL 저장 오류:', error);
+      console.error('처리준비 Supabase 저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
     }
   };
@@ -1752,6 +1750,7 @@ const ItemCheck: React.FC = () => {
               onProcessReadyClick={() => setIsProcessReadyModalOpen(true)}
               onBarcodeClick={handleBarcodeClick}
               onBarcodeDBClick={handleBarcodeDBClick}
+              onLabelClick={handleLabelClick}
             />
 
             {/* 검색 영역 */}
@@ -1953,6 +1952,18 @@ const ItemCheck: React.FC = () => {
         onBarcodeQtyChange={handleBarcodeQtyChange}
         onSave={handleReadySave}
         onSavePostgre={handleReadySavePostgre}
+      />
+
+      {/* postgre 라벨 모달 — V2 [라벨] 버튼과 동일 (Supabase 저장) */}
+      <LabelModal
+        isOpen={isLabelModalOpen}
+        onClose={() => setIsLabelModalOpen(false)}
+        items={filteredData.filter(item => selectedRows.has(item.id) && item.barcode)}
+        brand={selectedCoupangUser || null}
+        operatorId={selectedOperator ? OPERATOR_ID_MAP[selectedOperator] : null}
+        onSaveComplete={() => {
+          setSelectedRows(new Set());
+        }}
       />
     </div>
   );
