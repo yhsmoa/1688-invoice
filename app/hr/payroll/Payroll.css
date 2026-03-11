@@ -342,6 +342,12 @@
   color: #1d4ed8;
 }
 
+/* 빈 셀 hover: 연한 초록으로 구분 */
+.pr-td-empty:hover {
+  background: #f0fdf4 !important;
+  color: #15803d;
+}
+
 /* h(근무시간) 셀 */
 .pr-td-h {
   padding: 3px 8px;

@@ -27,13 +27,15 @@ interface AttendanceRecord {
   total_minutes: number | null;
 }
 
-/** 시간 수정/삭제 모달 상태 */
+/** 시간 수정/삭제/추가 모달 상태 */
 interface TimeModal {
-  recordId: string;
+  recordId: string;      // 수정 시 사용 (추가 시 빈 문자열)
+  employeeId: string;    // 추가 시 사용
   employeeName: string;
   workDate: string;      // YYYY-MM-DD
   clockIn: string;       // HH:MM (로컬)
   clockOut: string;      // HH:MM (로컬)
+  isCreate: boolean;     // true = 신규 추가 / false = 수정
   isSaving: boolean;
   isDeleting: boolean;
   error: string;
@@ -259,46 +261,95 @@ const Payroll: React.FC = () => {
   // ⑨ 시간 수정/삭제 모달 핸들러
   // ============================================================
 
-  /** 시간 셀 클릭 → 모달 열기 */
+  /** 기존 기록 셀 클릭 → 수정 모달 열기 */
   const openModal = (emp: Employee, rec: AttendanceRecord) => {
     setModal({
       recordId:     rec.id,
+      employeeId:   emp.id,
       employeeName: emp.name_kr || emp.name || '-',
       workDate:     rec.work_date,
       clockIn:      toLocalHHMM(rec.clock_in),
       clockOut:     toLocalHHMM(rec.clock_out),
+      isCreate:     false,
       isSaving:     false,
       isDeleting:   false,
       error:        '',
     });
   };
 
-  /** 저장: 출퇴근 시간 수정 → PUT /api/hr/attendance/update-time */
+  /** 빈 셀 클릭 → 신규 추가 모달 열기 */
+  const openCreateModal = (emp: Employee, day: number) => {
+    const workDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setModal({
+      recordId:     '',
+      employeeId:   emp.id,
+      employeeName: emp.name_kr || emp.name || '-',
+      workDate,
+      clockIn:      '',
+      clockOut:     '',
+      isCreate:     true,
+      isSaving:     false,
+      isDeleting:   false,
+      error:        '',
+    });
+  };
+
+  /** 저장: 신규 추가(isCreate) or 수정 분기 */
   const handleModalSave = async () => {
     if (!modal || modal.isSaving || modal.isDeleting) return;
 
-    // clockOut이 입력된 경우에만 대소 비교 검증 (미퇴근 직원은 clockOut이 빈 값)
+    // 출근 시간 필수 검증
+    if (!modal.clockIn) {
+      setModal((prev) => prev ? { ...prev, error: '출근 시간을 입력해주세요.' } : null);
+      return;
+    }
+
+    // clockOut이 입력된 경우 대소 비교 검증
     if (modal.clockOut && modalPreviewMins === null) {
       setModal((prev) => prev ? { ...prev, error: '퇴근 시간이 출근 시간보다 늦어야 합니다.' } : null);
       return;
     }
 
     setModal((prev) => prev ? { ...prev, isSaving: true, error: '' } : null);
+
     try {
-      const res    = await fetch('/api/hr/attendance/update-time', {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          record_id:     modal.recordId,
-          clock_in_iso:  toISO(modal.workDate, modal.clockIn),
-          // clockOut이 없으면 null 전달 → API에서 clock_out 유지
-          clock_out_iso: modal.clockOut ? toISO(modal.workDate, modal.clockOut) : null,
-        }),
-      });
+      let res: Response;
+
+      if (modal.isCreate) {
+        // ── 신규 추가: POST /api/hr/attendance/create ─────────
+        res = await fetch('/api/hr/attendance/create', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            employee_id:   modal.employeeId,
+            work_date:     modal.workDate,
+            clock_in_iso:  toISO(modal.workDate, modal.clockIn),
+            clock_out_iso: modal.clockOut ? toISO(modal.workDate, modal.clockOut) : null,
+          }),
+        });
+      } else {
+        // ── 기존 수정: PUT /api/hr/attendance/update-time ─────
+        res = await fetch('/api/hr/attendance/update-time', {
+          method:  'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            record_id:     modal.recordId,
+            clock_in_iso:  toISO(modal.workDate, modal.clockIn),
+            // clockOut이 없으면 null 전달 → API에서 clock_out 유지
+            clock_out_iso: modal.clockOut ? toISO(modal.workDate, modal.clockOut) : null,
+          }),
+        });
+      }
+
       const result = await res.json();
       if (result.success) {
-        // 전체 재조회 없이 해당 레코드만 즉시 교체
-        setRecords((prev) => prev.map((r) => r.id === modal.recordId ? result.record : r));
+        if (modal.isCreate) {
+          // 신규 레코드 → 목록에 추가
+          setRecords((prev) => [...prev, result.record]);
+        } else {
+          // 기존 레코드 → 해당 레코드만 교체
+          setRecords((prev) => prev.map((r) => r.id === modal.recordId ? result.record : r));
+        }
         setModal(null);
       } else {
         setModal((prev) => prev ? { ...prev, isSaving: false, error: result.error || '저장에 실패했습니다.' } : null);
@@ -468,14 +519,16 @@ const Payroll: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* 직원별 시간대 + h 셀 (기록 있으면 클릭 → 모달) */}
+                          {/* 직원별 시간대 + h 셀
+                              - 기록 있으면: 클릭 → 수정 모달
+                              - 기록 없으면: 클릭 → 신규 추가 모달 */}
                           {employees.flatMap((emp) => {
                             const rec = recordMap.get(day)?.get(emp.id);
                             return [
                               <td
                                 key={`${emp.id}-r`}
-                                className={`pr-td-range${rec ? ' pr-td-clickable' : ''}`}
-                                onClick={rec ? () => openModal(emp, rec) : undefined}
+                                className={`pr-td-range pr-td-clickable${rec ? '' : ' pr-td-empty'}`}
+                                onClick={rec ? () => openModal(emp, rec) : () => openCreateModal(emp, day)}
                               >
                                 {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
                               </td>,
@@ -522,7 +575,9 @@ const Payroll: React.FC = () => {
                 {/* 모달 헤더 */}
                 <div className="pr-modal-header">
                   <div>
-                    <h3 className="pr-modal-title">근무 시간 수정</h3>
+                    <h3 className="pr-modal-title">
+                      {modal.isCreate ? '근무 시간 추가' : '근무 시간 수정'}
+                    </h3>
                     <p className="pr-modal-sub">
                       {modal.workDate.replace(/-/g, '.')} · {modal.employeeName}
                     </p>
@@ -570,15 +625,17 @@ const Payroll: React.FC = () => {
                   {modal.error && <p className="pr-modal-error">{modal.error}</p>}
                 </div>
 
-                {/* 모달 푸터: [삭제] 왼쪽 / [취소][저장] 오른쪽 */}
+                {/* 모달 푸터: [삭제] 왼쪽(수정 시만) / [취소][저장] 오른쪽 */}
                 <div className="pr-modal-footer">
-                  <button
-                    className="pr-modal-btn-delete"
-                    onClick={handleModalDelete}
-                    disabled={modal.isSaving || modal.isDeleting}
-                  >
-                    {modal.isDeleting ? '삭제 중...' : '삭제'}
-                  </button>
+                  {!modal.isCreate && (
+                    <button
+                      className="pr-modal-btn-delete"
+                      onClick={handleModalDelete}
+                      disabled={modal.isSaving || modal.isDeleting}
+                    >
+                      {modal.isDeleting ? '삭제 중...' : '삭제'}
+                    </button>
+                  )}
                   <div className="pr-modal-footer-right">
                     <button
                       className="pr-modal-btn-cancel"
