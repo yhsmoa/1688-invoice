@@ -37,11 +37,16 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onChange={onSearchTypeChange}
           >
             <option value="배송번호">{t('importProduct.searchType.deliveryNumber')}</option>
+            <option value="주문번호">주문번호</option>
             <option value="일반검색">{t('importProduct.searchType.general')}</option>
           </select>
           <input
             type="text"
-            placeholder={searchType === '배송번호' ? t('importProduct.searchPlaceholder.deliveryNumber') : t('importProduct.searchPlaceholder.general')}
+            placeholder={
+              searchType === '배송번호' ? t('importProduct.searchPlaceholder.deliveryNumber')
+              : searchType === '주문번호' ? '1688 주문번호 입력'
+              : t('importProduct.searchPlaceholder.general')
+            }
             className="v2-search-input"
             value={searchTerm}
             onChange={onSearchInputChange}

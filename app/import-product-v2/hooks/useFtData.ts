@@ -106,9 +106,11 @@ export function useFtOrderItems() {
 }
 
 // ============================================================
-// useFtSearch — 클라이언트 필터링 (item_name, barcode, order_no)
+// useFtSearch — 클라이언트 필터링
+//   - 일반검색: item_name, option_name, barcode, order_no, item_no
+//   - 주문번호:  1688_order_id 단독 검색
 // ============================================================
-export function useFtSearch(items: FtOrderItem[]) {
+export function useFtSearch(items: FtOrderItem[], searchType: string = '일반검색') {
   const [searchTerm, setSearchTerm] = useState('');
 
   // 검색어 기반 필터링 (메모이제이션)
@@ -116,6 +118,14 @@ export function useFtSearch(items: FtOrderItem[]) {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return items;
 
+    // 주문번호 모드: 1688_order_id 로만 필터
+    if (searchType === '주문번호') {
+      return items.filter((item) =>
+        (item['1688_order_id'] || '').toLowerCase().includes(term)
+      );
+    }
+
+    // 일반검색 모드: 상품명, 옵션, 바코드, 주문번호, 글번호
     return items.filter((item) => {
       const name = (item.item_name || '').toLowerCase();
       const option = (item.option_name || '').toLowerCase();
@@ -131,7 +141,7 @@ export function useFtSearch(items: FtOrderItem[]) {
         itemNo.includes(term)
       );
     });
-  }, [items, searchTerm]);
+  }, [items, searchTerm, searchType]);
 
   const clearSearch = useCallback(() => {
     setSearchTerm('');

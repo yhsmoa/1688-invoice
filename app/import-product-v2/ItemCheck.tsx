@@ -77,7 +77,8 @@ const ItemCheck: React.FC = () => {
   //    - 일반검색: useFtSearch가 activeItems를 client-side 필터
   //    - 배송번호: 서버 조회 결과(deliveryItems)를 그대로 표시
   // ============================================================
-  const { searchTerm, setSearchTerm, filteredItems, clearSearch } = useFtSearch(activeItems);
+  // searchType을 전달 → 주문번호 모드 시 1688_order_id 필터 적용
+  const { searchTerm, setSearchTerm, filteredItems, clearSearch } = useFtSearch(activeItems, searchType);
 
   // ============================================================
   // 4) 페이지네이션
@@ -248,9 +249,10 @@ const ItemCheck: React.FC = () => {
   const applySearch = useCallback(
     (value: string) => {
       if (searchType === '배송번호') {
-        handleDeliverySearch(value);
+        handleDeliverySearch(value);         // 서버 조회
       } else {
-        setSearchTerm(value); // 일반검색: useFtSearch 필터 적용
+        // 일반검색 / 주문번호: 클라이언트 필터 (useFtSearch가 searchType에 맞게 처리)
+        setSearchTerm(value);
       }
     },
     [searchType, handleDeliverySearch, setSearchTerm]
