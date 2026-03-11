@@ -11,8 +11,33 @@ import { supabase } from '../../../../../lib/supabase';
 //   → clock_in만 업데이트, clock_out/total_minutes는 유지
 // clock_out_iso가 있는 경우:
 //   → 대소 비교 후 clock_in, clock_out, total_minutes 모두 업데이트
-//   → total_minutes 계산: 실제 분 → 30분 단위 내림(floor)
+//   → total_minutes 계산: 실제 분 → 점심 공제(12-13시) → 30분 내림(floor)
 // ============================================================
+
+// ── KST 기준 분(0~1439) 반환 ──────────────────────────────────
+function toKSTMinutes(date: Date): number {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000); // UTC+9
+  return kstDate.getUTCHours() * 60 + kstDate.getUTCMinutes();
+}
+
+// ── 점심시간(12:00-13:00 KST) 공제 분 계산 ───────────────────
+function calcLunchDeduction(clockIn: Date, clockOut: Date): number {
+  const LUNCH_START = 12 * 60; // 720
+  const LUNCH_END   = 13 * 60; // 780
+  const inMin  = toKSTMinutes(clockIn);
+  const outMin = toKSTMinutes(clockOut);
+  const overlapStart = Math.max(inMin, LUNCH_START);
+  const overlapEnd   = Math.min(outMin, LUNCH_END);
+  return Math.max(0, overlapEnd - overlapStart);
+}
+
+// ── 순 근무 분 계산 (점심 공제 + 30분 내림) ──────────────────
+function calcNetMinutes(clockIn: Date, clockOut: Date): number {
+  const actualMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
+  const lunchDeduction = calcLunchDeduction(clockIn, clockOut);
+  const net = actualMinutes - lunchDeduction;
+  return Math.max(0, Math.floor(net / 30) * 30);
+}
 export async function PUT(request: NextRequest) {
   try {
     const { record_id, clock_in_iso, clock_out_iso } = await request.json();
@@ -51,11 +76,11 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-      const actualMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
       updatePayload = {
         clock_in:      clock_in_iso,
         clock_out:     clock_out_iso,
-        total_minutes: Math.floor(actualMinutes / 30) * 30,
+        // 점심 공제(12-13시) + 30분 내림 적용
+        total_minutes: calcNetMinutes(clockIn, clockOut),
       };
     }
 

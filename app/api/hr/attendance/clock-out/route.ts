@@ -7,11 +7,35 @@ import { supabase } from '../../../../../lib/supabase';
 // Body: { record_id: string }
 //
 // total_minutes 계산 규칙:
-//   - clock_out - clock_in = 실제 근무 분
-//   - 30분 단위로 내림 (floor)
-//   - 저장값: 실제 분(integer) → ex) 8h30m = 510, 8h45m = 510
-//   - 표시: total_minutes / 60 → 8.5시간
+//   1. 실제 근무 분 = clock_out - clock_in
+//   2. 점심 공제: 근무 구간이 12:00-13:00(KST)와 겹치면 겹친 분 차감
+//   3. 30분 단위 내림(floor) 적용
 // ============================================================
+
+// ── KST 기준 분(0~1439) 반환 ──────────────────────────────────
+function toKSTMinutes(date: Date): number {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000); // UTC+9
+  return kstDate.getUTCHours() * 60 + kstDate.getUTCMinutes();
+}
+
+// ── 점심시간(12:00-13:00 KST) 공제 분 계산 ───────────────────
+function calcLunchDeduction(clockIn: Date, clockOut: Date): number {
+  const LUNCH_START = 12 * 60; // 720
+  const LUNCH_END   = 13 * 60; // 780
+  const inMin  = toKSTMinutes(clockIn);
+  const outMin = toKSTMinutes(clockOut);
+  const overlapStart = Math.max(inMin, LUNCH_START);
+  const overlapEnd   = Math.min(outMin, LUNCH_END);
+  return Math.max(0, overlapEnd - overlapStart);
+}
+
+// ── 순 근무 분 계산 (점심 공제 + 30분 내림) ──────────────────
+function calcNetMinutes(clockIn: Date, clockOut: Date): number {
+  const actualMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
+  const lunchDeduction = calcLunchDeduction(clockIn, clockOut);
+  const net = actualMinutes - lunchDeduction;
+  return Math.max(0, Math.floor(net / 30) * 30);
+}
 export async function POST(request: NextRequest) {
   try {
     const { record_id } = await request.json();
@@ -47,9 +71,8 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const clockIn = new Date(existing.clock_in);
 
-    // ── total_minutes 계산 (30분 단위 내림) ──────────────────
-    const actualMinutes = Math.floor((now.getTime() - clockIn.getTime()) / 60000);
-    const totalMinutes = Math.floor(actualMinutes / 30) * 30;
+    // ── total_minutes 계산 (점심 공제 + 30분 단위 내림) ───────
+    const totalMinutes = calcNetMinutes(clockIn, now);
 
     // ── 퇴근 기록 업데이트 ───────────────────────────────────
     const { data, error } = await supabase

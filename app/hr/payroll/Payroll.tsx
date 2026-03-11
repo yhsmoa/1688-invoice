@@ -68,16 +68,30 @@ const calcWage = (hourlyWage: number | null, totalMinutes: number): string => {
 };
 
 /**
- * "HH:MM" 두 값으로 30분 내림 적용 근무 분 계산
- * 퇴근 <= 출근이면 null 반환
+ * "HH:MM" 두 값으로 근무 분 계산
+ *   1. 점심시간 공제: 12:00-13:00 구간과 겹치는 분 차감
+ *   2. 30분 단위 내림(floor)
+ *   퇴근 <= 출근이면 null 반환
  */
 const calcMinutesFromTimes = (clockIn: string, clockOut: string): number | null => {
   if (!clockIn || !clockOut) return null;
   const [inH, inM]   = clockIn.split(':').map(Number);
   const [outH, outM] = clockOut.split(':').map(Number);
-  const total = (outH * 60 + outM) - (inH * 60 + inM);
+  const inMin  = inH  * 60 + inM;
+  const outMin = outH * 60 + outM;
+  const total  = outMin - inMin;
   if (total <= 0) return null;
-  return Math.floor(total / 30) * 30;
+
+  // ── 점심시간(12:00-13:00) 공제 ───────────────────────────────
+  const LUNCH_START = 12 * 60; // 720
+  const LUNCH_END   = 13 * 60; // 780
+  const overlapStart   = Math.max(inMin, LUNCH_START);
+  const overlapEnd     = Math.min(outMin, LUNCH_END);
+  const lunchDeduction = Math.max(0, overlapEnd - overlapStart);
+
+  const net = total - lunchDeduction;
+  if (net <= 0) return null;
+  return Math.floor(net / 30) * 30;
 };
 
 /** 날짜 → 요일 인덱스 (0=일, 6=토) */
