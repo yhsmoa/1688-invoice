@@ -141,6 +141,37 @@ const Payroll: React.FC = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   // ============================================================
+  // ④-1 엑셀 다운로드
+  // ============================================================
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExcelExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await fetch(`/api/hr/payroll/export-excel?year=${year}&month=${month}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || '엑셀 생성에 실패했습니다.');
+        return;
+      }
+      const blob     = await res.blob();
+      const url      = URL.createObjectURL(blob);
+      const a        = document.createElement('a');
+      a.href         = url;
+      a.download     = `${year}년_${String(month).padStart(2, '0')}월_급여.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('엑셀 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // ============================================================
   // ⑤ 잠금 해제: 8자리 코드 검증 (verify-access 재사용)
   // ============================================================
   const handleVerify = async () => {
@@ -454,14 +485,23 @@ const Payroll: React.FC = () => {
                 </button>
               </div>
 
-              {/* [정리] 버튼: 데이터 있을 때만 표시 */}
+              {/* [정리] + [엑셀] 버튼: 데이터 있을 때만 표시 */}
               {!isLoading && employees.length > 0 && (
-                <button
-                  className="pr-summary-btn"
-                  onClick={() => setIsSummaryOpen(true)}
-                >
-                  정리
-                </button>
+                <div className="pr-nav-actions">
+                  <button
+                    className="pr-summary-btn"
+                    onClick={() => setIsSummaryOpen(true)}
+                  >
+                    정리
+                  </button>
+                  <button
+                    className="pr-excel-btn"
+                    onClick={handleExcelExport}
+                    disabled={isExporting}
+                  >
+                    {isExporting ? '생성 중...' : '엑셀'}
+                  </button>
+                </div>
               )}
             </div>
 

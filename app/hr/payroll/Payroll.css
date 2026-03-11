@@ -175,6 +175,13 @@
   letter-spacing: -0.3px;
 }
 
+/* ── [정리] + [엑셀] 버튼 컨테이너 ── */
+.pr-nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 /* ── [정리] 버튼 ── */
 .pr-summary-btn {
   padding: 6px 16px;
@@ -192,6 +199,30 @@
 .pr-summary-btn:hover {
   background: #27272a;
   box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
+}
+
+/* ── [엑셀] 버튼 ── */
+.pr-excel-btn {
+  padding: 6px 16px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pr-excel-btn:hover {
+  background: #15803d;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.pr-excel-btn:disabled {
+  background: #86efac;
+  cursor: not-allowed;
 }
 
 /* ── 시간표 테이블 래퍼 ── */
