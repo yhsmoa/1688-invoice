@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const { data: employees, error: employeesError } = await supabase
       .from('invoiceManager_employees')
-      .select('id, name, name_kr, hourly_wage, bank_name, bank_no')
+      .select('id, name, name_kr, role, hourly_wage, bank_name, bank_no')
       .in('id', employeeIds)
       .order('name');
 

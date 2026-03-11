@@ -13,6 +13,7 @@ interface Employee {
   id: string;
   name: string | null;
   name_kr: string | null;
+  role: string | null;
   hourly_wage: number | null;
   bank_name: string | null;
   bank_no: string | null;
@@ -62,11 +63,11 @@ const minutesToHours = (minutes: number | null | undefined): string => {
   return `${h % 1 === 0 ? h : h.toFixed(1)}h`;
 };
 
-/** 시급 × 총분 → 예상 급여 문자열 */
+/** 시급 × 총분 → 예상 급여 문자열 (원화기호 제외) */
 const calcWage = (hourlyWage: number | null, totalMinutes: number): string => {
   if (!hourlyWage || !totalMinutes) return '-';
   const wage = Math.floor((hourlyWage * totalMinutes) / 60);
-  return `₩${wage.toLocaleString()}`;
+  return wage.toLocaleString();
 };
 
 /**
@@ -488,7 +489,17 @@ const Payroll: React.FC = () => {
                       <th className="pr-th-date" rowSpan={2}>날</th>
                       {employees.map((emp) => (
                         <th key={emp.id} colSpan={2} className="pr-th-emp">
-                          {emp.name_kr || emp.name || '-'}
+                          {/* 이름 + 직책 배지 */}
+                          <div className="pr-th-name-row">
+                            <span>{emp.name || '-'}</span>
+                            {emp.role && (
+                              <span className="pr-role-badge">{emp.role}</span>
+                            )}
+                          </div>
+                          {/* 한글명 */}
+                          {emp.name_kr && (
+                            <div className="pr-th-name-kr">{emp.name_kr}</div>
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -699,7 +710,7 @@ const Payroll: React.FC = () => {
                             <td>{emp.name || '-'}</td>
                             <td className="ps-name-kr">{emp.name_kr || '-'}</td>
                             <td className="ps-wage">
-                              {emp.hourly_wage ? `₩${emp.hourly_wage.toLocaleString()}` : '-'}
+                              {emp.hourly_wage ? emp.hourly_wage.toLocaleString() : '-'}
                             </td>
                             <td className="ps-hours">
                               {totalMinutes > 0 ? minutesToHours(totalMinutes) : '-'}

@@ -259,6 +259,36 @@
   border-bottom: 1px solid #e4e4e7;
   border-left: 2px solid #d4d4d8;
   white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* 이름 + 직책 배지 한 줄 */
+.pr-th-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* 직책 배지 */
+.pr-role-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 4px;
+  padding: 1px 5px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* 한글명 (이름 아래 작게) */
+.pr-th-name-kr {
+  font-size: 11px;
+  font-weight: 500;
+  color: #71717a;
+  margin-top: 2px;
 }
 
 /* 시간/h 서브헤더 */
@@ -629,7 +659,7 @@
 
 /* 슬라이드 패널 */
 .pr-summary-panel {
-  width: 660px;
+  width: min(900px, 92vw);
   height: 100%;
   background: #ffffff;
   box-shadow: -8px 0 40px rgba(0, 0, 0, 0.12);
