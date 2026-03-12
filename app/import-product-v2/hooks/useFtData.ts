@@ -8,6 +8,7 @@ export interface FtUser {
   full_name: string;
   user_code: string;
   brand: string | null;
+  vendor_name: string | null;
 }
 
 export interface FtOrderItem {

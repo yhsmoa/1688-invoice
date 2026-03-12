@@ -1412,7 +1412,7 @@ const ExportProduct: React.FC = () => {
                   <option value="">사용자</option>
                   {ftUsers.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.user_code} {user.full_name}
+                      {user.vendor_name || user.full_name} {user.user_code}
                     </option>
                   ))}
                 </select>

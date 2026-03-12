@@ -808,7 +808,7 @@ const ItemCheck: React.FC = () => {
                   <option value="">사용자 선택</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.full_name} {user.user_code}
+                      {user.vendor_name || user.full_name} {user.user_code}
                     </option>
                   ))}
                 </select>

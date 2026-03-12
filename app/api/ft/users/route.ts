@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('ft_users')
-      .select('id, full_name, user_code, brand')
+      .select('id, full_name, user_code, brand, vendor_name')
       .order('full_name', { ascending: true });
 
     if (error) throw error;

@@ -58,6 +58,7 @@ interface FtUser {
   full_name: string;
   user_code: string;
   brand: string | null;
+  vendor_name: string | null;
 }
 
 export interface CancelDetail {
@@ -554,7 +555,7 @@ const ReturnProductV2: React.FC = () => {
                   <option value="">사용자 선택</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.full_name} {user.user_code}
+                      {user.vendor_name || user.full_name} {user.user_code}
                     </option>
                   ))}
                 </select>
