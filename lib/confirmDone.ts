@@ -65,7 +65,7 @@ export async function confirmDoneForUser(
     // CANCEL → ft_fulfillments, PACKED → ft_fulfillment_outbounds 병렬 조회
     const [cancelRes, packedRes] = await Promise.all([
       supabase
-        .from('ft_fulfillments')
+        .from('ft_fulfillment_inbounds')
         .select('order_item_id, quantity, type, shipment_id')
         .in('order_item_id', batch)
         .eq('type', 'CANCEL'),

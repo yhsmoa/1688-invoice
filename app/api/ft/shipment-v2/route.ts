@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
     const [inboundFf, outboundFf] = await Promise.all([
       // ft_fulfillments: ARRIVAL + CANCEL
       batchIn<{ order_item_id: string; quantity: number; type: string }>(
-        'ft_fulfillments', 'order_item_id, quantity, type', 'order_item_id', orderItemIds
+        'ft_fulfillment_inbounds', 'order_item_id, quantity, type', 'order_item_id', orderItemIds
       ),
       // ft_fulfillment_outbounds: PACKED (+ SHIPMENT)
       batchIn<{ order_item_id: string; quantity: number; type: string; shipment_id: string | null }>(

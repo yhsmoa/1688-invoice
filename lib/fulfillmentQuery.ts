@@ -1,12 +1,12 @@
 import { supabase } from './supabase';
 
 // ============================================================
-// ft_fulfillments (inbound: ARRIVAL/CANCEL) +
+// ft_fulfillment_inbounds (inbound: ARRIVAL/CANCEL) +
 // ft_fulfillment_outbounds (outbound: PACKED/SHIPMENT)
 // 양 테이블 병렬 조회 후 병합하는 공통 헬퍼
 // ============================================================
 
-const INBOUND_TABLE  = 'ft_fulfillments';
+const INBOUND_TABLE  = 'ft_fulfillment_inbounds';
 const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 
 // ── 단일 테이블 페이징 조회 (1000행 limit 우회) ──────────────
@@ -54,7 +54,7 @@ async function fetchPaged<T>(
 // ============================================================
 // queryBothTables
 //   양 테이블을 병렬 조회 후 합산 반환
-//   - inbound (ft_fulfillments): ARRIVAL, CANCEL
+//   - inbound (ft_fulfillment_inbounds): ARRIVAL, CANCEL
 //   - outbound (ft_fulfillment_outbounds): PACKED, SHIPMENT
 // ============================================================
 export async function queryBothTables<T>(

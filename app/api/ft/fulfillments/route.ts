@@ -8,7 +8,7 @@ const INBOUND_TYPES  = ['ARRIVAL', 'CANCEL'];   // → ft_fulfillments
 const OUTBOUND_TYPES = ['PACKED', 'SHIPMENT'];   // → ft_fulfillment_outbounds
 const ALL_TYPES      = [...INBOUND_TYPES, ...OUTBOUND_TYPES];
 
-const INBOUND_TABLE  = 'ft_fulfillments';
+const INBOUND_TABLE  = 'ft_fulfillment_inbounds';
 const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 
 // ============================================================

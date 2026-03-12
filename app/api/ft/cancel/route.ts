@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       // ── Step 1: ft_fulfillments INSERT (type='CANCEL')
       // ft_fulfillments (inbound) — CANCEL 타입
       const { data: ffData, error: ffError } = await supabase
-        .from('ft_fulfillments')
+        .from('ft_fulfillment_inbounds')
         .insert({
           order_item_id: item.order_item_id,
           type: 'CANCEL',
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     // ft_cancel_details: id(PK) 기준 (fulfillments.id 필터 사용 안 함)
     const [ffVerify, cdVerify] = await Promise.all([
       supabase
-        .from('ft_fulfillments')
+        .from('ft_fulfillment_inbounds')
         .select('id', { count: 'exact', head: true })
         .in('id', insertedFulfillmentIds),
       supabase
