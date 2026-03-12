@@ -3,6 +3,7 @@
 import React from 'react';
 import EditableCell from './EditableCell';
 import type { FtOrderItem } from '../hooks/useFtData';
+import { resolveSizeBadge } from '../../../lib/sizeCode';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
 
@@ -154,24 +155,24 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               {item.option_name}
             </>
           )}
-          {item.barcode && (
-            <>
-              <br />
-              {item.barcode}
-              {item.coupang_shipment_size && (() => {
-                const raw = item.coupang_shipment_size.trim().toLowerCase();
-                let code = '';
-                let colorClass = '';
-                if (raw === 'small') { code = 'A'; colorClass = 'size-badge--blue'; }
-                else if (raw === 'medium') { code = 'B'; colorClass = 'size-badge--blue'; }
-                else if (raw === 'large') { code = 'C'; colorClass = 'size-badge--blue'; }
-                else if (raw.startsWith('p-')) { code = 'P'; colorClass = 'size-badge--orange'; }
-                else if (raw === 'direct') { code = 'X'; colorClass = 'size-badge--black'; }
-                else { code = item.coupang_shipment_size; colorClass = 'size-badge--gray'; }
-                return <span className={`size-badge ${colorClass}`} style={{ marginLeft: '4px' }}>{code}</span>;
-              })()}
-            </>
-          )}
+          {item.barcode && (() => {
+            // shipment_type 우선: DIRECT→X / PERSONAL→P / COUPANG→size(A/B/C)
+            const badge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+            return (
+              <>
+                <br />
+                {item.barcode}
+                {badge && (
+                  <span
+                    className={`size-badge ${badge.colorClass}`}
+                    style={{ marginLeft: '4px' }}
+                  >
+                    {badge.code}
+                  </span>
+                )}
+              </>
+            );
+          })()}
         </div>
       </td>
 
