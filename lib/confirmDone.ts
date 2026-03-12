@@ -55,20 +55,32 @@ export async function confirmDoneForUser(
 
   const itemIds = items.map((i) => i.id);
 
-  // ── 2) ft_fulfillments 배치 조회 (CANCEL + PACKED) ──
+  // ── 2) inbound(CANCEL) + outbound(PACKED) 분리 배치 조회 ──
   const BATCH = 100;
   const ffRows: { order_item_id: string; quantity: number; type: string; shipment_id: string | null }[] = [];
 
   for (let i = 0; i < itemIds.length; i += BATCH) {
     const batch = itemIds.slice(i, i + BATCH);
-    const { data, error } = await supabase
-      .from('ft_fulfillments')
-      .select('order_item_id, quantity, type, shipment_id')
-      .in('order_item_id', batch)
-      .in('type', ['CANCEL', 'PACKED']);
 
-    if (error) throw error;
-    if (data) ffRows.push(...data);
+    // CANCEL → ft_fulfillments, PACKED → ft_fulfillment_outbounds 병렬 조회
+    const [cancelRes, packedRes] = await Promise.all([
+      supabase
+        .from('ft_fulfillments')
+        .select('order_item_id, quantity, type, shipment_id')
+        .in('order_item_id', batch)
+        .eq('type', 'CANCEL'),
+      supabase
+        .from('ft_fulfillment_outbounds')
+        .select('order_item_id, quantity, type, shipment_id')
+        .in('order_item_id', batch)
+        .eq('type', 'PACKED'),
+    ]);
+
+    if (cancelRes.error) throw cancelRes.error;
+    if (packedRes.error) throw packedRes.error;
+
+    if (cancelRes.data) ffRows.push(...cancelRes.data);
+    if (packedRes.data) ffRows.push(...packedRes.data);
   }
 
   // ── 3) order_item_id별 집계 ──
@@ -130,14 +142,14 @@ export async function revertDoneForShipment(
 ): Promise<{ reverted: number }> {
   const BATCH = 100;
 
-  // ── 1) 해당 shipment의 ft_fulfillments에서 order_item_id 목록 추출 ──
+  // ── 1) 해당 shipment의 ft_fulfillment_outbounds에서 order_item_id 목록 추출 ──
   const ffRows: { order_item_id: string }[] = [];
   let from = 0;
   const PAGE = 1000;
 
   while (true) {
     const { data, error } = await supabase
-      .from('ft_fulfillments')
+      .from('ft_fulfillment_outbounds')
       .select('order_item_id')
       .eq('shipment_id', shipmentId)
       .range(from, from + PAGE - 1);

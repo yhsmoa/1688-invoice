@@ -81,16 +81,14 @@ export async function GET(request: NextRequest) {
     // ── shipment_id 파라미터: 있으면 특정 쉽먼트 조회, 없으면 미출고(shipment_id IS NULL) ──
     const shipmentId = searchParams.get('shipment_id');
 
-    // ── 1) ft_fulfillments: PACKED & shipment_id 조건 조회 (limit 해제) ──
+    // ── 1) ft_fulfillment_outbounds: PACKED & shipment_id 조건 조회 ──
     const ffFilters: { column: string; op: 'eq' | 'in' | 'is'; value: unknown }[] = [
       { column: 'user_id', op: 'eq', value: userId },
       { column: 'type', op: 'eq', value: 'PACKED' },
     ];
     if (shipmentId) {
-      // 특정 쉽먼트의 출고완료 목록
       ffFilters.push({ column: 'shipment_id', op: 'eq', value: shipmentId });
     } else {
-      // 미출고 목록 (shipment_id IS NULL)
       ffFilters.push({ column: 'shipment_id', op: 'is', value: null });
     }
 
@@ -101,7 +99,7 @@ export async function GET(request: NextRequest) {
       quantity: number;
       product_no: string | null;
       shipment_no: string | null;
-    }>('ft_fulfillments', 'id, box_code, order_item_id, quantity, product_no, shipment_no', ffFilters);
+    }>('ft_fulfillment_outbounds', 'id, box_code, order_item_id, quantity, product_no, shipment_no', ffFilters);
 
     if (fulfillments.length === 0) {
       return NextResponse.json({ success: true, data: [] });
@@ -145,23 +143,32 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ── 3) ft_fulfillments: 입고 수량 + 전체 PACKED 수량 계산용 이력 조회 ──
-    const allFf = await batchIn<{
-      order_item_id: string; quantity: number; type: string; shipment_id: string | null;
-    }>('ft_fulfillments', 'order_item_id, quantity, type, shipment_id', 'order_item_id', orderItemIds);
+    // ── 3) inbound(ARRIVAL/CANCEL) + outbound(PACKED) 이력 조회 → available_qty 계산 ──
+    const [inboundFf, outboundFf] = await Promise.all([
+      // ft_fulfillments: ARRIVAL + CANCEL
+      batchIn<{ order_item_id: string; quantity: number; type: string }>(
+        'ft_fulfillments', 'order_item_id, quantity, type', 'order_item_id', orderItemIds
+      ),
+      // ft_fulfillment_outbounds: PACKED (+ SHIPMENT)
+      batchIn<{ order_item_id: string; quantity: number; type: string; shipment_id: string | null }>(
+        'ft_fulfillment_outbounds', 'order_item_id, quantity, type, shipment_id', 'order_item_id', orderItemIds
+      ),
+    ]);
 
     // 입고 = ARRIVAL - CANCEL - (PACKED where shipment_id IS NOT NULL)
     const availableMap = new Map<string, number>();
     // 전체 PACKED 수량 (box_code 무관, order_item_id 기준)
     const totalPackedMap = new Map<string, number>();
 
-    for (const f of allFf) {
+    for (const f of inboundFf) {
       if (f.type === 'ARRIVAL') {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) + f.quantity);
       } else if (f.type === 'CANCEL') {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
-      // 이미 쉽먼트에 배정된 PACKED → 입고에서 차감
+    }
+
+    for (const f of outboundFf) {
       if (f.type === 'PACKED' && f.shipment_id != null) {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
@@ -284,11 +291,12 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // PACKED 레코드 → ft_fulfillment_outbounds 에서 업데이트
     let count = 0;
     await Promise.all(
       updates.map(async (u: { id: string; fields: Record<string, unknown> }) => {
         const { error } = await supabase
-          .from('ft_fulfillments')
+          .from('ft_fulfillment_outbounds')
           .update(u.fields)
           .eq('id', u.id);
         if (error) throw error;

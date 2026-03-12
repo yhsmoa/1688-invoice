@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── 3단계: ft_fulfillments 업데이트 (shipment_no + shipment_id + shipment=true) ──
+    // ── 3단계: ft_fulfillment_outbounds 업데이트 (shipment_no + shipment_id) ──
     //    100개씩 배치 처리 (Supabase .in() 제한 대응)
     const BATCH = 100;
     let updateCount = 0;
@@ -114,22 +114,21 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < fulfillment_ids.length; i += BATCH) {
       const batch = fulfillment_ids.slice(i, i + BATCH);
       const { error: ffErr } = await supabase
-        .from('ft_fulfillments')
+        .from('ft_fulfillment_outbounds')
         .update({
           shipment_no,
           shipment_id: shipmentId,
-          shipment: true,
         })
         .in('id', batch);
 
       if (ffErr) {
-        console.error('ft_fulfillments 출고 업데이트 오류:', ffErr);
+        console.error('ft_fulfillment_outbounds 출고 업데이트 오류:', ffErr);
         throw ffErr;
       }
       updateCount += batch.length;
     }
 
-    console.log(`ft_fulfillments 출고 업데이트 완료: ${updateCount}건`);
+    console.log(`ft_fulfillment_outbounds 출고 업데이트 완료: ${updateCount}건`);
 
     return NextResponse.json({
       success: true,

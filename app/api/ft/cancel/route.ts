@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
 
       // ── Step 1: ft_fulfillments INSERT (type='CANCEL')
+      // ft_fulfillments (inbound) — CANCEL 타입
       const { data: ffData, error: ffError } = await supabase
         .from('ft_fulfillments')
         .insert({
@@ -77,17 +78,11 @@ export async function POST(request: NextRequest) {
           type: 'CANCEL',
           quantity: item.qty,
           operator_name: operator_name || null,
-          operator_id: null,
           order_no: item.order_no || null,
           item_no: item.item_no || null,
           product_no: item.product_no || null,
           product_id: item.product_id || null,
           user_id: user_id,
-          shipment: false,
-          shipment_no: null,
-          shipment_id: null,
-          box_code: null,
-          box_info_id: null,
           note: null,
         })
         .select('id')

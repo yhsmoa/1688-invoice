@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
 // ============================================================
-// 공통 상수
+// 공통 상수 — 테이블 분리 기준
 // ============================================================
-const FULFILLMENT_TYPES = ['ARRIVAL', 'PACKED', 'CANCEL', 'SHIPMENT'];
+const INBOUND_TYPES  = ['ARRIVAL', 'CANCEL'];   // → ft_fulfillments
+const OUTBOUND_TYPES = ['PACKED', 'SHIPMENT'];   // → ft_fulfillment_outbounds
+const ALL_TYPES      = [...INBOUND_TYPES, ...OUTBOUND_TYPES];
+
+const INBOUND_TABLE  = 'ft_fulfillments';
+const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 
 // ============================================================
 // DELETE /api/ft/fulfillments?id=xxx
@@ -31,15 +36,34 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // ── Step 1: 삭제 전 fulfillment 데이터 조회 ──────────────
-    // order_item_id, type 을 보관해 후속 처리에 사용
-    const { data: ffRow, error: selectErr } = await supabase
-      .from('ft_fulfillments')
+    // ── Step 1: 삭제 전 fulfillment 데이터 조회 (양 테이블 탐색) ──
+    // inbound(ft_fulfillments) → 없으면 outbound(ft_fulfillment_outbounds)
+    let ffRow: { id: string; order_item_id: string; type: string; quantity: number } | null = null;
+    let sourceTable: string = INBOUND_TABLE;
+
+    const { data: inRow, error: inErr } = await supabase
+      .from(INBOUND_TABLE)
       .select('id, order_item_id, type, quantity')
       .eq('id', id)
       .single();
 
-    if (selectErr || !ffRow) {
+    if (!inErr && inRow) {
+      ffRow = inRow;
+      sourceTable = INBOUND_TABLE;
+    } else {
+      const { data: outRow, error: outErr } = await supabase
+        .from(OUTBOUND_TABLE)
+        .select('id, order_item_id, type, quantity')
+        .eq('id', id)
+        .single();
+
+      if (!outErr && outRow) {
+        ffRow = outRow;
+        sourceTable = OUTBOUND_TABLE;
+      }
+    }
+
+    if (!ffRow) {
       return NextResponse.json(
         { success: false, error: '해당 기록을 찾을 수 없습니다.' },
         { status: 404 }
@@ -89,14 +113,14 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // ── Step 3: ft_fulfillments 삭제 ─────────────────────────
+    // ── Step 3: 해당 테이블에서 삭제 ─────────────────────────
     const { error: ffDeleteErr } = await supabase
-      .from('ft_fulfillments')
+      .from(sourceTable)
       .delete()
       .eq('id', id);
 
     if (ffDeleteErr) {
-      console.error('ft_fulfillments 삭제 오류:', ffDeleteErr);
+      console.error(`${sourceTable} 삭제 오류:`, ffDeleteErr);
       throw ffDeleteErr;
     }
 
@@ -113,20 +137,28 @@ export async function DELETE(request: NextRequest) {
         .single();
 
       if (orderItem && orderItem.status === 'DONE') {
-        // 삭제 후 남은 CANCEL + 출고완료(PACKED with shipment_id) 합계 재계산
-        const { data: remainingFF } = await supabase
-          .from('ft_fulfillments')
-          .select('quantity, type, shipment_id')
-          .eq('order_item_id', order_item_id)
-          .in('type', ['CANCEL', 'PACKED']);
+        // 삭제 후 남은 CANCEL(inbound) + 출고완료 PACKED(outbound) 합계 재계산
+        const [cancelRows, packedRows] = await Promise.all([
+          supabase
+            .from(INBOUND_TABLE)
+            .select('quantity')
+            .eq('order_item_id', order_item_id)
+            .eq('type', 'CANCEL'),
+          supabase
+            .from(OUTBOUND_TABLE)
+            .select('quantity, shipment_id')
+            .eq('order_item_id', order_item_id)
+            .eq('type', 'PACKED'),
+        ]);
 
         let cancelSum = 0;
         let shippedSum = 0;
 
-        for (const row of (remainingFF ?? [])) {
-          if (row.type === 'CANCEL') {
-            cancelSum += row.quantity ?? 0;
-          } else if (row.type === 'PACKED' && row.shipment_id != null) {
+        for (const row of (cancelRows.data ?? [])) {
+          cancelSum += row.quantity ?? 0;
+        }
+        for (const row of (packedRows.data ?? [])) {
+          if (row.shipment_id != null) {
             shippedSum += row.quantity ?? 0;
           }
         }
@@ -153,7 +185,7 @@ export async function DELETE(request: NextRequest) {
 
     // ── Step 5: 삭제 검증 — SELECT로 실제 제거 확인 ──────────
     const { data: verifyFF } = await supabase
-      .from('ft_fulfillments')
+      .from(sourceTable)
       .select('id')
       .eq('id', id);
 
@@ -233,15 +265,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const { data, error } = await supabase
-      .from('ft_fulfillments')
-      .select('order_item_id, quantity, type')
-      .in('order_item_id', orderItemIds)
-      .in('type', FULFILLMENT_TYPES);
+    // 양 테이블 병렬 조회 후 합산
+    const [inData, outData] = await Promise.all([
+      supabase
+        .from(INBOUND_TABLE)
+        .select('order_item_id, quantity, type')
+        .in('order_item_id', orderItemIds)
+        .in('type', INBOUND_TYPES),
+      supabase
+        .from(OUTBOUND_TABLE)
+        .select('order_item_id, quantity, type')
+        .in('order_item_id', orderItemIds)
+        .in('type', OUTBOUND_TYPES),
+    ]);
 
-    if (error) throw error;
+    if (inData.error) throw inData.error;
+    if (outData.error) throw outData.error;
 
-    return NextResponse.json({ success: true, data: data || [] });
+    const merged = [...(inData.data || []), ...(outData.data || [])];
+    return NextResponse.json({ success: true, data: merged });
   } catch (error) {
     console.error('ft_fulfillments GET 조회 오류:', error);
     return NextResponse.json(
@@ -287,27 +329,36 @@ export async function POST(request: NextRequest) {
           operator_name: string | null;
         }[] = [];
 
+        const SELECT_COLS = 'id, order_item_id, quantity, type, created_at, operator_name';
+        const PAGE = 1000;
+
         for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
           const batch = order_item_ids.slice(i, i + BATCH_SIZE);
 
-          // 각 배치도 1000행 limit 우회 (페이징)
-          let from = 0;
-          const PAGE = 1000;
+          // ── inbound + outbound 병렬 페이징 조회 ──
+          const fetchTable = async (table: string) => {
+            const rows: typeof allData = [];
+            let from = 0;
+            while (true) {
+              const { data, error } = await supabase
+                .from(table)
+                .select(SELECT_COLS)
+                .in('order_item_id', batch)
+                .range(from, from + PAGE - 1);
+              if (error) throw error;
+              if (!data || data.length === 0) break;
+              rows.push(...data);
+              if (data.length < PAGE) break;
+              from += PAGE;
+            }
+            return rows;
+          };
 
-          while (true) {
-            const { data, error } = await supabase
-              .from('ft_fulfillments')
-              .select('id, order_item_id, quantity, type, created_at, operator_name')
-              .in('order_item_id', batch)
-              .in('type', FULFILLMENT_TYPES)
-              .range(from, from + PAGE - 1);
-
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            allData.push(...data);
-            if (data.length < PAGE) break;
-            from += PAGE;
-          }
+          const [inRows, outRows] = await Promise.all([
+            fetchTable(INBOUND_TABLE),
+            fetchTable(OUTBOUND_TABLE),
+          ]);
+          allData.push(...inRows, ...outRows);
         }
 
         return NextResponse.json({ success: true, data: allData });
@@ -348,38 +399,67 @@ export async function POST(request: NextRequest) {
       order_no: normalizeOrderNo(item.order_no as string | null),
     }));
 
-    // 조회 시 SUM 집계하므로 행이 여러 개여도 정상 동작
-    const insertRows = normalizedItems.map((item) => ({
-      order_item_id: item.order_item_id as string,
-      box_code:
-        (item.box_code as string) || (item.package_no as string) || null,
-      type: (item.type as string) || 'PACKED',
-      quantity: item.quantity as number,
-      user_id: (item.user_id as string) || null,
-      order_no: (item.order_no as string) || null,
-      item_no: (item.item_no as string) || null,
-      product_no: (item.product_no as string) || null,
-      operator_name: (item.operator_name as string) || null,
-      shipment: (item.shipment as boolean) ?? false,
-      box_info_id: (item.box_info_id as string) || null,
-      product_id: (item.product_id as string) || null,
-    }));
+    // ── type 기준으로 inbound / outbound 분리 INSERT ──────────
+    const inboundRows: Record<string, unknown>[] = [];
+    const outboundRows: Record<string, unknown>[] = [];
 
-    const { error: insertErr } = await supabase
-      .from('ft_fulfillments')
-      .insert(insertRows);
+    for (const item of normalizedItems) {
+      const type = (item.type as string) || 'PACKED';
 
-    if (insertErr) {
-      console.error('ft_fulfillments insert 오류:', insertErr);
-      throw insertErr;
+      if (INBOUND_TYPES.includes(type)) {
+        // ARRIVAL / CANCEL → ft_fulfillments (inbound)
+        inboundRows.push({
+          order_item_id: item.order_item_id as string,
+          type,
+          quantity: item.quantity as number,
+          user_id: (item.user_id as string) || null,
+          order_no: (item.order_no as string) || null,
+          item_no: (item.item_no as string) || null,
+          product_no: (item.product_no as string) || null,
+          product_id: (item.product_id as string) || null,
+          operator_name: (item.operator_name as string) || null,
+          note: (item.note as string) || null,
+        });
+      } else {
+        // PACKED / SHIPMENT → ft_fulfillment_outbounds (outbound)
+        outboundRows.push({
+          order_item_id: item.order_item_id as string,
+          type,
+          quantity: item.quantity as number,
+          user_id: (item.user_id as string) || null,
+          order_no: (item.order_no as string) || null,
+          product_no: (item.product_no as string) || null,
+          product_id: (item.product_id as string) || null,
+          operator_name: (item.operator_name as string) || null,
+          box_code: (item.box_code as string) || (item.package_no as string) || null,
+          box_info_id: (item.box_info_id as string) || null,
+          note: (item.note as string) || null,
+        });
+      }
     }
 
-    console.log(`ft_fulfillments 저장 완료: ${insertRows.length}개 insert`);
+    // 병렬 INSERT
+    const insertInbound = async () => {
+      if (inboundRows.length === 0) return;
+      const { error } = await supabase.from(INBOUND_TABLE).insert(inboundRows);
+      if (error) { console.error('ft_fulfillments inbound insert 오류:', error); throw error; }
+    };
+
+    const insertOutbound = async () => {
+      if (outboundRows.length === 0) return;
+      const { error } = await supabase.from(OUTBOUND_TABLE).insert(outboundRows);
+      if (error) { console.error('ft_fulfillment_outbounds insert 오류:', error); throw error; }
+    };
+
+    await Promise.all([insertInbound(), insertOutbound()]);
+
+    const totalCount = inboundRows.length + outboundRows.length;
+    console.log(`fulfillments 저장 완료: inbound ${inboundRows.length}개, outbound ${outboundRows.length}개`);
 
     return NextResponse.json({
       success: true,
-      count: insertRows.length,
-      message: `저장 완료 (${insertRows.length}개)`,
+      count: totalCount,
+      message: `저장 완료 (${totalCount}개)`,
     });
   } catch (error) {
     console.error('ft_fulfillments 저장 오류:', error);
