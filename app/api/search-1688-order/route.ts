@@ -10,22 +10,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'orderData 배열이 필요합니다.' }, { status: 400 });
     }
 
-    // order_number 추출 (# 또는 C 앞부분만 사용)
+    // order_number 정규화
+    // 1) # 이후 제거: "BZ-260225-0006-A01#..." → "BZ-260225-0006-A01..."
+    // 2) 끝의 C+숫자 접미사 제거: "BZ-260225-0006-A01C1" → "BZ-260225-0006-A01"
     const extractBaseOrderNumber = (orderNumber: string): string => {
-      // # 또는 C 중 먼저 나오는 위치에서 자르기
-      let result = orderNumber;
-      const hashIndex = orderNumber.indexOf('#');
-      const cIndex = orderNumber.search(/C\d*$/); // 끝에 C와 숫자가 붙는 패턴
+      let result = orderNumber.trim();
 
+      // # 이후 제거
+      const hashIndex = result.indexOf('#');
       if (hashIndex > 0) {
-        result = orderNumber.substring(0, hashIndex);
+        result = result.substring(0, hashIndex);
       }
-      if (cIndex > 0) {
-        const tempResult = orderNumber.substring(0, cIndex);
-        if (tempResult.length < result.length) {
-          result = tempResult;
-        }
-      }
+
+      // 끝의 C+숫자 접미사 제거 (예: C1, C2, C10)
+      result = result.replace(/C\d+$/, '');
+
       return result;
     };
 
