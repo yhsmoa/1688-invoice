@@ -621,7 +621,7 @@ const ItemCheck: React.FC = () => {
       const response = await fetch('/api/ft/order-items/export-xlsx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId, status: 'PROCESSING' }),
+        body: JSON.stringify({ user_id: selectedUserId }),
       });
 
       if (!response.ok) throw new Error('XLSX 다운로드 실패');

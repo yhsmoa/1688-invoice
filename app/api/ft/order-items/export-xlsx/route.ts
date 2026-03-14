@@ -52,7 +52,7 @@ const COLUMNS: { key: string; header: string; width: number }[] = [
 
 export async function POST(request: NextRequest) {
   try {
-    const { user_id, status = 'PROCESSING' } = await request.json();
+    const { user_id } = await request.json();
 
     // ── 필수 파라미터 검증 ─────────────────────────────────
     if (!user_id) {
@@ -62,12 +62,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── DB 조회 (전체 컬럼) ────────────────────────────────
+    // ── DB 조회 (전체 컬럼, 해당 user_id 전체) ───────────
     const { data, error } = await supabase
       .from('ft_order_items')
       .select('*')
       .eq('user_id', user_id)
-      .eq('status', status)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
