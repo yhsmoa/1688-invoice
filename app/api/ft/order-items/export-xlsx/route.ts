@@ -48,6 +48,12 @@ const COLUMNS: { key: string; header: string; width: number }[] = [
   { key: '1688_offer_id', header: '1688 Offer ID', width: 20 },
   { key: '1688_order_id', header: '1688 Order ID', width: 20 },
   { key: 'product_no', header: '상품번호', width: 15 },
+  { key: 'shipment_type', header: '배송타입', width: 12 },
+  { key: 'price_delivery_cny', header: '배송비(CNY)', width: 12 },
+  { key: 'price_delivery_kr', header: '배송비(KRW)', width: 12 },
+  { key: 'customs_category', header: '품목', width: 15 },
+  { key: 'product_id', header: 'Product ID', width: 36 },
+  { key: 'personal_order_no', header: '개인주문번호', width: 20 },
 ];
 
 export async function POST(request: NextRequest) {
