@@ -96,7 +96,7 @@ const ItemCheck: React.FC = () => {
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
-  const { arrivalMap, packedMap, cancelMap, shipmentMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
+  const { arrivalMap, packedMap, cancelMap, shipmentMap, exportMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
 
   // ============================================================
   // 5) 담당자 드롭박스 (UI 유지, 현재 단계에서 기능 미연결)
@@ -965,6 +965,7 @@ const ItemCheck: React.FC = () => {
               packedMap={packedMap}
               cancelMap={cancelMap}
               shipmentMap={shipmentMap}
+              exportMap={exportMap}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
               onStartEditingCell={startEditingCell}

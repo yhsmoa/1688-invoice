@@ -320,29 +320,23 @@ export async function POST(request: NextRequest) {
         }
 
         const BATCH_SIZE = 100;
-        const allData: {
-          id: string;
-          order_item_id: string;
-          quantity: number;
-          type: string;
-          created_at: string;
-          operator_name: string | null;
-        }[] = [];
+        const allData: any[] = [];
 
-        const SELECT_COLS = 'id, order_item_id, quantity, type, created_at, operator_name';
+        const SELECT_COLS_INBOUND = 'id, order_item_id, quantity, type, created_at, operator_name, product_id';
+        const SELECT_COLS_OUTBOUND = 'id, order_item_id, quantity, type, created_at, operator_name, product_id, shipment_id';
         const PAGE = 1000;
 
         for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
           const batch = order_item_ids.slice(i, i + BATCH_SIZE);
 
           // ── inbound + outbound 병렬 페이징 조회 ──
-          const fetchTable = async (table: string) => {
+          const fetchTable = async (table: string, selectCols: string) => {
             const rows: typeof allData = [];
             let from = 0;
             while (true) {
               const { data, error } = await supabase
                 .from(table)
-                .select(SELECT_COLS)
+                .select(selectCols)
                 .in('order_item_id', batch)
                 .range(from, from + PAGE - 1);
               if (error) throw error;
@@ -355,8 +349,8 @@ export async function POST(request: NextRequest) {
           };
 
           const [inRows, outRows] = await Promise.all([
-            fetchTable(INBOUND_TABLE),
-            fetchTable(OUTBOUND_TABLE),
+            fetchTable(INBOUND_TABLE, SELECT_COLS_INBOUND),
+            fetchTable(OUTBOUND_TABLE, SELECT_COLS_OUTBOUND),
           ]);
           allData.push(...inRows, ...outRows);
         }

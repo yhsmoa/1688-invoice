@@ -168,6 +168,8 @@ export type FulfillmentRow = {
   type: string;
   created_at: string;
   operator_name: string | null;
+  product_id?: string | null;
+  shipment_id?: string | null;
 };
 
 type FulfillmentMaps = {
@@ -175,6 +177,7 @@ type FulfillmentMaps = {
   packedMap: Map<string, number>;
   cancelMap: Map<string, number>;
   shipmentMap: Map<string, number>;
+  exportMap: Map<string, number>;
   /** 원본 fulfillment 데이터 (로그 모달 표시용) */
   rawFulfillments: FulfillmentRow[];
 };
@@ -184,6 +187,7 @@ const EMPTY_MAPS: FulfillmentMaps = {
   packedMap: new Map(),
   cancelMap: new Map(),
   shipmentMap: new Map(),
+  exportMap: new Map(),
   rawFulfillments: [],
 };
 
@@ -225,15 +229,20 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
           const packed   = new Map<string, number>();
           const cancel   = new Map<string, number>();
           const shipment = new Map<string, number>();
+          const exportMap = new Map<string, number>();  // PACKED + shipment_id NOT NULL → product_id 기준
 
           for (const row of json.data as FulfillmentRow[]) {
-            const { order_item_id, quantity, type } = row;
+            const { order_item_id, quantity, type, product_id, shipment_id } = row;
             const qty = quantity ?? 0;
 
             if (type === 'ARRIVAL') {
               arrival.set(order_item_id, (arrival.get(order_item_id) ?? 0) + qty);
             } else if (type === 'PACKED') {
               packed.set(order_item_id, (packed.get(order_item_id) ?? 0) + qty);
+              // PACKED + shipment_id NOT NULL → product_id 기준 출고 집계
+              if (shipment_id != null && product_id) {
+                exportMap.set(product_id, (exportMap.get(product_id) ?? 0) + qty);
+              }
             } else if (type === 'CANCEL') {
               cancel.set(order_item_id, (cancel.get(order_item_id) ?? 0) + qty);
             } else if (type === 'SHIPMENT') {
@@ -241,7 +250,7 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
             }
           }
 
-          setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment, rawFulfillments: json.data as FulfillmentRow[] });
+          setMaps({ arrivalMap: arrival, packedMap: packed, cancelMap: cancel, shipmentMap: shipment, exportMap, rawFulfillments: json.data as FulfillmentRow[] });
         } else {
           console.error('fulfillment 조회 실패:', json.error, json.details);
         }

@@ -25,6 +25,8 @@ interface ItemTableProps {
   cancelMap: Map<string, number>;
   /** item_id → SHIPMENT quantity 합계 */
   shipmentMap: Map<string, number>;
+  /** product_id → 출고(PACKED + shipment_id NOT NULL) quantity 합계 */
+  exportMap: Map<string, number>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
@@ -54,6 +56,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   packedMap,
   cancelMap,
   shipmentMap,
+  exportMap,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
@@ -127,7 +130,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 arrivalQty={arrivalMap.get(item.id) ?? 0}
                 packedQty={packedMap.get(item.id) ?? 0}
                 cancelQty={cancelMap.get(item.id) ?? 0}
-                shipmentQty={shipmentMap.get(item.id) ?? 0}
+                shipmentQty={exportMap.get(item.product_id ?? '') ?? 0}
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}
