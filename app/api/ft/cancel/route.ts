@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
         .from('ft_cancel_details')
         .insert({
           status: 'PENDING',
+          is_confirmed: false,
           order_items_id: item.order_item_id,
           item_no: item.item_no || null,
           item_name: item.item_name || null,
