@@ -33,10 +33,8 @@ async function fetchAll<T>(
 //   PROCESSING ft_order_items 중 남은수량 <= 0인 항목을 DONE으로 전환
 //
 //   남은수량 = order_qty
-//            - SUM(CANCEL quantity WHERE shipment_id IS NOT NULL)
-//            - SUM(PACKED quantity WHERE shipment_id IS NOT NULL)
-//
-//   주의: CANCEL/PACKED 모두 shipment_id가 있는 레코드만 포함
+//            - SUM(CANCEL quantity from ft_fulfillment_inbounds)
+//            - SUM(PACKED quantity WHERE shipment_id IS NOT NULL from ft_fulfillment_outbounds)
 // ============================================================
 export async function confirmDoneForUser(
   userId: string
@@ -58,18 +56,18 @@ export async function confirmDoneForUser(
   const itemIds = items.map((i) => i.id);
   const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean))];
 
-  // ── 2) outbound에서 CANCEL + PACKED 배치 조회 (shipment_id 확인) ──
+  // ── 2) 배치 조회: CANCEL(inbound) + SHIPMENT(outbound) ──
   const BATCH = 100;
-  const cancelRows: { order_item_id: string; quantity: number; type: string; shipment_id: string | null }[] = [];
-  const packedRows: { product_id: string | null; quantity: number; type: string; shipment_id: string | null }[] = [];
+  const cancelRows: { order_item_id: string; quantity: number; type: string }[] = [];
+  const shipmentRows: { product_id: string | null; quantity: number; type: string; shipment_id: string | null }[] = [];
 
-  // CANCEL은 ft_fulfillment_outbounds에서 order_item_id 기준 조회 (shipment_id 확인)
+  // CANCEL은 ft_fulfillment_inbounds에서 order_item_id 기준 조회 (모든 CANCEL 취소수량)
   for (let i = 0; i < itemIds.length; i += BATCH) {
     const batch = itemIds.slice(i, i + BATCH);
 
     const { data, error } = await supabase
-      .from('ft_fulfillment_outbounds')
-      .select('order_item_id, quantity, type, shipment_id')
+      .from('ft_fulfillment_inbounds')
+      .select('order_item_id, quantity, type')
       .in('order_item_id', batch)
       .eq('type', 'CANCEL');
 
@@ -77,7 +75,7 @@ export async function confirmDoneForUser(
     if (data) cancelRows.push(...data);
   }
 
-  // PACKED는 ft_fulfillment_outbounds에서 product_id 기준 조회
+  // SHIPMENT은 ft_fulfillment_outbounds에서 product_id 기준 조회 (shipment_id 있는 PACKED만)
   for (let i = 0; i < productIds.length; i += BATCH) {
     const batch = productIds.slice(i, i + BATCH);
 
@@ -88,25 +86,22 @@ export async function confirmDoneForUser(
       .eq('type', 'PACKED');
 
     if (error) throw error;
-    if (data) packedRows.push(...data);
+    if (data) shipmentRows.push(...data);
   }
 
-  // ── 3) 집계: CANCEL은 order_item_id 기준, PACKED는 product_id 기준 ──
-  //       (둘 다 shipment_id가 있는 것만 포함)
+  // ── 3) 집계: CANCEL(전부) + SHIPMENT(shipment_id 있는 것만) ──
   const cancelMap = new Map<string, number>();
-  const shippedByProductMap = new Map<string | null, number>();
+  const shipmentByProductMap = new Map<string | null, number>();
 
-  // CANCEL 집계 (item별 독립 처리, shipment_id 있는 것만)
+  // CANCEL 집계 (item별 독립 처리, 모든 CANCEL 취소수량)
   for (const row of cancelRows) {
-    if (row.shipment_id != null) {
-      cancelMap.set(row.order_item_id, (cancelMap.get(row.order_item_id) ?? 0) + row.quantity);
-    }
+    cancelMap.set(row.order_item_id, (cancelMap.get(row.order_item_id) ?? 0) + row.quantity);
   }
 
-  // PACKED 집계 (product별로 합산, shipment_id 있는 것만, 같은 product_id에 속한 모든 item이 동일한 shippedQty 적용)
-  for (const row of packedRows) {
+  // SHIPMENT 집계 (product별로 합산, shipment_id 있는 PACKED만, 같은 product_id에 속한 모든 item이 동일한 shipmentQty 적용)
+  for (const row of shipmentRows) {
     if (row.shipment_id != null) {
-      shippedByProductMap.set(row.product_id, (shippedByProductMap.get(row.product_id) ?? 0) + row.quantity);
+      shipmentByProductMap.set(row.product_id, (shipmentByProductMap.get(row.product_id) ?? 0) + row.quantity);
     }
   }
 
@@ -116,8 +111,8 @@ export async function confirmDoneForUser(
   for (const item of items) {
     const orderQty = item.order_qty ?? 0;
     const cancelQty = cancelMap.get(item.id) ?? 0;
-    const shippedQty = shippedByProductMap.get(item.product_id) ?? 0;
-    const remaining = orderQty - cancelQty - shippedQty;
+    const shipmentQty = shipmentByProductMap.get(item.product_id) ?? 0;
+    const remaining = orderQty - cancelQty - shipmentQty;
 
     if (remaining <= 0) {
       doneIds.push(item.id);
