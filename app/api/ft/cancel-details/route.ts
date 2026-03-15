@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { confirmDoneForUser } from '../../../../lib/confirmDone';
 
 // ============================================================
 // 허용된 업데이트 필드 (화이트리스트)
@@ -60,7 +61,30 @@ export async function PATCH(request: NextRequest) {
       throw updateErr;
     }
 
-    return NextResponse.json({ success: true, id, field, value });
+    // ── status='DONE' 시 ft_order_items 남은수량 재계산 ──
+    let doneCount = 0;
+    if (field === 'status' && value === 'DONE') {
+      try {
+        const { data: detail, error: fetchErr } = await supabase
+          .from('ft_cancel_details')
+          .select('user_id')
+          .eq('id', id)
+          .single();
+
+        if (fetchErr) throw fetchErr;
+
+        if (detail?.user_id) {
+          const { updated } = await confirmDoneForUser(detail.user_id);
+          doneCount = updated;
+          console.log(`cancel-details 완료 처리 후 ft_order_items DONE 전환: ${doneCount}건`);
+        }
+      } catch (confirmErr) {
+        console.error('confirmDoneForUser 실행 오류:', confirmErr);
+        // 주 업데이트는 완료되었으므로 오류 발생해도 응답 반환
+      }
+    }
+
+    return NextResponse.json({ success: true, id, field, value, doneCount });
 
   } catch (error) {
     console.error('ft_cancel_details PATCH 처리 오류:', error);
