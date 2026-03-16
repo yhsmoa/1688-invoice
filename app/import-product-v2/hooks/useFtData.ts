@@ -36,6 +36,8 @@ export interface FtOrderItem {
   '1688_order_id': string | null;
   shipment_type: string | null;
   customs_category: string | null;
+  created_at?: string | null;
+  note_notice?: string | null;
 }
 
 // ============================================================

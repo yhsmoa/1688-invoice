@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-const ORDER_ITEMS_SELECT = 'id, order_no, item_no, item_name, option_name, order_qty, barcode, china_option1, china_option2, price_cny, price_total_cny, img_url, coupang_shipment_size, status, composition, recommanded_age, set_total, set_seq, product_no, product_id, site_url, 1688_order_id, shipment_type, customs_category';
+const ORDER_ITEMS_SELECT = 'id, order_no, item_no, item_name, option_name, order_qty, barcode, china_option1, china_option2, price_cny, price_total_cny, img_url, coupang_shipment_size, status, composition, recommanded_age, set_total, set_seq, product_no, product_id, site_url, 1688_order_id, shipment_type, customs_category, created_at, note_notice';
 
 // ============================================================
 // GET /api/ft/order-items?user_id=X&status=PROCESSING

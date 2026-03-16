@@ -14,6 +14,9 @@ interface FulfillmentLogModalProps {
   rawFulfillments: FulfillmentRow[];
   onClose: () => void;
   onDelete: (fulfillmentId: string) => Promise<void>;
+  /** 해당 아이템의 delivery_code 목록 */
+  deliveryCodes?: string[];
+  deliveryCodesLoading?: boolean;
 }
 
 /** type → 한글 라벨 */
@@ -38,6 +41,8 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
   rawFulfillments,
   onClose,
   onDelete,
+  deliveryCodes = [],
+  deliveryCodesLoading = false,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -83,13 +88,16 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
         {/* ── 상품 정보 요약 ── */}
         <div className="v2-log-item-summary">
           <div style={{ fontWeight: 600, fontSize: 14 }}>
-            {item.item_name || ''}
+            {[item.item_name, item.option_name].filter(Boolean).join(', ')}
           </div>
-          {item.option_name && (
-            <div style={{ fontSize: 13, color: '#666' }}>{item.option_name}</div>
-          )}
           <div style={{ fontSize: 13, color: '#999', marginTop: 4 }}>
-            글번호: {item.item_no || '-'} | 수량: {item.order_qty ?? 0}
+            {item.item_no || '-'} | {item.order_qty ?? 0}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+            1688 order no: {item['1688_order_id'] || '-'}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+            delivery code: {deliveryCodesLoading ? '조회 중...' : (deliveryCodes.length > 0 ? deliveryCodes.join(', ') : '-')}
           </div>
         </div>
 

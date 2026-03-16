@@ -33,6 +33,7 @@ import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
 import V2CancelModal from './components/V2CancelModal';
+import V2NoteModal from './components/V2NoteModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import { saveLabelData } from './utils/saveLabelData';
 
@@ -56,6 +57,23 @@ const ItemCheck: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
 
   // ============================================================
+  // 2-0) 미배송/지연배송 필터 state
+  // ============================================================
+  const [noDeliveryFilter, setNoDeliveryFilter] = useState(false);
+  const [delayedDeliveryFilter, setDelayedDeliveryFilter] = useState(false);
+  const [noDeliveryIds, setNoDeliveryIds] = useState<Set<string>>(new Set());
+  const [delayedIds, setDelayedIds] = useState<Set<string>>(new Set());
+  const [noDeliveryCount, setNoDeliveryCount] = useState(0);
+  const [delayedDeliveryCount, setDelayedDeliveryCount] = useState(0);
+
+  // ── 비고 모달 state ──
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  // ── FulfillmentLogModal delivery_codes state ──
+  const [logDeliveryCodes, setLogDeliveryCodes] = useState<string[]>([]);
+  const [logDeliveryCodesLoading, setLogDeliveryCodesLoading] = useState(false);
+
+  // ============================================================
   // 2-1) 검색 타입 — 기본값: 배송번호 (hook 순서 때문에 여기 선언)
   // ============================================================
   const [searchType, setSearchType] = useState('배송번호');
@@ -69,8 +87,18 @@ const ItemCheck: React.FC = () => {
   const [isDeliverySearching, setIsDeliverySearching] = useState(false);
 
   // activeItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
-  const activeItems =
+  const baseActiveItems =
     searchType === '배송번호' && deliveryItems !== null ? deliveryItems : items;
+
+  // ── 미배송/지연배송 필터 적용 ──
+  const activeItems = useMemo(() => {
+    if (!noDeliveryFilter && !delayedDeliveryFilter) return baseActiveItems;
+    return baseActiveItems.filter((item) => {
+      if (noDeliveryFilter && noDeliveryIds.has(item.id)) return true;
+      if (delayedDeliveryFilter && delayedIds.has(item.id)) return true;
+      return false;
+    });
+  }, [baseActiveItems, noDeliveryFilter, delayedDeliveryFilter, noDeliveryIds, delayedIds]);
 
   // ============================================================
   // 3) 검색
@@ -148,6 +176,27 @@ const ItemCheck: React.FC = () => {
   }, []);
 
   // ============================================================
+  // 7-1) 미배송/지연배송 카운트 조회
+  // ============================================================
+  const fetchFilterCounts = useCallback(
+    async (userId: string) => {
+      try {
+        const res = await fetch(`/api/ft/order-items/filter-counts?user_id=${userId}`);
+        const json = await res.json();
+        if (json.success) {
+          setNoDeliveryCount(json.no_delivery.count);
+          setNoDeliveryIds(new Set(json.no_delivery.ids));
+          setDelayedDeliveryCount(json.delayed.count);
+          setDelayedIds(new Set(json.delayed.ids));
+        }
+      } catch (err) {
+        console.error('filter-counts 조회 오류:', err);
+      }
+    },
+    []
+  );
+
+  // ============================================================
   // 8) ft_users 드롭박스 변경 → 자동 데이터 조회 + 배송번호 결과 초기화
   // ============================================================
   const handleUserChange = useCallback(
@@ -162,9 +211,10 @@ const ItemCheck: React.FC = () => {
 
       if (userId) {
         fetchItems(userId, statusFilter);
+        fetchFilterCounts(userId);
       }
     },
-    [fetchItems, clearSearch, statusFilter]
+    [fetchItems, clearSearch, statusFilter, fetchFilterCounts]
   );
 
   // ============================================================
@@ -746,10 +796,24 @@ const ItemCheck: React.FC = () => {
 
   const handleProductNameClick = useCallback((item: FtOrderItem) => {
     setLogModalItem(item);
+    // delivery_codes 조회
+    setLogDeliveryCodes([]);
+    const orderId = item['1688_order_id'];
+    if (orderId) {
+      setLogDeliveryCodesLoading(true);
+      fetch(`/api/ft/delivery-codes?order_id=${encodeURIComponent(orderId)}`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success) setLogDeliveryCodes(json.data);
+        })
+        .catch(() => {})
+        .finally(() => setLogDeliveryCodesLoading(false));
+    }
   }, []);
 
   const handleLogModalClose = useCallback(() => {
     setLogModalItem(null);
+    setLogDeliveryCodes([]);
   }, []);
 
   // 로그 삭제 → supabase 삭제 + fulfillment 갱신
@@ -778,14 +842,13 @@ const ItemCheck: React.FC = () => {
         <LeftsideMenu />
         <main className="v2-item-content">
           <div className="v2-item-container">
-            <h1 className="v2-item-title">상품입고 V2</h1>
-
             {/* ============================================================ */}
-            {/* 컨트롤 바: 왼쪽(드롭박스+버튼) / 오른쪽(액션 버튼) */}
+            {/* 타이틀 행: 왼쪽(제목) / 오른쪽(드롭박스 2개) */}
             {/* ============================================================ */}
-            <div className="v2-excel-upload-section">
-              <div className="v2-control-left">
-                {/* 담당자 선택 (UI 유지) */}
+            <div className="v2-title-row">
+              <h1 className="v2-item-title">상품입고 V2</h1>
+              <div className="v2-title-dropdowns">
+                {/* 담당자 선택 */}
                 <select
                   className="v2-coupang-user-dropdown"
                   value={selectedOperator}
@@ -812,6 +875,14 @@ const ItemCheck: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* ============================================================ */}
+            {/* 컨트롤 바: 왼쪽(버튼) / 오른쪽(액션 버튼) */}
+            {/* ============================================================ */}
+            <div className="v2-excel-upload-section">
+              <div className="v2-control-left">
 
                 {/* ⬆️ 1688 XLSX 업로드 버튼 */}
                 <button
@@ -877,6 +948,21 @@ const ItemCheck: React.FC = () => {
               </div>
 
               <div className="v2-control-right">
+                {/* 비고 버튼 */}
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={() => {
+                    if (selectedRows.size === 0) {
+                      alert('항목을 선택해주세요.');
+                      return;
+                    }
+                    setIsNoteModalOpen(true);
+                  }}
+                  disabled={!selectedUserId || items.length === 0}
+                >
+                  비고
+                </button>
+
                 {/* 반품 버튼 — 사용자 선택 시 바로 클릭 가능 */}
                 <button
                   className="v2-excel-upload-btn"
@@ -903,40 +989,7 @@ const ItemCheck: React.FC = () => {
             </div>
 
             {/* ============================================================ */}
-            {/* 상태 필터 (PROCESSING / ALL) */}
-            {/* ============================================================ */}
-            <div className="v2-status-filter-bar">
-              <label
-                className={`v2-status-filter-radio ${statusFilter === 'PROCESSING' ? 'active' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="statusFilter"
-                  checked={statusFilter === 'PROCESSING'}
-                  onChange={() => handleStatusFilterChange('PROCESSING')}
-                />
-                PROCESSING
-              </label>
-              <label
-                className={`v2-status-filter-radio ${statusFilter === 'ALL' ? 'active' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="statusFilter"
-                  checked={statusFilter === 'ALL'}
-                  onChange={() => handleStatusFilterChange('ALL')}
-                />
-                ALL
-              </label>
-              {statusFilter === 'ALL' && (
-                <span className="v2-status-filter-count">
-                  전체 {filteredItems.length}건
-                </span>
-              )}
-            </div>
-
-            {/* ============================================================ */}
-            {/* 검색 영역 */}
+            {/* 검색 영역 (상태 필터 + 미배송/지연배송 + 검색 폼) */}
             {/* ============================================================ */}
             <SearchSection
               searchType={searchType}
@@ -946,6 +999,15 @@ const ItemCheck: React.FC = () => {
               onSearchKeyPress={handleSearchKeyPress}
               onSearchClick={handleSearchClick}
               isSearching={isDeliverySearching}
+              statusFilter={statusFilter}
+              onStatusFilterChange={(s) => handleStatusFilterChange(s as 'PROCESSING' | 'ALL')}
+              filteredItemsCount={filteredItems.length}
+              noDeliveryFilter={noDeliveryFilter}
+              delayedDeliveryFilter={delayedDeliveryFilter}
+              onNoDeliveryFilterChange={setNoDeliveryFilter}
+              onDelayedDeliveryFilterChange={setDelayedDeliveryFilter}
+              noDeliveryCount={noDeliveryCount}
+              delayedDeliveryCount={delayedDeliveryCount}
             />
 
             {/* ============================================================ */}
@@ -1092,6 +1154,21 @@ const ItemCheck: React.FC = () => {
         rawFulfillments={rawFulfillments}
         onClose={handleLogModalClose}
         onDelete={handleFulfillmentDelete}
+        deliveryCodes={logDeliveryCodes}
+        deliveryCodesLoading={logDeliveryCodesLoading}
+      />
+
+      {/* ============================================================ */}
+      {/* 비고 모달 — 체크박스 선택 후 비고 버튼 클릭 시 */}
+      {/* ============================================================ */}
+      <V2NoteModal
+        isOpen={isNoteModalOpen}
+        onClose={() => setIsNoteModalOpen(false)}
+        selectedIds={[...selectedRows]}
+        onSaveComplete={() => {
+          setIsNoteModalOpen(false);
+          if (selectedUserId) fetchItems(selectedUserId, statusFilter);
+        }}
       />
     </div>
   );
