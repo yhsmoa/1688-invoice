@@ -49,6 +49,31 @@
   box-shadow: 0 2px 8px rgba(24, 24, 27, 0.3);
 }
 
+/* 바코드 바로가기 버튼 (파란색) */
+.barcode-shortcut-btn {
+  padding: 8px 18px;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.barcode-shortcut-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.barcode-shortcut-btn.active {
+  background: #1e40af;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
 /* 햄버거 메뉴 버튼 */
 .sidebar-toggle-btn {
   background: none;

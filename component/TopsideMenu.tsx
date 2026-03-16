@@ -13,6 +13,7 @@ const TopsideMenu: React.FC = () => {
   const { toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const isAttendancePage = pathname === '/hr/attendance-scan';
+  const isBarcodePage = pathname === '/barcode-scan';
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     changeLanguage(e.target.value);
@@ -33,6 +34,12 @@ const TopsideMenu: React.FC = () => {
             className={`attendance-shortcut-btn ${isAttendancePage ? 'active' : ''}`}
           >
             출퇴근
+          </Link>
+          <Link
+            href="/barcode-scan"
+            className={`barcode-shortcut-btn ${isBarcodePage ? 'active' : ''}`}
+          >
+            바코드
           </Link>
           <div className="language-selector">
             <select
