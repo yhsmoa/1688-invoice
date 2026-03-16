@@ -772,9 +772,9 @@ const ExportProduct: React.FC = () => {
       }
     }
 
-    // 전체개수(DB + 로컬) 계산 — 준비개수 초과 시 실패 처리
+    // 전체개수(DB + 로컬) 계산 — 준비개수 초과 시 실패 처리 (에러 항목 제외)
     const localScanned = scanHistory
-      .filter((s) => s.order_number === (found.product_no || ''))
+      .filter((s) => !s.is_error && s.order_number === (found.product_no || ''))
       .reduce((sum, s) => sum + s.scanned_qty, 0);
 
     if (localScanned >= found.available_qty) {
@@ -841,7 +841,8 @@ const ExportProduct: React.FC = () => {
       savingLockRef.current = false;
       return;
     }
-    if (scanHistory.length === 0) {
+    const validScans = scanHistory.filter(s => !s.is_error);
+    if (validScans.length === 0) {
       alert('저장할 스캔 데이터가 없습니다.');
       savingLockRef.current = false;
       return;
@@ -852,9 +853,10 @@ const ExportProduct: React.FC = () => {
       return;
     }
 
-    // (box_number, order_number) 기준으로 수량 합산
+    // (box_number, order_number) 기준으로 수량 합산 — is_error 항목 제외
     const groupMap = new Map<string, { box_number: string; order_number: string; qty: number }>();
     for (const s of scanHistory) {
+      if (s.is_error) continue; // 에러 항목은 저장에서 제외
       const key = `${s.box_number}||${s.order_number}`;
       const existing = groupMap.get(key);
       if (existing) {
@@ -1111,9 +1113,9 @@ const ExportProduct: React.FC = () => {
       }
     }
 
-    // 기존 스캔 수량 계산
+    // 기존 스캔 수량 계산 (에러 항목 제외)
     const localScanned = scanHistory
-      .filter(s => s.order_number === (found.product_no || ''))
+      .filter(s => !s.is_error && s.order_number === (found.product_no || ''))
       .reduce((sum, s) => sum + s.scanned_qty, 0);
 
     if (localScanned + quantity > found.available_qty) {
@@ -1575,8 +1577,8 @@ const ExportProduct: React.FC = () => {
 
                     {/* 3) 수량 3개: 준비 / 스캔(이 박스 로컬) / 전체(DB + 로컬) */}
                     {(() => {
-                      const localTotal = scanHistory.filter((s) => s.order_number === currentExportItem.product_no).reduce((sum, s) => sum + s.scanned_qty, 0);
-                      const boxScanned = scanHistory.filter((s) => s.box_number === selectedBox && s.order_number === currentExportItem.product_no).reduce((sum, s) => sum + s.scanned_qty, 0);
+                      const localTotal = scanHistory.filter((s) => !s.is_error && s.order_number === currentExportItem.product_no).reduce((sum, s) => sum + s.scanned_qty, 0);
+                      const boxScanned = scanHistory.filter((s) => !s.is_error && s.box_number === selectedBox && s.order_number === currentExportItem.product_no).reduce((sum, s) => sum + s.scanned_qty, 0);
                       const grandTotal = (currentExportItem.packed_qty || 0) + localTotal; // DB 저장분 + 로컬 스캔
                       const allDone = grandTotal > 0 && grandTotal >= (currentExportItem.available_qty + (currentExportItem.packed_qty || 0));
                       const numColor = allDone ? '#16a34a' : '#111827';
@@ -1936,7 +1938,7 @@ const ExportProduct: React.FC = () => {
                           {(() => {
                             const exportItem = exportItems.find((e) => e.product_no === item.order_number);
                             const dbPacked = exportItem?.packed_qty || 0;
-                            const localTotal = scanHistory.filter((s) => s.order_number === item.order_number).reduce((sum, s) => sum + s.scanned_qty, 0);
+                            const localTotal = scanHistory.filter((s) => !s.is_error && s.order_number === item.order_number).reduce((sum, s) => sum + s.scanned_qty, 0);
                             return dbPacked + localTotal;
                           })()}
                         </td>
