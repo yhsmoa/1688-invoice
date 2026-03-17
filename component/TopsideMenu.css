@@ -26,8 +26,7 @@
 
 /* 상단 바로가기 버튼 — 공통 스타일 */
 .attendance-shortcut-btn,
-.barcode-shortcut-btn,
-.boxlabel-shortcut-btn {
+.barcode-shortcut-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -48,8 +47,7 @@
 }
 
 .attendance-shortcut-btn:hover,
-.barcode-shortcut-btn:hover,
-.boxlabel-shortcut-btn:hover {
+.barcode-shortcut-btn:hover {
   background: #27272a;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);

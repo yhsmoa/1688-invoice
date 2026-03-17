@@ -60,7 +60,7 @@ const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
     `).join('');
 
     const barcodeScript = labels.map((label, idx) =>
-      `JsBarcode("#bc-${idx}", "${label}", { format: "CODE128", width: 2, height: 50, displayValue: false, margin: 0 });`
+      `JsBarcode("#bc-${idx}", "${label}", { format: "CODE128", width: 1.5, height: 30, displayValue: false, margin: 0 });`
     ).join('\n');
 
     printWindow.document.write(`<!DOCTYPE html>
@@ -99,7 +99,7 @@ const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
     }
 
     .label-text {
-      font-size: 36pt;
+      font-size: 14pt;
       font-weight: 700;
       font-family: Arial, sans-serif;
       color: #000;
@@ -109,7 +109,7 @@ const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
     }
 
     .label-content svg {
-      height: 40px;
+      height: 25px;
     }
 
     @media screen {

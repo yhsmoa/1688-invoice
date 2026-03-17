@@ -28,6 +28,29 @@
   justify-content: center;
   min-height: calc(100vh - 150px);
   padding: 40px 20px;
+  position: relative;
+}
+
+/* BOX-LABEL 버튼 (선택 화면 오른쪽 상단) */
+.bs-boxlabel-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 18px;
+  background: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bs-boxlabel-btn:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
 }
 
 .bs-select-title {

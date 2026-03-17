@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
+import BoxLabelModal from '../../component/BoxLabelModal';
 import { useSaveContext } from '../../contexts/SaveContext';
 import '../export-product/ExportProduct.css';
 import './BarcodeScan.css';
@@ -63,6 +64,9 @@ const BarcodeScan: React.FC = () => {
   // Phase 상태: 'select' (사용자 선택) / 'scan' (스캔 화면)
   // ============================================================
   const [phase, setPhase] = useState<'select' | 'scan'>('select');
+
+  // ── BOX-LABEL 모달 ──
+  const [isBoxLabelOpen, setIsBoxLabelOpen] = useState(false);
 
   // ============================================================
   // 사용자 및 데이터 상태
@@ -498,6 +502,14 @@ const BarcodeScan: React.FC = () => {
             {/* ============================================================ */}
             {phase === 'select' && (
               <div className="bs-select-screen">
+                {/* BOX-LABEL 버튼 (오른쪽 상단) */}
+                <button
+                  className="bs-boxlabel-btn"
+                  onClick={() => setIsBoxLabelOpen(true)}
+                >
+                  BOX-LABEL
+                </button>
+
                 <h1 className="bs-select-title">请选择一家营业厅。</h1>
                 <div className="bs-select-buttons">
                   {coupangUsers.map(user => (
@@ -513,6 +525,11 @@ const BarcodeScan: React.FC = () => {
                     </button>
                   ))}
                 </div>
+
+                {/* BOX-LABEL 모달 */}
+                {isBoxLabelOpen && (
+                  <BoxLabelModal onClose={() => setIsBoxLabelOpen(false)} />
+                )}
               </div>
             )}
 
