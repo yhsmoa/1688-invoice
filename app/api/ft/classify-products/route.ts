@@ -4,9 +4,7 @@ import { supabase } from '../../../../lib/supabase';
 // ============================================================
 // Gemini API 설정
 // ============================================================
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-2.5-flash-lite';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ============================================================
 // 분류 프롬프트 생성
@@ -61,8 +59,9 @@ ${productList}
 // ============================================================
 // Gemini API 호출
 // ============================================================
-async function callGemini(prompt: string): Promise<string> {
-  const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+async function callGemini(prompt: string, apiKey: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const res = await fetch(`${url}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -110,6 +109,9 @@ function parseClassificationResponse(text: string): Map<number, string> {
 // ============================================================
 export async function POST(request: NextRequest) {
   try {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
     if (!GEMINI_API_KEY) {
       return NextResponse.json(
         { success: false, error: 'GEMINI_API_KEY가 설정되지 않았습니다.' },
@@ -127,14 +129,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 1) Gemini 분류 요청 (50개씩 배치) ──
-    const BATCH = 50;
+    // ── 1a) DB에서 기존 분류 조회 (item_name 기준, created_at 최신) ──
     const classificationMap = new Map<string, string>(); // item_name → category
+    const remaining: string[] = []; // DB에 없어서 Gemini가 처리할 목록
 
-    for (let i = 0; i < item_names.length; i += BATCH) {
-      const batch = item_names.slice(i, i + BATCH);
+    const DB_BATCH = 100;
+    for (let i = 0; i < item_names.length; i += DB_BATCH) {
+      const batch = item_names.slice(i, i + DB_BATCH);
+      const { data } = await supabase
+        .from('ft_order_items')
+        .select('item_name, customs_category, created_at')
+        .in('item_name', batch)
+        .not('customs_category', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        for (const row of data) {
+          // 같은 item_name이 여러 개면 첫 번째(최신)만 사용
+          if (!classificationMap.has(row.item_name)) {
+            classificationMap.set(row.item_name, row.customs_category);
+          }
+        }
+      }
+    }
+
+    for (const name of item_names) {
+      if (!classificationMap.has(name)) remaining.push(name);
+    }
+
+    // ── 1b) 남은 항목 Gemini 분류 요청 (50개씩 배치) ──
+    const BATCH = 50;
+
+    for (let i = 0; i < remaining.length; i += BATCH) {
+      const batch = remaining.slice(i, i + BATCH);
       const prompt = buildClassificationPrompt(batch);
-      const response = await callGemini(prompt);
+      const response = await callGemini(prompt, GEMINI_API_KEY);
       const parsed = parseClassificationResponse(response);
 
       for (const [num, category] of parsed) {
