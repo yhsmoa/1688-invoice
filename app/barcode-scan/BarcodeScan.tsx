@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import TopsideMenu from '../../component/TopsideMenu';
+import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
+import '../export-product/ExportProduct.css';
 import './BarcodeScan.css';
 
 // ============================================================
@@ -75,6 +77,7 @@ const BarcodeScan: React.FC = () => {
   // 스캔 및 쉽먼트 상태
   // ============================================================
   const [selectedBox, setSelectedBox] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [shipmentData, setShipmentData] = useState<ShipmentData[]>([]);
   const [scanHistory, setScanHistory] = useState<ShipmentData[]>([]);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
@@ -273,7 +276,6 @@ const BarcodeScan: React.FC = () => {
       setHasUnsavedChanges(false);
       setPhase('scan');
 
-      // 박스 입력에 포커스
       setTimeout(() => boxInputRef.current?.focus(), 100);
 
     } catch (err) {
@@ -286,16 +288,7 @@ const BarcodeScan: React.FC = () => {
   }, [coupangUsers, setHasUnsavedChanges]);
 
   // ============================================================
-  // 6) 박스 스캔 → 주문번호 입력 활성화
-  // ============================================================
-  const handleBoxScan = useCallback((value: string) => {
-    const box = value.replace(/\s/g, '').toUpperCase();
-    setSelectedBox(box);
-    setTimeout(() => barcodeInputRef.current?.focus(), 50);
-  }, []);
-
-  // ============================================================
-  // 7) 바코드 스캔 처리 (export-product processScan과 동일 로직)
+  // 6) 바코드 스캔 처리 (export-product processScan과 동일 로직)
   // ============================================================
   const processScan = useCallback((orderNumber: string, quantity: number) => {
     const normalized = normalizeBarcodeToOrderNumber(orderNumber);
@@ -393,7 +386,7 @@ const BarcodeScan: React.FC = () => {
   }, [selectedBox, findOrderByNumber, shipmentData, playSuccessSound, playErrorSound, setHasUnsavedChanges]);
 
   // ============================================================
-  // 8) 저장 함수 (구글 시트)
+  // 7) 저장 함수 (구글 시트)
   // ============================================================
   const saveAllData = useCallback(async () => {
     if (!selectedCoupangUser) {
@@ -432,7 +425,7 @@ const BarcodeScan: React.FC = () => {
         setAlertMessage(result.error || '저장 실패');
         setShowAlert(true); setTimeout(() => setShowAlert(false), 3000);
       }
-    } catch (err) {
+    } catch {
       setAlertMessage('저장 중 오류 발생');
       setShowAlert(true); setTimeout(() => setShowAlert(false), 3000);
     } finally {
@@ -441,7 +434,7 @@ const BarcodeScan: React.FC = () => {
   }, [selectedCoupangUser, coupangUsers, shipmentData, setHasUnsavedChanges]);
 
   // ============================================================
-  // 9) 기록 패널 함수
+  // 8) 기록 패널 함수
   // ============================================================
   const handleSelectItem = (index: number) => {
     const next = new Set(selectedItems);
@@ -486,215 +479,263 @@ const BarcodeScan: React.FC = () => {
   // 렌더링
   // ============================================================
   return (
-    <div className="bs-layout">
+    <div className="export-layout">
       <TopsideMenu />
+      <div className="export-main-content">
+        <LeftsideMenu />
+        <main className="export-content">
+          <div className="export-container">
 
-      {/* ── 알림 메시지 ── */}
-      {showAlert && (
-        <div className="bs-alert">{alertMessage}</div>
-      )}
+            {/* ── 알림 메시지 ── */}
+            {showAlert && (
+              <div className="bs-alert">{alertMessage}</div>
+            )}
 
-      {/* ============================================================ */}
-      {/* Phase 1: 사용자 선택 화면 */}
-      {/* ============================================================ */}
-      {phase === 'select' && (
-        <div className="bs-select-screen">
-          <h1 className="bs-select-title">请选择一家营业厅。</h1>
-          <div className="bs-select-buttons">
-            {coupangUsers.map(user => (
-              <button
-                key={user.coupang_name}
-                className="bs-select-btn"
-                onClick={() => handleUserSelect(user.coupang_name)}
-                disabled={loading}
-              >
-                {loading && selectedCoupangUser === user.coupang_name ? '로딩 중...' : (
-                  user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+            {/* ============================================================ */}
+            {/* Phase 1: 사용자 선택 화면 */}
+            {/* ============================================================ */}
+            {phase === 'select' && (
+              <div className="bs-select-screen">
+                <h1 className="bs-select-title">请选择一家营业厅。</h1>
+                <div className="bs-select-buttons">
+                  {coupangUsers.map(user => (
+                    <button
+                      key={user.coupang_name}
+                      className="bs-select-btn"
+                      onClick={() => handleUserSelect(user.coupang_name)}
+                      disabled={loading}
+                    >
+                      {loading && selectedCoupangUser === user.coupang_name ? '로딩 중...' : (
+                        user.user_code ? `${user.user_code} ${user.coupang_name}` : user.coupang_name
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-      {/* ============================================================ */}
-      {/* Phase 2: 스캔 화면 */}
-      {/* ============================================================ */}
-      {phase === 'scan' && (
-        <div className="bs-scan-screen">
-          {/* ── 상단: 박스 + 주문번호 입력폼 ── */}
-          <div className="bs-input-section">
-            <input
-              ref={boxInputRef}
-              type="text"
-              placeholder="박스를 스캔해주세요"
-              className="bs-box-input"
-              value={selectedBox}
-              onChange={e => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (selectedBox.trim()) barcodeInputRef.current?.focus();
-                }
-              }}
-            />
-            <input
-              ref={barcodeInputRef}
-              type="text"
-              placeholder="주문번호를 입력해주세요"
-              className="bs-barcode-input"
-              disabled={!selectedBox}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val) {
-                    processScan(val, 1);
-                    (e.target as HTMLInputElement).value = '';
-                  }
-                }
-              }}
-            />
-          </div>
+            {/* ============================================================ */}
+            {/* Phase 2: 스캔 화면 */}
+            {/* ============================================================ */}
+            {phase === 'scan' && (
+              <>
+                <h1 className="export-title">상품 출고 (바코드)</h1>
 
-          {/* ── 스캔 결과 카드 ── */}
-          <div className="bs-result-card">
-            {currentOrder ? (
-              <div className="bs-order-display">
-                {/* 이미지 */}
-                <div className="bs-order-image">
-                  {currentOrder.image_url && (
-                    <img
-                      src={`/api/image-proxy?url=${encodeURIComponent(currentOrder.image_url)}`}
-                      alt="상품"
-                      onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+                {/* ── 상단 버튼 영역 (기록/저장) ── */}
+                <div className="export-header-buttons">
+                  <div className="export-left-buttons">
+                    <span style={{ fontSize: 14, color: '#666' }}>
+                      {selectedCoupangUser} | 주문 {orderData.length}개
+                    </span>
+                  </div>
+                  <div className="export-right-buttons">
+                    <button
+                      className="export-history-btn"
+                      onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+                    >
+                      기록
+                    </button>
+                    <button
+                      className={`export-download-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
+                      onClick={saveAllData}
+                      disabled={loading}
+                    >
+                      {loading ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── 박스번호 입력 ── */}
+                <div className="export-barcode-section">
+                  <div className="export-dropdown-row" style={{ marginBottom: '10px' }}>
+                    <input
+                      ref={boxInputRef}
+                      type="text"
+                      placeholder="박스를 스캔해주세요"
+                      className="export-box-input"
+                      value={selectedBox}
+                      onChange={e => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
+                      style={{ textTransform: 'uppercase' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (selectedBox.trim()) barcodeInputRef.current?.focus();
+                        }
+                      }}
                     />
-                  )}
-                </div>
-                {/* 주문 정보 */}
-                <div className="bs-order-info">
-                  <div className="bs-order-number">{currentOrder.order_number}</div>
-                  <div className="bs-order-name">{currentOrder.product_name}</div>
-                  <div className="bs-order-options">
-                    {currentOrder.china_option1} {currentOrder.china_option2}
                   </div>
                 </div>
-                {/* 수량 */}
-                <div className="bs-order-qty">
-                  <div className={`bs-qty-circle ${
-                    scannedQty >= currentOrder.available_qty && scannedQty > 0
-                      ? (scannedQty === currentOrder.available_qty ? 'completed' : 'exceeded')
-                      : scannedQty > 0 ? 'scanned' : 'default'
-                  }`}>
-                    {scannedQty}/{currentOrder.available_qty}
-                  </div>
-                  {lastScannedSizeCode && (
-                    <div className={`bs-size-code bs-size-${lastScannedSizeCode.toLowerCase()}`}>
-                      {lastScannedSizeCode}
+
+                {/* ── 스캔 결과 보드 (export-product와 동일 스타일) ── */}
+                <div
+                  className="export-scan-board active"
+                  style={{ cursor: 'text', border: '3px solid #4CAF50', position: 'relative' }}
+                  onClick={() => barcodeInputRef.current?.focus()}
+                >
+                  {/* 바코드 스캔 숨김 입력 */}
+                  <input
+                    ref={barcodeInputRef}
+                    type="text"
+                    value={barcodeInput}
+                    onChange={e => setBarcodeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = barcodeInput.trim();
+                        if (val && selectedBox) {
+                          processScan(val, 1);
+                          setBarcodeInput('');
+                        } else if (!selectedBox) {
+                          playErrorSound();
+                          setAlertMessage('박스번호를 먼저 입력해주세요.');
+                          setShowAlert(true); setTimeout(() => setShowAlert(false), 2000);
+                        }
+                      }
+                    }}
+                    style={{
+                      position: 'absolute', top: 0, left: 0,
+                      width: '1px', height: '1px', opacity: 0, pointerEvents: 'none',
+                    }}
+                  />
+
+                  {currentOrder ? (
+                    <div className="export-order-display">
+                      {/* 이미지 */}
+                      <div className="export-order-image">
+                        {currentOrder.image_url && (
+                          <img
+                            src={`/api/image-proxy?url=${encodeURIComponent(currentOrder.image_url)}`}
+                            alt="상품"
+                            onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+                          />
+                        )}
+                      </div>
+                      {/* 주문정보 */}
+                      <div className="export-order-info">
+                        <div className="export-order-number">{currentOrder.order_number}</div>
+                        <div className="export-order-options">
+                          {currentOrder.china_option1} {currentOrder.china_option2}
+                        </div>
+                      </div>
+                      {/* 수량 */}
+                      <div className="export-order-quantity">
+                        <div className="export-qty-display">
+                          <div className="export-qty-row">
+                            <div className={`export-qty-circle ${
+                              scannedQty >= currentOrder.available_qty && scannedQty > 0
+                                ? (scannedQty === currentOrder.available_qty ? 'completed' : 'exceeded')
+                                : scannedQty > 0 ? 'scanned' : 'default'
+                            }`}>
+                              {scannedQty}/{currentOrder.available_qty}
+                            </div>
+                            {lastScannedSizeCode && (
+                              <>
+                                <div className="export-size-arrow">⇒</div>
+                                <div className={`export-size-code export-size-code-${lastScannedSizeCode.toLowerCase()}`}>
+                                  {lastScannedSizeCode}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : sizeMismatchInfo ? (
+                    <div className="export-size-mismatch-warning">
+                      <div className="export-mismatch-title">사이즈 코드 불일치!</div>
+                      <p>박스: <strong>{sizeMismatchInfo.boxCode}</strong> / 상품: <strong>{sizeMismatchInfo.productCode}</strong></p>
+                    </div>
+                  ) : (
+                    <div className="export-scan-info">
+                      {selectedBox ? (
+                        <>
+                          <p>바코드를 스캔해주세요</p>
+                          <p className="export-caps-warning">키보드가 대문자 인지 확인해주세요</p>
+                        </>
+                      ) : (
+                        <p>박스번호를 먼저 입력해주세요</p>
+                      )}
+                      {orderData.length > 0 && (
+                        <p className="export-data-status">로드된 주문: {orderData.length}개</p>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            ) : sizeMismatchInfo ? (
-              <div className="bs-mismatch-warning">
-                <div className="bs-mismatch-title">사이즈 코드 불일치!</div>
-                <div className="bs-mismatch-detail">
-                  박스: <strong>{sizeMismatchInfo.boxCode}</strong> / 상품: <strong>{sizeMismatchInfo.productCode}</strong>
+
+                {/* ── 기록 패널 (슬라이드) — export-product와 동일 ── */}
+                <div className={`export-history-panel ${isHistoryPanelOpen ? 'open' : ''}`}>
+                  <div className="export-history-header">
+                    <h3>쉽먼트</h3>
+                    <button className="export-history-close" onClick={() => setIsHistoryPanelOpen(false)}>✕</button>
+                  </div>
+                  <div className="export-history-content">
+                    <div className="export-shipment-header" style={{ padding: '15px 20px', borderBottom: '1px solid #ddd' }}>
+                      <button
+                        className="export-delete-btn"
+                        onClick={handleDeleteSelected}
+                        disabled={selectedItems.size === 0}
+                      >
+                        삭제 ({selectedItems.size})
+                      </button>
+                    </div>
+                    <div className="export-table-board" style={{ padding: 0, margin: 0 }}>
+                      <table className="export-table">
+                        <thead>
+                          <tr>
+                            <th className="export-checkbox-column">
+                              <input type="checkbox"
+                                checked={shipmentData.length > 0 && selectedItems.size === shipmentData.length}
+                                onChange={handleSelectAll}
+                                disabled={shipmentData.length === 0}
+                              />
+                            </th>
+                            <th>박스번호</th>
+                            <th className="export-order-number-column">주문번호</th>
+                            <th className="export-product-name-column">상품명</th>
+                            <th>출고</th>
+                            <th>입고</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shipmentData.length === 0 ? (
+                            <tr><td colSpan={6} className="export-empty-data">데이터 없음</td></tr>
+                          ) : (
+                            [...shipmentData].reverse().map((item, di) => {
+                              const oi = shipmentData.length - 1 - di;
+                              return (
+                                <tr key={oi}>
+                                  <td className="export-checkbox-column">
+                                    <input type="checkbox" checked={selectedItems.has(oi)} onChange={() => handleSelectItem(oi)} />
+                                  </td>
+                                  <td>{item.box_number}</td>
+                                  <td>{item.order_number}</td>
+                                  <td>{item.product_name}</td>
+                                  <td
+                                    className="export-editable-cell"
+                                    onClick={() => handleQtyClick(oi)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    {editingIndex === oi ? (
+                                      <input type="number" value={editingValue} onChange={e => setEditingValue(e.target.value)}
+                                        onBlur={handleQtyBlur} onKeyDown={handleQtyKeyDown} autoFocus className="export-qty-input" />
+                                    ) : item.scanned_qty}
+                                  </td>
+                                  <td>{item.available_qty}</td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="bs-empty-card">
-                {selectedBox ? (
-                  <p>박스 <strong>{selectedBox}</strong> 선택됨 — 바코드를 스캔하세요</p>
-                ) : (
-                  <p>박스를 먼저 스캔해주세요</p>
-                )}
-                {orderData.length > 0 && (
-                  <p className="bs-data-count">로드된 주문: {orderData.length}개</p>
-                )}
-              </div>
+              </>
             )}
-          </div>
 
-          {/* ── 버튼 영역: [기록] [저장] ── */}
-          <div className="bs-action-buttons">
-            <button
-              className="bs-action-btn bs-record-btn"
-              onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-            >
-              기록
-            </button>
-            <button
-              className={`bs-action-btn bs-save-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
-              onClick={saveAllData}
-              disabled={loading}
-            >
-              {loading ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
-            </button>
           </div>
-
-          {/* ── 기록 패널 (슬라이드) ── */}
-          <div className={`bs-history-panel ${isHistoryPanelOpen ? 'open' : ''}`}>
-            <div className="bs-history-header">
-              <h3>쉽먼트</h3>
-              <button className="bs-history-close" onClick={() => setIsHistoryPanelOpen(false)}>✕</button>
-            </div>
-            <div className="bs-history-content">
-              <div className="bs-history-toolbar">
-                <button
-                  className="bs-delete-btn"
-                  onClick={handleDeleteSelected}
-                  disabled={selectedItems.size === 0}
-                >
-                  삭제 ({selectedItems.size})
-                </button>
-              </div>
-              <table className="bs-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 40 }}>
-                      <input type="checkbox"
-                        checked={shipmentData.length > 0 && selectedItems.size === shipmentData.length}
-                        onChange={handleSelectAll}
-                        disabled={shipmentData.length === 0}
-                      />
-                    </th>
-                    <th>박스</th>
-                    <th>주문번호</th>
-                    <th>상품명</th>
-                    <th style={{ width: 60 }}>출고</th>
-                    <th style={{ width: 60 }}>입고</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shipmentData.length === 0 ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 30, color: '#999' }}>데이터 없음</td></tr>
-                  ) : (
-                    [...shipmentData].reverse().map((item, di) => {
-                      const oi = shipmentData.length - 1 - di;
-                      return (
-                        <tr key={oi}>
-                          <td><input type="checkbox" checked={selectedItems.has(oi)} onChange={() => handleSelectItem(oi)} /></td>
-                          <td>{item.box_number}</td>
-                          <td>{item.order_number}</td>
-                          <td>{item.product_name}</td>
-                          <td onClick={() => handleQtyClick(oi)} style={{ cursor: 'pointer' }}>
-                            {editingIndex === oi ? (
-                              <input type="number" value={editingValue} onChange={e => setEditingValue(e.target.value)}
-                                onBlur={handleQtyBlur} onKeyDown={handleQtyKeyDown} autoFocus className="bs-qty-edit" />
-                            ) : item.scanned_qty}
-                          </td>
-                          <td>{item.available_qty}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+        </main>
+      </div>
     </div>
   );
 };
