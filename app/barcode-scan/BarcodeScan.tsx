@@ -519,54 +519,36 @@ const BarcodeScan: React.FC = () => {
             {/* ============================================================ */}
             {phase === 'scan' && (
               <>
-                <h1 className="export-title">상품 출고 (바코드)</h1>
-
-                {/* ── 상단 버튼 영역 (기록/저장) ── */}
-                <div className="export-header-buttons">
-                  <div className="export-left-buttons">
-                    <span style={{ fontSize: 14, color: '#666' }}>
-                      {selectedCoupangUser} | 주문 {orderData.length}개
-                    </span>
-                  </div>
-                  <div className="export-right-buttons">
-                    <button
-                      className="export-history-btn"
-                      onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-                    >
-                      기록
-                    </button>
-                    <button
-                      className={`export-download-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
-                      onClick={saveAllData}
-                      disabled={loading}
-                    >
-                      {loading ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
-                    </button>
-                  </div>
+                {/* ── 사업자명 중앙 표시 ── */}
+                <div style={{ textAlign: 'center', margin: '10px 0 20px' }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
+                    {selectedCoupangUser}
+                  </span>
+                  <span style={{ fontSize: 14, color: '#999', marginLeft: 8 }}>
+                    주문 {orderData.length}개
+                  </span>
                 </div>
 
-                {/* ── 박스번호 입력 ── */}
+                {/* ── 박스번호 입력 (결과보드와 동일 너비, 절반 높이) ── */}
                 <div className="export-barcode-section">
-                  <div className="export-dropdown-row" style={{ marginBottom: '10px' }}>
-                    <input
-                      ref={boxInputRef}
-                      type="text"
-                      placeholder="박스를 스캔해주세요"
-                      className="export-box-input"
-                      value={selectedBox}
-                      onChange={e => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
-                      style={{ textTransform: 'uppercase' }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (selectedBox.trim()) barcodeInputRef.current?.focus();
-                        }
-                      }}
-                    />
-                  </div>
+                  <input
+                    ref={boxInputRef}
+                    type="text"
+                    placeholder="박스를 스캔해주세요"
+                    className="export-box-input"
+                    value={selectedBox}
+                    onChange={e => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
+                    style={{ width: '100%', textTransform: 'uppercase', boxSizing: 'border-box' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (selectedBox.trim()) barcodeInputRef.current?.focus();
+                      }
+                    }}
+                  />
                 </div>
 
-                {/* ── 스캔 결과 보드 (export-product와 동일 스타일) ── */}
+                {/* ── 스캔 결과 보드 (주문번호 입력 + 결과 표시) ── */}
                 <div
                   className="export-scan-board active"
                   style={{ cursor: 'text', border: '3px solid #4CAF50', position: 'relative' }}
@@ -660,6 +642,25 @@ const BarcodeScan: React.FC = () => {
                       )}
                     </div>
                   )}
+                </div>
+
+                {/* ── 하단 버튼: [기록] [저장] flex 전체 너비 ── */}
+                <div className="bs-bottom-buttons">
+                  <button
+                    className="export-history-btn"
+                    onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+                    style={{ flex: 1 }}
+                  >
+                    기록
+                  </button>
+                  <button
+                    className={`export-download-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
+                    onClick={saveAllData}
+                    disabled={loading}
+                    style={{ flex: 1 }}
+                  >
+                    {loading ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
+                  </button>
                 </div>
 
                 {/* ── 기록 패널 (슬라이드) — export-product와 동일 ── */}
