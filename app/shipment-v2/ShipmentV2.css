@@ -62,14 +62,24 @@
   color: #666;
 }
 
-/* ── 액션 바 ([이동] + [엑셀] 버튼) ── */
+/* ── 액션 바 (왼쪽: 기능 버튼 / 오른쪽: 저장) ── */
 .shipment-v2-action-bar {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 6px;
 }
 
+.shipment-v2-action-left {
+  display: flex;
+  gap: 8px;
+}
+
+.shipment-v2-action-right {
+  display: flex;
+}
+
+/* 공통 버튼 스타일 */
 .shipment-v2-move-btn,
 .shipment-v2-merge-btn,
 .shipment-v2-excel-btn {
@@ -97,8 +107,7 @@
   cursor: not-allowed;
 }
 
-
-/* ── 출고 버튼 ── */
+/* ── 출고 버튼 (빨강) ── */
 .shipment-v2-ship-btn {
   padding: 6px 18px;
   background-color: #dc2626;
@@ -118,6 +127,65 @@
 .shipment-v2-ship-btn:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
+}
+
+/* ── 저장 버튼 ── */
+.shipment-v2-save-btn {
+  padding: 6px 24px;
+  background-color: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.shipment-v2-save-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.shipment-v2-save-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.shipment-v2-save-btn--dirty {
+  background-color: #16a34a !important;
+  cursor: pointer !important;
+}
+
+.shipment-v2-save-btn--dirty:hover {
+  background-color: #15803d !important;
+}
+
+/* ── 품목별 개수 요약 보드 ── */
+.shipment-v2-category-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.shipment-v2-category-tag {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  padding: 2px 8px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.shipment-v2-category-count {
+  font-weight: 700;
+  color: #2563eb;
+  margin-left: 2px;
 }
 
 /* ── 테이블 영역 ── */

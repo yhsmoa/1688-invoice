@@ -133,5 +133,15 @@
     "scan": "스캔",
     "boxNumberInput": "박스 번호 입력",
     "quantityInput": "개수"
+  },
+  "barcodeScan": {
+    "scanBox": "박스를 스캔해주세요",
+    "scanBarcode": "바코드를 스캔해주세요",
+    "enterBoxFirst": "박스번호를 먼저 입력해주세요",
+    "loadedOrders": "로드된 주문",
+    "record": "기록",
+    "save": "저장",
+    "saving": "저장 중...",
+    "orders": "주문"
   }
 }

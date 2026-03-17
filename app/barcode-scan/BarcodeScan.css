@@ -98,3 +98,12 @@
   height: 150px;
   font-size: 54px;
 }
+
+/* 스캔 보드 내부 텍스트 확대 */
+.bs-scan-phase .export-scan-info p {
+  font-size: 1.6rem;
+}
+
+.bs-scan-phase .export-data-status {
+  font-size: 1.4rem !important;
+}

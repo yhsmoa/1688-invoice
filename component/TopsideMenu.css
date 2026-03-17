@@ -24,54 +24,41 @@
   margin-left: auto;
 }
 
-/* 출퇴근 바로가기 버튼 */
-.attendance-shortcut-btn {
-  padding: 8px 18px;
+/* 상단 바로가기 버튼 — 공통 스타일 */
+.attendance-shortcut-btn,
+.barcode-shortcut-btn,
+.boxlabel-shortcut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 18px;
   background: #18181b;
   color: #ffffff;
+  border: none;
   border-radius: 10px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.5px;
+  cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
-.attendance-shortcut-btn:hover {
+.attendance-shortcut-btn:hover,
+.barcode-shortcut-btn:hover,
+.boxlabel-shortcut-btn:hover {
   background: #27272a;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
 }
 
-.attendance-shortcut-btn.active {
+.attendance-shortcut-btn.active,
+.barcode-shortcut-btn.active {
   background: #3f3f46;
   box-shadow: 0 2px 8px rgba(24, 24, 27, 0.3);
-}
-
-/* 바코드 바로가기 버튼 (파란색) */
-.barcode-shortcut-btn {
-  padding: 8px 18px;
-  background: #2563eb;
-  color: #ffffff;
-  border-radius: 10px;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-}
-
-.barcode-shortcut-btn:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-
-.barcode-shortcut-btn.active {
-  background: #1e40af;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 /* 햄버거 메뉴 버튼 */

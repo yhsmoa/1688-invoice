@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
@@ -55,6 +56,7 @@ interface ScanSheetData {
 // 메인 컴포넌트
 // ============================================================
 const BarcodeScan: React.FC = () => {
+  const { t } = useTranslation();
   const { hasUnsavedChanges, setHasUnsavedChanges } = useSaveContext();
 
   // ============================================================
@@ -521,11 +523,14 @@ const BarcodeScan: React.FC = () => {
               <div className="bs-scan-phase">
                 {/* ── 사업자명 중앙 표시 ── */}
                 <div style={{ textAlign: 'center', margin: '10px 0 20px' }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
-                    {selectedCoupangUser}
+                  <span style={{ fontSize: 28, fontWeight: 700, color: '#333' }}>
+                    {(() => {
+                      const user = coupangUsers.find(u => u.coupang_name === selectedCoupangUser);
+                      return user?.user_code ? `${user.user_code} ${user.coupang_name}` : selectedCoupangUser;
+                    })()}
                   </span>
-                  <span style={{ fontSize: 14, color: '#999', marginLeft: 8 }}>
-                    주문 {orderData.length}개
+                  <span style={{ fontSize: 20, color: '#999', marginLeft: 12 }}>
+                    {t('barcodeScan.orders')} {orderData.length}개
                   </span>
                 </div>
 
@@ -534,7 +539,7 @@ const BarcodeScan: React.FC = () => {
                   <input
                     ref={boxInputRef}
                     type="text"
-                    placeholder="박스를 스캔해주세요"
+                    placeholder={t('barcodeScan.scanBox')}
                     className="export-box-input"
                     value={selectedBox}
                     onChange={e => setSelectedBox(e.target.value.replace(/\s/g, '').toUpperCase())}
@@ -631,14 +636,14 @@ const BarcodeScan: React.FC = () => {
                     <div className="export-scan-info">
                       {selectedBox ? (
                         <>
-                          <p>바코드를 스캔해주세요</p>
+                          <p>{t('barcodeScan.scanBarcode')}</p>
                           <p className="export-caps-warning">키보드가 대문자 인지 확인해주세요</p>
                         </>
                       ) : (
-                        <p>박스번호를 먼저 입력해주세요</p>
+                        <p>{t('barcodeScan.enterBoxFirst')}</p>
                       )}
                       {orderData.length > 0 && (
-                        <p className="export-data-status">로드된 주문: {orderData.length}개</p>
+                        <p className="export-data-status">{t('barcodeScan.loadedOrders')}: {orderData.length}</p>
                       )}
                     </div>
                   )}
@@ -651,7 +656,7 @@ const BarcodeScan: React.FC = () => {
                     onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
                     style={{ flex: 1 }}
                   >
-                    기록
+                    {t('barcodeScan.record')}
                   </button>
                   <button
                     className={`export-download-btn ${hasUnsavedChanges ? 'has-changes' : ''}`}
@@ -659,7 +664,7 @@ const BarcodeScan: React.FC = () => {
                     disabled={loading}
                     style={{ flex: 1 }}
                   >
-                    {loading ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
+                    {loading ? t('barcodeScan.saving') : `${t('barcodeScan.save')}${hasUnsavedChanges ? ' !' : ''}`}
                   </button>
                 </div>
 

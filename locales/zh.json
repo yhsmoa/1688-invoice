@@ -127,5 +127,15 @@
     "scan": "扫描",
     "boxNumberInput": "箱号输入",
     "quantityInput": "数量"
+  },
+  "barcodeScan": {
+    "scanBox": "请扫描箱号",
+    "scanBarcode": "请扫描条形码",
+    "enterBoxFirst": "请先输入箱号",
+    "loadedOrders": "已加载订单",
+    "record": "记录",
+    "save": "保存",
+    "saving": "保存中...",
+    "orders": "订单"
   }
 }

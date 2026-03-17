@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
@@ -97,6 +97,9 @@ const ShipmentV2: React.FC = () => {
   // ── 품목 인라인 편집 ──
   const [editingCategory, setEditingCategory] = useState<string | null>(null); // idx as string
   const categoryRef = useRef<HTMLTableCellElement>(null);
+
+  // ── 배치 저장: 변경된 품목 추적 (order_item_id → new value) ──
+  const [dirtyCategories, setDirtyCategories] = useState<Map<string, string | null>>(new Map());
 
   // ── 출고 모달 ──
   const [showShipModal, setShowShipModal] = useState(false);
@@ -227,7 +230,7 @@ const ShipmentV2: React.FC = () => {
     }, 0);
   };
 
-  const handleCategoryBlur = async (idx: number) => {
+  const handleCategoryBlur = (idx: number) => {
     if (categoryRef.current) {
       const newVal = (categoryRef.current.textContent || '').trim();
       const row = rows[idx];
@@ -238,19 +241,12 @@ const ShipmentV2: React.FC = () => {
           next[idx] = { ...next[idx], customs_category: newVal || null };
           return next;
         });
-        // DB 저장 (order_item_id 기준)
-        try {
-          await fetch('/api/ft/order-items', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: row.order_item_id,
-              fields: { customs_category: newVal || null },
-            }),
-          });
-        } catch (err) {
-          console.error('품목 저장 오류:', err);
-        }
+        // 변경 추적 (배치 저장용)
+        setDirtyCategories((prev) => {
+          const next = new Map(prev);
+          next.set(row.order_item_id, newVal || null);
+          return next;
+        });
       }
     }
     setEditingCategory(null);
@@ -260,6 +256,51 @@ const ShipmentV2: React.FC = () => {
     if (e.key === 'Enter') { e.preventDefault(); handleCategoryBlur(idx); }
     else if (e.key === 'Escape') setEditingCategory(null);
   };
+
+  // ============================================================
+  // 품목 일괄 저장 ([저장] 버튼)
+  // ============================================================
+  const handleSaveAll = useCallback(async () => {
+    if (dirtyCategories.size === 0) {
+      alert('변경된 품목이 없습니다.');
+      return;
+    }
+
+    const updates = Array.from(dirtyCategories.entries()).map(([id, val]) => ({
+      id,
+      fields: { customs_category: val },
+    }));
+
+    try {
+      const res = await fetch('/api/ft/order-items', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`${updates.length}개 품목 저장 완료`);
+        setDirtyCategories(new Map());
+      } else {
+        alert('저장 실패: ' + (json.error || '알 수 없는 오류'));
+      }
+    } catch (err) {
+      console.error('품목 일괄 저장 오류:', err);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  }, [dirtyCategories]);
+
+  // ============================================================
+  // 품목별 개수 요약
+  // ============================================================
+  const categorySummary = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((r) => {
+      const cat = r.customs_category || '미분류';
+      map.set(cat, (map.get(cat) ?? 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [rows]);
 
   // ============================================================
   // 엑셀 다운로드
@@ -590,44 +631,66 @@ const ShipmentV2: React.FC = () => {
               </div>
             </div>
 
-            {/* ── 액션 바: [이동] [합배송] [엑셀] ── */}
+            {/* ── 액션 바: 왼쪽[품목,엑셀,이동,합배송,출고] / 오른쪽[저장] ── */}
             <div className="shipment-v2-action-bar">
-              <button
-                className="shipment-v2-move-btn"
-                onClick={handleMoveOpen}
-                disabled={checkedIds.size === 0}
-              >
-                이동
-              </button>
-              <button
-                className="shipment-v2-merge-btn"
-                onClick={handleMergeOpen}
-                disabled={!selectedUserId}
-              >
-                합배송
-              </button>
-              <button
-                className="shipment-v2-excel-btn"
-                onClick={handleExcelDownload}
-                disabled={rows.length === 0}
-              >
-                엑셀
-              </button>
-              <button
-                className="shipment-v2-move-btn"
-                onClick={handleClassifyProducts}
-                disabled={isClassifying || rows.length === 0}
-              >
-                {isClassifying ? '분류 중...' : '품목'}
-              </button>
-              <button
-                className="shipment-v2-ship-btn"
-                onClick={handleShipOpen}
-                disabled={checkedIds.size === 0}
-              >
-                출고
-              </button>
+              <div className="shipment-v2-action-left">
+                <button
+                  className="shipment-v2-move-btn"
+                  onClick={handleClassifyProducts}
+                  disabled={isClassifying || rows.length === 0}
+                >
+                  {isClassifying ? '분류 중...' : '품목'}
+                </button>
+                <button
+                  className="shipment-v2-excel-btn"
+                  onClick={handleExcelDownload}
+                  disabled={rows.length === 0}
+                >
+                  엑셀
+                </button>
+                <button
+                  className="shipment-v2-move-btn"
+                  onClick={handleMoveOpen}
+                  disabled={checkedIds.size === 0}
+                >
+                  이동
+                </button>
+                <button
+                  className="shipment-v2-merge-btn"
+                  onClick={handleMergeOpen}
+                  disabled={!selectedUserId}
+                >
+                  합배송
+                </button>
+                <button
+                  className="shipment-v2-ship-btn"
+                  onClick={handleShipOpen}
+                  disabled={checkedIds.size === 0}
+                >
+                  출고
+                </button>
+              </div>
+              <div className="shipment-v2-action-right">
+                <button
+                  className={`shipment-v2-save-btn ${dirtyCategories.size > 0 ? 'shipment-v2-save-btn--dirty' : ''}`}
+                  onClick={handleSaveAll}
+                  disabled={dirtyCategories.size === 0}
+                >
+                  저장{dirtyCategories.size > 0 ? ` (${dirtyCategories.size})` : ''}
+                </button>
+              </div>
             </div>
+
+            {/* ── 품목별 개수 요약 보드 ── */}
+            {rows.length > 0 && (
+              <div className="shipment-v2-category-summary">
+                {categorySummary.map(([cat, count]) => (
+                  <span key={cat} className="shipment-v2-category-tag">
+                    {cat}<span className="shipment-v2-category-count">({count})</span>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* ── 테이블 ── */}
             <div className="shipment-v2-table-board">

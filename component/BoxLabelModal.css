@@ -1,0 +1,156 @@
+/* ============================================================
+   BoxLabelModal — 입력 모달 스타일
+   ============================================================ */
+
+/* ── 모달 오버레이 ── */
+.boxlabel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* ── 모달 본체 ── */
+.boxlabel-modal {
+  background: #fff;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* ── 헤더 ── */
+.boxlabel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.boxlabel-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.boxlabel-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.boxlabel-close-btn:hover {
+  background-color: #eee;
+  color: #333;
+}
+
+/* ── 입력 폼 영역 ── */
+.boxlabel-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.boxlabel-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  outline: none;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.boxlabel-input:focus {
+  border-color: #333;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.boxlabel-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.boxlabel-range {
+  flex: 1;
+}
+
+.boxlabel-range-sep {
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+}
+
+/* ── 미리보기 ── */
+.boxlabel-preview {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  padding: 10px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+/* ── 하단 버튼 ── */
+.boxlabel-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.boxlabel-cancel-btn,
+.boxlabel-generate-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.boxlabel-cancel-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #ddd;
+}
+
+.boxlabel-cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+.boxlabel-generate-btn {
+  background: #18181b;
+  color: #fff;
+}
+
+.boxlabel-generate-btn:hover {
+  background: #27272a;
+}
