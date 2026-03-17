@@ -518,7 +518,7 @@ const BarcodeScan: React.FC = () => {
             {/* Phase 2: 스캔 화면 */}
             {/* ============================================================ */}
             {phase === 'scan' && (
-              <>
+              <div className="bs-scan-phase">
                 {/* ── 사업자명 중앙 표시 ── */}
                 <div style={{ textAlign: 'center', margin: '10px 0 20px' }}>
                   <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
@@ -731,7 +731,7 @@ const BarcodeScan: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
           </div>

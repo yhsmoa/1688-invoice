@@ -76,10 +76,25 @@
 }
 
 /* ============================================================
-   Phase 2: 하단 버튼 (기록/저장)
+   Phase 2: 박스 입력 + 하단 버튼 높이 통일 (스캔보드 절반)
    ============================================================ */
+
+/* 박스 입력: 스캔보드(300px)의 절반 높이 */
+.bs-scan-phase .export-box-input {
+  height: 150px;
+  font-size: 24px;
+}
+
+/* 하단 버튼 래퍼 */
 .bs-bottom-buttons {
   display: flex;
   gap: 10px;
   margin-top: 15px;
+}
+
+/* 기록/저장 버튼: 동일 높이 */
+.bs-bottom-buttons .export-history-btn,
+.bs-bottom-buttons .export-download-btn {
+  height: 150px;
+  font-size: 20px;
 }
