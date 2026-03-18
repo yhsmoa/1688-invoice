@@ -677,8 +677,22 @@ const BarcodeScan: React.FC = () => {
                     </div>
                   ) : sizeMismatchInfo ? (
                     <div className="export-size-mismatch-warning">
-                      <div className="export-mismatch-title">사이즈 코드 불일치!</div>
-                      <p>박스: <strong>{sizeMismatchInfo.boxCode}</strong> / 상품: <strong>{sizeMismatchInfo.productCode}</strong></p>
+                      <div className="export-mismatch-title">⚠️ 사이즈 코드 불일치!</div>
+                      <div className="export-mismatch-codes">
+                        <div className="export-mismatch-box">
+                          <span className="export-mismatch-label">박스:</span>
+                          <span className={`export-size-code export-size-code-${sizeMismatchInfo.boxCode.toLowerCase()}`}>
+                            {sizeMismatchInfo.boxCode}
+                          </span>
+                        </div>
+                        <div className="export-mismatch-arrow">→</div>
+                        <div className="export-mismatch-product">
+                          <span className="export-mismatch-label">올바른 코드:</span>
+                          <span className={`export-size-code-large export-size-code-${sizeMismatchInfo.productCode.toLowerCase()}`}>
+                            {sizeMismatchInfo.productCode}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="export-scan-info">
