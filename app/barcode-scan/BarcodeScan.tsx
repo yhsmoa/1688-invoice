@@ -423,16 +423,47 @@ const BarcodeScan: React.FC = () => {
         }),
       });
       const result = await res.json();
+
       if (res.ok && result.success) {
-        setAlertMessage(`저장 완료! ${shipmentData.length}개 데이터 저장됨`);
-        setShowAlert(true); setTimeout(() => setShowAlert(false), 3000);
-        setHasUnsavedChanges(false);
+        // ── 저장 후 검증: 구글 시트에서 재조회하여 개수 비교 ──
+        try {
+          const verifyRes = await fetch(`/api/load-scan-data?googlesheet_id=${user.googlesheet_id}`, {
+            method: 'GET',
+            headers: { 'Cache-Control': 'no-cache' },
+            cache: 'no-store',
+          });
+          const verifyResult = await verifyRes.json();
+
+          if (verifyRes.ok && verifyResult.success) {
+            const savedCount = verifyResult.data?.length || 0;
+            const originalCount = shipmentData.length;
+
+            if (savedCount >= originalCount) {
+              setAlertMessage(`✅ 저장 완료! ${originalCount}개 데이터가 구글 시트에 성공적으로 저장되었습니다. (검증됨: ${savedCount}개)`);
+              setShowAlert(true); setTimeout(() => setShowAlert(false), 4000);
+              setHasUnsavedChanges(false);
+            } else {
+              setAlertMessage(`⚠️ 저장 경고: ${originalCount}개를 저장했지만 ${savedCount}개만 확인됨. 다시 저장을 시도해주세요.`);
+              setShowAlert(true); setTimeout(() => setShowAlert(false), 5000);
+            }
+          } else {
+            setAlertMessage(`⚠️ 저장은 완료되었으나 검증 실패: ${result.message || '저장 확인 중 오류 발생'}`);
+            setShowAlert(true); setTimeout(() => setShowAlert(false), 4000);
+            setHasUnsavedChanges(false);
+          }
+        } catch (verifyErr) {
+          console.error('저장 검증 오류:', verifyErr);
+          setAlertMessage(`⚠️ 저장은 완료되었으나 검증 중 오류: ${verifyErr instanceof Error ? verifyErr.message : '검증 실패'}`);
+          setShowAlert(true); setTimeout(() => setShowAlert(false), 4000);
+          setHasUnsavedChanges(false);
+        }
       } else {
-        setAlertMessage(result.error || '저장 실패');
+        setAlertMessage(result.error || '스캔 데이터 저장에 실패했습니다.');
         setShowAlert(true); setTimeout(() => setShowAlert(false), 3000);
       }
-    } catch {
-      setAlertMessage('저장 중 오류 발생');
+    } catch (err) {
+      console.error('스캔 데이터 저장 오류:', err);
+      setAlertMessage(`스캔 데이터 저장 중 오류가 발생했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       setShowAlert(true); setTimeout(() => setShowAlert(false), 3000);
     } finally {
       setLoading(false);

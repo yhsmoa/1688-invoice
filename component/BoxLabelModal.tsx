@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { jsPDF } from 'jspdf';
+import JsBarcode from 'jsbarcode';
 import './BoxLabelModal.css';
 
 // ============================================================
@@ -11,7 +13,7 @@ interface BoxLabelModalProps {
 }
 
 // ============================================================
-// BoxLabelModal — 박스 라벨 생성 + 인쇄
+// BoxLabelModal — 박스 라벨 PDF 생성 + 인쇄
 // ============================================================
 const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
   // ============================================================
@@ -23,7 +25,7 @@ const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
   const [endNum, setEndNum] = useState('');
 
   // ============================================================
-  // [생성] → 새 창에서 인쇄
+  // [생성] → PDF 생성 후 새 탭에서 열기
   // ============================================================
   const handleGenerate = useCallback(() => {
     const code = userCode.trim().toUpperCase();
@@ -42,96 +44,53 @@ const BoxLabelModal: React.FC<BoxLabelModalProps> = ({ onClose }) => {
       labels.push(`${code}-${ship}-${String(i).padStart(2, '0')}`);
     }
 
-    // 새 인쇄 창 열기
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      alert('팝업이 차단되었습니다. 팝업을 허용해주세요.');
-      return;
-    }
+    // ── PDF 생성 (portrait 세로: 50mm x 70mm) ──
+    // 회전 없이 세로 방향 그대로, 정중앙 배치
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [50, 70],
+    });
 
-    // JsBarcode CDN + 인쇄 HTML 생성
-    const pagesHtml = labels.map((label, idx) => `
-      <div class="label-page">
-        <div class="label-content">
-          <div class="label-text">${label}</div>
-          <svg id="bc-${idx}"></svg>
-        </div>
-      </div>
-    `).join('');
+    const pageW = 50;  // mm
+    const pageH = 70;  // mm
+    const cx = pageW / 2; // 25mm (가로 중앙)
+    const cy = pageH / 2; // 35mm (세로 중앙)
 
-    const barcodeScript = labels.map((label, idx) =>
-      `JsBarcode("#bc-${idx}", "${label}", { format: "CODE128", width: 1.5, height: 30, displayValue: false, margin: 0 });`
-    ).join('\n');
+    labels.forEach((label, idx) => {
+      if (idx > 0) doc.addPage([50, 70], 'portrait');
 
-    printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <title>BOX LABEL</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; }
+      // ── 텍스트: 중앙 상단 ──
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.text(label, cx, cy - 8, { align: 'center' });
 
-    @page {
-      margin: 0;
-    }
+      // ── 바코드: 텍스트 아래 중앙 ──
+      const bcCanvas = document.createElement('canvas');
+      JsBarcode(bcCanvas, label, {
+        format: 'CODE128',
+        width: 2,
+        height: 50,
+        displayValue: false,
+        margin: 0,
+      });
 
-    .label-page {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      page-break-after: always;
-    }
+      const bcImg = bcCanvas.toDataURL('image/png');
+      const bcW = 40; // mm
+      const bcH = 15; // mm
+      doc.addImage(bcImg, 'PNG', cx - bcW / 2, cy - 2, bcW, bcH);
+    });
 
-    .label-page:last-child {
-      page-break-after: auto;
-    }
-
-    .label-content {
-      transform: rotate(90deg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .label-text {
-      font-size: 14pt;
-      font-weight: 700;
-      font-family: Arial, sans-serif;
-      color: #000;
-      text-align: center;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .label-content svg {
-      height: 25px;
-    }
-
-    @media screen {
-      .label-page {
-        width: 50mm;
-        height: 70mm;
-        border: 1px dashed #ccc;
-        margin: 10px auto;
-      }
-    }
-  </style>
-</head>
-<body>
-  ${pagesHtml}
-  <script>
-    ${barcodeScript}
-    setTimeout(function() { window.print(); }, 500);
-  <\/script>
-</body>
-</html>`);
-
-    printWindow.document.close();
+    // PDF를 숨김 iframe에 넣고 바로 인쇄
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    iframe.onload = () => {
+      iframe.contentWindow?.print();
+    };
   }, [userCode, shipmentCode, startNum, endNum]);
 
   // ============================================================
