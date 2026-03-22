@@ -108,6 +108,11 @@
       "emptyMessage": "无待处理项目。",
       "mixRate": "混用率",
       "backRef": "参见背面"
+    },
+    "badge": {
+      "fabricLabel": "混纺标签打印",
+      "originStamp": "原产地盖章或缝制",
+      "stopWork": "仅输入入库后转交经理"
     }
   },
   "exportProduct": {

@@ -139,7 +139,8 @@ export async function GET(request: NextRequest) {
 
       for (const s of setRows) {
         const sum = (s.price_cny ?? 0) + (s.price_delivery_cny ?? 0);
-        setPriceMap.set(s.product_id, (setPriceMap.get(s.product_id) ?? 0) + sum);
+        const acc = (setPriceMap.get(s.product_id) ?? 0) + sum;
+        setPriceMap.set(s.product_id, Math.round(acc * 100) / 100);
       }
     }
 
@@ -229,7 +230,7 @@ export async function GET(request: NextRequest) {
         if ((oi.set_total ?? 0) > 1 && oi.product_id) {
           totalPrice = setPriceMap.get(oi.product_id) ?? null;
         } else {
-          totalPrice = (oi.price_cny ?? 0) + (oi.price_delivery_cny ?? 0);
+          totalPrice = Math.round(((oi.price_cny ?? 0) + (oi.price_delivery_cny ?? 0)) * 100) / 100;
         }
       }
 

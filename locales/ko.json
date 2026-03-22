@@ -114,6 +114,11 @@
       "modalTitle": "배송누락 목록",
       "emptyMessage": "배송누락 항목이 없습니다.",
       "missing": "누락"
+    },
+    "badge": {
+      "fabricLabel": "혼용률 라벨 출력",
+      "originStamp": "원산지 도장 혹은 원산지 봉제",
+      "stopWork": "입고만 입력 후 매니저에게 전달"
     }
   },
   "exportProduct": {

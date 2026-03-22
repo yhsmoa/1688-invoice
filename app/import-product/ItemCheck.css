@@ -1208,6 +1208,31 @@
   color: #666666;
 }
 
+/* 상품명 라벨 배지 */
+.label-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.label-badge.fabric {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.label-badge.origin {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.label-badge.stop {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
 /* 처리준비 버튼 스타일 */
 .process-ready-btn {
   background-color: #f59e0b;

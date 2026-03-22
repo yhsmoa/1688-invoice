@@ -153,6 +153,15 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               })()}` : ''}
             </>
           )}
+          <div style={{ marginTop: '4px' }}>
+            {item.fabric_blend && String(item.fabric_blend).trim() ? (
+              <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
+            ) : (item.order_qty ?? 0) < 10 ? (
+              <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
+            ) : (
+              <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+            )}
+          </div>
         </div>
       </td>
       <td>
