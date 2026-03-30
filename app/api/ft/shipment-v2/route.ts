@@ -111,13 +111,13 @@ export async function GET(request: NextRequest) {
     const oiRows = await batchIn<{
       id: string; barcode: string; item_name: string; option_name: string;
       china_option1: string | null; china_option2: string | null; product_no: string | null;
-      price_cny: number | null; price_delivery_cny: number | null;
+      price_cny: number | null; price_delivery_cny: number | null; order_qty: number | null;
       img_url: string | null; composition: string | null;
       customs_category: string | null;
       set_total: number | null; product_id: string | null;
     }>(
       'ft_order_items',
-      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, img_url, composition, customs_category, set_total, product_id',
+      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, order_qty, img_url, composition, customs_category, set_total, product_id',
       'id',
       orderItemIds
     );
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     const orderItems: Record<string, typeof oiRows[0]> = {};
     for (const row of oiRows) orderItems[row.id] = row;
 
-    // ── 2b) 세트상품 단가 합산: product_id별 SUM(price_cny + price_delivery_cny) ──
+    // ── 2b) 세트상품 단가 합산: product_id별 SUM(price_cny) + 배송비(1회, order_qty로 나눔) ──
     const setProductIds = [...new Set(
       oiRows.filter((r) => (r.set_total ?? 0) > 1 && r.product_id).map((r) => r.product_id!)
     )];
@@ -134,13 +134,23 @@ export async function GET(request: NextRequest) {
 
     if (setProductIds.length > 0) {
       const setRows = await batchIn<{
-        product_id: string; price_cny: number | null; price_delivery_cny: number | null;
-      }>('ft_order_items', 'product_id, price_cny, price_delivery_cny', 'product_id', setProductIds);
+        product_id: string; price_cny: number | null; price_delivery_cny: number | null; order_qty: number | null;
+      }>('ft_order_items', 'product_id, price_cny, price_delivery_cny, order_qty', 'product_id', setProductIds);
+
+      // price_cny 합산 + 배송비는 product_id당 1회만 (order_qty로 나눔)
+      const setCnySumMap = new Map<string, number>();
+      const setDeliveryMap = new Map<string, number>();
 
       for (const s of setRows) {
-        const sum = (s.price_cny ?? 0) + (s.price_delivery_cny ?? 0);
-        const acc = (setPriceMap.get(s.product_id) ?? 0) + sum;
-        setPriceMap.set(s.product_id, Math.round(acc * 100) / 100);
+        setCnySumMap.set(s.product_id, (setCnySumMap.get(s.product_id) ?? 0) + (s.price_cny ?? 0));
+        if (!setDeliveryMap.has(s.product_id)) {
+          setDeliveryMap.set(s.product_id, (s.price_delivery_cny ?? 0) / (s.order_qty ?? 1));
+        }
+      }
+
+      for (const [pid, cnySum] of setCnySumMap) {
+        const deliveryPerUnit = setDeliveryMap.get(pid) ?? 0;
+        setPriceMap.set(pid, Math.round((cnySum + deliveryPerUnit) * 100) / 100);
       }
     }
 
@@ -224,13 +234,13 @@ export async function GET(request: NextRequest) {
       const barcode = oi?.barcode || null;
       const boxInfo = ff.box_code ? boxInfoMap.get(ff.box_code) : null;
 
-      // 단가 계산: 세트상품이면 product_id별 합산, 일반상품이면 price_cny + price_delivery_cny
+      // 단가 계산: 세트상품이면 product_id별 합산, 일반상품이면 price_cny + price_delivery_cny/order_qty
       let totalPrice: number | null = null;
       if (oi) {
         if ((oi.set_total ?? 0) > 1 && oi.product_id) {
           totalPrice = setPriceMap.get(oi.product_id) ?? null;
         } else {
-          totalPrice = Math.round(((oi.price_cny ?? 0) + (oi.price_delivery_cny ?? 0)) * 100) / 100;
+          totalPrice = Math.round(((oi.price_cny ?? 0) + (oi.price_delivery_cny ?? 0) / (oi.order_qty ?? 1)) * 100) / 100;
         }
       }
 
