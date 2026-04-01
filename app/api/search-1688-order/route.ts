@@ -105,19 +105,32 @@ export async function POST(request: NextRequest) {
     let allDeliveryRows: { order_info: string; order_id: string }[] = [];
     const prefixes = [...prefixSet];
 
+    const queryBatchSize = 1000;
     for (const prefix of prefixes) {
-      const { data, error } = await supabase
-        .from('1688_invoice_deliveryInfo_check')
-        .select('order_info, order_id')
-        .ilike('order_info', `%| ${prefix} |%`);
+      let from = 0;
+      let hasMore = true;
 
-      if (error) {
-        return NextResponse.json(
-          { success: false, error: '1688 주문 정보 조회 실패', details: error.message },
-          { status: 500 }
-        );
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('1688_invoice_deliveryInfo_check')
+          .select('order_info, order_id')
+          .ilike('order_info', `%| ${prefix} |%`)
+          .range(from, from + queryBatchSize - 1);
+
+        if (error) {
+          return NextResponse.json(
+            { success: false, error: '1688 주문 정보 조회 실패', details: error.message },
+            { status: 500 }
+          );
+        }
+        if (data && data.length > 0) {
+          allDeliveryRows = allDeliveryRows.concat(data);
+          from += queryBatchSize;
+          if (data.length < queryBatchSize) hasMore = false;
+        } else {
+          hasMore = false;
+        }
       }
-      if (data) allDeliveryRows = allDeliveryRows.concat(data);
     }
 
     // ── 3. order_info 파싱 → 비교키 → order_id 매핑 빌드 ────────
@@ -128,7 +141,9 @@ export async function POST(request: NextRequest) {
       if (!row.order_info || !row.order_id) continue;
       const keys = parseOrderInfoKeys(row.order_info);
       for (const key of keys) {
-        keyMapping[key] = row.order_id;
+        if (!keyMapping[key]) {
+          keyMapping[key] = row.order_id;
+        }
       }
     }
 

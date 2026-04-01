@@ -307,6 +307,8 @@ const OrderHistory: React.FC = () => {
     const filtered = applyFilters(itemData, statusKey, show1688Only);
     setFilteredData(filtered);
     setCurrentPage(1);
+    setSelectedItems(new Set());
+    setSelectAll(false);
   };
 
   // 검색 기능
@@ -635,7 +637,7 @@ const OrderHistory: React.FC = () => {
       const serviceFee = editingServiceFee[id] !== undefined ? editingServiceFee[id] : item?.service_fee;
 
       // refund_amount 계산
-      const refundAmount = (productPrice || 0) + (deliveryFee || 0) + (serviceFee || 0);
+      const refundAmount = Math.round(((productPrice || 0) + (deliveryFee || 0) + (serviceFee || 0)) * 100) / 100;
 
       // refund_amount 저장
       try {
@@ -981,6 +983,8 @@ const OrderHistory: React.FC = () => {
                     const filtered = applyFilters(itemData, activeStatus, newShow1688Only);
                     setFilteredData(filtered);
                     setCurrentPage(1);
+                    setSelectedItems(new Set());
+                    setSelectAll(false);
                   }}
                 />
                 <span>1688 주문번호만 표시</span>
