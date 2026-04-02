@@ -154,6 +154,10 @@ const ItemCheck: React.FC = () => {
 
   const excelFileInputRef = useRef<HTMLInputElement>(null);
 
+  // 배송상황 CSV 업로드
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+
   // 정렬 함수
   const sortData = (data: ItemData[], sortType: string): ItemData[] => {
     const sortedData = [...data];
@@ -570,6 +574,46 @@ const ItemCheck: React.FC = () => {
       if (excelFileInputRef.current) {
         excelFileInputRef.current.value = '';
       }
+    }
+  };
+
+  // ============================================================
+  // 배송상황 CSV 업로드 핸들러
+  // ============================================================
+  const handleCsvUpload = () => {
+    csvFileInputRef.current?.click();
+  };
+
+  const handleCsvFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('CSV 파일(.csv)만 업로드 가능합니다.');
+      return;
+    }
+
+    setIsUploadingCsv(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload-delivery-status-csv', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`배송상황 CSV 업로드 완료\n저장: ${result.savedCount || 0}개`);
+      } else {
+        alert(result.error || '업로드 중 오류가 발생했습니다.');
+      }
+    } catch {
+      alert('업로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploadingCsv(false);
+      if (csvFileInputRef.current) csvFileInputRef.current.value = '';
     }
   };
 
@@ -1712,6 +1756,22 @@ const ItemCheck: React.FC = () => {
               >
                 {isUploadingExcel ? t('importProduct.uploading') : t('importProduct.uploadExcel')}
               </button>
+
+              {/* 배송상황 CSV 업로드 버튼 */}
+              <button
+                className="excel-upload-btn"
+                onClick={handleCsvUpload}
+                disabled={isUploadingCsv}
+              >
+                {isUploadingCsv ? '업로드 중...' : '배송상황 csv'}
+              </button>
+              <input
+                type="file"
+                ref={csvFileInputRef}
+                onChange={handleCsvFileChange}
+                accept=".csv"
+                style={{ display: 'none' }}
+              />
 
               {/* 숨겨진 엑셀 파일 입력 요소 */}
               <input

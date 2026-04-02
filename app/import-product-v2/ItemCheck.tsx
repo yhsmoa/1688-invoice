@@ -567,6 +567,10 @@ const ItemCheck: React.FC = () => {
   const excelFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
 
+  // 배송상황 CSV 업로드
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+
   const handleXlsxClick = useCallback(() => {
     excelFileInputRef.current?.click();
   }, []);
@@ -602,6 +606,49 @@ const ItemCheck: React.FC = () => {
       } finally {
         setIsUploadingExcel(false);
         if (excelFileInputRef.current) excelFileInputRef.current.value = '';
+      }
+    },
+    []
+  );
+
+  // ============================================================
+  // 15-1) 📋 배송상황 CSV 업로드
+  // ============================================================
+  const handleCsvClick = useCallback(() => {
+    csvFileInputRef.current?.click();
+  }, []);
+
+  const handleCsvFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('CSV 파일(.csv)만 업로드 가능합니다.');
+        return;
+      }
+
+      setIsUploadingCsv(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/upload-delivery-status-csv', {
+          method: 'POST',
+          body: formData,
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+          alert(`배송상황 CSV 업로드 완료\n저장: ${result.savedCount || 0}개`);
+        } else {
+          alert(result.error || '업로드 중 오류가 발생했습니다.');
+        }
+      } catch {
+        alert('업로드 중 오류가 발생했습니다.');
+      } finally {
+        setIsUploadingCsv(false);
+        if (csvFileInputRef.current) csvFileInputRef.current.value = '';
       }
     },
     []
@@ -905,6 +952,29 @@ const ItemCheck: React.FC = () => {
                   accept=".xlsx,.xls"
                   style={{ display: 'none' }}
                   onChange={handleXlsxFileChange}
+                />
+
+                {/* 📋 배송상황 CSV 업로드 버튼 */}
+                <button
+                  className="v2-excel-upload-btn"
+                  onClick={handleCsvClick}
+                  disabled={isUploadingCsv}
+                >
+                  {isUploadingCsv ? (
+                    <span className="v2-button-loading">
+                      <span className="v2-spinner"></span>
+                      업로드 중
+                    </span>
+                  ) : (
+                    '📋 배송상황 csv'
+                  )}
+                </button>
+                <input
+                  ref={csvFileInputRef}
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={handleCsvFileChange}
                 />
 
                 {/* ⬇️ XLSX 다운 버튼 */}
