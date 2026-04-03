@@ -106,7 +106,7 @@ const BoxLabel: React.FC = () => {
     });
   };
 
-  // 시트 데이터 파싱 (F열, I열 추출, 9행부터)
+  // 시트 데이터 파싱 (F열, J열 추출, 9행부터)
   const parseSheetData = (worksheet: XLSX.WorkSheet): BoxLabelData[] => {
     const result: BoxLabelData[] = [];
     const merges = worksheet['!merges'] || [];
@@ -117,7 +117,7 @@ const BoxLabel: React.FC = () => {
     // 범위 가져오기
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
 
-    // F열(5), I열(8) 의 병합 정보 처리
+    // F열(5), J열(9) 의 병합 정보 처리
     merges.forEach(merge => {
       const startCell = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
       const cellValue = worksheet[startCell]?.v?.toString() || '';
@@ -138,7 +138,7 @@ const BoxLabel: React.FC = () => {
 
     for (let row = startRow; row <= range.e.r; row++) {
       const fCellAddr = XLSX.utils.encode_cell({ r: row, c: 5 }); // F열 (0-indexed: 5)
-      const iCellAddr = XLSX.utils.encode_cell({ r: row, c: 8 }); // I열 (0-indexed: 8)
+      const iCellAddr = XLSX.utils.encode_cell({ r: row, c: 9 }); // J열 (0-indexed: 9)
 
       // 병합 맵에서 값 가져오기, 없으면 직접 셀에서 가져오기
       const fValue = mergeMap[fCellAddr] || worksheet[fCellAddr]?.v?.toString() || '';
@@ -216,7 +216,7 @@ const BoxLabel: React.FC = () => {
         // 두 번째 줄: 위치
         pdf.text(locationText, line2X, textY, { angle: 90 });
 
-        // 세 번째 줄: 중량
+        // 세 번째 줄: 부피
         pdf.text(weightText, line3X, textY, { angle: 90 });
       });
 
@@ -298,7 +298,7 @@ const BoxLabel: React.FC = () => {
                       <tr>
                         <th>날짜</th>
                         <th>위치</th>
-                        <th>중량(KG)</th>
+                        <th>부피</th>
                       </tr>
                     </thead>
                     <tbody>
