@@ -11,6 +11,9 @@ interface ItemTableRowProps {
   editingCell: {id: string, field: string} | null;
   cellValue: string;
   mousePosition: { x: number, y: number };
+  // 글번호 열 1688 플랫폼 order_id 표시용 매핑 (key: 정규화된 order_number, value: order_id)
+  // 데이터 출처: invoiceManager_1688_orders
+  platformOrderIdMap: Map<string, string>;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -26,6 +29,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   editingCell,
   cellValue,
   mousePosition,
+  platformOrderIdMap,
   onSelectRow,
   onStartEditingCell,
   onCellValueChange,
@@ -87,6 +91,30 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           {item.order_number_prefix || ''}
           {item.order_number_prefix && item.order_number && <br />}
           {item.order_number || ''}
+          {/* ============================================================ */}
+          {/* 1688 플랫폼 order_id — platformOrderIdMap에서 정규화 매칭 조회 */}
+          {/* 데이터 출처: invoiceManager_1688_orders */}
+          {/* key 생성: order_number를 3파트로 정규화 (S21 등 suffix 제거) */}
+          {/* ============================================================ */}
+          {(() => {
+            const orderNum = (item.order_number || '').toString().trim();
+            if (!orderNum) return null;
+            const key = orderNum.split('-').slice(0, 3).join('-');
+            const orderId = platformOrderIdMap.get(key);
+            // 디버그: 행마다 1688_order_id 매칭 성공/실패 로그
+            console.log(
+              `[글번호 1688_order_id 조회] order_number="${orderNum}" → key="${key}" → ${
+                orderId ? `✅ ${orderId}` : `❌ 매칭 실패 (Map size=${platformOrderIdMap.size})`
+              }`
+            );
+            if (!orderId) return null;
+            return (
+              <>
+                <br />
+                <span style={{ fontSize: '12px', color: '#666' }}>{orderId}</span>
+              </>
+            );
+          })()}
           {/* SET 상품 표시: 주문번호 4번째 부분이 S로 시작하면 세트 상품 */}
           {(() => {
             const orderNum = item.order_number || '';

@@ -14,6 +14,9 @@ interface ItemTableProps {
   mousePosition: { x: number, y: number };
   isAllSelected: boolean;
   isIndeterminate: boolean;
+  // 글번호 열 1688 플랫폼 order_id 표시용 매핑 (key: 정규화된 order_number, value: order_id)
+  // 데이터 출처: invoiceManager_1688_orders
+  platformOrderIdMap: Map<string, string>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
@@ -33,6 +36,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   mousePosition,
   isAllSelected,
   isIndeterminate,
+  platformOrderIdMap,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
@@ -92,6 +96,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 editingCell={editingCell}
                 cellValue={cellValue}
                 mousePosition={mousePosition}
+                platformOrderIdMap={platformOrderIdMap}
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}

@@ -79,6 +79,45 @@ const ItemCheck: React.FC = () => {
     fetchAll1688Orders
   } = useItemData();
 
+  // ============================================================
+  // 1688 플랫폼 order_id 매핑 — 글번호 열 표시용
+  // ------------------------------------------------------------
+  // key:   order_number 3파트 정규화 (BO-260313-0001-S21 → BO-260313-0001)
+  // value: 1688 플랫폼 order_id
+  //
+  // 데이터 출처: invoiceManager_1688_orders (단일 출처)
+  //   - 과거 1688_invoice_deliveryInfo_check.sheet_order_number 보완 경로가
+  //     있었으나, 해당 컬럼이 레거시화되어 사실상 작동하지 않으므로 제거.
+  //   - 배송번호 검색 기능은 별도 경로에서 deliveryInfoData를 그대로 사용함.
+  // ============================================================
+  const platformOrderIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+
+    // ── 정규화 헬퍼: 3파트(사업자코드-날짜-순번) 추출 ──────────
+    const normalize = (orderNum: string): string =>
+      orderNum.split('-').slice(0, 3).join('-');
+
+    // ── 빌드: orders1688Data → 정규화 키 Map ──────────────────
+    for (const order of orders1688Data) {
+      const orderNum = order?.order_number?.toString().trim();
+      const platformId = order?.['1688_order_id']?.toString().trim();
+      if (!orderNum || !platformId) continue;
+      const key = normalize(orderNum);
+      if (!map.has(key)) {
+        map.set(key, platformId);
+      }
+    }
+
+    // ── 디버그: Map 빌드 결과 ─────────────────────────────────
+    console.log('[platformOrderIdMap 빌드 완료]', {
+      orders1688Data_총개수: orders1688Data.length,
+      Map_size: map.size,
+      샘플_Map키_5개: Array.from(map.entries()).slice(0, 5),
+    });
+
+    return map;
+  }, [orders1688Data]);
+
   const [filteredData, setFilteredData] = useState<ItemData[]>([]);
 
   const {
@@ -1833,6 +1872,7 @@ const ItemCheck: React.FC = () => {
               mousePosition={mousePosition}
               isAllSelected={isAllSelected}
               isIndeterminate={isIndeterminate}
+              platformOrderIdMap={platformOrderIdMap}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
               onStartEditingCell={startEditingCell}
