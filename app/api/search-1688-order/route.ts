@@ -4,14 +4,17 @@ import { supabase } from '../../../lib/supabase';
 // ============================================================
 // POST /api/search-1688-order
 //
-// order_number (쿠팡) → 1688 order_id 매핑 후 DB 업데이트
+// order_number (쿠팡) → 1688 플랫폼 order_id 매핑 후 DB 업데이트
 //
-// 매칭 방식 (신규 order_info 포맷):
-//   order_info = "ORBZ260225-K51 | BZ-260225 | 0005-A01:2, 0006-A01:2"
-//   → 파싱 키: BZ-260225-0005-A01, BZ-260225-0006-A01
+// 매칭 방식:
+//   1) 쿠팡 order_number 정규화 (# 제거 + C\d+ 접미사 제거)
+//      예: "BZ-260225-0006-A01C1" → "BZ-260225-0006-A01"
+//   2) invoiceManager_1688_orders.order_number 에 직접 IN 조회
+//   3) 매칭된 행의 1688_order_id 를 invoiceManager_refundOrder.1688_order_number
+//      컬럼에 업데이트
 //
-// 쿠팡 order_number 정규화:
-//   BZ-260225-0006-A01C1  →  # 제거 + C\d+ 제거  →  BZ-260225-0006-A01
+// 과거 1688_invoice_deliveryInfo_check.order_info 파싱 방식은
+// invoiceManager_1688_orders 가 단일 진실 공급원이 된 이후 불필요해져 제거됨.
 // ============================================================
 
 // ── 쿠팡 order_number 정규화 ──────────────────────────────────
@@ -25,55 +28,10 @@ function normalizeOrderNumber(orderNumber: string): string {
   return result;
 }
 
-// ── order_info 파싱 → 비교 키 배열 반환 ──────────────────────
-// 신규 포맷: "ORBZ260225-K51 | BZ-260225 | 0005-A01:2, 0006-A01:2"
-// → ["BZ-260225-0005-A01", "BZ-260225-0006-A01"]
-//
-// 구형 포맷 (// 구분): "BO-251016-0096 // 灰色 | 130cm // ..."
-// → ["BO-251016-0096"]  (하위 호환 유지)
-function parseOrderInfoKeys(orderInfo: string): string[] {
-  if (!orderInfo) return [];
-
-  // ── 신규 포맷: "|" 구분자 3개 섹션 ──────────────────────────
-  const pipeParts = orderInfo.split('|').map(s => s.trim());
-  if (pipeParts.length >= 3) {
-    const prefix = pipeParts[1]; // "BZ-260225"
-    const itemsStr = pipeParts[2]; // "0005-A01:2, 0006-A01:2"
-
-    const keys = itemsStr
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(item => {
-        // "0006-A01:2" → `:숫자` 앞까지만 ("0006-A01")
-        const colonIdx = item.search(/:\d/);
-        const itemKey = colonIdx > 0 ? item.substring(0, colonIdx) : item;
-        return `${prefix}-${itemKey.trim()}`;
-      });
-
-    if (keys.length > 0) return keys;
-  }
-
-  // ── 구형 포맷: "//" 구분, 첫 번째 부분이 주문번호 ──────────
-  if (orderInfo.includes('//')) {
-    const firstPart = orderInfo.split('//')[0].trim();
-    if (firstPart) return [firstPart];
-  }
-
-  return [];
-}
-
-// ── order_number에서 날짜 prefix 추출 ─────────────────────────
-// "BZ-260225-0006-A01" → "BZ-260225"  (앞 2개 세그먼트)
-function extractPrefix(normalized: string): string {
-  const parts = normalized.split('-');
-  return parts.slice(0, 2).join('-');
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderData, user_id } = body;
+    const { orderData } = body;
 
     if (!orderData || !Array.isArray(orderData) || orderData.length === 0) {
       return NextResponse.json(
@@ -82,15 +40,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 1. 쿠팡 order_number 정규화 + prefix 수집 ───────────────
-    const normalizedMap = new Map<string, string>(); // item.id → normalized
-    const prefixSet = new Set<string>();
+    // ── 1. 쿠팡 order_number 정규화 ─────────────────────────────
+    // item.id → 정규화된 order_number 매핑
+    const normalizedMap = new Map<string, string>();
 
     for (const item of orderData as { id: string; order_number: string | null }[]) {
       if (!item.order_number) continue;
       const normalized = normalizeOrderNumber(item.order_number);
-      normalizedMap.set(item.id, normalized);
-      prefixSet.add(extractPrefix(normalized));
+      if (normalized) normalizedMap.set(item.id, normalized);
     }
 
     if (normalizedMap.size === 0) {
@@ -100,54 +57,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 2. prefix 기반으로 관련 order_info 행 조회 ───────────────
-    // 각 prefix로 order_info ILIKE 검색 (배치)
-    let allDeliveryRows: { order_info: string; order_id: string }[] = [];
-    const prefixes = [...prefixSet];
+    // ── 2. invoiceManager_1688_orders 직접 조회 ─────────────────
+    // 정규화된 order_number로 IN 쿼리 (배치 처리)
+    const uniqueNormalized = [...new Set(normalizedMap.values())];
+    const queryBatchSize = 500; // supabase IN 쿼리 안전 한도
+    const lookupMap = new Map<string, string>(); // order_number → 1688_order_id
 
-    const queryBatchSize = 1000;
-    for (const prefix of prefixes) {
-      let from = 0;
-      let hasMore = true;
+    for (let i = 0; i < uniqueNormalized.length; i += queryBatchSize) {
+      const batch = uniqueNormalized.slice(i, i + queryBatchSize);
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('1688_invoice_deliveryInfo_check')
-          .select('order_info, order_id')
-          .ilike('order_info', `%| ${prefix} |%`)
-          .range(from, from + queryBatchSize - 1);
+      const { data, error } = await supabase
+        .from('invoiceManager_1688_orders')
+        .select('order_number, "1688_order_id"')
+        .in('order_number', batch);
 
-        if (error) {
-          return NextResponse.json(
-            { success: false, error: '1688 주문 정보 조회 실패', details: error.message },
-            { status: 500 }
-          );
-        }
-        if (data && data.length > 0) {
-          allDeliveryRows = allDeliveryRows.concat(data);
-          from += queryBatchSize;
-          if (data.length < queryBatchSize) hasMore = false;
-        } else {
-          hasMore = false;
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: '1688 주문 조회 실패', details: error.message },
+          { status: 500 }
+        );
+      }
+
+      // 첫 매칭 우선 — 중복 order_number가 있을 경우 가장 빠른 행의 ID 사용
+      for (const row of (data || []) as { order_number: string; '1688_order_id': string | null }[]) {
+        const num = row.order_number?.toString().trim();
+        const id = row['1688_order_id']?.toString().trim();
+        if (!num || !id) continue;
+        if (!lookupMap.has(num)) {
+          lookupMap.set(num, id);
         }
       }
     }
 
-    // ── 3. order_info 파싱 → 비교키 → order_id 매핑 빌드 ────────
-    // keyMapping: "BZ-260225-0006-A01" → order_id
-    const keyMapping: Record<string, string> = {};
-
-    for (const row of allDeliveryRows) {
-      if (!row.order_info || !row.order_id) continue;
-      const keys = parseOrderInfoKeys(row.order_info);
-      for (const key of keys) {
-        if (!keyMapping[key]) {
-          keyMapping[key] = row.order_id;
-        }
-      }
-    }
-
-    // ── 4. invoiceManager_refundOrder 업데이트 ───────────────────
+    // ── 3. invoiceManager_refundOrder 업데이트 ───────────────────
+    // 매칭된 항목만 update, 매칭 실패 항목은 notFound에 기록
     const updateBatchSize = 100;
     let successCount = 0;
 
@@ -156,7 +99,7 @@ export async function POST(request: NextRequest) {
 
       const updatePromises = batch.map((item) => {
         const normalized = normalizedMap.get(item.id);
-        const orderId = normalized ? keyMapping[normalized] : null;
+        const orderId = normalized ? lookupMap.get(normalized) : null;
 
         if (!orderId) {
           return Promise.resolve({ data: null, error: null });
@@ -164,7 +107,10 @@ export async function POST(request: NextRequest) {
 
         return supabase
           .from('invoiceManager_refundOrder')
-          .update({ '1688_order_number': orderId, updated_at: new Date().toISOString() })
+          .update({
+            '1688_order_number': orderId,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', item.id)
           .select();
       });
@@ -178,11 +124,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── 5. 찾지 못한 목록 ────────────────────────────────────────
+    // ── 4. 찾지 못한 목록 ────────────────────────────────────────
     const notFound = (orderData as { id: string; order_number: string | null }[])
       .filter(item => {
         const normalized = normalizedMap.get(item.id);
-        return item.order_number && normalized && !keyMapping[normalized];
+        return item.order_number && normalized && !lookupMap.has(normalized);
       })
       .map(item => item.order_number);
 
@@ -192,7 +138,7 @@ export async function POST(request: NextRequest) {
         total: orderData.length,
         found: successCount,
         notFound,
-      }
+      },
     });
 
   } catch (error) {
