@@ -101,12 +101,6 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
             if (!orderNum) return null;
             const key = orderNum.split('-').slice(0, 3).join('-');
             const orderId = platformOrderIdMap.get(key);
-            // 디버그: 행마다 1688_order_id 매칭 성공/실패 로그
-            console.log(
-              `[글번호 1688_order_id 조회] order_number="${orderNum}" → key="${key}" → ${
-                orderId ? `✅ ${orderId}` : `❌ 매칭 실패 (Map size=${platformOrderIdMap.size})`
-              }`
-            );
             if (!orderId) return null;
             return (
               <>

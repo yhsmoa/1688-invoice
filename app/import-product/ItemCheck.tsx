@@ -108,13 +108,6 @@ const ItemCheck: React.FC = () => {
       }
     }
 
-    // ── 디버그: Map 빌드 결과 ─────────────────────────────────
-    console.log('[platformOrderIdMap 빌드 완료]', {
-      orders1688Data_총개수: orders1688Data.length,
-      Map_size: map.size,
-      샘플_Map키_5개: Array.from(map.entries()).slice(0, 5),
-    });
-
     return map;
   }, [orders1688Data]);
 
@@ -330,8 +323,6 @@ const ItemCheck: React.FC = () => {
 
   // 데이터 가져오기 - 초기에는 빈 데이터
   const fetchItemData = async () => {
-    console.log('fetchItemData 시작');
-    // 초기 로드 시에는 빈 데이터만 설정
     setOriginalData([]);
     setItemData([]);
     setFilteredData([]);
@@ -356,14 +347,10 @@ const ItemCheck: React.FC = () => {
   // 쿠팡 사용자 목록 가져오기
   const fetchCoupangUsers = async () => {
     try {
-      console.log('쿠팡 사용자 목록 가져오기 시작...');
       const response = await fetch('/api/get-coupang-users');
       const result = await response.json();
 
-      console.log('API 응답:', result);
-
       if (result.success && result.data) {
-        console.log('쿠팡 사용자 데이터:', result.data);
         setCoupangUsers(result.data);
       } else {
         console.warn('쿠팡 사용자 데이터를 가져오지 못했습니다:', result);
@@ -378,8 +365,6 @@ const ItemCheck: React.FC = () => {
 
   // 상태별 필터링 함수
   const filterByStatus = (data: ItemData[], status: string): ItemData[] => {
-    console.log('filterByStatus 호출 - 상태:', status, '전체 데이터:', data.length);
-
     if (status === '전체') {
       return data;
     } else if (status === '발송전') {
@@ -392,7 +377,6 @@ const ItemCheck: React.FC = () => {
         return isMatch;
       });
 
-      console.log('발송전 필터링 결과:', filtered.length, '개');
       return filtered;
     }
     // 나머지 상태는 아직 구현하지 않음
@@ -442,24 +426,14 @@ const ItemCheck: React.FC = () => {
 
   // 상태 카드 클릭 핸들러
   const handleStatusCardClick = (status: string) => {
-    console.log('카드 클릭:', status);
-    console.log('이전 activeStatus:', activeStatus);
-    console.log('현재 itemData 개수:', itemData.length);
-
     setActiveStatus(status);
-    console.log('activeStatus 변경 시도:', status);
+    setSearchTerm('');
 
-    setSearchTerm(''); // 검색어 초기화
-
-    // 처리준비 데이터 초기화
     setReadyItems([]);
     setModifiedData({});
-    // 체크박스 선택 초기화
     setSelectedRows(new Set());
 
     const filteredByStatus = filterByStatus(itemData, status);
-    console.log('필터링된 데이터 개수:', filteredByStatus.length);
-
     const sortedData = sortData(filteredByStatus, sortType);
     setFilteredData(sortedData);
     setCurrentPage(1);
@@ -584,8 +558,6 @@ const ItemCheck: React.FC = () => {
     formData.append('file', file);
 
     try {
-      console.log('엑셀 파일 업로드 시작:', file.name);
-
       const response = await fetch('/api/upload-delivery-excel', {
         method: 'POST',
         body: formData,
@@ -595,11 +567,8 @@ const ItemCheck: React.FC = () => {
 
       if (response.ok) {
         alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
-        console.log('업로드 성공:', result);
 
-        // 배송정보 다시 로딩
         await fetchAllDeliveryInfo();
-        console.log('배송정보 데이터 새로고침 완료');
       } else {
         console.error('업로드 실패:', result);
         alert(result.error || '업로드 중 오류가 발생했습니다.');
@@ -667,7 +636,6 @@ const ItemCheck: React.FC = () => {
       if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
         fullUrl = 'https://' + fullUrl;
       }
-      console.log('사이트 URL로 이동:', fullUrl);
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
       return;
     }
@@ -679,7 +647,6 @@ const ItemCheck: React.FC = () => {
       if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
         fullUrl = 'https://' + fullUrl;
       }
-      console.log('입력한 URL로 이동:', fullUrl);
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
     }
   };
@@ -846,20 +813,12 @@ const ItemCheck: React.FC = () => {
           const originalItem = originalData.find(i => i.id === item.id);
           const originalImportQty = originalItem?.import_qty ?? null;
 
-          console.log('=== 배송누락 처리준비 추가 디버깅 ===');
-          console.log('항목 ID:', item.id);
-          console.log('원본 note:', originalItem?.note);
-          console.log('새로운 note:', updateItem.newNote);
-
-          // 원본과 비교하여 변경되었는지 확인
           const isChangedFromOriginal = hasValueChanged(
             originalData,
             item.id,
             'note',
             updateItem.newNote
           );
-
-          console.log('isChangedFromOriginal:', isChangedFromOriginal);
 
           if (isChangedFromOriginal) {
             setReadyItems(prev => {
@@ -1114,20 +1073,14 @@ const ItemCheck: React.FC = () => {
     const labelSheetData = uniqueLabelData.filter(item => item.targetSheet === 'LABEL');
     const labelKidsSheetData = uniqueLabelData.filter(item => item.targetSheet === 'LABEL_kids');
 
-    console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
-
     try {
-      // 병렬 처리로 여러 시트 동시 저장
       const savePromises = [];
 
       if (labelSheetData.length > 0) {
-        console.log('LABEL 시트에 데이터 저장 시작...');
         savePromises.push(
           fetch('/api/save-label-data', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               labelData: labelSheetData,
               googlesheet_id: googlesheetId,
@@ -1140,20 +1093,16 @@ const ItemCheck: React.FC = () => {
             if (!response.ok || !result.success) {
               throw new Error(`LABEL 시트 저장 실패: ${result.message || result.error || '알 수 없는 오류'}`);
             }
-            console.log(`LABEL 시트에 바코드 ${result.count}개 저장 완료`);
             return result;
           })
         );
       }
 
       if (labelKidsSheetData.length > 0) {
-        console.log('LABEL_kids 시트에 데이터 저장 시작...');
         savePromises.push(
           fetch('/api/save-label-data', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               labelData: labelKidsSheetData,
               googlesheet_id: googlesheetId,
@@ -1166,7 +1115,6 @@ const ItemCheck: React.FC = () => {
             if (!response.ok || !result.success) {
               throw new Error(`LABEL_kids 시트 저장 실패: ${result.message || result.error || '알 수 없는 오류'}`);
             }
-            console.log(`LABEL_kids 시트에 바코드 ${result.count}개 저장 완료`);
             return result;
           })
         );
@@ -1267,28 +1215,13 @@ const ItemCheck: React.FC = () => {
 
   // 처리준비 모달에서 저장 버튼 클릭 핸들러
   const handleReadySave = async (formulaType: string = 'mixRate') => {
-    console.log('=== handleReadySave 시작 ===');
-    console.log('modifiedData:', modifiedData);
-    console.log('readyItems 개수:', readyItems.length);
-    console.log('labelFormulaType:', formulaType);
-
     try {
-      // 1. 구글 시트 저장
       await handleSaveClick();
-
-      // 2. LABEL 시트에 바코드 데이터 저장
       await saveBarcodeToLabel(formulaType);
 
-      console.log('저장 완료, 처리준비 목록 초기화');
-
-      // 3. 처리준비 목록 초기화
       setReadyItems([]);
       setModifiedData({});
-
-      // 4. 모달 닫기
       setIsProcessReadyModalOpen(false);
-
-      console.log('=== handleReadySave 완료 ===');
     } catch (error) {
       console.error('처리준비 저장 오류:', error);
       alert('저장 중 오류가 발생했습니다.');
@@ -1299,8 +1232,6 @@ const ItemCheck: React.FC = () => {
   // 처리준비 모달 → PostgreSQL 저장 핸들러
   // ============================================================
   const handleReadySavePostgre = async () => {
-    console.log('=== handleReadySavePostgre 시작 ===');
-
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
@@ -1337,7 +1268,6 @@ const ItemCheck: React.FC = () => {
           if (!result.success) {
             throw new Error(result.error || 'Supabase 라벨 저장 실패');
           }
-          console.log(`Supabase 라벨 저장 완료: ${result.count}개`);
         }
       }
 
@@ -1347,7 +1277,6 @@ const ItemCheck: React.FC = () => {
       setIsProcessReadyModalOpen(false);
 
       alert('Supabase 라벨 저장이 완료되었습니다.');
-      console.log('=== handleReadySavePostgre 완료 ===');
     } catch (error) {
       console.error('처리준비 Supabase 저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
@@ -1359,10 +1288,7 @@ const ItemCheck: React.FC = () => {
     // 바코드 수량이 0보다 큰 항목만 필터링
     const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
 
-    if (itemsWithBarcode.length === 0) {
-      console.log('바코드 저장할 항목 없음');
-      return;
-    }
+    if (itemsWithBarcode.length === 0) return;
 
     // 현재 선택된 사용자의 구글시트 정보 확인
     if (!selectedCoupangUser) {
@@ -1474,28 +1400,18 @@ const ItemCheck: React.FC = () => {
     // 중복 제거된 데이터 사용
     const finalLabelData = uniqueLabelData;
 
-    if (finalLabelData.length === 0) {
-      console.log('저장할 라벨 데이터 없음');
-      return;
-    }
+    if (finalLabelData.length === 0) return;
 
-    // 시트별로 데이터 그룹핑 (중복 제거된 데이터 사용)
     const labelSheetData = finalLabelData.filter(item => item.targetSheet === 'LABEL');
     const labelKidsSheetData = finalLabelData.filter(item => item.targetSheet === 'LABEL_kids');
 
-    console.log(`LABEL 시트: ${labelSheetData.length}개, LABEL_kids 시트: ${labelKidsSheetData.length}개`);
-
-    // 병렬 처리로 여러 시트 동시 저장
     const savePromises = [];
 
     if (labelSheetData.length > 0) {
-      console.log('LABEL 시트에 데이터 저장 시작...');
       savePromises.push(
         fetch('/api/save-label-data', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             labelData: labelSheetData,
             googlesheet_id: googlesheetId,
@@ -1509,20 +1425,16 @@ const ItemCheck: React.FC = () => {
             console.error('LABEL 시트 저장 실패:', result);
             throw new Error(result.message || result.error || 'LABEL 시트 저장 실패');
           }
-          console.log(`LABEL 시트에 바코드 ${result.count}개 저장 완료`);
           return result;
         })
       );
     }
 
     if (labelKidsSheetData.length > 0) {
-      console.log('LABEL_kids 시트에 데이터 저장 시작...');
       savePromises.push(
         fetch('/api/save-label-data', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             labelData: labelKidsSheetData,
             googlesheet_id: googlesheetId,
@@ -1536,7 +1448,6 @@ const ItemCheck: React.FC = () => {
             console.error('LABEL_kids 시트 저장 실패:', result);
             throw new Error(result.message || result.error || 'LABEL_kids 시트 저장 실패');
           }
-          console.log(`LABEL_kids 시트에 바코드 ${result.count}개 저장 완료`);
           return result;
         })
       );
@@ -1582,17 +1493,10 @@ const ItemCheck: React.FC = () => {
 
     setIsSaving(true);
     const saveStartTime = Date.now();
-    console.log('배치 저장 시작, 수정된 데이터:', modifiedData);
-    console.log('구글시트 ID:', googlesheetId, '사용자:', selectedCoupangUser);
-
     try {
-      // 수정된 데이터를 배치 업데이트 형식으로 변환
       const updates: Array<{ order_number: string; barcode: string; field: string; value: number | string | null }> = [];
 
-      console.log('modifiedData 키 목록:', Object.keys(modifiedData));
-
       Object.entries(modifiedData).forEach(([itemKey, fields]) => {
-        // itemKey는 "order_number|barcode" 형식
         const parts = itemKey.split('|');
 
         if (parts.length !== 2) {
@@ -1603,12 +1507,9 @@ const ItemCheck: React.FC = () => {
         const [order_number, barcode] = parts;
 
         Object.entries(fields).forEach(([field, value]) => {
-          console.log(`추가: ${order_number} | ${barcode} | ${field} = ${value}`);
           updates.push({ order_number, barcode, field, value });
         });
       });
-
-      console.log(`총 ${updates.length}개 셀 배치 저장 요청`);
 
       // 배치 저장 API 호출
       const response = await fetch('/api/save-cells-batch', {
@@ -1627,16 +1528,10 @@ const ItemCheck: React.FC = () => {
       const saveEndTime = Date.now();
       const totalSaveTime = ((saveEndTime - saveStartTime) / 1000).toFixed(2);
 
-      console.log('배치 저장 결과:', result);
-      console.log(`저장 완료 시간: ${totalSaveTime}초`);
-
       if (response.ok && result.success) {
         const { successCount, failedCount, failedDetails, successDetails } = result.details;
 
         if (failedCount === 0) {
-          // 전체 저장 성공 → 검증 시작
-          console.log('저장 성공, 검증 시작...');
-
           try {
             // 저장된 셀 검증
             const verifyResponse = await fetch('/api/verify-saved-cells', {
@@ -1656,7 +1551,6 @@ const ItemCheck: React.FC = () => {
             });
 
             const verifyResult = await verifyResponse.json();
-            console.log('검증 결과:', verifyResult);
 
             if (verifyResponse.ok && verifyResult.success) {
               if (verifyResult.allMatch) {

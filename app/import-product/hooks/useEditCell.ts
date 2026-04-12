@@ -108,13 +108,6 @@ export const useEditCell = (
         }
       }
 
-      console.log('=== finishEditingCell 디버깅 ===');
-      console.log('필드:', field);
-      console.log('cellValue (입력값):', cellValue);
-      console.log('currentValue (현재값):', currentValue);
-      console.log('finalValue (최종값):', finalValue);
-      console.log('valueChanged:', valueChanged);
-
       if (valueChanged) {
         const updatedData = filteredData.map(item =>
           item.id === id ? { ...item, [field]: finalValue } : item
@@ -141,15 +134,7 @@ export const useEditCell = (
             finalValue
           );
 
-          console.log('=== 셀 편집 완료 디버깅 ===');
-          console.log('항목 ID:', updatedItem.id);
-          console.log('필드:', field);
-          console.log('최종 값:', finalValue);
-          console.log('원본과 비교 결과:', isChangedFromOriginal);
-          console.log('원본 데이터 개수:', originalData.length);
-
           if (isChangedFromOriginal) {
-            console.log('→ 원본과 다름, modifiedData에 추가');
             // 원본과 다르면 처리준비 목록에 추가
             setModifiedData(prev => ({
               ...prev,
@@ -200,8 +185,6 @@ export const useEditCell = (
               }
             });
           } else {
-            console.log('→ 원본과 같음, modifiedData에서 제거');
-            // 원본과 같아졌으면 처리준비 목록에서 제거
             setModifiedData(prev => {
               const newModifiedData = { ...prev };
               if (newModifiedData[itemKey]) {

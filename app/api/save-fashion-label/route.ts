@@ -36,15 +36,37 @@ export async function POST(request: NextRequest) {
     };
 
     // ============================================================
-    // 2. 다건 상품 수량 확장 (LABEL 시트 룰과 동일)
+    // 2. 동일 product_no 중복 제거 (세트상품 병합)
+    //    정규화 후 같은 product_no → qty 최대값 1건만 유지
+    // ============================================================
+    const deduped: typeof items = [];
+    const seenProductNos = new Map<string, number>();
+
+    for (const item of items) {
+      const normalized = normalizeProductNo(item.product_no || null);
+      if (normalized) {
+        const existingIdx = seenProductNos.get(normalized);
+        if (existingIdx !== undefined) {
+          if ((item.qty || 0) > (deduped[existingIdx].qty || 0)) {
+            deduped[existingIdx] = item;
+          }
+          continue;
+        }
+        seenProductNos.set(normalized, deduped.length);
+      }
+      deduped.push(item);
+    }
+
+    // ============================================================
+    // 3. 다건 상품 수량 확장 (LABEL 시트 룰과 동일)
     //    - 1개 상품: qty 그대로 유지
     //    - 2개 이상 상품: 각 상품을 qty만큼 개별 행으로 확장 (qty=1)
     // ============================================================
-    const expandedItems = items.length >= 2
-      ? items.flatMap((item: any) =>
+    const expandedItems = deduped.length >= 2
+      ? deduped.flatMap((item: any) =>
           Array.from({ length: item.qty || 1 }, () => ({ ...item, qty: 1 }))
         )
-      : items;
+      : deduped;
 
     // ============================================================
     // 3. 기존 operator_no 데이터 삭제

@@ -99,9 +99,6 @@ export const useItemData = () => {
 
       let matchedDeliveryInfo = null;
 
-      // 특정 바코드 디버깅
-      const isDebugBarcode = itemBarcode === 'S0024873459432';
-
       // order_number로 매칭
       const itemOrderNumber = item.order_number?.toString().trim();
 
@@ -130,32 +127,17 @@ export const useItemData = () => {
       return item;
     });
 
-    console.log('=== 매칭 실패 목록 ===');
-    console.log(`총 ${unmatchedCount}개 실패`);
-    unmatchedItems.forEach((item, index) => {
-      console.log(`[${index + 1}] 주문번호: ${item.order_number}, 바코드: ${item.barcode}, 상품명: ${item.product_name}`);
-    });
-    console.log('===================');
-
     return result;
   };
 
   // 모든 배송정보 초기 로딩
   const fetchAllDeliveryInfo = async () => {
     try {
-      console.log('배송정보 전체 로딩 시작...');
-
       const response = await fetch('/api/get-all-delivery-info');
       const result = await response.json();
 
       if (result.success && result.data) {
-        // 처음 3개 샘플 데이터 출력
-        console.log('샘플 배송정보 데이터:', result.data.slice(0, 3));
-
         setDeliveryInfoData(result.data);
-        console.log(`배송정보 ${result.data.length}개 로딩 완료`);
-      } else {
-        console.log('배송정보 로딩 실패 또는 데이터 없음');
       }
     } catch (error) {
       console.error('배송정보 로딩 오류:', error);
@@ -165,19 +147,11 @@ export const useItemData = () => {
   // invoiceManager_1688_orders 데이터 로딩
   const fetchAll1688Orders = async () => {
     try {
-      console.log('1688 주문 데이터 전체 로딩 시작...');
-
       const response = await fetch('/api/get-1688-orders');
       const result = await response.json();
 
       if (result.success && result.data) {
-        // 처음 3개 샘플 데이터 출력
-        console.log('샘플 1688 주문 데이터:', result.data.slice(0, 3));
-
         setOrders1688Data(result.data);
-        console.log(`1688 주문 데이터 ${result.data.length}개 로딩 완료`);
-      } else {
-        console.log('1688 주문 데이터 로딩 실패 또는 데이터 없음');
       }
     } catch (error) {
       console.error('1688 주문 데이터 로딩 오류:', error);
@@ -186,7 +160,6 @@ export const useItemData = () => {
 
   // 데이터 가져오기 - 초기에는 빈 데이터
   const fetchItemData = async () => {
-    console.log('fetchItemData 시작');
     setOriginalData([]);
     setItemData([]);
     setLoading(false);

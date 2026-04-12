@@ -40,7 +40,6 @@ export async function loadGoogleSheetData(
     let result;
     try {
       result = await response.json();
-      console.log('구글 시트 API 응답:', result);
     } catch (parseError: any) {
       const errorText = await response.text();
       console.error('응답 파싱 오류:', parseError);
@@ -123,7 +122,6 @@ export function loadFromCache(coupangName: string): any[] | null {
 
     if (cachedData) {
       const parsedData = JSON.parse(cachedData);
-      console.log(`${coupangName}의 캐시된 데이터를 불러왔습니다.`);
       return parsedData.data || [];
     }
   } catch (error) {

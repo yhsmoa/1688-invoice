@@ -204,9 +204,6 @@ export const useBarcodeDialog = () => {
 
     if (finalLabelData.length > 0) {
       try {
-        console.log('LABEL 시트에 데이터 저장 시작...');
-        console.log('저장할 데이터:', finalLabelData);
-
         const response = await fetch('/api/save-label-data', {
           method: 'POST',
           headers: {
