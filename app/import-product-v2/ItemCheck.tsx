@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 
 // ============================================================
 // 공유 컴포넌트
@@ -38,10 +38,19 @@ import FulfillmentLogModal from './components/FulfillmentLogModal';
 import { saveLabelData } from './utils/saveLabelData';
 
 // ============================================================
-// 담당자 옵션 + 담당자 → user_id 매핑 (invoice_fashion_label용)
+// Worker 타입 (invoiceManager_employees)
 // ============================================================
-const OPERATOR_OPTIONS = ['소현', '장뢰', '3'];
-const OPERATOR_ID_MAP: Record<string, number> = { '소현': 1, '장뢰': 2, '3': 3 };
+interface Worker {
+  id: string;
+  name: string;
+  name_kr: string;
+  role: string;
+}
+
+// ============================================================
+// PC-NO 옵션 (라벨 프린터 번호)
+// ============================================================
+const PC_NO_OPTIONS = [1, 2, 3, 4];
 
 const ItemCheck: React.FC = () => {
   // ============================================================
@@ -127,9 +136,24 @@ const ItemCheck: React.FC = () => {
   const { arrivalMap, packedMap, cancelMap, shipmentMap, exportMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
 
   // ============================================================
-  // 5) 담당자 드롭박스 (UI 유지, 현재 단계에서 기능 미연결)
+  // 5) Worker / PC-NO 드롭박스
   // ============================================================
-  const [selectedOperator, setSelectedOperator] = useState('');
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState('');
+  const [selectedPcNo, setSelectedPcNo] = useState<number | null>(null);
+
+  // Worker 목록 로드 (마운트 시 1회)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/hr/workers');
+        const json = await res.json();
+        if (json.success) setWorkers(json.data);
+      } catch (err) {
+        console.error('workers 조회 오류:', err);
+      }
+    })();
+  }, []);
 
   // 5-1) searchType은 2-1 섹션에서 선언됨 (hook 순서)
 
@@ -461,8 +485,8 @@ const ItemCheck: React.FC = () => {
     return users.find((u) => u.id === selectedUserId) || null;
   }, [users, selectedUserId]);
 
-  // 담당자 → operator_id 변환
-  const operatorId = OPERATOR_ID_MAP[selectedOperator] || null;
+  // PC-NO → operator_id (라벨 저장용)
+  const operatorId = selectedPcNo;
 
   // [라벨] 버튼 클릭 핸들러
   const handleLabelClick = useCallback(() => {
@@ -491,8 +515,12 @@ const ItemCheck: React.FC = () => {
   //     라벨 저장은 saveLabelData 공통 유틸 사용 ([라벨] 버튼과 동일)
   // ============================================================
   const handleReadySave = useCallback(async () => {
-    if (!selectedOperator) {
-      alert('담당자를 선택해주세요.');
+    if (!selectedWorker) {
+      alert('Worker를 선택해주세요.');
+      return;
+    }
+    if (!selectedPcNo) {
+      alert('PC-NO를 선택해주세요.');
       return;
     }
     if (!selectedUserId) {
@@ -500,7 +528,6 @@ const ItemCheck: React.FC = () => {
       return;
     }
 
-    const currentOperatorId = OPERATOR_ID_MAP[selectedOperator] || null;
     const currentUser = users.find((u) => u.id === selectedUserId) || null;
 
     try {
@@ -509,7 +536,7 @@ const ItemCheck: React.FC = () => {
         order_item_id: item.id,
         type: 'ARRIVAL',
         quantity: import_qty,
-        operator_name: selectedOperator,
+        operator_name: selectedWorker,
         order_no: item.order_no || null,
         item_no: item.item_no || null,
         product_no: item.product_no || null,
@@ -535,12 +562,12 @@ const ItemCheck: React.FC = () => {
         }),
       ];
 
-      if (barcodeReadyItems.length > 0 && currentOperatorId) {
+      if (barcodeReadyItems.length > 0 && selectedPcNo) {
         promises.push(
           saveLabelData({
             items: barcodeReadyItems,
             brand: currentUser?.brand || null,
-            operatorNo: currentOperatorId,
+            operatorNo: selectedPcNo,
           }).then((result) => {
             if (!result.success) console.error('라벨 저장 실패:', result.error);
             return result;
@@ -559,7 +586,7 @@ const ItemCheck: React.FC = () => {
       console.error('저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
     }
-  }, [readyItems, selectedOperator, selectedUserId, users, refreshFulfillments]);
+  }, [readyItems, selectedWorker, selectedPcNo, selectedUserId, users, refreshFulfillments]);
 
   // ============================================================
   // 15) 1688 xlsx 업로드
@@ -895,17 +922,29 @@ const ItemCheck: React.FC = () => {
             <div className="v2-title-row">
               <h1 className="v2-item-title">상품입고 V2</h1>
               <div className="v2-title-dropdowns">
-                {/* 담당자 선택 */}
+                {/* Worker 선택 (invoiceManager_employees) */}
                 <select
                   className="v2-coupang-user-dropdown"
-                  value={selectedOperator}
-                  onChange={(e) => setSelectedOperator(e.target.value)}
+                  value={selectedWorker}
+                  onChange={(e) => setSelectedWorker(e.target.value)}
                 >
-                  <option value="">담당자 선택</option>
-                  {OPERATOR_OPTIONS.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  <option value="">Worker</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                      {w.name} {w.name_kr}
                     </option>
+                  ))}
+                </select>
+
+                {/* PC-NO 선택 (라벨 프린터 번호) */}
+                <select
+                  className="v2-coupang-user-dropdown"
+                  value={selectedPcNo ?? ''}
+                  onChange={(e) => setSelectedPcNo(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">PC-NO</option>
+                  {PC_NO_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
 
@@ -1183,7 +1222,7 @@ const ItemCheck: React.FC = () => {
         onClose={() => setIsCancelModalOpen(false)}
         items={cancelItems}
         selectedUserId={selectedUserId}
-        selectedOperator={selectedOperator}
+        selectedOperator={selectedWorker}
         onSaveComplete={() => {
           setIsCancelModalOpen(false);
           setSelectedRows(new Set());

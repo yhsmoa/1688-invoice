@@ -171,10 +171,13 @@ const ItemCheck: React.FC = () => {
   const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
 
-  // 담당자(operator) 선택
-  const OPERATOR_OPTIONS = ['소현', '장뢰', '3'];
-  const OPERATOR_ID_MAP: { [key: string]: number } = { '소현': 1, '장뢰': 2, '3': 3 };
-  const [selectedOperator, setSelectedOperator] = useState<string>('');
+  // ============================================================
+  // Worker / PC-NO 선택
+  // ============================================================
+  const PC_NO_OPTIONS = [1, 2, 3, 4];
+  const [workers, setWorkers] = useState<{ id: string; name: string; name_kr: string; role: string }[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState('');
+  const [selectedPcNo, setSelectedPcNo] = useState<number | null>(null);
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sortType, setSortType] = useState<string>('주문순서');
@@ -329,11 +332,23 @@ const ItemCheck: React.FC = () => {
     setLoading(false);
   };
 
+  // Worker 목록 로드 (invoiceManager_employees)
+  const fetchWorkers = async () => {
+    try {
+      const res = await fetch('/api/hr/workers');
+      const json = await res.json();
+      if (json.success) setWorkers(json.data);
+    } catch (err) {
+      console.error('workers 조회 오류:', err);
+    }
+  };
+
   useEffect(() => {
     fetchItemData();
     fetchCoupangUsers();
     fetchAllDeliveryInfo();
-    fetchAll1688Orders(); // invoiceManager_1688_orders 데이터 로딩
+    fetchAll1688Orders();
+    fetchWorkers();
   }, []);
 
   // 드롭다운 선택 시 구글 시트 데이터 자동 로드
@@ -1158,15 +1173,14 @@ const ItemCheck: React.FC = () => {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
-    if (!selectedOperator) {
-      alert('담당자를 선택해주세요.');
+    if (!selectedPcNo) {
+      alert('PC-NO를 선택해주세요.');
       return;
     }
 
     setIsSavingLabel(true);
 
     try {
-      // 다이얼로그에서 선택된 아이템 + 수량 구성
       const labelItems = Object.entries(productQuantities)
         .map(([id, qty]) => {
           const item = filteredData.find(d => d.id === id);
@@ -1180,11 +1194,10 @@ const ItemCheck: React.FC = () => {
         return;
       }
 
-      const operatorId = OPERATOR_ID_MAP[selectedOperator];
       const result = await saveLabelDataV1({
         items: labelItems,
         brand: selectedCoupangUser,
-        operatorNo: operatorId,
+        operatorNo: selectedPcNo,
       });
 
       if (result.success) {
@@ -1236,20 +1249,17 @@ const ItemCheck: React.FC = () => {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
-    if (!selectedOperator) {
-      alert('담당자를 선택해주세요.');
+    if (!selectedPcNo) {
+      alert('PC-NO를 선택해주세요.');
       return;
     }
 
     try {
-      // 1. 구글 시트 저장 (기존 로직 유지)
       await handleSaveClick();
 
-      // 2. Supabase 라벨 저장 (readyItems 기반, saveLabelDataV1 사용)
       const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
 
       if (itemsWithBarcode.length > 0) {
-        // readyItems → ItemData 원본 조회 후 saveLabelDataV1 호출
         const labelItems = itemsWithBarcode
           .map(item => {
             const originalItem = itemData.find(d => d.id === item.id);
@@ -1258,11 +1268,10 @@ const ItemCheck: React.FC = () => {
           .filter((e): e is { item: ItemData; qty: number } => e !== null);
 
         if (labelItems.length > 0) {
-          const operatorId = OPERATOR_ID_MAP[selectedOperator];
           const result = await saveLabelDataV1({
             items: labelItems,
             brand: selectedCoupangUser,
-            operatorNo: operatorId,
+            operatorNo: selectedPcNo,
           });
 
           if (!result.success) {
@@ -1636,24 +1645,38 @@ const ItemCheck: React.FC = () => {
             
             {/* 시트 불러오기 버튼 - 카드 위로 이동 */}
             <div className="excel-upload-section">
-              {/* 담당자(operator) 선택 드롭박스 */}
+              {/* Worker 선택 (invoiceManager_employees) */}
               <select
                 className="coupang-user-dropdown"
-                value={selectedOperator}
-                onChange={(e) => setSelectedOperator(e.target.value)}
+                value={selectedWorker}
+                onChange={(e) => setSelectedWorker(e.target.value)}
               >
-                <option value="">{t('importProduct.selectOperator')}</option>
-                {OPERATOR_OPTIONS.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                <option value="">Worker</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                    {w.name} {w.name_kr}
+                  </option>
                 ))}
               </select>
 
-              {/* 쿠팡 사용자 선택 드롭박스 (담당자 선택 후 활성화) */}
+              {/* PC-NO 선택 (라벨 프린터 번호) */}
+              <select
+                className="coupang-user-dropdown"
+                value={selectedPcNo ?? ''}
+                onChange={(e) => setSelectedPcNo(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">PC-NO</option>
+                {PC_NO_OPTIONS.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+
+              {/* 쿠팡 사용자 선택 드롭박스 */}
               <select
                 className="coupang-user-dropdown"
                 value={selectedCoupangUser}
                 onChange={(e) => setSelectedCoupangUser(e.target.value)}
-                disabled={!selectedOperator}
+                disabled={!selectedWorker || !selectedPcNo}
               >
                 <option value="">{t('importProduct.selectUser')}</option>
                 {coupangUsers.map((user) => {
@@ -1671,7 +1694,7 @@ const ItemCheck: React.FC = () => {
               <button
                 className="excel-upload-btn"
                 onClick={handleLoadGoogleSheet}
-                disabled={loading || !selectedOperator || !selectedCoupangUser}
+                disabled={loading || !selectedWorker || !selectedPcNo || !selectedCoupangUser}
               >
                 {loading ? (
                   <span className="button-loading">
@@ -1954,7 +1977,7 @@ const ItemCheck: React.FC = () => {
         onClose={() => setIsLabelModalOpen(false)}
         items={filteredData.filter(item => selectedRows.has(item.id) && item.barcode)}
         brand={selectedCoupangUser || null}
-        operatorId={selectedOperator ? OPERATOR_ID_MAP[selectedOperator] : null}
+        operatorId={selectedPcNo}
         onSaveComplete={() => {
           setSelectedRows(new Set());
         }}
