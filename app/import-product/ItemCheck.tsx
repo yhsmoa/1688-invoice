@@ -7,6 +7,7 @@ import LeftsideMenu from '../../component/LeftsideMenu';
 import SearchForm from '../../component/SearchForm';
 import StatusCard from './StatusCard';
 import ProcessReadyModal from '../../component/ProcessReadyModal';
+import SaveResultModal from '../../component/SaveResultModal';
 import './ItemCheck.css';
 
 // Import custom hooks
@@ -186,6 +187,16 @@ const ItemCheck: React.FC = () => {
   const [originalFieldValues, setOriginalFieldValues] = useState<{[itemId: string]: {import_qty: number | null, cancel_qty: number | null, note: string | null}}>({});
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+
+  // ============================================================
+  // [postgre+저장] 결과 모달 state
+  // sheetResult=null이면 '입고 저장' row 미표시, labelResult도 동일
+  // ============================================================
+  const [saveResultState, setSaveResultState] = useState<{
+    isOpen: boolean;
+    sheetResult: { success: boolean; error?: string } | null;
+    labelResult: { success: boolean; error?: string } | null;
+  }>({ isOpen: false, sheetResult: null, labelResult: null });
 
   const excelFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1243,8 +1254,12 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 처리준비 모달 → PostgreSQL 저장 핸들러
+  //
+  // 구글시트 저장 + Supabase 라벨 저장 결과를 SaveResultModal 1개에 통합 표시
+  // 사전 검증(쿠팡사용자/PC-NO) 실패는 기존 alert 유지 (저장 전 차단 조건)
   // ============================================================
   const handleReadySavePostgre = async () => {
+    // ── 사전 검증 ────────────────────────────────────────
     if (!selectedCoupangUser) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
@@ -1254,42 +1269,53 @@ const ItemCheck: React.FC = () => {
       return;
     }
 
-    try {
-      await handleSaveClick();
+    // ── 1) 구글시트 저장 (silent 모드 — 결과만 반환) ─────
+    const sheetResult = await handleSaveClick({ silent: true });
 
-      const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
+    // ── 2) 라벨 저장 (시트 성공 AND barcode 항목 존재 시) ─
+    let labelResult: { success: boolean; error?: string } | null = null;
+    const itemsWithBarcode = readyItems.filter(item => item.barcode && item.barcode_qty > 0);
 
-      if (itemsWithBarcode.length > 0) {
-        const labelItems = itemsWithBarcode
-          .map(item => {
-            const originalItem = itemData.find(d => d.id === item.id);
-            return originalItem ? { item: originalItem, qty: item.barcode_qty } : null;
-          })
-          .filter((e): e is { item: ItemData; qty: number } => e !== null);
+    if (sheetResult.success && itemsWithBarcode.length > 0) {
+      const labelItems = itemsWithBarcode
+        .map(item => {
+          const originalItem = itemData.find(d => d.id === item.id);
+          return originalItem ? { item: originalItem, qty: item.barcode_qty } : null;
+        })
+        .filter((e): e is { item: ItemData; qty: number } => e !== null);
 
-        if (labelItems.length > 0) {
+      if (labelItems.length > 0) {
+        try {
           const result = await saveLabelDataV1({
             items: labelItems,
             brand: selectedCoupangUser,
             operatorNo: selectedPcNo,
           });
-
-          if (!result.success) {
-            throw new Error(result.error || 'Supabase 라벨 저장 실패');
-          }
+          labelResult = { success: result.success, error: result.error };
+        } catch (error) {
+          console.error('라벨 저장 예외:', error);
+          labelResult = {
+            success: false,
+            error: error instanceof Error ? error.message : '라벨 저장 중 예외',
+          };
         }
       }
+    }
 
-      // 3. 처리준비 목록 초기화 + 모달 닫기
+    // ── 3) 모두 성공 시에만 처리준비 목록 정리 + 모달 닫기 ─
+    const allSuccess = sheetResult.success && (labelResult === null || labelResult.success);
+    if (allSuccess) {
       setReadyItems([]);
       setModifiedData({});
       setIsProcessReadyModalOpen(false);
-
-      alert('Supabase 라벨 저장이 완료되었습니다.');
-    } catch (error) {
-      console.error('처리준비 Supabase 저장 오류:', error);
-      alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
     }
+
+    // ── 4) 결과 모달 오픈 ─────────────────────────────────
+    setSaveResultState({
+      isOpen: true,
+      sheetResult,
+      labelResult,
+    });
   };
 
   // LABEL 시트에 바코드 데이터 저장
@@ -1466,14 +1492,27 @@ const ItemCheck: React.FC = () => {
     await Promise.all(savePromises);
   };
 
+  // ============================================================
   // 저장 버튼 클릭 핸들러 (배치 저장)
-  const handleSaveClick = async () => {
-    if (Object.keys(modifiedData).length === 0) return;
+  //
+  // options.silent=true  → alert 미노출, 결과만 반환 (모달 표시용)
+  // options.silent=false → 기존 alert 동작 유지 + 결과 반환 (기본)
+  // ============================================================
+  const handleSaveClick = async (
+    options: { silent?: boolean } = {}
+  ): Promise<{ success: boolean; error?: string }> => {
+    const { silent = false } = options;
+    const notify = (msg: string) => { if (!silent) alert(msg); };
+
+    // 변경 사항 없음 → 성공 처리 (저장할 것이 없으므로)
+    if (Object.keys(modifiedData).length === 0) {
+      return { success: true };
+    }
 
     // 현재 선택된 사용자의 구글시트 정보 확인
     if (!selectedCoupangUser) {
-      alert('먼저 쿠팡 사용자를 선택해주세요.');
-      return;
+      notify('먼저 쿠팡 사용자를 선택해주세요.');
+      return { success: false, error: '쿠팡 사용자 미선택' };
     }
 
     // localStorage에서 구글시트 ID 가져오기
@@ -1481,8 +1520,8 @@ const ItemCheck: React.FC = () => {
     const cachedData = localStorage.getItem(cacheKey);
 
     if (!cachedData) {
-      alert('구글시트 데이터를 먼저 불러와주세요.');
-      return;
+      notify('구글시트 데이터를 먼저 불러와주세요.');
+      return { success: false, error: '구글시트 데이터 없음' };
     }
 
     let googlesheetId;
@@ -1491,13 +1530,13 @@ const ItemCheck: React.FC = () => {
       googlesheetId = parsedCache.googlesheet_id;
     } catch (error) {
       console.error('캐시 파싱 오류:', error);
-      alert('구글시트 정보를 가져올 수 없습니다.');
-      return;
+      notify('구글시트 정보를 가져올 수 없습니다.');
+      return { success: false, error: '구글시트 캐시 파싱 실패' };
     }
 
     if (!googlesheetId) {
-      alert('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
-      return;
+      notify('구글시트 ID를 찾을 수 없습니다. 다시 시트를 불러와주세요.');
+      return { success: false, error: '구글시트 ID 누락' };
     }
 
     setIsSaving(true);
@@ -1564,9 +1603,10 @@ const ItemCheck: React.FC = () => {
             if (verifyResponse.ok && verifyResult.success) {
               if (verifyResult.allMatch) {
                 // 전체 검증 성공
-                setModifiedData({}); // 수정 데이터 초기화
+                setModifiedData({});
                 const verifyTime = (verifyResult.details.totalTime / 1000).toFixed(2);
-                alert(`✅ 저장 및 검증 완료!\n\n📊 저장: ${successCount}개\n🔍 검증: ${verifyResult.details.matchCount}/${verifyResult.details.totalChecked}개 일치\n⏱️ 총 소요 시간: ${totalSaveTime}초\n⏱️ 검증 시간: ${verifyTime}초`);
+                notify(`✅ 저장 및 검증 완료!\n\n📊 저장: ${successCount}개\n🔍 검증: ${verifyResult.details.matchCount}/${verifyResult.details.totalChecked}개 일치\n⏱️ 총 소요 시간: ${totalSaveTime}초\n⏱️ 검증 시간: ${verifyTime}초`);
+                return { success: true };
               } else {
                 // 일부 불일치
                 const mismatches = verifyResult.details.mismatches || [];
@@ -1574,61 +1614,59 @@ const ItemCheck: React.FC = () => {
                   `행 ${m.rowId} - ${m.field}: 예상값 "${m.expected}" ≠ 실제값 "${m.actual}"`
                 ).join('\n');
 
-                alert(`⚠️ 저장되었으나 일부 데이터가 불일치합니다.\n\n✅ 일치: ${verifyResult.details.matchCount}개\n❌ 불일치: ${verifyResult.details.mismatchCount}개\n\n불일치 항목:\n${mismatchInfo}\n\n시트를 다시 불러와서 확인해주세요.`);
+                notify(`⚠️ 저장되었으나 일부 데이터가 불일치합니다.\n\n✅ 일치: ${verifyResult.details.matchCount}개\n❌ 불일치: ${verifyResult.details.mismatchCount}개\n\n불일치 항목:\n${mismatchInfo}\n\n시트를 다시 불러와서 확인해주세요.`);
 
-                // 불일치 항목만 modifiedData에 남김
                 const newModifiedData: {[key: string]: {[field: string]: number | string | null}} = {};
                 mismatches.forEach((m: any) => {
-                  if (!newModifiedData[m.rowId]) {
-                    newModifiedData[m.rowId] = {};
-                  }
+                  if (!newModifiedData[m.rowId]) newModifiedData[m.rowId] = {};
                   newModifiedData[m.rowId][m.field] = m.expected;
                 });
                 setModifiedData(newModifiedData);
+                return { success: false, error: `검증 불일치 ${verifyResult.details.mismatchCount}개` };
               }
             } else {
-              // 검증 실패 (네트워크 오류 등)
               console.error('검증 실패:', verifyResult);
-              setModifiedData({}); // 일단 초기화
-              alert(`⚠️ 저장은 완료되었으나 검증에 실패했습니다.\n\n📊 저장 완료: ${successCount}개\n⏱️ 소요 시간: ${totalSaveTime}초\n\n검증 오류: ${verifyResult.error || '알 수 없는 오류'}\n\n시트를 새로고침하여 확인해주세요.`);
+              setModifiedData({});
+              notify(`⚠️ 저장은 완료되었으나 검증에 실패했습니다.\n\n📊 저장 완료: ${successCount}개\n⏱️ 소요 시간: ${totalSaveTime}초\n\n검증 오류: ${verifyResult.error || '알 수 없는 오류'}\n\n시트를 새로고침하여 확인해주세요.`);
+              return { success: false, error: verifyResult.error || '검증 API 실패' };
             }
           } catch (verifyError) {
-            // 검증 중 예외 발생
             console.error('검증 중 오류:', verifyError);
-            setModifiedData({}); // 일단 초기화
-            alert(`⚠️ 저장은 완료되었으나 검증 중 오류가 발생했습니다.\n\n📊 저장 완료: ${successCount}개\n⏱️ 소요 시간: ${totalSaveTime}초\n\n시트를 새로고침하여 확인해주세요.`);
+            setModifiedData({});
+            notify(`⚠️ 저장은 완료되었으나 검증 중 오류가 발생했습니다.\n\n📊 저장 완료: ${successCount}개\n⏱️ 소요 시간: ${totalSaveTime}초\n\n시트를 새로고침하여 확인해주세요.`);
+            return { success: false, error: verifyError instanceof Error ? verifyError.message : '검증 중 예외' };
           }
         } else {
           // 부분 성공
           const failedInfo = failedDetails?.map((f: any) => `행 ${f.rowId} - ${f.field}: ${f.error}`).join('\n') || '';
-          alert(`⚠️ 일부 데이터가 저장되었습니다.\n\n✅ 성공: ${successCount}개\n❌ 실패: ${failedCount}개\n\n실패 항목:\n${failedInfo}`);
+          notify(`⚠️ 일부 데이터가 저장되었습니다.\n\n✅ 성공: ${successCount}개\n❌ 실패: ${failedCount}개\n\n실패 항목:\n${failedInfo}`);
 
-          // 성공한 항목들만 modifiedData에서 제거
           const newModifiedData = { ...modifiedData };
           successDetails?.forEach((item: any) => {
-            // order_number와 barcode로 itemKey 생성
             const itemKey = `${item.order_number}|${item.barcode}`;
-
             if (newModifiedData[itemKey]) {
               delete newModifiedData[itemKey][item.field];
-
-              // 해당 itemKey의 모든 필드가 저장되었으면 itemKey 자체를 삭제
               if (Object.keys(newModifiedData[itemKey]).length === 0) {
                 delete newModifiedData[itemKey];
               }
             }
           });
           setModifiedData(newModifiedData);
+          return { success: false, error: `부분 저장 ${successCount}/${successCount + failedCount}` };
         }
       } else {
         // 전체 실패
         console.error('배치 저장 실패:', result);
-        alert(`❌ 데이터 저장에 실패했습니다.\n\n오류: ${result.error || result.details || '알 수 없는 오류'}\n\n네트워크 연결을 확인해주세요.`);
+        const errMsg = result.error || result.details || '알 수 없는 오류';
+        notify(`❌ 데이터 저장에 실패했습니다.\n\n오류: ${errMsg}\n\n네트워크 연결을 확인해주세요.`);
+        return { success: false, error: errMsg };
       }
 
     } catch (error) {
       console.error('저장 중 오류 발생:', error);
-      alert(`❌ 데이터 저장 중 오류가 발생했습니다.\n\n${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      const errMsg = error instanceof Error ? error.message : '알 수 없는 오류';
+      notify(`❌ 데이터 저장 중 오류가 발생했습니다.\n\n${errMsg}`);
+      return { success: false, error: errMsg };
     } finally {
       setIsSaving(false);
     }
@@ -1981,6 +2019,16 @@ const ItemCheck: React.FC = () => {
         onSaveComplete={() => {
           setSelectedRows(new Set());
         }}
+      />
+
+      {/* ============================================================ */}
+      {/* [postgre+저장] 결과 통합 모달 */}
+      {/* ============================================================ */}
+      <SaveResultModal
+        isOpen={saveResultState.isOpen}
+        sheetResult={saveResultState.sheetResult}
+        labelResult={saveResultState.labelResult}
+        onClose={() => setSaveResultState({ isOpen: false, sheetResult: null, labelResult: null })}
       />
     </div>
   );

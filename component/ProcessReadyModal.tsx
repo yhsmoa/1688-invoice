@@ -308,10 +308,11 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
                 'postgre + 저장'
               )}
             </button>
+            {/* [google + 저장] 버튼 — 기능 보존, 클릭 비활성화 (추후 재활성화 예정) */}
             <button
               className="save-ready-button save-google-button"
               onClick={handleSaveGoogle}
-              disabled={readyItems.length === 0 || isSaving}
+              disabled
             >
               {savingType === 'google' ? (
                 <span className="button-loading">

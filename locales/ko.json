@@ -148,5 +148,10 @@
     "save": "저장",
     "saving": "저장 중...",
     "orders": "주문"
+  },
+  "saveResult": {
+    "sheetSave": "입고 저장",
+    "labelSave": "라벨 저장",
+    "confirm": "확인"
   }
 }

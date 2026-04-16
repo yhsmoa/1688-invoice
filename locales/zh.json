@@ -142,5 +142,10 @@
     "save": "保存",
     "saving": "保存中...",
     "orders": "订单"
+  },
+  "saveResult": {
+    "sheetSave": "入库保存",
+    "labelSave": "标签保存",
+    "confirm": "确认"
   }
 }

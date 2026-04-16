@@ -1,0 +1,151 @@
+/* ============================================================
+   SaveResultModal — 저장 결과 알림 모달
+   [입고 저장] + [라벨 저장] 결과를 한 화면에 표시
+   ============================================================ */
+
+/* ── 오버레이 (은은한 딤 + 중앙 정렬) ────────────────────── */
+.save-result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10001;
+  cursor: pointer;
+  animation: save-result-fade-in 0.18s ease-out;
+}
+
+@keyframes save-result-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ============================================================
+   모달 본체 — 불투명 블랙 배경
+   ============================================================ */
+.save-result-modal {
+  background: #18181b;
+  color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  min-width: 440px;
+  max-width: 90vw;
+  padding: 44px 52px 36px;
+  cursor: default;
+  animation: save-result-scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes save-result-scale-in {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ============================================================
+   상단: 대형 상태 이모지
+   ============================================================ */
+.save-result-hero {
+  font-size: 104px;
+  line-height: 1;
+  text-align: center;
+  margin-bottom: 28px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.save-result-hero.is-success {
+  animation: save-result-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.save-result-hero.is-fail {
+  animation: save-result-shake 0.4s ease-in-out;
+}
+
+@keyframes save-result-bounce {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes save-result-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* ============================================================
+   중단: 항목별 결과 row (다크 배경 톤)
+   ============================================================ */
+.save-result-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.save-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 22px;
+  border-radius: 12px;
+  font-size: 22px;
+  font-weight: 600;
+  transition: background-color 0.15s ease;
+}
+
+/* 상태별 row 톤 (다크 배경에 맞춘 반투명 컬러) */
+.save-result-row.is-success {
+  background: rgba(34, 197, 94, 0.15);   /* 은은한 녹색 오버레이 */
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.save-result-row.is-fail {
+  background: rgba(239, 68, 68, 0.15);   /* 은은한 빨강 오버레이 */
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.save-result-row-label {
+  flex: 1;
+}
+
+.save-result-row-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* ============================================================
+   하단: [확인] 버튼 (실패 시에만 노출)
+   ============================================================ */
+.save-result-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.save-result-confirm-btn {
+  min-width: 180px;
+  height: 50px;
+  padding: 0 36px;
+  background: #ffffff;
+  color: #18181b;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.save-result-confirm-btn:hover {
+  background: #e5e5e5;
+}
+
+.save-result-confirm-btn:active {
+  transform: translateY(1px);
+}
