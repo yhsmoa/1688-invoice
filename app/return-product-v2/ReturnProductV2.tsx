@@ -8,9 +8,18 @@ import ReturnProductV2StatusCard from './ReturnProductV2StatusCard';
 import './ReturnProductV2.css';
 
 // ============================================================
+// 타입
+// ============================================================
+interface Worker {
+  id: string;
+  name: string;
+  name_kr: string;
+  role: string;
+}
+
+// ============================================================
 // 상수
 // ============================================================
-const OPERATOR_OPTIONS = ['소현', '장뢰', '3'];
 
 /** DB status → 화면 표시 라벨 */
 const STATUS_DISPLAY: Record<string, string> = {
@@ -102,11 +111,25 @@ const canEdit = (status: string | null) =>
 const ReturnProductV2: React.FC = () => {
   const { t } = useTranslation();
 
-  // ── 드롭박스 (담당자 / 사업자)
-  const [selectedOperator, setSelectedOperator] = useState('');
+  // ── 드롭박스 (Worker / 사업자)
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState('');
   const [users, setUsers] = useState<FtUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
+
+  // Worker 목록 로드 (invoiceManager_employees, status=WORKING, role=매니저/검수)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/hr/workers');
+        const json = await res.json();
+        if (json.success) setWorkers(json.data);
+      } catch (err) {
+        console.error('workers 조회 오류:', err);
+      }
+    })();
+  }, []);
 
   // ── 데이터
   const [details, setDetails] = useState<CancelDetail[]>([]);
@@ -536,14 +559,17 @@ const ReturnProductV2: React.FC = () => {
             <div className="return-v2-title-row">
               <h1 className="return-v2-title">반품접수 V2</h1>
               <div className="return-v2-title-controls">
+                {/* Worker 선택 (invoiceManager_employees) */}
                 <select
                   className="return-v2-user-dropdown"
-                  value={selectedOperator}
-                  onChange={(e) => setSelectedOperator(e.target.value)}
+                  value={selectedWorker}
+                  onChange={(e) => setSelectedWorker(e.target.value)}
                 >
-                  <option value="">담당자 선택</option>
-                  {OPERATOR_OPTIONS.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  <option value="">Worker</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                      {w.name} {w.name_kr}
+                    </option>
                   ))}
                 </select>
                 <select

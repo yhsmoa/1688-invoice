@@ -155,6 +155,78 @@ const ItemCheck: React.FC = () => {
     })();
   }, []);
 
+  // ============================================================
+  // 5-2) [V2 이전] 엑셀 업로드 (ft_orders + ft_order_items 마이그레이션)
+  // ============================================================
+  const v2MigrationFileInputRef = useRef<HTMLInputElement>(null);
+  const [isV2Migrating, setIsV2Migrating] = useState(false);
+
+  const handleV2MigrationClick = useCallback(() => {
+    if (!selectedUserId) {
+      alert('사용자를 선택해주세요.');
+      return;
+    }
+    if (!selectedWorker) {
+      alert('Worker를 선택해주세요. (N열 입고 데이터 저장에 필요)');
+      return;
+    }
+    v2MigrationFileInputRef.current?.click();
+  }, [selectedUserId, selectedWorker]);
+
+  const handleV2MigrationFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // selectedWorker(display 문자열)에서 실제 worker 객체 역조회
+    const worker = workers.find((w) => `${w.name} ${w.name_kr}` === selectedWorker);
+    if (!worker) {
+      alert('선택한 Worker 정보를 찾을 수 없습니다. 다시 선택해주세요.');
+      e.target.value = '';
+      return;
+    }
+
+    setIsV2Migrating(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('user_id', selectedUserId);
+      fd.append('worker_id', worker.id);
+      fd.append('worker_name', worker.name);
+
+      const res = await fetch('/api/ft/v2-migration/upload-xlsx', {
+        method: 'POST',
+        body: fd,
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        // 사전 중복 케이스 — duplicates 배열 안내
+        if (Array.isArray(json.duplicates) && json.duplicates.length > 0) {
+          const preview = json.duplicates.slice(0, 10).join(', ');
+          const extra = json.duplicates.length > 10 ? ` 외 ${json.duplicates.length - 10}건` : '';
+          alert(`⚠️ 이미 존재하는 order_no가 있어 작업을 중단합니다.\n\n${preview}${extra}`);
+        } else {
+          alert(`❌ 업로드 실패: ${json.error || '알 수 없는 오류'}${json.details ? `\n${json.details}` : ''}`);
+        }
+        return;
+      }
+
+      alert(
+        `✅ V2 이전 완료!\n` +
+        `ft_orders: ${json.orderCount}건\n` +
+        `ft_order_items: ${json.itemCount}건\n` +
+        `ft_fulfillment_inbounds: ${json.inboundCount ?? 0}건`
+      );
+    } catch (err) {
+      console.error('[V2 이전] 업로드 오류:', err);
+      alert(`❌ 업로드 중 오류가 발생했습니다.\n${err instanceof Error ? err.message : ''}`);
+    } finally {
+      setIsV2Migrating(false);
+      // 같은 파일 재업로드 가능하도록 값 초기화
+      e.target.value = '';
+    }
+  }, [selectedUserId, selectedWorker, workers]);
+
   // 5-1) searchType은 2-1 섹션에서 선언됨 (hook 순서)
 
   // ============================================================
@@ -920,7 +992,31 @@ const ItemCheck: React.FC = () => {
             {/* 타이틀 행: 왼쪽(제목) / 오른쪽(드롭박스 2개) */}
             {/* ============================================================ */}
             <div className="v2-title-row">
-              <h1 className="v2-item-title">상품입고 V2</h1>
+              {/* ── 왼쪽: 제목 + [V2 이전] 버튼 ─────────── */}
+              <div className="v2-title-left">
+                <h1 className="v2-item-title">상품입고 V2</h1>
+                <button
+                  className="v2-migration-btn"
+                  onClick={handleV2MigrationClick}
+                  disabled={isV2Migrating || !selectedUserId || !selectedWorker}
+                  title={
+                    !selectedUserId
+                      ? '사용자를 먼저 선택하세요'
+                      : !selectedWorker
+                        ? 'Worker를 먼저 선택하세요'
+                        : undefined
+                  }
+                >
+                  {isV2Migrating ? '업로드 중...' : 'V2 이전'}
+                </button>
+                <input
+                  ref={v2MigrationFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={handleV2MigrationFileChange}
+                />
+              </div>
               <div className="v2-title-dropdowns">
                 {/* Worker 선택 (invoiceManager_employees) */}
                 <select

@@ -49,6 +49,42 @@
   margin-top: 0;
 }
 
+/* ── 왼쪽 영역: 제목 + [V2 이전] 버튼 ─────────────────── */
+.v2-title-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── [V2 이전] 버튼 ──────────────────────────────────── */
+.v2-migration-btn {
+  height: 36px;
+  padding: 0 16px;
+  background: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.v2-migration-btn:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.v2-migration-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.v2-migration-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* 상태 카드들 */
 .v2-status-cards {
   display: grid;
