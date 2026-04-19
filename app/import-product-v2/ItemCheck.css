@@ -1577,3 +1577,33 @@
   background-color: #fffbeb;
   color: #92400e;
 }
+
+/* ============================================================
+   상품명 라벨 배지 (V1과 동일 스타일)
+   · fabric : 혼용률 라벨 출력 (파랑)
+   · origin : 원산지 도장/봉제 (주황)
+   · stop   : 입고만 입력 후 매니저 전달 (빨강)
+   ============================================================ */
+.label-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.label-badge.fabric {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.label-badge.origin {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.label-badge.stop {
+  background-color: #fee2e2;
+  color: #dc2626;
+}

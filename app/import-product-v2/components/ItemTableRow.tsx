@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import EditableCell from './EditableCell';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
@@ -63,6 +64,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   onCategoryKeyDown,
   onFinishCategoryEdit,
 }) => {
+  const { t } = useTranslation();
+
   // 진행 = 개수 - 입고 - 취소
   const progressQty = (item.order_qty ?? 0) - arrivalQty - cancelQty;
 
@@ -173,6 +176,19 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               </>
             );
           })()}
+          {/* ── 상품명 라벨 배지 (V1과 동일 우선순위) ──
+                1. composition 존재            → 🟦 혼용률 라벨 출력
+                2. order_qty < 10             → 🟧 원산지 도장/봉제
+                3. order_qty >= 10            → 🟥 입고만 입력 후 매니저에게 전달 */}
+          <div style={{ marginTop: '4px' }}>
+            {item.composition && String(item.composition).trim() ? (
+              <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
+            ) : (item.order_qty ?? 0) < 10 ? (
+              <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
+            ) : (
+              <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+            )}
+          </div>
         </div>
       </td>
 
