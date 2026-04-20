@@ -79,3 +79,30 @@ export function normalizeSizeCode(raw: string | null | undefined): string | null
 
   return null;
 }
+
+// ============================================================
+// 스캔 사이즈 검증용 결합 헬퍼
+//
+// /export-product-v2 바코드 스캔 시, 박스 사이즈와 비교할
+// 상품 사이즈 코드를 결정한다.
+//
+// 단일 소스: ft_order_items.shipment_type + ft_order_items.coupang_shipment_size
+// (화면 배지 표시와 동일한 값을 사용 — 데이터 소스 일원화)
+//
+// 규칙:
+//   PERSONAL                → P
+//   COUPANG + Small/Med/Lg → A/B/C
+//   COUPANG (size 매칭 실패) → X (fallback)
+//   DIRECT / null / 기타    → X
+// ============================================================
+export function resolveScanSizeCode(
+  shipmentType: string | null | undefined,
+  coupangShipmentSize: string | null | undefined
+): string {
+  const type = shipmentType?.trim().toUpperCase() ?? '';
+  if (type === 'PERSONAL') return 'P';
+  if (type === 'COUPANG') {
+    return normalizeSizeCode(coupangShipmentSize) || 'X';
+  }
+  return 'X';
+}

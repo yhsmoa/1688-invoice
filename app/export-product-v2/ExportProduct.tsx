@@ -6,6 +6,7 @@ import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
 import { useFtUsers, type FtOrderItem } from '../import-product-v2/hooks/useFtData';
+import { resolveScanSizeCode } from '../../lib/sizeCode';
 import './ExportProduct.css';
 
 // ============================================================
@@ -205,42 +206,16 @@ const ExportProduct: React.FC = () => {
           const arrival = arrivalMap.get(item.id) ?? 0;
           const packed = packedMap.get(item.id) ?? 0;
           const cancel = cancelMap.get(item.id) ?? 0;
-          return { ...item, available_qty: arrival - packed - cancel, packed_qty: packed, size_code: 'X' };
+          return { ...item, available_qty: arrival - packed - cancel, packed_qty: packed };
         })
         .filter((item) => item.available_qty > 0);
 
-      // 4) shipment_type 별 사이즈 코드 결정
-      //    COUPANG → ft_cp_item + ft_cp_shipment_size 조인으로 A/B/C
-      //    PERSONAL → P
-      //    Direct / null → X
-      const coupangItems = withQty.filter((i) => i.shipment_type === 'COUPANG' && i.barcode);
-      const coupangBarcodes = [...new Set(coupangItems.map((i) => i.barcode!))];
-
-      let barcodeSizeMap: Record<string, string | null> = {};
-      if (coupangBarcodes.length > 0) {
-        try {
-          const sizeRes = await fetch('/api/ft/shipment-size', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ barcodes: coupangBarcodes }),
-          });
-          const sizeJson = await sizeRes.json();
-          if (sizeJson.success) barcodeSizeMap = sizeJson.data || {};
-        } catch (sizeErr) {
-          console.error('shipment-size 조회 오류:', sizeErr);
-        }
-      }
-
-      // 5) size_code 병합
-      const result: ExportOrderItem[] = withQty.map((item) => {
-        let sizeCode = 'X'; // 기본값: Direct / null
-        if (item.shipment_type === 'COUPANG') {
-          sizeCode = (item.barcode && barcodeSizeMap[item.barcode]) || 'X';
-        } else if (item.shipment_type === 'PERSONAL') {
-          sizeCode = 'P';
-        }
-        return { ...item, size_code: sizeCode };
-      });
+      // 4) size_code 결정 — ft_order_items 자체 값(shipment_type + coupang_shipment_size)으로 로컬 계산
+      //    화면 배지 표시와 동일한 데이터 소스 사용 → 스캔 결과와 UI 일치 보장
+      const result: ExportOrderItem[] = withQty.map((item) => ({
+        ...item,
+        size_code: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
+      }));
 
       setExportItems(result);
       console.log(`출고 준비 데이터: ${result.length}개 (전체 ${items.length}개 중 available > 0)`);
