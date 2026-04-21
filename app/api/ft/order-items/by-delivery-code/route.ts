@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { FT_ORDER_ITEMS_DISPLAY_SELECT } from '../../../../../lib/ftOrderItemsSelect';
 
 // ============================================================
 // GET /api/ft/order-items/by-delivery-code?delivery_code=XXX
@@ -54,12 +55,8 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Step 2: ft_order_items에서 1688_order_id 기준 조회 (batch + pagination) ──
-    const OI_SELECT =
-      'id, order_no, item_no, item_name, option_name, order_qty, barcode,' +
-      ' china_option1, china_option2, price_cny, price_total_cny,' +
-      ' img_url, coupang_shipment_size, status, composition, recommanded_age,' +
-      ' set_total, set_seq, product_no, site_url, 1688_order_id';
-
+    //          SELECT는 /api/ft/order-items 와 완전 동일 → 화면 렌더 로직 일관성 보장
+    //          정렬은 item_no ASC → 세트 구성품이 연속 배치되어 그룹핑 시각 효과 유지
     const BATCH = 100;
     const allItems: Record<string, unknown>[] = [];
 
@@ -69,9 +66,9 @@ export async function GET(request: NextRequest) {
       while (true) {
         const { data: oiBatch, error: oiError } = await supabase
           .from('ft_order_items')
-          .select(OI_SELECT)
+          .select(FT_ORDER_ITEMS_DISPLAY_SELECT)
           .in('1688_order_id', idsBatch)
-          .order('created_at', { ascending: false })
+          .order('item_no', { ascending: true })
           .range(oiFrom, oiFrom + PAGE - 1);
 
         if (oiError) throw oiError;

@@ -394,6 +394,22 @@
   border-bottom: none;
 }
 
+/* ============================================================
+   세트상품 행: 양쪽 바깥 border + 🎁 배지 색상 (팔레트 순환)
+   · 각 행의 tr inline style로 --set-accent / --set-bg / --set-text 주입
+   · 미지정 시 기본 주황(#e65100, #fff3e0) fallback
+   ============================================================ */
+.v2-item-table tr.v2-set-product-row td:first-child {
+  border-left: 3px solid var(--set-accent, #e65100);
+}
+.v2-item-table tr.v2-set-product-row td:last-child {
+  border-right: 3px solid var(--set-accent, #e65100);
+}
+.v2-item-table tr.v2-set-product-row .v2-set-badge {
+  background-color: var(--set-bg, #fff3e0);
+  color: var(--set-text, #e65100);
+}
+
 /* 진행 > 입고인 행 노란색 처리 */
 .v2-item-table tr.missing-delivery-row {
   background-color: #fef3c7;
@@ -488,20 +504,7 @@
   font-family: Arial, sans-serif !important;
 }
 
-/* 쉽먼트 사이즈 배지 (상품명 내 barcode 옆) */
-.size-badge {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-  vertical-align: middle;
-}
-.size-badge--blue   { background: #2563eb; }
-.size-badge--orange { background: #ea580c; }
-.size-badge--black  { background: #1e293b; }
-.size-badge--gray   { background: #9ca3af; }
+/* 쉽먼트 사이즈 배지(.size-badge*) 스타일은 app/globals.css 로 이전됨 (공용 visual primitive) */
 
 
 /* 진행, 입고, 취소, 출고 열을 개수, 비용 열 폰트 크기에 맞춤 (기본 16px) */

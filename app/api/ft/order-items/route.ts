@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { FT_ORDER_ITEMS_DISPLAY_SELECT } from '../../../../lib/ftOrderItemsSelect';
 
-const ORDER_ITEMS_SELECT = 'id, order_no, item_no, item_name, option_name, order_qty, barcode, china_option1, china_option2, price_cny, price_total_cny, img_url, coupang_shipment_size, status, composition, recommanded_age, set_total, set_seq, product_no, product_id, site_url, 1688_order_id, shipment_type, customs_category, created_at, note_notice';
+// 화면 렌더용 조회 컬럼 — by-delivery-code 와 동일 컬럼 셋 공유
+const ORDER_ITEMS_SELECT = FT_ORDER_ITEMS_DISPLAY_SELECT;
 
 // ============================================================
 // GET /api/ft/order-items?user_id=X&status=PROCESSING
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
 
       if (error) throw error;
       if (!data || data.length === 0) break;
-      all.push(...data);
+      all.push(...(data as unknown as Record<string, unknown>[]));
       if (data.length < PAGE) break;
       from += PAGE;
     }

@@ -392,16 +392,27 @@ const ItemCheck: React.FC = () => {
   );
 
   // 9-4) 검색 실행 공통 함수
+  //      빈 값 입력 시 모든 검색 결과 초기화 → 전체 데이터 복원
+  //      (페이지 새로고침 없이 전체 조회로 돌아갈 수 있도록)
   const applySearch = useCallback(
     (value: string) => {
+      const trimmed = value.trim();
+
+      // ── 빈 값: 서버 조회 결과 + 클라이언트 필터 모두 리셋 ──
+      if (!trimmed) {
+        setDeliveryItems(null);
+        clearSearch();
+        return;
+      }
+
       if (searchType === '배송번호') {
-        handleDeliverySearch(value);         // 서버 조회
+        handleDeliverySearch(trimmed);       // 서버 조회
       } else {
         // 일반검색 / 주문번호: 클라이언트 필터 (useFtSearch가 searchType에 맞게 처리)
-        setSearchTerm(value);
+        setSearchTerm(trimmed);
       }
     },
-    [searchType, handleDeliverySearch, setSearchTerm]
+    [searchType, handleDeliverySearch, setSearchTerm, clearSearch]
   );
 
   // 9-5) Enter 키 → 검색 실행

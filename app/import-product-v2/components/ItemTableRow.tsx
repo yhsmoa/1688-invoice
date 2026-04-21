@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import EditableCell from './EditableCell';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
+import { resolveSetGroupColor } from '../utils/setGroupPalette';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
 
@@ -13,6 +14,8 @@ interface ItemTableRowProps {
   isSelected: boolean;
   /** 다음 행과 같은 product_id 그룹이면 true → border 제거 */
   sameGroupAsNext: boolean;
+  /** 세트 그룹 색상 인덱스 (set_total > 1 인 행에만 지정). undefined면 기본 주황 fallback */
+  setColorIndex?: number;
   mousePosition: { x: number; y: number };
   editingCell: { id: string; field: string } | null;
   cellValue: string;
@@ -43,6 +46,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   item,
   isSelected,
   sameGroupAsNext,
+  setColorIndex,
   mousePosition,
   editingCell,
   cellValue,
@@ -72,8 +76,27 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   // 입고 열에 표시할 값: 수정값 > 0이면 수정값, 아니면 빈칸
   const displayImportQty = importQtyValue != null ? importQtyValue : null;
 
+  // 세트상품 여부 (🎁 배지 표시 조건과 동일)
+  const isSetProduct = item.set_total != null && item.set_total > 1;
+
+  const rowClasses = [
+    sameGroupAsNext ? 'v2-same-product-group' : '',
+    isSetProduct ? 'v2-set-product-row' : '',
+  ].filter(Boolean).join(' ');
+
+  // ── 세트 그룹 색상 CSS 변수 (인덱스 기반 팔레트 순환) ──
+  //    setColorIndex가 undefined이면 style 미지정 → CSS fallback 주황 적용
+  const rowStyle: React.CSSProperties | undefined =
+    setColorIndex != null
+      ? ({
+          ['--set-accent' as string]: resolveSetGroupColor(setColorIndex).border,
+          ['--set-bg' as string]: resolveSetGroupColor(setColorIndex).bg,
+          ['--set-text' as string]: resolveSetGroupColor(setColorIndex).text,
+        } as React.CSSProperties)
+      : undefined;
+
   return (
-    <tr className={sameGroupAsNext ? 'v2-same-product-group' : ''}>
+    <tr className={rowClasses} style={rowStyle}>
       {/* 체크박스 */}
       <td>
         <input

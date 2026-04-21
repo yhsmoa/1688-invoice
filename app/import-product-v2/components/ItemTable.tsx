@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ItemTableRow from './ItemTableRow';
 import type { FtOrderItem } from '../hooks/useFtData';
+import { getSetGroupKey } from '../utils/setGroupPalette';
 
 /* V2 전용 ItemTable 컴포넌트 - 원래 13열 헤더 유지 */
 
@@ -73,6 +74,28 @@ const ItemTable: React.FC<ItemTableProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // ============================================================
+  // 세트 그룹 판정 — 단일 키 함수(getSetGroupKey) 기반
+  //
+  //   1. 각 행의 set group key 사전 계산 (rowKeys)
+  //   2. 고유 key에 색상 인덱스 부여 (setGroupColorIndex)
+  //
+  // 행별 용도:
+  //   - 색상 인덱스: setGroupColorIndex.get(rowKeys[idx])
+  //   - 가로 border 제거: rowKeys[idx] !== null && rowKeys[idx] === rowKeys[idx+1]
+  // ============================================================
+  const { rowKeys, setGroupColorIndex } = useMemo(() => {
+    const rowKeys: (string | null)[] = paginatedData.map(getSetGroupKey);
+    const colorMap = new Map<string, number>();
+    let counter = 0;
+    for (const key of rowKeys) {
+      if (key !== null && !colorMap.has(key)) {
+        colorMap.set(key, counter++);
+      }
+    }
+    return { rowKeys, setGroupColorIndex: colorMap };
+  }, [paginatedData]);
+
   return (
     <div className="v2-table-board">
       <table className="v2-item-table">
@@ -113,15 +136,18 @@ const ItemTable: React.FC<ItemTableProps> = ({
               <td colSpan={13} className="empty-data">{t('importProduct.table.noData')}</td>
             </tr>
           ) : (
-            paginatedData.map((item, idx) => (
+            paginatedData.map((item, idx) => {
+              const thisKey = rowKeys[idx];
+              const nextKey = idx < paginatedData.length - 1 ? rowKeys[idx + 1] : null;
+              // 가로 border 제거: 세트 그룹 내 인접 행일 때만 (thisKey != null 보장)
+              const sameGroupAsNext = thisKey !== null && thisKey === nextKey;
+              const setColorIdx = thisKey !== null ? setGroupColorIndex.get(thisKey) : undefined;
+              return (
               <ItemTableRow
                 key={item.id}
                 item={item}
-                sameGroupAsNext={
-                  idx < paginatedData.length - 1
-                  && !!item.product_id
-                  && item.product_id === paginatedData[idx + 1].product_id
-                }
+                sameGroupAsNext={sameGroupAsNext}
+                setColorIndex={setColorIdx}
                 isSelected={selectedRows.has(item.id)}
                 mousePosition={mousePosition}
                 editingCell={editingCell}
@@ -144,7 +170,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 onCategoryKeyDown={onCategoryKeyDown}
                 onFinishCategoryEdit={onFinishCategoryEdit}
               />
-            ))
+              );
+            })
           )}
         </tbody>
       </table>
