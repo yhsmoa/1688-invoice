@@ -153,5 +153,162 @@
     "sheetSave": "입고 저장",
     "labelSave": "라벨 저장",
     "confirm": "확인"
+  },
+  "importProductV2": {
+    "title": "상품입고 V2",
+    "worker": "Worker",
+    "pcNo": "PC-NO",
+    "selectUser": "사용자 선택",
+    "totalCount": "총 {{count}}건",
+    "buttons": {
+      "v2Migration": "V2 이전",
+      "uploading": "업로드 중...",
+      "xlsx": "1688 XLSX",
+      "csv": "배송상황 csv",
+      "processReady": "처리준비",
+      "note": "비고",
+      "cancel": "반품",
+      "label": "라벨",
+      "import": "입고"
+    },
+    "searchType": {
+      "delivery": "배송번호",
+      "general": "일반검색"
+    },
+    "searchPlaceholder": {
+      "delivery": "배송번호를 입력하세요",
+      "general": "상품명, 오퍼ID, 바코드를 입력하세요"
+    },
+    "search": "검색",
+    "statusFilter": {
+      "all": "전체",
+      "processing": "진행중"
+    },
+    "filter": {
+      "noDelivery": "미배송",
+      "delayed": "지연배송"
+    },
+    "table": {
+      "image": "이미지",
+      "orderNumber": "글번호",
+      "productName": "상품명",
+      "orderOption": "주문옵션",
+      "quantity": "개수",
+      "cost": "비용",
+      "progress": "진행",
+      "work": "작업",
+      "arrival": "입고",
+      "packed": "포장",
+      "cancel": "취소",
+      "export": "출고",
+      "loading": "로딩 중...",
+      "noData": "해당 사용자의 주문이 없습니다."
+    },
+    "pagination": {
+      "previous": "이전",
+      "next": "다음",
+      "pageInfo": "{{current}} / {{total}} 페이지 (총 {{count}}개)"
+    },
+    "alerts": {
+      "selectUser": "사용자를 선택해주세요.",
+      "selectItems": "항목을 선택해주세요.",
+      "noBarcode": "바코드가 있는 선택된 항목이 없습니다.",
+      "deliveryNoResult": "해당 배송번호로 조회된 아이템이 없습니다.",
+      "saveError": "저장 중 오류가 발생했습니다."
+    }
+  },
+  "shipmentV2": {
+    "title": "쉽먼트 V2 😈",
+    "selectUser": "사용자 선택",
+    "totalCount": "총 {{count}}건",
+    "buttons": {
+      "classify": "품목",
+      "classifying": "분류 중...",
+      "excel": "엑셀",
+      "move": "이동",
+      "merge": "합배송",
+      "ship": "출고",
+      "save": "저장"
+    },
+    "table": {
+      "box": "박스번호",
+      "order": "주문번호",
+      "barcode": "바코드",
+      "product": "상품정보",
+      "options": "주문옵션",
+      "price": "단가",
+      "category": "품목",
+      "shipmentSize": "쉽먼트사이즈",
+      "arrival": "입고",
+      "scan": "스캔",
+      "total": "전체"
+    },
+    "modal": {
+      "boxMove": "박스 이동",
+      "merge": "합배송 설정",
+      "ship": "출고 처리",
+      "shipmentNo": "쉽먼트 번호 (6자리 숫자)",
+      "box1": "박스 1",
+      "box2": "박스 2",
+      "masterBox": "마스터 박스",
+      "selectOrInput": "선택 또는 직접 입력",
+      "directInputPlaceholder": "직접 입력 (예: BZ-A-03)",
+      "cancel": "취소",
+      "confirm": "확인",
+      "moveDesc": "선택된 {{count}}개 항목을 이동합니다."
+    },
+    "alerts": {
+      "selectMove": "이동할 항목을 선택해주세요.",
+      "noChanges": "변경된 품목이 없습니다.",
+      "noClassify": "분류할 항목이 없습니다.",
+      "sixDigits": "6자리 숫자를 입력해주세요.",
+      "enterBoxCode": "이동할 박스번호를 입력해주세요.",
+      "enterShipmentNo": "쉽먼트 번호를 입력해주세요."
+    },
+    "empty": {
+      "loading": "로딩 중...",
+      "selectUser": "사용자를 선택해주세요.",
+      "noData": "데이터 없음"
+    }
+  },
+  "shipmentCompleteV2": {
+    "title": "출고완료 V2",
+    "selectUser": "사용자 선택",
+    "selectYear": "년도",
+    "selectMonth": "월",
+    "selectShipment": "쉽먼트 선택",
+    "yearFormat": "{{y}}년",
+    "monthFormat": "{{m}}월",
+    "buttons": {
+      "confirm": "확정",
+      "cancelConfirm": "확정 취소",
+      "excel": "엑셀",
+      "processing": "처리중..."
+    },
+    "table": {
+      "boxLocation": "박스위치",
+      "shipmentNo": "쉽먼트번호",
+      "orderNo": "주문번호",
+      "barcode": "바코드",
+      "productName": "상품명",
+      "optionName": "옵션명",
+      "price": "단가",
+      "category": "품목",
+      "exportQty": "출고개수",
+      "image": "이미지",
+      "composition": "혼용률"
+    },
+    "alerts": {
+      "confirmSave": "현재 {{count}}건의 데이터를 확정 저장하시겠습니까?",
+      "cancelConfirmMsg": "확정을 취소하시겠습니까?",
+      "saveError": "확정 저장 중 오류가 발생했습니다.",
+      "refetching": "실시간 데이터를 다시 조회합니다."
+    },
+    "empty": {
+      "loading": "로딩 중...",
+      "selectUser": "사용자를 선택해주세요.",
+      "selectShipment": "쉽먼트를 선택해주세요.",
+      "noData": "데이터 없음"
+    }
   }
 }

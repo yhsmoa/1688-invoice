@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================
 // 공유 컴포넌트
@@ -53,6 +54,8 @@ interface Worker {
 const PC_NO_OPTIONS = [1, 2, 3, 4];
 
 const ItemCheck: React.FC = () => {
+  const { t } = useTranslation();
+
   // ============================================================
   // 1) ft_users 드롭박스
   // ============================================================
@@ -1005,20 +1008,20 @@ const ItemCheck: React.FC = () => {
             <div className="v2-title-row">
               {/* ── 왼쪽: 제목 + [V2 이전] 버튼 ─────────── */}
               <div className="v2-title-left">
-                <h1 className="v2-item-title">상품입고 V2</h1>
+                <h1 className="v2-item-title">{t('importProductV2.title')}</h1>
                 <button
                   className="v2-migration-btn"
                   onClick={handleV2MigrationClick}
                   disabled={isV2Migrating || !selectedUserId || !selectedWorker}
                   title={
                     !selectedUserId
-                      ? '사용자를 먼저 선택하세요'
+                      ? t('importProductV2.alerts.selectUser')
                       : !selectedWorker
-                        ? 'Worker를 먼저 선택하세요'
+                        ? t('importProductV2.worker')
                         : undefined
                   }
                 >
-                  {isV2Migrating ? '업로드 중...' : 'V2 이전'}
+                  {isV2Migrating ? t('importProductV2.buttons.uploading') : t('importProductV2.buttons.v2Migration')}
                 </button>
                 <input
                   ref={v2MigrationFileInputRef}
@@ -1035,7 +1038,7 @@ const ItemCheck: React.FC = () => {
                   value={selectedWorker}
                   onChange={(e) => setSelectedWorker(e.target.value)}
                 >
-                  <option value="">Worker</option>
+                  <option value="">{t('importProductV2.worker')}</option>
                   {workers.map((w) => (
                     <option key={w.id} value={`${w.name} ${w.name_kr}`}>
                       {w.name} {w.name_kr}
@@ -1049,7 +1052,7 @@ const ItemCheck: React.FC = () => {
                   value={selectedPcNo ?? ''}
                   onChange={(e) => setSelectedPcNo(e.target.value ? Number(e.target.value) : null)}
                 >
-                  <option value="">PC-NO</option>
+                  <option value="">{t('importProductV2.pcNo')}</option>
                   {PC_NO_OPTIONS.map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -1061,7 +1064,7 @@ const ItemCheck: React.FC = () => {
                   value={selectedUserId}
                   onChange={handleUserChange}
                 >
-                  <option value="">사용자 선택</option>
+                  <option value="">{t('importProductV2.selectUser')}</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.vender_name || user.full_name} {user.user_code}
@@ -1086,10 +1089,10 @@ const ItemCheck: React.FC = () => {
                   {isUploadingExcel ? (
                     <span className="v2-button-loading">
                       <span className="v2-spinner"></span>
-                      업로드 중
+                      {t('importProductV2.buttons.uploading')}
                     </span>
                   ) : (
-                    '⬆️ 1688 XLSX'
+                    `⬆️ ${t('importProductV2.buttons.xlsx')}`
                   )}
                 </button>
                 <input
@@ -1109,10 +1112,10 @@ const ItemCheck: React.FC = () => {
                   {isUploadingCsv ? (
                     <span className="v2-button-loading">
                       <span className="v2-spinner"></span>
-                      업로드 중
+                      {t('importProductV2.buttons.uploading')}
                     </span>
                   ) : (
-                    '📋 배송상황 csv'
+                    `📋 ${t('importProductV2.buttons.csv')}`
                   )}
                 </button>
                 <input
@@ -1169,14 +1172,14 @@ const ItemCheck: React.FC = () => {
                   className="v2-excel-upload-btn"
                   onClick={() => {
                     if (selectedRows.size === 0) {
-                      alert('항목을 선택해주세요.');
+                      alert(t('importProductV2.alerts.selectItems'));
                       return;
                     }
                     setIsNoteModalOpen(true);
                   }}
                   disabled={!selectedUserId || items.length === 0}
                 >
-                  비고
+                  {t('importProductV2.buttons.note')}
                 </button>
 
                 {/* 반품 버튼 — 사용자 선택 시 바로 클릭 가능 */}
@@ -1185,21 +1188,21 @@ const ItemCheck: React.FC = () => {
                   onClick={() => setIsCancelModalOpen(true)}
                   disabled={!selectedUserId || items.length === 0}
                 >
-                  반품
+                  {t('importProductV2.buttons.cancel')}
                 </button>
 
                 {/* 미입고 버튼 */}
                 <button className="v2-excel-upload-btn">미입고</button>
 
                 {/* 라벨 버튼 */}
-                <button className="v2-excel-upload-btn" onClick={handleLabelClick}>라벨</button>
+                <button className="v2-excel-upload-btn" onClick={handleLabelClick}>{t('importProductV2.buttons.label')}</button>
 
                 {/* 입고 버튼 (작업 수량 입력된 개수 표시) */}
                 <button
                   className={`v2-excel-upload-btn ${readyItems.length > 0 ? 'has-items' : ''}`}
                   onClick={() => setIsReadyModalOpen(true)}
                 >
-                  입고{readyItems.length > 0 && ` (${readyItems.length})`}
+                  {t('importProductV2.buttons.import')}{readyItems.length > 0 && ` (${readyItems.length})`}
                 </button>
               </div>
             </div>
@@ -1269,7 +1272,7 @@ const ItemCheck: React.FC = () => {
                   disabled={currentPage === 1}
                   className="v2-pagination-button"
                 >
-                  이전
+                  {t('importProductV2.pagination.previous')}
                 </button>
 
                 <div className="v2-page-numbers">
@@ -1302,11 +1305,11 @@ const ItemCheck: React.FC = () => {
                   disabled={currentPage === totalPages}
                   className="v2-pagination-button"
                 >
-                  다음
+                  {t('importProductV2.pagination.next')}
                 </button>
 
                 <span className="v2-page-info">
-                  {currentPage} / {totalPages} 페이지 (총 {filteredItems.length}개)
+                  {t('importProductV2.pagination.pageInfo', { current: currentPage, total: totalPages, count: filteredItems.length })}
                 </span>
               </div>
             )}
@@ -1314,7 +1317,7 @@ const ItemCheck: React.FC = () => {
             {/* 데이터 없음 안내 */}
             {!loading && selectedUserId && items.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                해당 사용자의 {statusFilter === 'ALL' ? '' : 'PROCESSING 상태 '}주문이 없습니다.
+                {t('importProductV2.table.noData')}
               </div>
             )}
           </div>

@@ -147,5 +147,162 @@
     "sheetSave": "入库保存",
     "labelSave": "标签保存",
     "confirm": "确认"
+  },
+  "importProductV2": {
+    "title": "商品入库 V2",
+    "worker": "Worker",
+    "pcNo": "PC-NO",
+    "selectUser": "选择用户",
+    "totalCount": "共 {{count}} 条",
+    "buttons": {
+      "v2Migration": "V2 迁移",
+      "uploading": "上传中...",
+      "xlsx": "1688 XLSX",
+      "csv": "配送状态 csv",
+      "processReady": "准备处理",
+      "note": "备注",
+      "cancel": "退货",
+      "label": "标签",
+      "import": "入库"
+    },
+    "searchType": {
+      "delivery": "配送单号",
+      "general": "常规搜索"
+    },
+    "searchPlaceholder": {
+      "delivery": "请输入配送单号",
+      "general": "请输入商品名、Offer ID、条形码"
+    },
+    "search": "搜索",
+    "statusFilter": {
+      "all": "全部",
+      "processing": "处理中"
+    },
+    "filter": {
+      "noDelivery": "未发货",
+      "delayed": "延迟发货"
+    },
+    "table": {
+      "image": "图片",
+      "orderNumber": "订单号",
+      "productName": "商品名",
+      "orderOption": "订单选项",
+      "quantity": "数量",
+      "cost": "费用",
+      "progress": "进行",
+      "work": "作业",
+      "arrival": "入库",
+      "packed": "包装",
+      "cancel": "取消",
+      "export": "出库",
+      "loading": "加载中...",
+      "noData": "该用户没有订单。"
+    },
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页",
+      "pageInfo": "{{current}} / {{total}} 页 (共 {{count}} 条)"
+    },
+    "alerts": {
+      "selectUser": "请选择用户。",
+      "selectItems": "请选择项目。",
+      "noBarcode": "没有选中的含条形码项目。",
+      "deliveryNoResult": "未找到该配送单号的项目。",
+      "saveError": "保存时发生错误。"
+    }
+  },
+  "shipmentV2": {
+    "title": "发货 V2 😈",
+    "selectUser": "选择用户",
+    "totalCount": "共 {{count}} 条",
+    "buttons": {
+      "classify": "品类",
+      "classifying": "分类中...",
+      "excel": "Excel",
+      "move": "移动",
+      "merge": "合并发货",
+      "ship": "出库",
+      "save": "保存"
+    },
+    "table": {
+      "box": "箱号",
+      "order": "订单号",
+      "barcode": "条形码",
+      "product": "商品信息",
+      "options": "订单选项",
+      "price": "单价",
+      "category": "品类",
+      "shipmentSize": "发货尺寸",
+      "arrival": "入库",
+      "scan": "扫描",
+      "total": "全部"
+    },
+    "modal": {
+      "boxMove": "箱子移动",
+      "merge": "合并发货设置",
+      "ship": "出库处理",
+      "shipmentNo": "发货编号 (6 位数字)",
+      "box1": "箱子 1",
+      "box2": "箱子 2",
+      "masterBox": "主箱",
+      "selectOrInput": "选择或直接输入",
+      "directInputPlaceholder": "直接输入 (例: BZ-A-03)",
+      "cancel": "取消",
+      "confirm": "确认",
+      "moveDesc": "移动选中的 {{count}} 项。"
+    },
+    "alerts": {
+      "selectMove": "请选择要移动的项目。",
+      "noChanges": "没有变更的品类。",
+      "noClassify": "没有要分类的项目。",
+      "sixDigits": "请输入 6 位数字。",
+      "enterBoxCode": "请输入要移动的箱号。",
+      "enterShipmentNo": "请输入发货编号。"
+    },
+    "empty": {
+      "loading": "加载中...",
+      "selectUser": "请选择用户。",
+      "noData": "无数据"
+    }
+  },
+  "shipmentCompleteV2": {
+    "title": "出库完成 V2",
+    "selectUser": "选择用户",
+    "selectYear": "年份",
+    "selectMonth": "月",
+    "selectShipment": "选择发货",
+    "yearFormat": "{{y}} 年",
+    "monthFormat": "{{m}} 月",
+    "buttons": {
+      "confirm": "确认",
+      "cancelConfirm": "取消确认",
+      "excel": "Excel",
+      "processing": "处理中..."
+    },
+    "table": {
+      "boxLocation": "箱子位置",
+      "shipmentNo": "发货编号",
+      "orderNo": "订单号",
+      "barcode": "条形码",
+      "productName": "商品名",
+      "optionName": "选项名",
+      "price": "单价",
+      "category": "品类",
+      "exportQty": "出库数量",
+      "image": "图片",
+      "composition": "混合率"
+    },
+    "alerts": {
+      "confirmSave": "要确认保存当前 {{count}} 条数据吗？",
+      "cancelConfirmMsg": "要取消确认吗？",
+      "saveError": "确认保存时发生错误。",
+      "refetching": "重新加载实时数据。"
+    },
+    "empty": {
+      "loading": "加载中...",
+      "selectUser": "请选择用户。",
+      "selectShipment": "请选择发货。",
+      "noData": "无数据"
+    }
   }
 }

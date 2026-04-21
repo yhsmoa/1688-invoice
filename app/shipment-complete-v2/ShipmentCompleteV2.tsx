@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ExcelJS from 'exceljs';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
@@ -79,6 +80,7 @@ const normalizeSizeDisplay = (raw: string | null): string | null => {
 // 메인 컴포넌트
 // ============================================================
 const ShipmentCompleteV2: React.FC = () => {
+  const { t } = useTranslation();
   const { users: ftUsers } = useFtUsers();
   const [selectedUserId, setSelectedUserId] = useState('');
   const [rows, setRows] = useState<ShipmentCompleteRow[]>([]);
@@ -348,7 +350,6 @@ const ShipmentCompleteV2: React.FC = () => {
       { header: '단가',        key: 'price_cny',         width: 10 },
       { header: '품목',        key: 'customs_category',  width: 20 },
       { header: '출고개수',    key: 'quantity',          width: 10 },
-      { header: '입고개수',    key: 'available_qty',     width: 10 },
       { header: '이미지',      key: 'img_url',           width: 30 },
       { header: '혼용률',      key: 'composition',       width: 20 },
     ];
@@ -364,7 +365,6 @@ const ShipmentCompleteV2: React.FC = () => {
         price_cny:       row.price_cny ?? '',
         customs_category: row.customs_category || '',
         quantity:        row.quantity,
-        available_qty:   row.available_qty,
         img_url:         row.img_url || '',
         composition:     row.composition || '',
       });
@@ -412,7 +412,7 @@ const ShipmentCompleteV2: React.FC = () => {
   for (const g of packageGroups) rowSpanMap.set(g.startIdx, g.count);
 
   // ── 총 colSpan (12열) ──
-  const TOTAL_COLS = 12;
+  const TOTAL_COLS = 11;
 
   return (
     <div className="shipment-v2-layout">
@@ -424,17 +424,17 @@ const ShipmentCompleteV2: React.FC = () => {
 
             {/* ── 타이틀 + 사용자 드롭다운 ── */}
             <div className="shipment-v2-header">
-              <h1 className="shipment-v2-title">출고완료 V2</h1>
+              <h1 className="shipment-v2-title">{t('shipmentCompleteV2.title')}</h1>
               <div className="shipment-v2-header-right">
                 {rows.length > 0 && (
-                  <span className="shipment-v2-count">총 {rows.length}건</span>
+                  <span className="shipment-v2-count">{t('shipmentV2.totalCount', { count: rows.length })}</span>
                 )}
                 <select
                   className="shipment-v2-user-dropdown"
                   value={selectedUserId}
                   onChange={handleUserChange}
                 >
-                  <option value="">사용자 선택</option>
+                  <option value="">{t('shipmentCompleteV2.selectUser')}</option>
                   {ftUsers.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.vender_name || user.full_name} {user.user_code}
@@ -455,9 +455,9 @@ const ShipmentCompleteV2: React.FC = () => {
                   onChange={handleYearChange}
                   disabled={!selectedUserId}
                 >
-                  <option value="">년도</option>
+                  <option value="">{t('shipmentCompleteV2.selectYear')}</option>
                   {yearOptions.map((y) => (
-                    <option key={y} value={y}>{y}년</option>
+                    <option key={y} value={y}>{t('shipmentCompleteV2.yearFormat', { y })}</option>
                   ))}
                 </select>
                 {/* 월 */}
@@ -467,9 +467,9 @@ const ShipmentCompleteV2: React.FC = () => {
                   onChange={handleMonthChange}
                   disabled={!selectedYear}
                 >
-                  <option value="">월</option>
+                  <option value="">{t('shipmentCompleteV2.selectMonth')}</option>
                   {monthOptions.map((m) => (
-                    <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                    <option key={m} value={m}>{t('shipmentCompleteV2.monthFormat', { m: parseInt(m, 10) })}</option>
                   ))}
                 </select>
                 {/* 쉽먼트번호 */}
@@ -479,7 +479,7 @@ const ShipmentCompleteV2: React.FC = () => {
                   onChange={handleShipmentChange}
                   disabled={!selectedMonth}
                 >
-                  <option value="">쉽먼트 선택</option>
+                  <option value="">{t('shipmentCompleteV2.selectShipment')}</option>
                   {shipmentOptions.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.shipment_no} ({s.date})
@@ -497,7 +497,7 @@ const ShipmentCompleteV2: React.FC = () => {
                     onClick={handleUnconfirm}
                     disabled={confirmLoading}
                   >
-                    {confirmLoading ? '처리중...' : '확정 취소'}
+                    {confirmLoading ? t('shipmentCompleteV2.buttons.processing') : t('shipmentCompleteV2.buttons.cancelConfirm')}
                   </button>
                 ) : (
                   <button
@@ -506,7 +506,7 @@ const ShipmentCompleteV2: React.FC = () => {
                     onClick={handleConfirm}
                     disabled={rows.length === 0 || confirmLoading}
                   >
-                    {confirmLoading ? '처리중...' : '확정'}
+                    {confirmLoading ? t('shipmentCompleteV2.buttons.processing') : t('shipmentCompleteV2.buttons.confirm')}
                   </button>
                 )}
                 <button
@@ -514,7 +514,7 @@ const ShipmentCompleteV2: React.FC = () => {
                   onClick={handleExcelDownload}
                   disabled={rows.length === 0}
                 >
-                  엑셀
+                  {t('shipmentCompleteV2.buttons.excel')}
                 </button>
               </div>
             </div>
@@ -524,7 +524,7 @@ const ShipmentCompleteV2: React.FC = () => {
               <table className="shipment-v2-table">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'center' }}>박스번호</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentCompleteV2.table.boxLocation')}</th>
                     <th style={{ textAlign: 'center', width: '30px' }}>
                       <input
                         type="checkbox"
@@ -532,27 +532,26 @@ const ShipmentCompleteV2: React.FC = () => {
                         onChange={toggleAll}
                       />
                     </th>
-                    <th>주문번호</th>
-                    <th>바코드</th>
-                    <th>상품정보</th>
-                    <th>주문옵션</th>
-                    <th style={{ textAlign: 'center' }}>단가</th>
-                    <th style={{ textAlign: 'center' }}>품목</th>
-                    <th style={{ textAlign: 'center' }}>쉽먼트사이즈</th>
-                    <th style={{ textAlign: 'center' }}>입고</th>
-                    <th style={{ textAlign: 'center' }}>출고개수</th>
-                    <th style={{ textAlign: 'center' }}>전체</th>
+                    <th>{t('shipmentCompleteV2.table.orderNo')}</th>
+                    <th>{t('shipmentCompleteV2.table.barcode')}</th>
+                    <th>{t('shipmentV2.table.product')}</th>
+                    <th>{t('shipmentV2.table.options')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentCompleteV2.table.price')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentCompleteV2.table.category')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentV2.table.shipmentSize')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentCompleteV2.table.exportQty')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('shipmentV2.table.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">로딩 중...</td></tr>
+                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentCompleteV2.empty.loading')}</td></tr>
                   ) : !selectedUserId ? (
-                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">사용자를 선택해주세요.</td></tr>
+                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentCompleteV2.empty.selectUser')}</td></tr>
                   ) : !selectedShipmentId ? (
-                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">쉽먼트를 선택해주세요.</td></tr>
+                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentCompleteV2.empty.selectShipment')}</td></tr>
                   ) : rows.length === 0 ? (
-                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">데이터 없음</td></tr>
+                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentCompleteV2.empty.noData')}</td></tr>
                   ) : (
                     rows.map((row, idx) => {
                       const span        = rowSpanMap.get(idx);
@@ -621,9 +620,6 @@ const ShipmentCompleteV2: React.FC = () => {
                                 : '-';
                             })()}
                           </td>
-
-                          {/* ── 입고 ── */}
-                          <td className="shipment-v2-qty">{row.available_qty}</td>
 
                           {/* ── 출고개수 ── */}
                           <td className="shipment-v2-qty">{row.quantity}</td>
