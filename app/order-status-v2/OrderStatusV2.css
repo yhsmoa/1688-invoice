@@ -249,6 +249,11 @@
   background-color: #eff6ff !important;
 }
 
+/* 세트 그룹 내 연속 행: 가로 border 제거 (다음 행이 같은 그룹일 때만 적용) */
+.order-status-v2-table tr.order-status-v2-row--same-group td {
+  border-bottom: none;
+}
+
 .order-status-v2-empty {
   text-align: center;
   padding: 40px 0;
@@ -285,16 +290,104 @@
   min-width: 140px;
 }
 
-/* 배송 열 — table-layout:auto 에서 빈 셀이어도 넉넉한 폭 보장 */
-.order-status-v2-table th:last-child,
-.order-status-v2-table td:last-child {
+/* 배송 열 — 전용 클래스 (이모지 + 한글 + description 한 줄 표시) */
+.order-status-v2-table .os-v2-col-delivery {
   min-width: 140px;
-}
-
-/* 배송 셀 — 이모지 + 한글 + description 한 줄 표시 */
-.order-status-v2-table td.os-v2-col-delivery {
   white-space: nowrap;
   font-size: 12px;
+}
+
+/* ============================================================
+   비고 열 (KR / CN) — 인라인 편집 (contentEditable)
+   · 클릭 → 커서만 (미니멀)
+   · 줄바꿈 유지 (pre-wrap + break-word)
+   · 편집 중일 때만 아주 연한 노랑 배경으로 현재 편집 셀 시각화
+   ============================================================ */
+.order-status-v2-table .os-v2-col-note {
+  min-width: 160px;
+  max-width: 280px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
+  vertical-align: top;
+  font-size: 12px;
+  /* 편집 영역 시각화 — 좌/우에만 연한 inset 라인 (가로 border는 기존 행 구분선 유지) */
+  box-shadow:
+    inset 1px 0 0 #e5e7eb,
+    inset -1px 0 0 #e5e7eb;
+}
+
+.order-status-v2-table .os-v2-col-note[contenteditable="true"] {
+  outline: none;
+  background: #fffbea;
+}
+
+/* ============================================================
+   페이지네이션 (100개/page)
+   · 독립 네임스페이스: order-status-v2-*
+   ============================================================ */
+.order-status-v2-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 16px;
+  padding: 10px 0;
+}
+
+.order-status-v2-pagination-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.order-status-v2-pagination-button:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.order-status-v2-pagination-button:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.order-status-v2-page-numbers {
+  display: flex;
+  margin: 0 10px;
+}
+
+.order-status-v2-page-number {
+  width: 35px;
+  height: 35px;
+  margin: 0 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.order-status-v2-page-number:hover {
+  background-color: #f0f0f0;
+}
+
+.order-status-v2-page-number.active {
+  background-color: #18181b;
+  color: #fff;
+  border-color: #18181b;
+}
+
+.order-status-v2-page-info {
+  margin-left: 15px;
+  font-size: 14px;
+  color: #666;
 }
 
 /* ============================================================
@@ -321,10 +414,10 @@
   background-color: #eff6ff;  /* 연한 파랑 */
 }
 
-/* ── 주문번호 클릭 가능 — cursor만, hover 색/밑줄 없음 ── */
+/* ── 주문번호/상품정보 클릭 가능 — cursor만, hover 색/밑줄 없음 ──
+   user-select 은 기본(=선택 허용)으로 둠 → 드래그 복사 가능 */
 .os-v2-clickable {
   cursor: pointer;
-  user-select: none;
 }
 
 /* ============================================================

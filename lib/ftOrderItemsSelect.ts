@@ -41,4 +41,5 @@ export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   'customs_category',
   'created_at',
   'note_notice',
+  'note_cn',
 ].join(', ');

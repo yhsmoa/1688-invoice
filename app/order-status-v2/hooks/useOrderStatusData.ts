@@ -45,6 +45,7 @@ export interface FtOrderItem {
   customs_category: string | null;
   created_at?: string | null;
   note_notice?: string | null;
+  note_cn?: string | null;
 }
 
 export type FulfillmentRow = {
@@ -118,7 +119,12 @@ export function useFtOrderItems() {
     setItems([]);
   }, []);
 
-  return { items, loading, fetchItems, clearItems };
+  // 단일 아이템의 일부 필드 로컬 업데이트 (optimistic UI용)
+  const patchItem = useCallback((id: string, fields: Partial<FtOrderItem>) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...fields } : i)));
+  }, []);
+
+  return { items, loading, fetchItems, clearItems, patchItem };
 }
 
 // ============================================================
@@ -220,6 +226,46 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
   }, [itemIdsKey, refreshKey]);
 
   return { ...maps, loadingFulfillments, refreshFulfillments };
+}
+
+// ============================================================
+// useOrderStatusPagination — 100개 단위 페이지네이션
+//
+// · data 변경 시 첫 페이지로 리셋
+// · paginatedData 는 useMemo 로 slice
+// · goToNextPage / goToPrevPage / setCurrentPage 로 이동
+// ============================================================
+export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+
+  // 데이터 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length]);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return data.slice(start, start + itemsPerPage);
+  }, [data, currentPage, itemsPerPage]);
+
+  const goToNextPage = useCallback(() => {
+    setCurrentPage((p) => Math.min(p + 1, totalPages));
+  }, [totalPages]);
+
+  const goToPrevPage = useCallback(() => {
+    setCurrentPage((p) => Math.max(p - 1, 1));
+  }, []);
+
+  return {
+    currentPage,
+    setCurrentPage,
+    paginatedData,
+    totalPages,
+    goToNextPage,
+    goToPrevPage,
+  };
 }
 
 // ============================================================
