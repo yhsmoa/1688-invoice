@@ -1,0 +1,496 @@
+/* ============================================================
+   주문상태 V2 페이지 전용 스타일
+   · 모든 클래스는 order-status-v2-* / os-v2-* 네임스페이스
+   · /import-product-v2 와 완전 독립 (서로 영향 없음)
+   ============================================================ */
+
+/* ── 레이아웃 ── */
+.order-status-v2-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.order-status-v2-main-content {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.order-status-v2-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0;
+  min-height: calc(100vh - 80px);
+}
+
+.order-status-v2-container {
+  padding: 20px;
+  width: 100%;
+}
+
+/* ============================================================
+   헤더 (타이틀 + 드롭다운)
+   ============================================================ */
+.order-status-v2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.order-status-v2-title {
+  color: #333;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.order-status-v2-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-status-v2-user-dropdown {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.order-status-v2-count {
+  font-size: 13px;
+  color: #666;
+}
+
+/* ============================================================
+   검색 바
+   ============================================================ */
+.order-status-v2-search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.order-status-v2-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.order-status-v2-search-input:focus {
+  border-color: #2563eb;
+}
+
+.order-status-v2-search-btn {
+  padding: 6px 24px;
+  background-color: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-status-v2-search-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.order-status-v2-search-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   액션 바
+   ============================================================ */
+.order-status-v2-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.order-status-v2-action-left {
+  display: flex;
+  gap: 8px;
+}
+
+.order-status-v2-action-right {
+  display: flex;
+}
+
+.order-status-v2-move-btn,
+.order-status-v2-merge-btn,
+.order-status-v2-excel-btn {
+  padding: 6px 18px;
+  background-color: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-status-v2-move-btn:hover:not(:disabled),
+.order-status-v2-merge-btn:hover:not(:disabled),
+.order-status-v2-excel-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.order-status-v2-move-btn:disabled,
+.order-status-v2-merge-btn:disabled,
+.order-status-v2-excel-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.order-status-v2-ship-btn {
+  padding: 6px 18px;
+  background-color: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-status-v2-ship-btn:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.order-status-v2-ship-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.order-status-v2-save-btn {
+  padding: 6px 24px;
+  background-color: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.order-status-v2-save-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.order-status-v2-save-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.order-status-v2-save-btn--dirty {
+  background-color: #16a34a !important;
+  cursor: pointer !important;
+}
+
+.order-status-v2-save-btn--dirty:hover {
+  background-color: #15803d !important;
+}
+
+/* ============================================================
+   테이블
+   ============================================================ */
+.order-status-v2-table-board {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.order-status-v2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+  table-layout: auto;
+}
+
+.order-status-v2-table th {
+  background-color: #f8f9fa;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.order-status-v2-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.order-status-v2-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.order-status-v2-row--checked {
+  background-color: #eff6ff !important;
+}
+
+.order-status-v2-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #6b7280;
+}
+
+/* ============================================================
+   컬럼 너비 지정
+   · 체크박스 / 수량 계열 / 타입 → 고정 좁은 폭
+   · 주문번호 → nowrap + min-width 로 item_no 한 줄 확보
+   · 배송 → 고정 넓은 폭
+   ============================================================ */
+.order-status-v2-table .os-v2-col-check {
+  width: 32px;
+  text-align: center;
+}
+
+.order-status-v2-table .os-v2-col-num {
+  width: 52px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 타입 열 — 출고(=col-num) 와 동일 폭 */
+.order-status-v2-table .os-v2-col-type {
+  width: 52px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 주문번호 열 — item_no 가 줄바꿈되지 않도록 고정 */
+.order-status-v2-table .os-v2-col-orderno {
+  white-space: nowrap;
+  min-width: 140px;
+}
+
+/* 배송 열 — table-layout:auto 에서 빈 셀이어도 넉넉한 폭 보장 */
+.order-status-v2-table th:last-child,
+.order-status-v2-table td:last-child {
+  min-width: 140px;
+}
+
+/* 배송 셀 — 이모지 + 한글 + description 한 줄 표시 */
+.order-status-v2-table td.os-v2-col-delivery {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* ============================================================
+   셀 배경색 (상태별 파스텔 톤 — 더 부드럽게)
+   Tailwind 50-series 기준
+   ============================================================ */
+.order-status-v2-table td.os-v2-cell-progress {
+  background-color: #f9fafb;  /* 연한 회색 */
+}
+
+.order-status-v2-table td.os-v2-cell-arrival {
+  background-color: #fff7ed;  /* 연한 주황 */
+}
+
+.order-status-v2-table td.os-v2-cell-packed {
+  background-color: #ecfdf5;  /* 연한 초록 */
+}
+
+.order-status-v2-table td.os-v2-cell-cancel {
+  background-color: #fef2f2;  /* 연한 빨강 */
+}
+
+.order-status-v2-table td.os-v2-cell-shipment {
+  background-color: #eff6ff;  /* 연한 파랑 */
+}
+
+/* ── 주문번호 클릭 가능 — cursor만, hover 색/밑줄 없음 ── */
+.os-v2-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ============================================================
+   처리 로그 드로워 모달 (os-v2-* 독립 네임스페이스)
+   · import-product-v2 와 동일 패턴 (top/left/right/bottom 명시)
+   · z-index 1000 — TopsideMenu(999) 위, 다른 모달과 일관
+   ============================================================ */
+.os-v2-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+
+.os-v2-log-drawer {
+  background: #fff;
+  width: 25%;
+  min-width: 360px;
+  height: 100vh;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  animation: os-v2-slideIn 0.3s ease-out;
+  animation-fill-mode: forwards;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes os-v2-slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.os-v2-drawer-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+}
+
+.os-v2-drawer-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.os-v2-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.os-v2-close-btn:hover {
+  color: #333;
+}
+
+.os-v2-log-item-summary {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fafafa;
+}
+
+/* ── 상품 이미지 영역 (로그 테이블 위, 가로 중앙) ── */
+.os-v2-log-image-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.os-v2-log-image {
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+  object-fit: contain;
+  background: #f9fafb;
+  border-radius: 4px;
+}
+
+.os-v2-drawer-content {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+/* ── 로그 테이블 ── */
+.os-v2-log-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.os-v2-log-table th {
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.os-v2-log-table td {
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* ── 로그 유형 배지 (타입별 색상 — 테이블 셀 bg 팔레트와 톤 매칭) ── */
+.os-v2-log-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 36px;
+  text-align: center;
+}
+
+.os-v2-badge-arrival {
+  background-color: #ffcc80;
+  color: #333;
+}
+
+.os-v2-badge-packed {
+  background-color: #a5d6a7;
+  color: #333;
+}
+
+.os-v2-badge-cancel {
+  background-color: #ffcdd2;
+  color: #333;
+}
+
+.os-v2-badge-shipment {
+  background-color: #90caf9;
+  color: #333;
+}
+
+/* ── 🗑️ 로그 삭제 버튼 ── */
+.os-v2-log-delete-btn {
+  padding: 2px 6px;
+  font-size: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.os-v2-log-delete-btn:hover {
+  opacity: 0.6;
+}
+
+.os-v2-log-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

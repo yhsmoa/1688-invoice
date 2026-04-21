@@ -163,6 +163,12 @@ const LeftsideMenu: React.FC = () => {
             )}
           </li>
           <li className="menu-item">
+            <Link href="/order-status-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/order-status-v2')}>
+              <span className="menu-icon">📋</span>
+              <span className="menu-text">주문상태 V2 😈</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
               <span className="menu-icon">📦</span>
               <span className="menu-text">상품입고 V2 😈</span>
