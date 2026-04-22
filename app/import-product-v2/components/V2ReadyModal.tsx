@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import './V2ReadyModal.css';
 
@@ -22,6 +23,10 @@ interface V2ReadyModalProps {
   readyItems: V2ReadyItem[];
   /** postgre + 저장 핸들러 (ItemCheck에서 전달) */
   onSavePostgre: () => Promise<void>;
+  /** 송장 출력 핸들러 (P 상품 PDF 병합 인쇄). 미제공 시 버튼 숨김 */
+  onPrintInvoices?: () => Promise<void> | void;
+  /** 송장 출력 가능 여부 (체크된 P 상품 중 Storage 에 PDF 존재 ≥ 1) */
+  invoicePrintable?: boolean;
 }
 
 const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
@@ -29,11 +34,16 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   onClose,
   readyItems,
   onSavePostgre,
+  onPrintInvoices,
+  invoicePrintable = false,
 }) => {
+  const { t } = useTranslation();
+
   // ============================================================
-  // 저장 로딩 상태
+  // 저장 / 인쇄 로딩 상태
   // ============================================================
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrintingInvoices, setIsPrintingInvoices] = useState(false);
 
   // ============================================================
   // postgre + 저장 클릭 핸들러
@@ -44,6 +54,19 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
       await onSavePostgre();
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ============================================================
+  // 송장 출력 클릭 핸들러 (P 상품 PDF 병합 인쇄)
+  // ============================================================
+  const handlePrintInvoices = async () => {
+    if (!onPrintInvoices) return;
+    setIsPrintingInvoices(true);
+    try {
+      await onPrintInvoices();
+    } finally {
+      setIsPrintingInvoices(false);
     }
   };
 
@@ -155,6 +178,23 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 'postgre + 저장'
               )}
             </button>
+            {/* [송장 출력] 버튼 — P 상품 PDF 병합 인쇄 */}
+            {onPrintInvoices && (
+              <button
+                className="v2-pr-save-button v2-pr-save-invoice"
+                disabled={!invoicePrintable || isPrintingInvoices}
+                onClick={handlePrintInvoices}
+              >
+                {isPrintingInvoices ? (
+                  <span className="v2-pr-button-loading">
+                    <span className="v2-pr-spinner"></span>
+                    {t('importProduct.processReady.printInvoices')}
+                  </span>
+                ) : (
+                  t('importProduct.processReady.printInvoices')
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

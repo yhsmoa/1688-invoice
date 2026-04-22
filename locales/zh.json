@@ -107,12 +107,14 @@
       "save": "保存",
       "emptyMessage": "无待处理项目。",
       "mixRate": "混用率",
-      "backRef": "参见背面"
+      "backRef": "参见背面",
+      "printInvoices": "运单打印"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",
       "originStamp": "原产地盖章或缝制",
-      "stopWork": "仅输入入库后转交经理"
+      "stopWork": "仅输入入库后转交经理",
+      "shippingLabel": "运单打印"
     }
   },
   "exportProduct": {
@@ -167,13 +169,18 @@
     },
     "searchType": {
       "delivery": "配送单号",
-      "general": "常规搜索"
+      "order": "1688 订单号",
+      "general": "常规搜索",
+      "note": "备注搜索 (其他配送单号)"
     },
     "searchPlaceholder": {
       "delivery": "请输入配送单号",
-      "general": "请输入商品名、Offer ID、条形码"
+      "order": "请输入 1688 订单号",
+      "general": "请输入商品名、Offer ID、条形码",
+      "note": "请输入备注内容"
     },
     "search": "搜索",
+    "searching": "查询中...",
     "statusFilter": {
       "all": "全部",
       "processing": "处理中"
@@ -208,7 +215,12 @@
       "selectItems": "请选择项目。",
       "noBarcode": "没有选中的含条形码项目。",
       "deliveryNoResult": "未找到该配送单号的项目。",
-      "saveError": "保存时发生错误。"
+      "saveError": "保存时发生错误。",
+      "noInvoiceToPrint": "无可打印的运单PDF。",
+      "invoiceUrlFailed": "运单URL发放失败。",
+      "invoiceDownloadFailed": "运单PDF下载失败。",
+      "invoicePrintFailed": "运单PDF处理失败。",
+      "invoicePrintError": "运单打印时发生错误。"
     }
   },
   "shipmentV2": {

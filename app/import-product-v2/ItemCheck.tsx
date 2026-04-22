@@ -37,6 +37,7 @@ import V2CancelModal from './components/V2CancelModal';
 import V2NoteModal from './components/V2NoteModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import { saveLabelData } from './utils/saveLabelData';
+import { mergeAndPrint } from '../../lib/invoicePdfClient';
 
 // ============================================================
 // Worker 타입 (invoiceManager_employees)
@@ -538,9 +539,150 @@ const ItemCheck: React.FC = () => {
   }, [modifiedImportQty, items]);
 
   // ============================================================
+  // 11-1) P 상품 송장 출력 — personal_order_no dedup + Storage check
+  //
+  // readyItems 중 shipment_type='PERSONAL' 이고 personal_order_no 있는 항목을
+  // 중복 제거하여 unique 주문번호 리스트로 변환.
+  // 모달 open 시 /api/ft/personal-invoices/check 호출하여 Storage PDF 존재 여부 조회.
+  // ============================================================
+  const uniquePersonalOrderNos = useMemo(() => {
+    const nos = new Set<string>();
+    for (const { item } of readyItems) {
+      const type = item.shipment_type?.trim().toUpperCase() ?? '';
+      if (type !== 'PERSONAL') continue;
+      const no = item.personal_order_no?.trim();
+      if (no) nos.add(no);
+    }
+    return Array.from(nos).sort();
+  }, [readyItems]);
+
+  // 주문번호 집합의 안정된 문자열 키 — 내용이 실제로 바뀔 때만 참조 변경
+  //   (uniquePersonalOrderNos 는 readyItems 파생이라 참조가 매번 갱신됨 →
+  //    useEffect deps 에 직접 넣으면 모달 열린 채 다른 행 편집 시마다 check API 재호출)
+  const orderNosKey = uniquePersonalOrderNos.join('|');
+
+  // Storage 에 PDF 가 존재하는 주문번호 Set
+  const [invoiceExistsSet, setInvoiceExistsSet] = useState<Set<string>>(new Set());
+  const [isCheckingInvoices, setIsCheckingInvoices] = useState(false);
+
+  // ============================================================
   // 12) 처리준비 모달
   // ============================================================
   const [isReadyModalOpen, setIsReadyModalOpen] = useState(false);
+
+  // ── 모달 open + 주문번호 목록 변경 시 check API 호출 ──
+  //    deps 로 orderNosKey(문자열) 사용 → 실제 주문번호 집합이 바뀔 때만 재실행.
+  useEffect(() => {
+    if (!isReadyModalOpen || !selectedUserId || !orderNosKey) {
+      setInvoiceExistsSet(new Set());
+      return;
+    }
+
+    const orderNos = orderNosKey.split('|');
+    let cancelled = false;
+    (async () => {
+      setIsCheckingInvoices(true);
+      try {
+        const res = await fetch('/api/ft/personal-invoices/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_user_id: selectedUserId,
+            order_nos: orderNos,
+          }),
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (!json.success) {
+          console.error('personal-invoices check 실패:', json.error);
+          setInvoiceExistsSet(new Set());
+          return;
+        }
+        const existing = new Set<string>();
+        for (const [no, exists] of Object.entries(json.exists as Record<string, boolean>)) {
+          if (exists) existing.add(no);
+        }
+        setInvoiceExistsSet(existing);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('personal-invoices check 오류:', err);
+          setInvoiceExistsSet(new Set());
+        }
+      } finally {
+        if (!cancelled) setIsCheckingInvoices(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isReadyModalOpen, selectedUserId, orderNosKey]);
+
+  // ── 송장 출력 핸들러: signed-urls 발급 → fetch → crop+merge → print ──
+  const handlePrintInvoices = useCallback(async () => {
+    if (!selectedUserId) return;
+    const targetNos = uniquePersonalOrderNos.filter((no) => invoiceExistsSet.has(no));
+    if (targetNos.length === 0) {
+      alert(t('importProductV2.alerts.noInvoiceToPrint'));
+      return;
+    }
+
+    try {
+      // 1) signed URL 발급
+      const res = await fetch('/api/ft/personal-invoices/signed-urls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_user_id: selectedUserId,
+          order_nos: targetNos,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || t('importProductV2.alerts.invoiceUrlFailed'));
+        return;
+      }
+
+      // 2) URL → ArrayBuffer 병렬 다운로드 (Promise.all)
+      const urlsMap = json.urls as Record<string, string | null>;
+      const downloadTasks = targetNos
+        .map((no) => ({ no, url: urlsMap[no] }))
+        .filter((task): task is { no: string; url: string } => !!task.url);
+
+      const results = await Promise.all(
+        downloadTasks.map(async ({ no, url }) => {
+          try {
+            const pdfRes = await fetch(url);
+            if (!pdfRes.ok) {
+              console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
+              return null;
+            }
+            return await pdfRes.arrayBuffer();
+          } catch (err) {
+            console.error(`PDF 다운로드 오류 (${no}):`, err);
+            return null;
+          }
+        })
+      );
+
+      const buffers: ArrayBuffer[] = results.filter((b): b is ArrayBuffer => b !== null);
+
+      if (buffers.length === 0) {
+        alert(t('importProductV2.alerts.invoiceDownloadFailed'));
+        return;
+      }
+
+      // 3) 크롭 + 병합 + 인쇄
+      const result = await mergeAndPrint(buffers);
+      if (result.success === 0) {
+        alert(t('importProductV2.alerts.invoicePrintFailed'));
+      }
+    } catch (err) {
+      console.error('송장 출력 오류:', err);
+      alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
+    }
+  }, [selectedUserId, uniquePersonalOrderNos, invoiceExistsSet, t]);
+
+  // 버튼 활성화 조건: 체크 중이 아니고, 존재하는 PDF가 1개 이상
+  const invoicePrintable = !isCheckingInvoices && invoiceExistsSet.size > 0;
 
   // ============================================================
   // 13) 반품 모달 — 체크박스 선택 시 선택 항목, 미선택 시 전체 항목
@@ -1349,6 +1491,8 @@ const ItemCheck: React.FC = () => {
         onClose={() => setIsReadyModalOpen(false)}
         readyItems={readyItems}
         onSavePostgre={handleReadySave}
+        onPrintInvoices={handlePrintInvoices}
+        invoicePrintable={invoicePrintable}
       />
 
       {/* ============================================================ */}

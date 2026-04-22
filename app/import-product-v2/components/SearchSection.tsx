@@ -114,16 +114,18 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             value={searchType}
             onChange={onSearchTypeChange}
           >
-            <option value="배송번호">{t('importProduct.searchType.deliveryNumber')}</option>
-            <option value="주문번호">주문번호</option>
-            <option value="일반검색">{t('importProduct.searchType.general')}</option>
+            <option value="배송번호">{t('importProductV2.searchType.delivery')}</option>
+            <option value="주문번호">{t('importProductV2.searchType.order')}</option>
+            <option value="일반검색">{t('importProductV2.searchType.general')}</option>
+            <option value="비고검색">{t('importProductV2.searchType.note')}</option>
           </select>
           <input
             type="text"
             placeholder={
-              searchType === '배송번호' ? t('importProduct.searchPlaceholder.deliveryNumber')
-              : searchType === '주문번호' ? '1688 주문번호 입력'
-              : t('importProduct.searchPlaceholder.general')
+              searchType === '배송번호' ? t('importProductV2.searchPlaceholder.delivery')
+              : searchType === '주문번호' ? t('importProductV2.searchPlaceholder.order')
+              : searchType === '비고검색' ? t('importProductV2.searchPlaceholder.note')
+              : t('importProductV2.searchPlaceholder.general')
             }
             className="v2-search-input"
             value={searchTerm}
@@ -135,7 +137,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onClick={onSearchClick}
             disabled={isSearching}
           >
-            {isSearching ? '조회 중...' : t('importProduct.search')}
+            {isSearching ? t('importProductV2.searching') : t('importProductV2.search')}
           </button>
         </div>
       </div>

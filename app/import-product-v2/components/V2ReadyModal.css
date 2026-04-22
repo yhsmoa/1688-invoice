@@ -260,6 +260,15 @@
   background-color: #2563eb;
 }
 
+/* 송장 출력 버튼: 보라색 */
+.v2-pr-save-invoice {
+  background-color: #8b5cf6;
+}
+
+.v2-pr-save-invoice:hover:not(:disabled) {
+  background-color: #7c3aed;
+}
+
 .v2-pr-save-button:disabled {
   background-color: #d1d5db;
   color: #9ca3af;

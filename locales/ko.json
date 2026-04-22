@@ -108,7 +108,8 @@
       "save": "저장",
       "emptyMessage": "처리할 항목이 없습니다.",
       "mixRate": "혼용률",
-      "backRef": "뒷장 참조"
+      "backRef": "뒷장 참조",
+      "printInvoices": "송장 출력"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",
@@ -118,7 +119,8 @@
     "badge": {
       "fabricLabel": "혼용률 라벨 출력",
       "originStamp": "원산지 도장 혹은 원산지 봉제",
-      "stopWork": "입고만 입력 후 매니저에게 전달"
+      "stopWork": "입고만 입력 후 매니저에게 전달",
+      "shippingLabel": "운송장 출력"
     }
   },
   "exportProduct": {
@@ -173,13 +175,18 @@
     },
     "searchType": {
       "delivery": "배송번호",
-      "general": "일반검색"
+      "order": "1688 주문번호",
+      "general": "일반검색",
+      "note": "비고검색 (다른 배송번호)"
     },
     "searchPlaceholder": {
       "delivery": "배송번호를 입력하세요",
-      "general": "상품명, 오퍼ID, 바코드를 입력하세요"
+      "order": "1688 주문번호 입력",
+      "general": "상품명, 오퍼ID, 바코드를 입력하세요",
+      "note": "비고 내용 입력"
     },
     "search": "검색",
+    "searching": "조회 중...",
     "statusFilter": {
       "all": "전체",
       "processing": "진행중"
@@ -214,7 +221,12 @@
       "selectItems": "항목을 선택해주세요.",
       "noBarcode": "바코드가 있는 선택된 항목이 없습니다.",
       "deliveryNoResult": "해당 배송번호로 조회된 아이템이 없습니다.",
-      "saveError": "저장 중 오류가 발생했습니다."
+      "saveError": "저장 중 오류가 발생했습니다.",
+      "noInvoiceToPrint": "출력할 송장 PDF가 없습니다.",
+      "invoiceUrlFailed": "송장 URL 발급에 실패했습니다.",
+      "invoiceDownloadFailed": "송장 PDF 다운로드에 실패했습니다.",
+      "invoicePrintFailed": "송장 PDF 처리에 실패했습니다.",
+      "invoicePrintError": "송장 출력 중 오류가 발생했습니다."
     }
   },
   "shipmentV2": {

@@ -140,7 +140,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         )}
       </td>
 
-      {/* 글번호 (item_no) — 세트상품 배지(위) + site_url 링크(아래) */}
+      {/* 글번호 (item_no) — 세트상품 배지 / item_no / barcode / 1688_order_id */}
       <td>
         <div className="v2-order-number-text">
           {/* 세트상품 배지: set_total > 1 인 경우 글번호 위에 표시 */}
@@ -152,6 +152,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               <br />
             </>
           )}
+          {/* item_no */}
           {item.site_url ? (
             <a
               href={item.site_url}
@@ -164,54 +165,57 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           ) : (
             item.item_no || ''
           )}
-          {/* 1688 주문 ID — 회색, 작은 폰트로 글번호 아래 표시 */}
+          {/* barcode — item_no 와 1688_order_id 사이 (상품명에서 이동) */}
+          {item.barcode && (
+            <div className="v2-barcode-inline">{item.barcode}</div>
+          )}
+          {/* 1688 주문 ID */}
           {item['1688_order_id'] && (
             <div className="v2-order-id-sub">{item['1688_order_id']}</div>
           )}
         </div>
       </td>
 
-      {/* 상품명 (item_name + option_name + barcode + coupang_shipment_size) — 클릭 시 로그 모달 */}
+      {/* 상품명 — 맨 위: 배지(사이즈+라벨), 중간: item_name/option_name, 맨 아래: note_cn */}
       <td onClick={() => onProductNameClick(item)} style={{ cursor: 'pointer' }}>
         <div className="v2-product-name">
-          {item.item_name || ''}
-          {item.option_name && (
-            <>
-              <br />
-              {item.option_name}
-            </>
-          )}
-          {item.barcode && (() => {
-            // shipment_type 우선: DIRECT→X / PERSONAL→P / COUPANG→size(A/B/C)
-            const badge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+          {/* ── 1번째 줄: 사이즈 배지(A/B/C/P/X) + 라벨 배지 ── */}
+          {(() => {
+            const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+            const isPersonal = sizeBadge?.code === 'P';
             return (
-              <>
-                <br />
-                {item.barcode}
-                {badge && (
-                  <span
-                    className={`size-badge ${badge.colorClass}`}
-                    style={{ marginLeft: '4px' }}
-                  >
-                    {badge.code}
-                  </span>
+              <div className="v2-product-name-badges">
+                {sizeBadge && (
+                  <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
                 )}
-              </>
+                {/* ── P(PERSONAL) 전용: 원산지 + 운송장 출력 2개 고정 ──
+                     A/B/C/X: composition/order_qty 기반 기존 3-way */}
+                {isPersonal ? (
+                  <>
+                    <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
+                    <span className="label-badge shipping">{t('importProduct.badge.shippingLabel')}</span>
+                  </>
+                ) : item.composition && String(item.composition).trim() ? (
+                  <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
+                ) : (item.order_qty ?? 0) < 10 ? (
+                  <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
+                ) : (
+                  <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+                )}
+              </div>
             );
           })()}
-          {/* ── 상품명 라벨 배지 (V1과 동일 우선순위) ──
-                1. composition 존재            → 🟦 혼용률 라벨 출력
-                2. order_qty < 10             → 🟧 원산지 도장/봉제
-                3. order_qty >= 10            → 🟥 입고만 입력 후 매니저에게 전달 */}
-          <div style={{ marginTop: '4px' }}>
-            {item.composition && String(item.composition).trim() ? (
-              <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
-            ) : (item.order_qty ?? 0) < 10 ? (
-              <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
-            ) : (
-              <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
-            )}
-          </div>
+
+          {/* ── 2번째 줄: item_name ── */}
+          <div>{item.item_name || ''}</div>
+
+          {/* ── 3번째 줄: option_name ── */}
+          {item.option_name && <div>{item.option_name}</div>}
+
+          {/* ── 맨 아래: note_cn (빨간색) ── */}
+          {item.note_cn && String(item.note_cn).trim() && (
+            <div className="v2-note-cn">{item.note_cn}</div>
+          )}
         </div>
       </td>
 
