@@ -27,6 +27,8 @@ interface V2ReadyModalProps {
   onPrintInvoices?: () => Promise<void> | void;
   /** 송장 출력 가능 여부 (체크된 P 상품 중 Storage 에 PDF 존재 ≥ 1) */
   invoicePrintable?: boolean;
+  /** 저장 완료 플래그 — true 면 저장 버튼 비활성 + "저장 완료" 표시 (중복 저장 방지) */
+  isSaved?: boolean;
 }
 
 const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
@@ -36,6 +38,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   onSavePostgre,
   onPrintInvoices,
   invoicePrintable = false,
+  isSaved = false,
 }) => {
   const { t } = useTranslation();
 
@@ -166,7 +169,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
           <div className="v2-pr-save-buttons-row">
             <button
               className="v2-pr-save-button v2-pr-save-postgre"
-              disabled={readyItems.length === 0 || isSaving}
+              disabled={readyItems.length === 0 || isSaving || isSaved}
               onClick={handleSavePostgre}
             >
               {isSaving ? (
@@ -174,6 +177,8 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                   <span className="v2-pr-spinner"></span>
                   저장 중...
                 </span>
+              ) : isSaved ? (
+                '저장 완료'
               ) : (
                 'postgre + 저장'
               )}

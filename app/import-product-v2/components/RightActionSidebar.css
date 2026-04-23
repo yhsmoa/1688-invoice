@@ -1,0 +1,103 @@
+/* ============================================================ */
+/* /import-product-v2 전용 우측 액션 사이드바                    */
+/*                                                              */
+/* 구조: v2-item-main-content 의 flex item (LeftsideMenu 와 대칭) */
+/*   - TopsideMenu 아래, Left/Right 두 사이드바가 탑메뉴 양 옆에 대칭 배치 */
+/*   - 너비 70px, 검정 배경, 이모지+라벨 5개 버튼 세로 가운데 정렬 */
+/* ============================================================ */
+
+/*
+ * sticky + align-self: flex-start + 뷰포트 높이 고정.
+ *   - 페이지 스크롤 시 탑메뉴(68px) 아래에 항상 고정 표시
+ *   - height = 뷰포트 - 탑메뉴 → 버튼 가운데 정렬이 "화면 기준" 으로 맞아떨어짐
+ *   - align-self: flex-start 는 flex 부모가 세로로 늘리는 기본 stretch 를 막음 (sticky 동작 필수 조건)
+ */
+.v2-right-action-sidebar {
+  position: sticky;
+  top: 68px;
+  align-self: flex-start;
+  width: 70px;
+  height: calc(100vh - 68px);
+  flex-shrink: 0;                   /* flex 부모가 줄여도 70px 유지 */
+  background-color: #111827;
+  border-left: 1px solid #1f2937;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;          /* 버튼 5개 뷰포트 기준 세로 가운데 정렬 */
+  padding: 16px 0;
+  gap: 4px;
+}
+
+/* ── 액션 버튼 (이모지 + 라벨 세로 스택) ── */
+.v2-right-action-btn {
+  position: relative;
+  width: 100%;
+  padding: 12px 4px;
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+}
+
+.v2-right-action-btn:hover:not(:disabled) {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+.v2-right-action-btn:active:not(:disabled) {
+  background-color: #374151;
+}
+
+.v2-right-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── 이모지 ── */
+.v2-right-action-emoji {
+  font-size: 22px;
+  line-height: 1;
+  /* 이모지 색상 렌더링 일관성 */
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+}
+
+/* ── 라벨 (작은 폰트) ── */
+.v2-right-action-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+  text-align: center;
+  word-break: keep-all;
+}
+
+/* ── 입고 뱃지 (readyItems.length 표시) ── */
+.v2-right-action-badge {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 뱃지 활성 시 입고 버튼 강조 (border 가 아닌 내부 색상) */
+.v2-right-action-btn.has-items .v2-right-action-emoji {
+  /* 약간의 강조 — 이모지는 그대로, 주변 색만 변경 */
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+}

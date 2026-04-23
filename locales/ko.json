@@ -170,6 +170,7 @@
       "processReady": "처리준비",
       "note": "비고",
       "cancel": "반품",
+      "missing": "미입고",
       "label": "라벨",
       "import": "입고"
     },
@@ -192,8 +193,7 @@
       "processing": "진행중"
     },
     "filter": {
-      "noDelivery": "미배송",
-      "delayed": "지연배송"
+      "groupByProduct": "상품별로 보기"
     },
     "table": {
       "image": "이미지",

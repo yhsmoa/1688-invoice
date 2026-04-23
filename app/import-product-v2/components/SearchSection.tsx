@@ -5,8 +5,12 @@ import { useTranslation } from 'react-i18next';
 
 // ============================================================
 // V2 전용 SearchSection 컴포넌트
-// 1행: 상태 필터 (PROCESSING/ALL) + 미배송/지연배송 필터
+// 1행: 상태 필터 (PROCESSING/ALL) + [상품별로 보기] 체크박스
 // 2행: 검색 폼 (검색유형 드롭박스 + 검색입력 + 검색 버튼)
+//
+// [상품별로 보기] 동작:
+//   - 항상 클릭 가능 (페이지 접속 시 기본 해제)
+//   - 체크 시 클라이언트에서 product_id(offer_id) ASC → item_no ASC 로 정렬
 // ============================================================
 
 interface SearchSectionProps {
@@ -22,13 +26,9 @@ interface SearchSectionProps {
   statusFilter: string;
   onStatusFilterChange: (status: string) => void;
   filteredItemsCount: number;
-  // ── 미배송/지연배송 필터 ──
-  noDeliveryFilter: boolean;
-  delayedDeliveryFilter: boolean;
-  onNoDeliveryFilterChange: (active: boolean) => void;
-  onDelayedDeliveryFilterChange: (active: boolean) => void;
-  noDeliveryCount: number;
-  delayedDeliveryCount: number;
+  // ── 상품별로 보기 (정렬 전환, 클라이언트 처리) ──
+  groupByProduct: boolean;
+  onGroupByProductChange: (value: boolean) => void;
 }
 
 const SearchSection: React.FC<SearchSectionProps> = ({
@@ -42,19 +42,15 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   statusFilter,
   onStatusFilterChange,
   filteredItemsCount,
-  noDeliveryFilter,
-  delayedDeliveryFilter,
-  onNoDeliveryFilterChange,
-  onDelayedDeliveryFilterChange,
-  noDeliveryCount,
-  delayedDeliveryCount,
+  groupByProduct,
+  onGroupByProductChange,
 }) => {
   const { t } = useTranslation();
 
   return (
     <div className="v2-search-section">
       <div className="v2-search-board">
-        {/* ── 1행: 필터 버튼들 ── */}
+        {/* ── 1행: 상태 필터 + [상품별로 보기] ── */}
         <div className="v2-search-filter-row">
           {/* PROCESSING / ALL 라디오 */}
           <label
@@ -83,20 +79,16 @@ const SearchSection: React.FC<SearchSectionProps> = ({
           {/* 구분선 */}
           <span className="v2-filter-divider">|</span>
 
-          {/* 미배송 토글 버튼 (라디오 스타일) */}
+          {/* 상품별로 보기 체크박스 — 항상 클릭 가능, 기본 해제 */}
           <label
-            className={`v2-status-filter-radio ${noDeliveryFilter ? 'active' : ''}`}
-            onClick={() => onNoDeliveryFilterChange(!noDeliveryFilter)}
+            className={`v2-status-filter-radio ${groupByProduct ? 'active' : ''}`}
           >
-            {noDeliveryCount > 0 && '⚠️ '}미배송({noDeliveryCount})
-          </label>
-
-          {/* 지연배송 토글 버튼 (라디오 스타일) */}
-          <label
-            className={`v2-status-filter-radio ${delayedDeliveryFilter ? 'active' : ''}`}
-            onClick={() => onDelayedDeliveryFilterChange(!delayedDeliveryFilter)}
-          >
-            {delayedDeliveryCount > 0 && '⚠️ '}지연배송({delayedDeliveryCount})
+            <input
+              type="checkbox"
+              checked={groupByProduct}
+              onChange={(e) => onGroupByProductChange(e.target.checked)}
+            />
+            {t('importProductV2.filter.groupByProduct')}
           </label>
 
           {/* 전체 건수 */}

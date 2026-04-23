@@ -9,7 +9,6 @@
 //   - /api/ft/order-items/by-delivery-code   (배송번호 서버 필터)
 //
 // 목적이 다른 경로는 제외 (각자 별도 SELECT 관리):
-//   - /api/ft/order-items/filter-counts      (집계용)
 //   - /api/ft/order-items/export-xlsx        (엑셀 컬럼 매핑 전용)
 //   - /api/ft/order-items/match-order-id     (1688_order_id 매칭 전용)
 // ============================================================

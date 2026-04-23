@@ -10,6 +10,9 @@ import { FT_ORDER_ITEMS_DISPLAY_SELECT } from '../../../../../lib/ftOrderItemsSe
 //           WHERE delivery_code = input → order_id[]
 //   Step 2) ft_order_items
 //           WHERE 1688_order_id IN (order_ids) → FtOrderItem[]
+//
+// 정렬: item_no ASC (세트 구성품 연속 배치)
+//   [상품별로 보기] 정렬(product_id 그룹핑)은 클라이언트 측에서 처리.
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +59,6 @@ export async function GET(request: NextRequest) {
 
     // ── Step 2: ft_order_items에서 1688_order_id 기준 조회 (batch + pagination) ──
     //          SELECT는 /api/ft/order-items 와 완전 동일 → 화면 렌더 로직 일관성 보장
-    //          정렬은 item_no ASC → 세트 구성품이 연속 배치되어 그룹핑 시각 효과 유지
     const BATCH = 100;
     const allItems: Record<string, unknown>[] = [];
 
@@ -78,6 +80,17 @@ export async function GET(request: NextRequest) {
         oiFrom += PAGE;
       }
     }
+
+    // ── Step 3: 배치 경계 너머 순서 보장 — 전체 결과 item_no 기준 최종 정렬 ──
+    //   DB .order() 는 배치(100개 order_id)마다 적용되므로 배치간 순서 깨짐을 JS 로 정리.
+    allItems.sort((a, b) => {
+      const aNo = (a.item_no as string | null) ?? '';
+      const bNo = (b.item_no as string | null) ?? '';
+      if (!aNo && !bNo) return 0;
+      if (!aNo) return 1;
+      if (!bNo) return -1;
+      return String(aNo).localeCompare(String(bNo), undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     return NextResponse.json({ success: true, data: allItems });
 

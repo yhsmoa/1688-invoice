@@ -36,6 +36,7 @@ import V2LabelModal from './components/V2LabelModal';
 import V2CancelModal from './components/V2CancelModal';
 import V2NoteModal from './components/V2NoteModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
+import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
 import { mergeAndPrint } from '../../lib/invoicePdfClient';
 
@@ -69,16 +70,6 @@ const ItemCheck: React.FC = () => {
   const { items, loading: itemsLoading, fetchItems } = useFtOrderItems();
   const [statusFilter, setStatusFilter] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
 
-  // ============================================================
-  // 2-0) 미배송/지연배송 필터 state
-  // ============================================================
-  const [noDeliveryFilter, setNoDeliveryFilter] = useState(false);
-  const [delayedDeliveryFilter, setDelayedDeliveryFilter] = useState(false);
-  const [noDeliveryIds, setNoDeliveryIds] = useState<Set<string>>(new Set());
-  const [delayedIds, setDelayedIds] = useState<Set<string>>(new Set());
-  const [noDeliveryCount, setNoDeliveryCount] = useState(0);
-  const [delayedDeliveryCount, setDelayedDeliveryCount] = useState(0);
-
   // ── 비고 모달 state ──
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
@@ -99,19 +90,34 @@ const ItemCheck: React.FC = () => {
   const [deliveryItems, setDeliveryItems] = useState<FtOrderItem[] | null>(null);
   const [isDeliverySearching, setIsDeliverySearching] = useState(false);
 
-  // activeItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
+  // ============================================================
+  // 2-3) [상품별로 보기] — 정렬 전환 (전역 적용)
+  //      체크 시: product_id(offer_id) ASC → item_no ASC (동일 상품 그룹핑)
+  //      해제 시: 원본 순서 (서버 기본 정렬)
+  //      페이지 접속 시 기본 false. 사용자 수동 체크로만 동작.
+  // ============================================================
+  const [groupByProduct, setGroupByProduct] = useState(false);
+
+  // baseActiveItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
   const baseActiveItems =
     searchType === '배송번호' && deliveryItems !== null ? deliveryItems : items;
 
-  // ── 미배송/지연배송 필터 적용 ──
+  // groupByProduct 체크 시 클라이언트 정렬 (product_id → item_no)
+  //   로컬 정렬 → 서버 재조회 불필요 → 토글 반응 즉시
   const activeItems = useMemo(() => {
-    if (!noDeliveryFilter && !delayedDeliveryFilter) return baseActiveItems;
-    return baseActiveItems.filter((item) => {
-      if (noDeliveryFilter && noDeliveryIds.has(item.id)) return true;
-      if (delayedDeliveryFilter && delayedIds.has(item.id)) return true;
-      return false;
+    if (!groupByProduct) return baseActiveItems;
+    const cmp = (a: string | null | undefined, b: string | null | undefined): number => {
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+      return String(a).localeCompare(String(b), undefined, { numeric: true });
+    };
+    return [...baseActiveItems].sort((x, y) => {
+      const p = cmp(x.product_id, y.product_id);
+      if (p !== 0) return p;
+      return cmp(x.item_no, y.item_no);
     });
-  }, [baseActiveItems, noDeliveryFilter, delayedDeliveryFilter, noDeliveryIds, delayedIds]);
+  }, [baseActiveItems, groupByProduct]);
 
   // ============================================================
   // 3) 검색
@@ -276,27 +282,6 @@ const ItemCheck: React.FC = () => {
   }, []);
 
   // ============================================================
-  // 7-1) 미배송/지연배송 카운트 조회
-  // ============================================================
-  const fetchFilterCounts = useCallback(
-    async (userId: string) => {
-      try {
-        const res = await fetch(`/api/ft/order-items/filter-counts?user_id=${userId}`);
-        const json = await res.json();
-        if (json.success) {
-          setNoDeliveryCount(json.no_delivery.count);
-          setNoDeliveryIds(new Set(json.no_delivery.ids));
-          setDelayedDeliveryCount(json.delayed.count);
-          setDelayedIds(new Set(json.delayed.ids));
-        }
-      } catch (err) {
-        console.error('filter-counts 조회 오류:', err);
-      }
-    },
-    []
-  );
-
-  // ============================================================
   // 8) ft_users 드롭박스 변경 → 자동 데이터 조회 + 배송번호 결과 초기화
   // ============================================================
   const handleUserChange = useCallback(
@@ -311,10 +296,9 @@ const ItemCheck: React.FC = () => {
 
       if (userId) {
         fetchItems(userId, statusFilter);
-        fetchFilterCounts(userId);
       }
     },
-    [fetchItems, clearSearch, statusFilter, fetchFilterCounts]
+    [fetchItems, clearSearch, statusFilter]
   );
 
   // ============================================================
@@ -347,6 +331,7 @@ const ItemCheck: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
 
   // 9-1) 배송번호 서버 조회 (delivery_code → order_id → ft_order_items)
+  //      정렬은 클라이언트 측 groupByProduct 에서 처리 → API 호출은 단순
   const handleDeliverySearch = useCallback(
     async (code: string) => {
       const trimmed = code.trim();
@@ -362,7 +347,7 @@ const ItemCheck: React.FC = () => {
         if (json.success) {
           setDeliveryItems(json.data);
           if (json.data.length === 0) {
-            alert('해당 배송번호로 조회된 아이템이 없습니다.');
+            alert(t('importProductV2.alerts.deliveryNoResult'));
           }
         } else {
           alert(json.error || '배송번호 조회 중 오류가 발생했습니다.');
@@ -373,7 +358,7 @@ const ItemCheck: React.FC = () => {
         setIsDeliverySearching(false);
       }
     },
-    []
+    [t]
   );
 
   // 9-2) 검색 타입 변경 → 입력값·결과 초기화
@@ -410,7 +395,7 @@ const ItemCheck: React.FC = () => {
       }
 
       if (searchType === '배송번호') {
-        handleDeliverySearch(trimmed);       // 서버 조회
+        handleDeliverySearch(trimmed);
       } else {
         // 일반검색 / 주문번호: 클라이언트 필터 (useFtSearch가 searchType에 맞게 처리)
         setSearchTerm(trimmed);
@@ -569,6 +554,32 @@ const ItemCheck: React.FC = () => {
   // 12) 처리준비 모달
   // ============================================================
   const [isReadyModalOpen, setIsReadyModalOpen] = useState(false);
+
+  // ============================================================
+  // 12-1) 저장 완료 플래그 — 모달 유지 + 조건부 초기화 + 중복저장 방지
+  //   규칙:
+  //     - [postgre + 저장] 성공 → true (저장 버튼 "저장 완료" 로 비활성화)
+  //     - modifiedImportQty 변경 → 자동 false (저장 후 재수정 시 버튼 재활성화)
+  //     - 모달 닫을 때 true 인 상태였으면 부모 state 초기화
+  // ============================================================
+  const [hasReadySaveCompleted, setHasReadySaveCompleted] = useState(false);
+
+  // modifiedImportQty 가 변경되면 저장 완료 플래그를 자동 해제.
+  //   - Map 참조가 동일하면 effect 재실행 X → 저장 직후 setHasReadySaveCompleted(true) 가 안전
+  //   - 사용자가 새 항목 추가/수정 시 readyItems 가 바뀌어 Map 참조 변경 → 자동 false 복귀
+  useEffect(() => {
+    setHasReadySaveCompleted(false);
+  }, [modifiedImportQty]);
+
+  // ── 모달 닫기 핸들러 — 저장 완료 상태였을 때만 부모 state 초기화 ──
+  const handleReadyModalClose = useCallback(() => {
+    setIsReadyModalOpen(false);
+    if (hasReadySaveCompleted) {
+      setModifiedImportQty(new Map());
+      setSelectedRows(new Set());
+      setHasReadySaveCompleted(false);   // 다음 모달 세션 준비
+    }
+  }, [hasReadySaveCompleted]);
 
   // ── 모달 open + 주문번호 목록 변경 시 check API 호출 ──
   //    deps 로 orderNosKey(문자열) 사용 → 실제 주문번호 집합이 바뀔 때만 재실행.
@@ -805,9 +816,10 @@ const ItemCheck: React.FC = () => {
 
       await Promise.all(promises);
 
-      setModifiedImportQty(new Map());
-      setSelectedRows(new Set());
-      setIsReadyModalOpen(false);
+      // ── 저장 성공 → 모달 유지 + 저장 완료 플래그 ON ──
+      //   초기화는 handleReadyModalClose 에서 조건부로 수행.
+      //   (모달 유지 → 사용자가 이어서 [송장 출력] 클릭 가능)
+      setHasReadySaveCompleted(true);
       refreshFulfillments();
 
     } catch (error) {
@@ -1308,49 +1320,11 @@ const ItemCheck: React.FC = () => {
                 />
               </div>
 
-              <div className="v2-control-right">
-                {/* 비고 버튼 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={() => {
-                    if (selectedRows.size === 0) {
-                      alert(t('importProductV2.alerts.selectItems'));
-                      return;
-                    }
-                    setIsNoteModalOpen(true);
-                  }}
-                  disabled={!selectedUserId || items.length === 0}
-                >
-                  {t('importProductV2.buttons.note')}
-                </button>
-
-                {/* 반품 버튼 — 사용자 선택 시 바로 클릭 가능 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={() => setIsCancelModalOpen(true)}
-                  disabled={!selectedUserId || items.length === 0}
-                >
-                  {t('importProductV2.buttons.cancel')}
-                </button>
-
-                {/* 미입고 버튼 */}
-                <button className="v2-excel-upload-btn">미입고</button>
-
-                {/* 라벨 버튼 */}
-                <button className="v2-excel-upload-btn" onClick={handleLabelClick}>{t('importProductV2.buttons.label')}</button>
-
-                {/* 입고 버튼 (작업 수량 입력된 개수 표시) */}
-                <button
-                  className={`v2-excel-upload-btn ${readyItems.length > 0 ? 'has-items' : ''}`}
-                  onClick={() => setIsReadyModalOpen(true)}
-                >
-                  {t('importProductV2.buttons.import')}{readyItems.length > 0 && ` (${readyItems.length})`}
-                </button>
-              </div>
+              {/* 5개 액션 버튼(비고/반품/미입고/라벨/입고)은 우측 액션 사이드바로 이전 */}
             </div>
 
             {/* ============================================================ */}
-            {/* 검색 영역 (상태 필터 + 미배송/지연배송 + 검색 폼) */}
+            {/* 검색 영역 (상태 필터 + [상품별로 보기] 체크박스 + 검색 폼)    */}
             {/* ============================================================ */}
             <SearchSection
               searchType={searchType}
@@ -1363,12 +1337,8 @@ const ItemCheck: React.FC = () => {
               statusFilter={statusFilter}
               onStatusFilterChange={(s) => handleStatusFilterChange(s as 'PROCESSING' | 'ALL')}
               filteredItemsCount={filteredItems.length}
-              noDeliveryFilter={noDeliveryFilter}
-              delayedDeliveryFilter={delayedDeliveryFilter}
-              onNoDeliveryFilterChange={setNoDeliveryFilter}
-              onDelayedDeliveryFilterChange={setDelayedDeliveryFilter}
-              noDeliveryCount={noDeliveryCount}
-              delayedDeliveryCount={delayedDeliveryCount}
+              groupByProduct={groupByProduct}
+              onGroupByProductChange={setGroupByProduct}
             />
 
             {/* ============================================================ */}
@@ -1464,6 +1434,25 @@ const ItemCheck: React.FC = () => {
             )}
           </div>
         </main>
+
+        {/* ============================================================ */}
+        {/* 우측 액션 사이드바 — LeftsideMenu 와 대칭되는 flex item      */}
+        {/* ============================================================ */}
+        <RightActionSidebar
+          disabled={!selectedUserId || items.length === 0}
+          importBadgeCount={readyItems.length}
+          onNoteClick={() => {
+            if (selectedRows.size === 0) {
+              alert(t('importProductV2.alerts.selectItems'));
+              return;
+            }
+            setIsNoteModalOpen(true);
+          }}
+          onCancelClick={() => setIsCancelModalOpen(true)}
+          onMissingClick={() => { /* 미입고 기능은 별도 작업에서 구현 예정 */ }}
+          onLabelClick={handleLabelClick}
+          onImportClick={() => setIsReadyModalOpen(true)}
+        />
       </div>
 
       {/* ============================================================ */}
@@ -1488,11 +1477,12 @@ const ItemCheck: React.FC = () => {
       {/* ============================================================ */}
       <V2ReadyModal
         isOpen={isReadyModalOpen}
-        onClose={() => setIsReadyModalOpen(false)}
+        onClose={handleReadyModalClose}
         readyItems={readyItems}
         onSavePostgre={handleReadySave}
         onPrintInvoices={handlePrintInvoices}
         invoicePrintable={invoicePrintable}
+        isSaved={hasReadySaveCompleted}
       />
 
       {/* ============================================================ */}

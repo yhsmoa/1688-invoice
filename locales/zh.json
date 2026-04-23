@@ -164,6 +164,7 @@
       "processReady": "准备处理",
       "note": "备注",
       "cancel": "退货",
+      "missing": "未入库",
       "label": "标签",
       "import": "入库"
     },
@@ -186,8 +187,7 @@
       "processing": "处理中"
     },
     "filter": {
-      "noDelivery": "未发货",
-      "delayed": "延迟发货"
+      "groupByProduct": "按商品查看"
     },
     "table": {
       "image": "图片",
