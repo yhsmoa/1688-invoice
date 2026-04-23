@@ -215,15 +215,23 @@ const OrderStatusV2: React.FC = () => {
   }, []);
 
   // ============================================================
-  // 5) 처리 로그 모달
+  // 5) 처리 로그 모달 + 주문번호 컨텍스트 팝업
+  //    주문번호 셀 클릭 → 컨텍스트 팝업 (1688_order_no 복사 / 처리 로그 열기)
   // ============================================================
   const [logModalItem, setLogModalItem] = useState<FtOrderItem | null>(null);
   const [logDeliveryCodes, setLogDeliveryCodes] = useState<string[]>([]);
   const [logDeliveryCodesLoading, setLogDeliveryCodesLoading] = useState(false);
 
-  const handleOrderRowClick = useCallback((item: FtOrderItem) => {
+  // 주문번호 셀 옆 팝업: { item, x, y } | null
+  const [orderPopup, setOrderPopup] = useState<{
+    item: FtOrderItem;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // 처리 로그 드로워 열기 (기존 동작)
+  const openLogDrawer = useCallback((item: FtOrderItem) => {
     setLogModalItem(item);
-    // delivery_codes 조회
     setLogDeliveryCodes([]);
     const orderId = item['1688_order_id'];
     if (orderId) {
@@ -237,6 +245,67 @@ const OrderStatusV2: React.FC = () => {
         .finally(() => setLogDeliveryCodesLoading(false));
     }
   }, []);
+
+  // 주문번호 셀 클릭 → 마우스 위치에 팝업 오픈
+  const handleOrderCellClick = useCallback((e: React.MouseEvent, item: FtOrderItem) => {
+    setOrderPopup({ item, x: e.clientX, y: e.clientY });
+  }, []);
+
+  // 팝업 → [1688_order_no 복사]
+  //   · HTTPS / localhost: navigator.clipboard 사용
+  //   · HTTP LAN 등 비보안 컨텍스트: textarea + execCommand('copy') fallback
+  const handlePopupCopyOrderNo = useCallback(async () => {
+    if (!orderPopup) return;
+    const orderId = orderPopup.item['1688_order_id'];
+    setOrderPopup(null);
+    if (!orderId) return;
+
+    let copied = false;
+
+    // ── 1) 모던 API (보안 컨텍스트) ──
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(orderId);
+        copied = true;
+      } catch (err) {
+        console.error('clipboard.writeText 실패:', err);
+      }
+    }
+
+    // ── 2) 레거시 fallback (HTTP + LAN IP 지원) ──
+    if (!copied) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = orderId;
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.width = '1px';
+        ta.style.height = '1px';
+        ta.style.opacity = '0';
+        ta.style.pointerEvents = 'none';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (err) {
+        console.error('execCommand copy 실패:', err);
+      }
+    }
+
+    if (!copied) {
+      alert('클립보드 복사에 실패했습니다. 브라우저 설정을 확인해주세요.');
+    }
+  }, [orderPopup]);
+
+  // 팝업 → [처리 로그]
+  const handlePopupOpenLog = useCallback(() => {
+    if (!orderPopup) return;
+    const item = orderPopup.item;
+    setOrderPopup(null);
+    openLogDrawer(item);
+  }, [orderPopup, openLogDrawer]);
 
   const handleLogModalClose = useCallback(() => {
     setLogModalItem(null);
@@ -474,13 +543,13 @@ const OrderStatusV2: React.FC = () => {
                               onChange={(e) => handleSelectRow(item.id, e.target.checked)}
                             />
                           </td>
-                          {/* 주문번호 (item_no) — 클릭 → 처리 로그 모달
-                              드래그로 텍스트 선택한 경우(복사 의도)는 클릭 액션 skip */}
+                          {/* 주문번호 (item_no) — 클릭 → 컨텍스트 팝업 (복사 / 처리 로그)
+                              드래그로 텍스트 선택한 경우(복사 의도)는 팝업 skip */}
                           <td
                             className="os-v2-clickable os-v2-col-orderno"
-                            onClick={() => {
+                            onClick={(e) => {
                               if ((window.getSelection()?.toString().length ?? 0) > 0) return;
-                              handleOrderRowClick(item);
+                              handleOrderCellClick(e, item);
                             }}
                           >
                             {item.item_no || '-'}
@@ -644,6 +713,38 @@ const OrderStatusV2: React.FC = () => {
         deliveryCodes={logDeliveryCodes}
         deliveryCodesLoading={logDeliveryCodesLoading}
       />
+
+      {/* ============================================================ */}
+      {/* 주문번호 컨텍스트 팝업 — 1688_order_no 복사 / 처리 로그 열기      */}
+      {/* ============================================================ */}
+      {orderPopup && (
+        <>
+          {/* 뒷배경(투명) 클릭 시 팝업 닫힘 */}
+          <div
+            className="os-v2-popup-overlay"
+            onClick={() => setOrderPopup(null)}
+          />
+          <div
+            className="os-v2-popup-menu"
+            style={{ left: orderPopup.x + 4, top: orderPopup.y + 4 }}
+          >
+            <button
+              className="os-v2-popup-item os-v2-popup-item--primary"
+              onClick={handlePopupCopyOrderNo}
+              disabled={!orderPopup.item['1688_order_id']}
+              title={orderPopup.item['1688_order_id'] ? '클릭하여 복사' : '1688_order_no 없음'}
+            >
+              {orderPopup.item['1688_order_id'] || '(1688_order_no 없음)'}
+            </button>
+            <button
+              className="os-v2-popup-item"
+              onClick={handlePopupOpenLog}
+            >
+              처리 로그
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

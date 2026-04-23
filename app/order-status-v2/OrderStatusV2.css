@@ -254,6 +254,66 @@
   border-bottom: none;
 }
 
+/* ============================================================
+   주문번호 컨텍스트 팝업 (클릭 위치 기준 floating)
+   · Overlay: 투명, 클릭 시 팝업 닫힘
+   · Menu   : fixed 위치, 최소 폭 보장
+   ============================================================ */
+.os-v2-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 9998;
+}
+
+.os-v2-popup-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 180px;
+  max-width: 320px;
+}
+
+.os-v2-popup-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.1s ease;
+}
+
+.os-v2-popup-item:hover:not(:disabled) {
+  background-color: #f3f4f6;
+}
+
+.os-v2-popup-item:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 첫 번째(1688_order_no) 항목 — 복사 강조 */
+.os-v2-popup-item--primary {
+  color: #2563eb;
+  font-weight: 600;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.os-v2-popup-item--primary:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
 .order-status-v2-empty {
   text-align: center;
   padding: 40px 0;
