@@ -34,7 +34,20 @@
       "Bash(xcopy:*)",
       "Bash(cp:*)",
       "Bash(git pull:*)",
-      "Bash(d:)"
+      "Bash(d:)",
+      "Bash(cmd /c \"where node & where npm\")",
+      "Bash(cmd /c \"cd /d d:\\\\1688-invoice && npm install\")",
+      "Bash(\" 구분자로 수정\n  - 새 형식: \"ORBO260127-S54)",
+      "Bash(BO-260127)",
+      "Bash(0029-A01:1\"\n  - 0번째 부분이 주문코드\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx next build)",
+      "Bash(node -e \":*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"getPool\\\\|DATABASE_URL\" /d/1688-invoice/app/api --include=*.ts --include=*.js)",
+      "Bash(find /d/1688-invoice -name *.sql -type f)",
+      "Bash(node debug-donecount.js)",
+      "Bash(node debug-donecount2.js)",
+      "Bash(find /d/1688-invoice/app/chinaorder -type f -name *)"
     ],
     "deny": []
   }
