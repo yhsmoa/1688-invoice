@@ -166,6 +166,7 @@
       "cancel": "退货",
       "missing": "未入库",
       "label": "标签",
+      "shipping": "运单",
       "import": "入库"
     },
     "searchType": {

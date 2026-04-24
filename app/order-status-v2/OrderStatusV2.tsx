@@ -12,6 +12,7 @@ import {
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
+import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import { formatDeliveryDisplay } from './utils/deliveryStatusMap';
 import { resolveSizeBadge } from '../../lib/sizeCode';
 import './OrderStatusV2.css';
@@ -398,6 +399,19 @@ const OrderStatusV2: React.FC = () => {
   // ============================================================
   const checkedCount = selectedRows.size;
 
+  // ============================================================
+  // 8-1) 반품 모달 — /import-product-v2 의 V2CancelModal 재사용
+  //   체크된 행 있으면 해당 항목, 없으면 전체 items — 기존 import-product-v2 패턴 동일
+  // ============================================================
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
+  const cancelItems = useMemo(
+    () => (selectedRows.size > 0
+      ? items.filter((item) => selectedRows.has(item.id))
+      : items),
+    [items, selectedRows]
+  );
+
   // ── 테이블 총 colSpan (14열: 기존 12 + 비고 KR + 비고 CN) ──
   const TOTAL_COLS = 14;
 
@@ -457,11 +471,16 @@ const OrderStatusV2: React.FC = () => {
               </button>
             </div>
 
-            {/* ── 액션 바: 비고 버튼만 (다른 버튼은 placeholder 였으므로 제거됨) ── */}
+            {/* ── 액션 바: 반품 버튼 (오른쪽) ── */}
             <div className="order-status-v2-action-bar">
-              <div className="order-status-v2-action-left">
-                <button className="order-status-v2-move-btn" disabled={checkedCount === 0}>
-                  비고
+              <div className="order-status-v2-action-left" />
+              <div className="order-status-v2-action-right">
+                <button
+                  className="order-status-v2-move-btn"
+                  disabled={!selectedUserId || items.length === 0}
+                  onClick={() => setIsCancelModalOpen(true)}
+                >
+                  반품
                 </button>
               </div>
             </div>
@@ -700,6 +719,23 @@ const OrderStatusV2: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* ============================================================ */}
+      {/* 반품 모달 (V2CancelModal 재사용) — /import-product-v2 와 동일 */}
+      {/* ============================================================ */}
+      <V2CancelModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        items={cancelItems}
+        selectedUserId={selectedUserId}
+        selectedOperator=""  /* order-status-v2 에는 담당자 드롭박스가 없음 → null 저장 */
+        onSaveComplete={() => {
+          setIsCancelModalOpen(false);
+          setSelectedRows(new Set());
+          refreshFulfillments();
+          if (selectedUserId) fetchItems(selectedUserId);
+        }}
+      />
 
       {/* ============================================================ */}
       {/* 처리 로그 모달 (주문번호/상품정보 클릭 시 오픈)                */}

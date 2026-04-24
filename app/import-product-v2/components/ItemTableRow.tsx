@@ -28,6 +28,8 @@ interface ItemTableRowProps {
   cancelQty: number;
   /** ft_fulfillments type=SHIPMENT quantity 합계 */
   shipmentQty: number;
+  /** Storage 에 해당 personal_order_no.pdf 존재 여부 — P 배지 '운송장 출력' 조건 */
+  hasInvoicePdf: boolean;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -55,6 +57,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   packedQty,
   cancelQty,
   shipmentQty,
+  hasInvoicePdf,
   onSelectRow,
   onStartEditingCell,
   onCellValueChange,
@@ -179,30 +182,44 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
       {/* 상품명 — 맨 위: 배지(사이즈+라벨), 중간: item_name/option_name, 맨 아래: note_cn */}
       <td onClick={() => onProductNameClick(item)} style={{ cursor: 'pointer' }}>
         <div className="v2-product-name">
-          {/* ── 1번째 줄: 사이즈 배지(A/B/C/P/X) + 라벨 배지 ── */}
           {(() => {
             const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
             const isPersonal = sizeBadge?.code === 'P';
             return (
-              <div className="v2-product-name-badges">
-                {sizeBadge && (
-                  <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
-                )}
-                {/* ── P(PERSONAL) 전용: 원산지 + 운송장 출력 2개 고정 ──
-                     A/B/C/X: composition/order_qty 기반 기존 3-way */}
-                {isPersonal ? (
-                  <>
+              <>
+                {/* ── 1번째 줄: 사이즈 배지(A/B/C/P/X) + 라벨 배지 ── */}
+                <div className="v2-product-name-badges">
+                  {sizeBadge && (
+                    <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
+                  )}
+                  {/* ── P(PERSONAL) 전용: 원산지 + 운송장 출력 2개 고정 ──
+                       A/B/C/X: composition/order_qty 기반 기존 3-way */}
+                  {isPersonal ? (
+                    <>
+                      <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
+                      {/* '운송장 출력' 배지: Storage 에 매칭 PDF 가 존재할 때만 표시 */}
+                      {hasInvoicePdf && (
+                        <span className="label-badge shipping">{t('importProduct.badge.shippingLabel')}</span>
+                      )}
+                    </>
+                  ) : item.composition && String(item.composition).trim() ? (
+                    <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
+                  ) : (item.order_qty ?? 0) < 10 ? (
                     <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
-                    <span className="label-badge shipping">{t('importProduct.badge.shippingLabel')}</span>
-                  </>
-                ) : item.composition && String(item.composition).trim() ? (
-                  <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
-                ) : (item.order_qty ?? 0) < 10 ? (
-                  <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
-                ) : (
-                  <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+                  ) : (
+                    <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+                  )}
+                </div>
+
+                {/* ── 1-1번째 줄(P 전용): personal_order_no — '운송장 출력' 배지와 세트 노출 ──
+                     hasInvoicePdf 조건으로 송장 출력 배지와 동일하게 PDF 매칭된 경우만 표시 */}
+                {isPersonal && hasInvoicePdf && item.personal_order_no && (
+                  <div className="v2-personal-order-no-line">
+                    <span className="v2-personal-order-no-connector">ㄴ</span>
+                    <span className="v2-personal-order-no-value">{item.personal_order_no}</span>
+                  </div>
                 )}
-              </div>
+              </>
             );
           })()}
 

@@ -160,6 +160,26 @@
   color: #ccc;
 }
 
+/* ── item_no 회색 미니멀 배지 — 폰트 14px (부모 row 와 동일) ── */
+.v2-pr-item-no-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+}
+
+/* ── P(PERSONAL) personal_order_no 인라인 값 — P 배지 색상(주황) 통일 ── */
+.v2-pr-personal-order-no-inline {
+  color: #ea580c;            /* size-badge--orange */
+  font-weight: 600;
+}
+
 /* 상품명 */
 .v2-pr-product-name {
   font-size: 14px;

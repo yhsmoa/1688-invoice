@@ -7,12 +7,12 @@ import './RightActionSidebar.css';
 // ============================================================
 // /import-product-v2 전용 우측 액션 사이드바
 //
-// 목적: 테이블 스크롤 중에도 5개 주요 액션(비고/반품/미입고/라벨/입고)에
-//       즉시 접근 가능하도록 상단 액션 바에서 분리 후 우측 고정.
+// 목적: 테이블 스크롤 중에도 주요 액션(입고/라벨/운송장/미입고/반품/비고)에
+//       즉시 접근 가능하도록 우측 고정.
 //
 // 레이아웃:
-//   - position: fixed, right: 0, height: 100vh, width: 70px
-//   - 좌측 사이드바 감소분(280→210, −70px) 보상 → 메인 콘텐츠 영역 불변
+//   - position: sticky, right: 0, 뷰포트 높이 고정 → 스크롤 시 따라옴
+//   - 세로 가운데 정렬
 //
 // 디자인:
 //   - 검은 배경(#111827), 버튼은 세로 스택
@@ -21,19 +21,22 @@ import './RightActionSidebar.css';
 
 interface RightActionSidebarProps {
   // ── 이벤트 핸들러 ──
-  onNoteClick:    () => void;
-  onCancelClick:  () => void;
-  onMissingClick: () => void;
-  onLabelClick:   () => void;
-  onImportClick:  () => void;
+  onNoteClick:     () => void;
+  onCancelClick:   () => void;
+  onMissingClick:  () => void;
+  onLabelClick:    () => void;
+  onImportClick:   () => void;
+  onShippingClick: () => void | Promise<void>;
   // ── 버튼별 disabled 여부 ──
-  /** 사용자 미선택 또는 데이터 0건 시 비활성화 (5개 버튼 공통) */
+  /** 사용자 미선택 또는 데이터 0건 시 비활성화 (공통 버튼 disabled) */
   disabled: boolean;
+  /** 운송장 버튼 전용 활성화 조건 — 작업 입력된 P 상품 중 PDF 존재 ≥ 1 */
+  shippingEnabled: boolean;
   // ── 입고 버튼 뱃지 (작업 수량 입력된 항목 수) ──
   importBadgeCount: number;
 }
 
-type ActionKey = 'note' | 'cancel' | 'missing' | 'label' | 'import';
+type ActionKey = 'note' | 'cancel' | 'missing' | 'label' | 'import' | 'shipping';
 
 interface ActionMeta {
   key:   ActionKey;
@@ -42,13 +45,14 @@ interface ActionMeta {
   labelKey: string;
 }
 
-// ── 버튼 메타 정의 (고정 순서: 비고 → 반품 → 미입고 → 라벨 → 입고) ──
+// ── 버튼 메타 정의 (고정 순서: 입고 → 라벨 → 운송장 → 미입고 → 반품 → 비고) ──
 const ACTIONS: ActionMeta[] = [
-  { key: 'note',    emoji: '📝', labelKey: 'importProductV2.buttons.note' },
-  { key: 'cancel',  emoji: '↩️', labelKey: 'importProductV2.buttons.cancel' },
-  { key: 'missing', emoji: '⚠️', labelKey: 'importProductV2.buttons.missing' },
-  { key: 'label',   emoji: '🏷️', labelKey: 'importProductV2.buttons.label' },
-  { key: 'import',  emoji: '📥', labelKey: 'importProductV2.buttons.import' },
+  { key: 'import',   emoji: '📥', labelKey: 'importProductV2.buttons.import' },
+  { key: 'label',    emoji: '🏷️', labelKey: 'importProductV2.buttons.label' },
+  { key: 'shipping', emoji: '🎟️', labelKey: 'importProductV2.buttons.shipping' },
+  { key: 'missing',  emoji: '⚠️', labelKey: 'importProductV2.buttons.missing' },
+  { key: 'cancel',   emoji: '↩️', labelKey: 'importProductV2.buttons.cancel' },
+  { key: 'note',     emoji: '📝', labelKey: 'importProductV2.buttons.note' },
 ];
 
 const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
@@ -57,17 +61,20 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
   onMissingClick,
   onLabelClick,
   onImportClick,
+  onShippingClick,
   disabled,
+  shippingEnabled,
   importBadgeCount,
 }) => {
   const { t } = useTranslation();
 
-  const handlerMap: Record<ActionKey, () => void> = {
-    note:    onNoteClick,
-    cancel:  onCancelClick,
-    missing: onMissingClick,
-    label:   onLabelClick,
-    import:  onImportClick,
+  const handlerMap: Record<ActionKey, () => void | Promise<void>> = {
+    note:     onNoteClick,
+    cancel:   onCancelClick,
+    missing:  onMissingClick,
+    label:    onLabelClick,
+    import:   onImportClick,
+    shipping: onShippingClick,
   };
 
   return (
@@ -75,13 +82,15 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
       {ACTIONS.map(({ key, emoji, labelKey }) => {
         const isImport = key === 'import';
         const showBadge = isImport && importBadgeCount > 0;
+        // 운송장 버튼: 공통 disabled + shippingEnabled 미충족 시 비활성
+        const isDisabled = key === 'shipping' ? (disabled || !shippingEnabled) : disabled;
 
         return (
           <button
             key={key}
             className={`v2-right-action-btn ${showBadge ? 'has-items' : ''}`}
             onClick={handlerMap[key]}
-            disabled={disabled}
+            disabled={isDisabled}
             type="button"
           >
             <span className="v2-right-action-emoji">{emoji}</span>

@@ -172,6 +172,7 @@
       "cancel": "반품",
       "missing": "미입고",
       "label": "라벨",
+      "shipping": "운송장",
       "import": "입고"
     },
     "searchType": {

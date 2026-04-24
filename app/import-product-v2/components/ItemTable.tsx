@@ -28,6 +28,8 @@ interface ItemTableProps {
   shipmentMap: Map<string, number>;
   /** product_id → 출고(PACKED + shipment_id NOT NULL) quantity 합계 */
   exportMap: Map<string, number>;
+  /** Storage 에 PDF 가 존재하는 personal_order_no Set — P 배지 '운송장 출력' 조건부 표시용 */
+  invoicePdfSet: Set<string>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
@@ -58,6 +60,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   cancelMap,
   shipmentMap,
   exportMap,
+  invoicePdfSet,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
@@ -157,6 +160,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 packedQty={packedMap.get(item.id) ?? 0}
                 cancelQty={cancelMap.get(item.id) ?? 0}
                 shipmentQty={exportMap.get(item.product_id ?? '') ?? 0}
+                hasInvoicePdf={
+                  !!item.personal_order_no && invoicePdfSet.has(item.personal_order_no)
+                }
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}

@@ -541,13 +541,21 @@ const ItemCheck: React.FC = () => {
     return Array.from(nos).sort();
   }, [readyItems]);
 
-  // 주문번호 집합의 안정된 문자열 키 — 내용이 실제로 바뀔 때만 참조 변경
-  //   (uniquePersonalOrderNos 는 readyItems 파생이라 참조가 매번 갱신됨 →
-  //    useEffect deps 에 직접 넣으면 모달 열린 채 다른 행 편집 시마다 check API 재호출)
-  const orderNosKey = uniquePersonalOrderNos.join('|');
+  // ── activeItems 내 전체 P 상품의 personal_order_no 집합 (안정된 키) ──
+  //    배지(운송장 출력) 표시 + 모달 송장 출력 양쪽에서 공유하는 단일 PDF 존재 맵 근거.
+  const activePersonalOrderNosKey = useMemo(() => {
+    const nos = new Set<string>();
+    for (const item of activeItems) {
+      const type = item.shipment_type?.trim().toUpperCase() ?? '';
+      if (type !== 'PERSONAL') continue;
+      const no = item.personal_order_no?.trim();
+      if (no) nos.add(no);
+    }
+    return [...nos].sort().join('|');
+  }, [activeItems]);
 
-  // Storage 에 PDF 가 존재하는 주문번호 Set
-  const [invoiceExistsSet, setInvoiceExistsSet] = useState<Set<string>>(new Set());
+  // Storage 에 PDF 가 존재하는 personal_order_no Set (activeItems 기준 전역)
+  const [invoicePdfSet, setInvoicePdfSet] = useState<Set<string>>(new Set());
   const [isCheckingInvoices, setIsCheckingInvoices] = useState(false);
 
   // ============================================================
@@ -581,15 +589,16 @@ const ItemCheck: React.FC = () => {
     }
   }, [hasReadySaveCompleted]);
 
-  // ── 모달 open + 주문번호 목록 변경 시 check API 호출 ──
-  //    deps 로 orderNosKey(문자열) 사용 → 실제 주문번호 집합이 바뀔 때만 재실행.
+  // ── activeItems 의 P 상품 personal_order_no 집합이 변경될 때 PDF 존재 조회 ──
+  //    모달 open 여부와 무관 — 배지('운송장 출력') 렌더에도 사용되므로 데이터 로드 시점에 조회.
+  //    sort 만 바뀌는 경우엔 key 가 동일 → 재호출되지 않음 (useMemo + sort 덕분에 안정).
   useEffect(() => {
-    if (!isReadyModalOpen || !selectedUserId || !orderNosKey) {
-      setInvoiceExistsSet(new Set());
+    if (!selectedUserId || !activePersonalOrderNosKey) {
+      setInvoicePdfSet(new Set());
       return;
     }
 
-    const orderNos = orderNosKey.split('|');
+    const orderNos = activePersonalOrderNosKey.split('|');
     let cancelled = false;
     (async () => {
       setIsCheckingInvoices(true);
@@ -606,18 +615,18 @@ const ItemCheck: React.FC = () => {
         if (cancelled) return;
         if (!json.success) {
           console.error('personal-invoices check 실패:', json.error);
-          setInvoiceExistsSet(new Set());
+          setInvoicePdfSet(new Set());
           return;
         }
         const existing = new Set<string>();
         for (const [no, exists] of Object.entries(json.exists as Record<string, boolean>)) {
           if (exists) existing.add(no);
         }
-        setInvoiceExistsSet(existing);
+        setInvoicePdfSet(existing);
       } catch (err) {
         if (!cancelled) {
           console.error('personal-invoices check 오류:', err);
-          setInvoiceExistsSet(new Set());
+          setInvoicePdfSet(new Set());
         }
       } finally {
         if (!cancelled) setIsCheckingInvoices(false);
@@ -625,12 +634,12 @@ const ItemCheck: React.FC = () => {
     })();
 
     return () => { cancelled = true; };
-  }, [isReadyModalOpen, selectedUserId, orderNosKey]);
+  }, [selectedUserId, activePersonalOrderNosKey]);
 
   // ── 송장 출력 핸들러: signed-urls 발급 → fetch → crop+merge → print ──
   const handlePrintInvoices = useCallback(async () => {
     if (!selectedUserId) return;
-    const targetNos = uniquePersonalOrderNos.filter((no) => invoiceExistsSet.has(no));
+    const targetNos = uniquePersonalOrderNos.filter((no) => invoicePdfSet.has(no));
     if (targetNos.length === 0) {
       alert(t('importProductV2.alerts.noInvoiceToPrint'));
       return;
@@ -690,10 +699,11 @@ const ItemCheck: React.FC = () => {
       console.error('송장 출력 오류:', err);
       alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
     }
-  }, [selectedUserId, uniquePersonalOrderNos, invoiceExistsSet, t]);
+  }, [selectedUserId, uniquePersonalOrderNos, invoicePdfSet, t]);
 
-  // 버튼 활성화 조건: 체크 중이 아니고, 존재하는 PDF가 1개 이상
-  const invoicePrintable = !isCheckingInvoices && invoiceExistsSet.size > 0;
+  // 버튼 활성화 조건: 체크 중이 아니고, readyItems 의 P 상품 중 PDF 가진 것이 1개 이상
+  const invoicePrintable =
+    !isCheckingInvoices && uniquePersonalOrderNos.some((no) => invoicePdfSet.has(no));
 
   // ============================================================
   // 13) 반품 모달 — 체크박스 선택 시 선택 항목, 미선택 시 전체 항목
@@ -1359,6 +1369,7 @@ const ItemCheck: React.FC = () => {
               cancelMap={cancelMap}
               shipmentMap={shipmentMap}
               exportMap={exportMap}
+              invoicePdfSet={invoicePdfSet}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
               onStartEditingCell={startEditingCell}
@@ -1440,6 +1451,7 @@ const ItemCheck: React.FC = () => {
         {/* ============================================================ */}
         <RightActionSidebar
           disabled={!selectedUserId || items.length === 0}
+          shippingEnabled={invoicePrintable}
           importBadgeCount={readyItems.length}
           onNoteClick={() => {
             if (selectedRows.size === 0) {
@@ -1452,6 +1464,7 @@ const ItemCheck: React.FC = () => {
           onMissingClick={() => { /* 미입고 기능은 별도 작업에서 구현 예정 */ }}
           onLabelClick={handleLabelClick}
           onImportClick={() => setIsReadyModalOpen(true)}
+          onShippingClick={handlePrintInvoices}
         />
       </div>
 
@@ -1483,6 +1496,7 @@ const ItemCheck: React.FC = () => {
         onPrintInvoices={handlePrintInvoices}
         invoicePrintable={invoicePrintable}
         isSaved={hasReadySaveCompleted}
+        invoicePdfSet={invoicePdfSet}
       />
 
       {/* ============================================================ */}

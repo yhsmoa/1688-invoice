@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
+import { resolveSizeBadge } from '../../../lib/sizeCode';
 import './V2ReadyModal.css';
 
 // ============================================================
@@ -29,6 +30,8 @@ interface V2ReadyModalProps {
   invoicePrintable?: boolean;
   /** 저장 완료 플래그 — true 면 저장 버튼 비활성 + "저장 완료" 표시 (중복 저장 방지) */
   isSaved?: boolean;
+  /** Storage 에 PDF 가 존재하는 personal_order_no Set — personal_order_no 인라인 노출 조건 */
+  invoicePdfSet?: Set<string>;
 }
 
 const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
@@ -39,6 +42,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   onPrintInvoices,
   invoicePrintable = false,
   isSaved = false,
+  invoicePdfSet,
 }) => {
   const { t } = useTranslation();
 
@@ -117,13 +121,33 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
                   {/* 상품 정보 */}
                   <div className="v2-ready-item-info">
-                    {/* 글번호 | 바코드 */}
+                    {/* 글번호 행: [사이즈 배지] [item_no 회색 배지] | [barcode] | (P+PDF) 운송장 번호
+                         줄바꿈 없이 한 줄에 모두 표시 */}
                     <div className="v2-pr-order-barcode-row">
-                      <span>{item.item_no || ''}</span>
+                      {(() => {
+                        const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+                        return sizeBadge ? (
+                          <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
+                        ) : null;
+                      })()}
+                      {item.item_no && (
+                        <span className="v2-pr-item-no-badge">{item.item_no}</span>
+                      )}
                       {item.barcode && (
                         <>
                           <span className="v2-pr-separator">|</span>
                           <span>{item.barcode}</span>
+                        </>
+                      )}
+                      {/* P(PERSONAL) + PDF 존재 시 운송장 번호 인라인 표시 (주황) */}
+                      {item.shipment_type?.trim().toUpperCase() === 'PERSONAL'
+                        && item.personal_order_no
+                        && invoicePdfSet?.has(item.personal_order_no) && (
+                        <>
+                          <span className="v2-pr-separator">|</span>
+                          <span className="v2-pr-personal-order-no-inline">
+                            {item.personal_order_no}
+                          </span>
                         </>
                       )}
                     </div>

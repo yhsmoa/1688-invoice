@@ -578,6 +578,24 @@
   margin-bottom: 2px;
 }
 
+/* ── P 상품 personal_order_no 라인 (배지 바로 아래, 주황) ──
+   font-size 14px — 상품명 셀(.v2-product-name) 기본 폰트와 동일 */
+.v2-personal-order-no-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #ea580c;        /* size-badge--orange 와 동일 팔레트 */
+  font-weight: 600;
+}
+.v2-personal-order-no-connector {
+  color: #ea580c;
+  font-weight: 700;
+}
+
 /* note_cn — 상품명 셀 맨 아래, 빨간색 강조 */
 .v2-note-cn {
   margin-top: 4px;
