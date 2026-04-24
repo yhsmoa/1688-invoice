@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stockSupabase, PERSONAL_INVOICE_BUCKET } from '../../../../../lib/stockSupabase';
+import { getStockSupabase, PERSONAL_INVOICE_BUCKET } from '../../../../../lib/stockSupabase';
 
 // ============================================================
 // POST /api/ft/personal-invoices/check
@@ -43,6 +43,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const stockSupabase = getStockSupabase();
 
     // ── Step 1: si_users.order_user_id → si_users.id 매핑 조회 ──
     const { data: siUser, error: siErr } = await stockSupabase
