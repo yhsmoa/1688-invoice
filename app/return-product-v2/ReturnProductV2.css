@@ -447,13 +447,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
   max-width: 100%;
 }
 
 .return-v2-1688-order-number {
   color: #666;
-  font-size: 11px;
+  font-size: 12px;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
