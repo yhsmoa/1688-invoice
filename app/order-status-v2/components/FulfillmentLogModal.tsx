@@ -26,16 +26,24 @@ interface FulfillmentLogModalProps {
 const TYPE_LABEL: Record<string, string> = {
   ARRIVAL: '입고',
   PACKED: '포장',
-  CANCEL: '취소',
+  CANCEL: '주문 취소',
+  RETURN: '반품 접수',
   SHIPMENT: '출고',
 };
 
-// ── type → 배지 컬러 클래스 ──
+// ── type → 배지 컬러 클래스 (CANCEL/RETURN 동일 — 사용자 결정: 단일 컬럼 통합) ──
 const TYPE_BADGE_CLASS: Record<string, string> = {
   ARRIVAL: 'os-v2-badge-arrival',
   PACKED: 'os-v2-badge-packed',
   CANCEL: 'os-v2-badge-cancel',
+  RETURN: 'os-v2-badge-cancel',
   SHIPMENT: 'os-v2-badge-shipment',
+};
+
+// ── type → 철회/삭제 액션 라벨 ──
+const TYPE_DELETE_LABEL: Record<string, string> = {
+  CANCEL: '주문 취소 철회',
+  RETURN: '반품 철회',
 };
 
 const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
@@ -63,12 +71,13 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [item, rawFulfillments]);
 
-  // ── 삭제 핸들러 (CANCEL: 철회 안내) ──
+  // ── 삭제 핸들러 (CANCEL/RETURN: 철회 안내) ──
   const handleDelete = useCallback(
     async (fulfillmentId: string, logType: string) => {
-      const isCancel = logType === 'CANCEL';
-      const confirmMsg = isCancel
-        ? '반품 접수 기록을 철회하시겠습니까?\n(ft_fulfillments + ft_cancel_details 동시 삭제, DONE 상태였다면 PROCESSING으로 복구됩니다)'
+      const isCancelLike = logType === 'CANCEL' || logType === 'RETURN';
+      const actionName = logType === 'CANCEL' ? '주문 취소' : logType === 'RETURN' ? '반품 접수' : '기록';
+      const confirmMsg = isCancelLike
+        ? `${actionName} 기록을 철회하시겠습니까?\n(ft_fulfillment_inbounds + ft_cancel_details 동시 삭제, DONE 상태였다면 PROCESSING 으로 복구됩니다)`
         : '이 기록을 삭제하시겠습니까?';
 
       if (!confirm(confirmMsg)) return;
@@ -170,7 +179,7 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
                         className="os-v2-log-delete-btn"
                         onClick={() => handleDelete(log.id, log.type)}
                         disabled={deletingId === log.id}
-                        title={log.type === 'CANCEL' ? '반품 철회' : '삭제'}
+                        title={TYPE_DELETE_LABEL[log.type] || '삭제'}
                       >
                         {deletingId === log.id ? '...' : '🗑️'}
                       </button>

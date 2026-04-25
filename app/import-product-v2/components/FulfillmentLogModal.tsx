@@ -23,16 +23,24 @@ interface FulfillmentLogModalProps {
 const TYPE_LABEL: Record<string, string> = {
   ARRIVAL: '입고',
   PACKED: '포장',
-  CANCEL: '취소',
+  CANCEL: '주문 취소',
+  RETURN: '반품 접수',
   SHIPMENT: '출고',
 };
 
-/** type → 배지 CSS 클래스 */
+/** type → 배지 CSS 클래스 (CANCEL/RETURN 동일 스타일 — 사용자 결정: 단일 컬럼 통합) */
 const TYPE_BADGE_CLASS: Record<string, string> = {
   ARRIVAL: 'v2-import-qty',
   PACKED: 'v2-packed-qty',
   CANCEL: 'v2-cancel-qty',
+  RETURN: 'v2-cancel-qty',
   SHIPMENT: 'v2-export-qty',
+};
+
+/** type → 철회/삭제 액션 라벨 (cancel-like 두 type 은 '철회', 기타는 '삭제') */
+const TYPE_DELETE_LABEL: Record<string, string> = {
+  CANCEL: '주문 취소 철회',
+  RETURN: '반품 철회',
 };
 
 const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
@@ -55,12 +63,13 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
   }, [item, rawFulfillments]);
 
   // ── 삭제 핸들러 ──
-  // CANCEL 타입: ft_cancel_details 연동 삭제 + ft_order_items status 복구 포함
+  // CANCEL/RETURN 타입: ft_cancel_details 연동 삭제 + ft_order_items status 복구 포함
   const handleDelete = useCallback(
     async (fulfillmentId: string, logType: string) => {
-      const isCancel = logType === 'CANCEL';
-      const confirmMsg = isCancel
-        ? '반품 접수 기록을 철회하시겠습니까?\n(ft_fulfillments + ft_cancel_details 동시 삭제, DONE 상태였다면 PROCESSING으로 복구됩니다)'
+      const isCancelLike = logType === 'CANCEL' || logType === 'RETURN';
+      const actionName = logType === 'CANCEL' ? '주문 취소' : logType === 'RETURN' ? '반품 접수' : '기록';
+      const confirmMsg = isCancelLike
+        ? `${actionName} 기록을 철회하시겠습니까?\n(ft_fulfillment_inbounds + ft_cancel_details 동시 삭제, DONE 상태였다면 PROCESSING 으로 복구됩니다)`
         : '이 기록을 삭제하시겠습니까?';
 
       if (!confirm(confirmMsg)) return;
@@ -145,13 +154,13 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
                         minute: '2-digit',
                       })}
                     </td>
-                    {/* 🗑️ 삭제 버튼 (CANCEL: 철회, 기타: 단순 삭제) */}
+                    {/* 🗑️ 삭제 버튼 (CANCEL/RETURN: 철회, 기타: 단순 삭제) */}
                     <td style={{ textAlign: 'center' }}>
                       <button
                         className="v2-log-delete-btn"
                         onClick={() => handleDelete(log.id, log.type)}
                         disabled={deletingId === log.id}
-                        title={log.type === 'CANCEL' ? '반품 철회' : '삭제'}
+                        title={TYPE_DELETE_LABEL[log.type] || '삭제'}
                       >
                         {deletingId === log.id ? '...' : '🗑️'}
                       </button>
