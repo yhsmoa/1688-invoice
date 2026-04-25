@@ -30,7 +30,7 @@ interface RightActionSidebarProps {
   // ── 버튼별 disabled 여부 ──
   /** 사용자 미선택 또는 데이터 0건 시 비활성화 (공통 버튼 disabled) */
   disabled: boolean;
-  /** 운송장 버튼 전용 활성화 조건 — 작업 입력된 P 상품 중 PDF 존재 ≥ 1 */
+  /** 운송장 버튼 전용 활성화 — 선택된 행 중 P + PDF 매칭 ≥ 1 일 때 true */
   shippingEnabled: boolean;
   // ── 입고 버튼 뱃지 (작업 수량 입력된 항목 수) ──
   importBadgeCount: number;
@@ -82,7 +82,7 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
       {ACTIONS.map(({ key, emoji, labelKey }) => {
         const isImport = key === 'import';
         const showBadge = isImport && importBadgeCount > 0;
-        // 운송장 버튼: 공통 disabled + shippingEnabled 미충족 시 비활성
+        // 운송장: 공통 disabled + 선택된 P+PDF 가 0건이면 비활성화
         const isDisabled = key === 'shipping' ? (disabled || !shippingEnabled) : disabled;
 
         return (

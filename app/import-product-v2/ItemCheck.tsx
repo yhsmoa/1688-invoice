@@ -636,74 +636,114 @@ const ItemCheck: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedUserId, activePersonalOrderNosKey]);
 
-  // ── 송장 출력 핸들러: signed-urls 발급 → fetch → crop+merge → print ──
-  const handlePrintInvoices = useCallback(async () => {
-    if (!selectedUserId) return;
-    const targetNos = uniquePersonalOrderNos.filter((no) => invoicePdfSet.has(no));
-    if (targetNos.length === 0) {
-      alert(t('importProductV2.alerts.noInvoiceToPrint'));
-      return;
-    }
-
-    try {
-      // 1) signed URL 발급
-      const res = await fetch('/api/ft/personal-invoices/signed-urls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_user_id: selectedUserId,
-          order_nos: targetNos,
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        alert(json.error || t('importProductV2.alerts.invoiceUrlFailed'));
+  // ── 송장 출력 — 핵심 로직 (signed URL → 다운로드 → crop + merge + print) ──
+  //    targetNos 받아 호출 → 두 진입점(모달 [송장 출력] / 사이드바 [운송장]) 공유.
+  const printInvoicesByOrderNos = useCallback(
+    async (targetNos: string[]) => {
+      if (!selectedUserId) return;
+      if (targetNos.length === 0) {
+        alert(t('importProductV2.alerts.noInvoiceToPrint'));
         return;
       }
 
-      // 2) URL → ArrayBuffer 병렬 다운로드 (Promise.all)
-      const urlsMap = json.urls as Record<string, string | null>;
-      const downloadTasks = targetNos
-        .map((no) => ({ no, url: urlsMap[no] }))
-        .filter((task): task is { no: string; url: string } => !!task.url);
+      try {
+        // 1) signed URL 발급
+        const res = await fetch('/api/ft/personal-invoices/signed-urls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_user_id: selectedUserId,
+            order_nos: targetNos,
+          }),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          alert(json.error || t('importProductV2.alerts.invoiceUrlFailed'));
+          return;
+        }
 
-      const results = await Promise.all(
-        downloadTasks.map(async ({ no, url }) => {
-          try {
-            const pdfRes = await fetch(url);
-            if (!pdfRes.ok) {
-              console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
+        // 2) URL → ArrayBuffer 병렬 다운로드 (Promise.all)
+        const urlsMap = json.urls as Record<string, string | null>;
+        const downloadTasks = targetNos
+          .map((no) => ({ no, url: urlsMap[no] }))
+          .filter((task): task is { no: string; url: string } => !!task.url);
+
+        const results = await Promise.all(
+          downloadTasks.map(async ({ no, url }) => {
+            try {
+              const pdfRes = await fetch(url);
+              if (!pdfRes.ok) {
+                console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
+                return null;
+              }
+              return await pdfRes.arrayBuffer();
+            } catch (err) {
+              console.error(`PDF 다운로드 오류 (${no}):`, err);
               return null;
             }
-            return await pdfRes.arrayBuffer();
-          } catch (err) {
-            console.error(`PDF 다운로드 오류 (${no}):`, err);
-            return null;
-          }
-        })
-      );
+          })
+        );
 
-      const buffers: ArrayBuffer[] = results.filter((b): b is ArrayBuffer => b !== null);
+        const buffers: ArrayBuffer[] = results.filter((b): b is ArrayBuffer => b !== null);
 
-      if (buffers.length === 0) {
-        alert(t('importProductV2.alerts.invoiceDownloadFailed'));
-        return;
+        if (buffers.length === 0) {
+          alert(t('importProductV2.alerts.invoiceDownloadFailed'));
+          return;
+        }
+
+        // 3) 크롭 + 병합 + 인쇄
+        const result = await mergeAndPrint(buffers);
+        if (result.success === 0) {
+          alert(t('importProductV2.alerts.invoicePrintFailed'));
+        }
+      } catch (err) {
+        console.error('송장 출력 오류:', err);
+        alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
       }
+    },
+    [selectedUserId, t]
+  );
 
-      // 3) 크롭 + 병합 + 인쇄
-      const result = await mergeAndPrint(buffers);
-      if (result.success === 0) {
-        alert(t('importProductV2.alerts.invoicePrintFailed'));
-      }
-    } catch (err) {
-      console.error('송장 출력 오류:', err);
-      alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
+  // ── 모달 [송장 출력] — readyItems(작업값 입력 항목) 의 P 상품 ──
+  const handlePrintInvoices = useCallback(() => {
+    const targetNos = uniquePersonalOrderNos.filter((no) => invoicePdfSet.has(no));
+    return printInvoicesByOrderNos(targetNos);
+  }, [uniquePersonalOrderNos, invoicePdfSet, printInvoicesByOrderNos]);
+
+  // ── 사이드바 [운송장] — 체크박스 선택된 행의 P 상품 (라벨 버튼과 동일 패턴) ──
+  const handlePrintInvoicesFromSelection = useCallback(() => {
+    if (selectedRows.size === 0) {
+      alert(t('importProductV2.alerts.selectItems'));
+      return;
     }
-  }, [selectedUserId, uniquePersonalOrderNos, invoicePdfSet, t]);
+    // 선택된 행 중 P + personal_order_no + PDF 매칭된 것만 dedup
+    const targetNos = [
+      ...new Set(
+        items
+          .filter((item) => selectedRows.has(item.id))
+          .filter((item) => item.shipment_type?.trim().toUpperCase() === 'PERSONAL')
+          .map((item) => item.personal_order_no?.trim())
+          .filter((no): no is string => !!no && invoicePdfSet.has(no))
+      ),
+    ];
+    return printInvoicesByOrderNos(targetNos);
+  }, [selectedRows, items, invoicePdfSet, t, printInvoicesByOrderNos]);
 
-  // 버튼 활성화 조건: 체크 중이 아니고, readyItems 의 P 상품 중 PDF 가진 것이 1개 이상
+  // 모달 [송장 출력] 버튼 활성화 조건 — readyItems 기준
   const invoicePrintable =
     !isCheckingInvoices && uniquePersonalOrderNos.some((no) => invoicePdfSet.has(no));
+
+  // 사이드바 [운송장] 버튼 활성화 조건 — 선택된 행 중 P + PDF 매칭 ≥ 1
+  const selectedShippingPrintable = useMemo(() => {
+    if (selectedRows.size === 0) return false;
+    for (const item of items) {
+      if (!selectedRows.has(item.id)) continue;
+      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') continue;
+      const no = item.personal_order_no?.trim();
+      if (no && invoicePdfSet.has(no)) return true;
+    }
+    return false;
+  }, [items, selectedRows, invoicePdfSet]);
 
   // ============================================================
   // 13) 반품 모달 — 체크박스 선택 시 선택 항목, 미선택 시 전체 항목
@@ -1451,7 +1491,7 @@ const ItemCheck: React.FC = () => {
         {/* ============================================================ */}
         <RightActionSidebar
           disabled={!selectedUserId || items.length === 0}
-          shippingEnabled={invoicePrintable}
+          shippingEnabled={selectedShippingPrintable}
           importBadgeCount={readyItems.length}
           onNoteClick={() => {
             if (selectedRows.size === 0) {
@@ -1464,7 +1504,7 @@ const ItemCheck: React.FC = () => {
           onMissingClick={() => { /* 미입고 기능은 별도 작업에서 구현 예정 */ }}
           onLabelClick={handleLabelClick}
           onImportClick={() => setIsReadyModalOpen(true)}
-          onShippingClick={handlePrintInvoices}
+          onShippingClick={handlePrintInvoicesFromSelection}
         />
       </div>
 
