@@ -1,4 +1,5 @@
 import type { FtOrderItem } from '../hooks/useFtData';
+import { resolveScanSizeCode } from '../../../lib/sizeCode';
 
 // ============================================================
 // 공통 라벨 저장 유틸 — [라벨] 버튼 + [입고]-[저장] 버튼 공용
@@ -45,17 +46,13 @@ export async function saveLabelData(params: LabelSaveParams): Promise<{
   }
 
   // ── 2) labelItems 구성 ──
-  const toSizeCode = (size: string | null | undefined): string | null => {
-    if (!size) return null;
-    const lower = size.toLowerCase().trim();
-    if (lower.includes('small'))  return 'A';
-    if (lower.includes('medium')) return 'B';
-    if (lower.includes('large'))  return 'C';
-    if (lower.startsWith('p-'))   return 'P';
-    if (lower.includes('direct')) return 'X';
-    return size;
-  };
-
+  //   shipment_size 는 화면 배지 / 스캔 검증과 동일한 단일 소스 함수 사용:
+  //     resolveScanSizeCode(shipment_type, coupang_shipment_size)
+  //     - PERSONAL → 'P'
+  //     - COUPANG + Small/Medium/Large → A/B/C
+  //     - COUPANG (size 매칭 실패) → 'X'
+  //     - DIRECT / 기타 / null → 'X'
+  //   화면 표시값과 DB 저장값이 항상 일치 (이전엔 coupang_shipment_size 만 봐서 P/X 누락 발생)
   const toLabelRow = (item: FtOrderItem, qty: number) => ({
     brand: brand || null,
     item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
@@ -64,7 +61,7 @@ export async function saveLabelData(params: LabelSaveParams): Promise<{
     product_no: item.item_no || '',
     composition: item.composition || null,
     recommanded_age: item.recommanded_age || null,
-    shipment_size: toSizeCode(item.coupang_shipment_size),
+    shipment_size: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
     operator_no: operatorNo,
   });
 
