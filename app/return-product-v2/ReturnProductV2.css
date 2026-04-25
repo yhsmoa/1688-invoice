@@ -333,7 +333,7 @@
   border: 1px solid #ddd;
 }
 
-/* 테이블 열 너비 (11컬럼: ☐/주문번호/상품명/수량/가격/배송비/서비스/요청/반품사유/상태/날짜) */
+/* 테이블 열 너비 (12컬럼: ☐/유형/주문번호/상품명/수량/가격/배송비/서비스/요청/반품사유/상태/날짜) */
 .return-v2-table th:nth-child(1),
 .return-v2-table td:nth-child(1) {
   width: 40px;
@@ -341,71 +341,78 @@
   padding: 0 !important;
 }
 
-/* 주문번호 */
+/* 유형 — CANCEL/RETURN 배지 (Phase 5) */
 .return-v2-table th:nth-child(2),
 .return-v2-table td:nth-child(2) {
+  width: 90px;
+  text-align: center;
+}
+
+/* 주문번호 */
+.return-v2-table th:nth-child(3),
+.return-v2-table td:nth-child(3) {
   width: 180px;
 }
 
 /* 상품명 (flex grow — 나머지 공간 자동) */
-.return-v2-table th:nth-child(3),
-.return-v2-table td:nth-child(3) {
+.return-v2-table th:nth-child(4),
+.return-v2-table td:nth-child(4) {
   min-width: 180px;
 }
 
 /* 수량 */
-.return-v2-table th:nth-child(4),
-.return-v2-table td:nth-child(4) {
+.return-v2-table th:nth-child(5),
+.return-v2-table td:nth-child(5) {
   width: 60px;
   text-align: center;
 }
 
 /* 가격 */
-.return-v2-table th:nth-child(5),
-.return-v2-table td:nth-child(5) {
-  width: 80px;
-  text-align: center;
-}
-
-/* 배송비 */
 .return-v2-table th:nth-child(6),
 .return-v2-table td:nth-child(6) {
   width: 80px;
   text-align: center;
 }
 
-/* 서비스 */
+/* 배송비 */
 .return-v2-table th:nth-child(7),
 .return-v2-table td:nth-child(7) {
   width: 80px;
   text-align: center;
 }
 
-/* 요청 */
+/* 서비스 */
 .return-v2-table th:nth-child(8),
 .return-v2-table td:nth-child(8) {
+  width: 80px;
+  text-align: center;
+}
+
+/* 요청 */
+.return-v2-table th:nth-child(9),
+.return-v2-table td:nth-child(9) {
   width: 95px;
   text-align: center;
 }
 
 /* 반품사유 */
-.return-v2-table th:nth-child(9),
-.return-v2-table td:nth-child(9) {
+.return-v2-table th:nth-child(10),
+.return-v2-table td:nth-child(10) {
   width: 170px;
   min-width: 170px;
   text-align: left;
 }
 
 /* 상태 */
-.return-v2-table th:nth-child(10),
-.return-v2-table td:nth-child(10) {
+.return-v2-table th:nth-child(11),
+.return-v2-table td:nth-child(11) {
   width: 90px;
   text-align: center;
 }
 
 /* 날짜 */
-.return-v2-table th:nth-child(11),
-.return-v2-table td:nth-child(11) {
+.return-v2-table th:nth-child(12),
+.return-v2-table td:nth-child(12) {
   width: 120px;
 }
 
@@ -534,6 +541,34 @@
 .return-v2-status-badge.DONE {
   background-color: #dbeafe;
   color: #1e40af;
+}
+
+/* ============================================================ */
+/* 유형 배지 — CANCEL(주문취소) / RETURN(반품접수) 구분 (Phase 5) */
+/* ============================================================ */
+.return-v2-type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: center;
+  user-select: none;
+}
+
+/* CANCEL — 주문취소 (회색 톤) */
+.return-v2-type-badge.return-v2-type-cancel {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+/* RETURN — 반품접수 (적색 톤) */
+.return-v2-type-badge.return-v2-type-return {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 /* ============================================================ */

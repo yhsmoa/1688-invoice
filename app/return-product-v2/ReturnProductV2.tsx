@@ -53,6 +53,18 @@ const STATUS_OPTIONS = [
 /** 요청자 옵션 (드롭다운) */
 const REQUESTER_OPTIONS = ['유화무역', '고객'];
 
+/** cancel_type → 화면 표시 라벨 (CANCEL=주문취소, RETURN=반품접수) */
+const TYPE_LABEL: Record<string, string> = {
+  CANCEL: '주문취소',
+  RETURN: '반품접수',
+};
+
+/** cancel_type → 배지 CSS 클래스 (시각적 구분) */
+const TYPE_BADGE_CLASS: Record<string, string> = {
+  CANCEL: 'return-v2-type-cancel',
+  RETURN: 'return-v2-type-return',
+};
+
 /** 인라인 편집 가능한 status 집합 (접수·진행 단계만) */
 const EDITABLE_STATUSES = new Set(['PENDING', 'PROCESSING']);
 
@@ -87,6 +99,8 @@ export interface CancelDetail {
   '1688_order_no': string | null;
   requester: string | null;
   fulfillments_id: string | null;
+  /** 'CANCEL'(주문취소) | 'RETURN'(반품접수) — API GET에서 NULL → 'CANCEL' fallback 처리됨 */
+  cancel_type: string | null;
 }
 
 type EditField = 'total_price_cny' | 'delivery_price_cny' | 'service_fee' | 'cancel_reason';
@@ -680,6 +694,7 @@ const ReturnProductV2: React.FC = () => {
                           className="return-v2-table-checkbox"
                         />
                       </th>
+                      <th>유형</th>
                       <th>주문번호</th>
                       <th>상품명</th>
                       <th>수량</th>
@@ -695,7 +710,7 @@ const ReturnProductV2: React.FC = () => {
                   <tbody>
                     {paginatedDetails.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="return-v2-empty-data">
+                        <td colSpan={12} className="return-v2-empty-data">
                           {selectedUserId ? t('importProduct.table.noData') : '사용자를 선택하세요.'}
                         </td>
                       </tr>
@@ -720,7 +735,16 @@ const ReturnProductV2: React.FC = () => {
                               />
                             </td>
 
-                            {/* col 2: 주문번호 (item_no + 1688_order_no 2행) */}
+                            {/* col 2: 유형 (CANCEL=주문취소 / RETURN=반품접수) — Phase 5 */}
+                            <td style={{ textAlign: 'center' }}>
+                              <span
+                                className={`return-v2-type-badge ${TYPE_BADGE_CLASS[detail.cancel_type ?? 'CANCEL'] || ''}`}
+                              >
+                                {TYPE_LABEL[detail.cancel_type ?? 'CANCEL'] || detail.cancel_type || '-'}
+                              </span>
+                            </td>
+
+                            {/* col 3: 주문번호 (item_no + 1688_order_no 2행) */}
                             <td>
                               <div className="return-v2-two-line-cell">
                                 <span className="return-v2-order-number-text">
