@@ -25,6 +25,8 @@ interface V2CancelModalProps {
   onSaveComplete: () => void;
   /** item_id → ARRIVAL 합계 — 입력 한도 계산용. 미제공 시 한도 검증 skip (구버전 호환) */
   arrivalMap?: Map<string, number>;
+  /** item_id → CANCEL 합계 (기존) — CANCEL 한도 계산용 (기존 취소분 중복 방지) */
+  cancelMap?: Map<string, number>;
   /** item_id → RETURN 합계 (기존) — RETURN 한도 계산용 */
   returnMap?: Map<string, number>;
 }
@@ -67,6 +69,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
   selectedOperator,
   onSaveComplete,
   arrivalMap,
+  cancelMap,
   returnMap,
 }) => {
   // ── 아이템별 입력 상태 (key = item.id)
@@ -103,23 +106,24 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
   // ============================================================
   // 입력 한도 계산 (cancelType 별)
-  //   CANCEL: order_qty - ARRIVAL
-  //   RETURN: ARRIVAL - 기존 RETURN
+  //   CANCEL: order_qty - ARRIVAL - 기존CANCEL  (미입고분 안에서, 중복 취소 방지)
+  //   RETURN: ARRIVAL - 기존RETURN              (입고분 안에서)
   //   maps 미제공 시 Infinity (검증 skip — 구버전 호환)
   // ============================================================
   const computeInputLimit = useCallback(
     (item: FtOrderItem): number => {
-      if (!cancelType) return Infinity;        // 타입 미선택 시 한도 적용 안 함
-      if (!arrivalMap) return Infinity;         // map 미제공 (구버전 호환)
+      if (!cancelType) return Infinity;   // 타입 미선택 시 한도 적용 안 함
+      if (!arrivalMap) return Infinity;   // map 미제공 (구버전 호환)
       const arrival = arrivalMap.get(item.id) ?? 0;
       if (cancelType === 'CANCEL') {
-        return Math.max(0, (item.order_qty ?? 0) - arrival);
+        const existingCancel = cancelMap?.get(item.id) ?? 0;
+        return Math.max(0, (item.order_qty ?? 0) - arrival - existingCancel);
       }
       // RETURN
       const existingReturn = returnMap?.get(item.id) ?? 0;
       return Math.max(0, arrival - existingReturn);
     },
-    [cancelType, arrivalMap, returnMap]
+    [cancelType, arrivalMap, cancelMap, returnMap]
   );
 
   // ============================================================
