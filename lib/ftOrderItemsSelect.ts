@@ -36,6 +36,7 @@ export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   'product_id',
   'site_url',
   '1688_order_id',
+  '1688_offer_id',
   'shipment_type',
   'customs_category',
   'created_at',

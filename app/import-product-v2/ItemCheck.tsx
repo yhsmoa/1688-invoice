@@ -92,7 +92,7 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 2-3) [상품별로 보기] — 정렬 전환 (전역 적용)
-  //      체크 시: product_id(offer_id) ASC → item_no ASC (동일 상품 그룹핑)
+  //      체크 시: 1688_offer_id ASC → item_no ASC (동일 1688 offer 그룹핑)
   //      해제 시: 원본 순서 (서버 기본 정렬)
   //      페이지 접속 시 기본 false. 사용자 수동 체크로만 동작.
   // ============================================================
@@ -102,7 +102,7 @@ const ItemCheck: React.FC = () => {
   const baseActiveItems =
     searchType === '배송번호' && deliveryItems !== null ? deliveryItems : items;
 
-  // groupByProduct 체크 시 클라이언트 정렬 (product_id → item_no)
+  // groupByProduct 체크 시 클라이언트 정렬 (1688_offer_id → item_no)
   //   로컬 정렬 → 서버 재조회 불필요 → 토글 반응 즉시
   const activeItems = useMemo(() => {
     if (!groupByProduct) return baseActiveItems;
@@ -113,7 +113,7 @@ const ItemCheck: React.FC = () => {
       return String(a).localeCompare(String(b), undefined, { numeric: true });
     };
     return [...baseActiveItems].sort((x, y) => {
-      const p = cmp(x.product_id, y.product_id);
+      const p = cmp(x['1688_offer_id'], y['1688_offer_id']);
       if (p !== 0) return p;
       return cmp(x.item_no, y.item_no);
     });
