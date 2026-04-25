@@ -1,22 +1,98 @@
 // ============================================================
-// 클라이언트 전용 — 송장 PDF 크롭 + 병합 + 인쇄
+// 클라이언트 전용 — 송장 PDF 크롭 + QR 코드 추가 + 병합 + 인쇄
 //
 // 본 모듈은 브라우저 환경(canvas, window)에서만 동작한다.
 // 서버 측에서 import 금지.
 //
 // 주요 기능:
-//   1. cropPdfToContent(buf)
+//   1. cropPdfToContent(buf, qrText?)
 //      - pdfjs-dist 로 콘텐츠 영역 픽셀 스캔
 //      - /Rotate 메타데이터를 보존하며 저장 좌표계로 역변환
 //      - pdf-lib CropBox + MediaBox 재설정
-//   2. mergeAndPrint(buffers)
-//      - 여러 ArrayBuffer 를 병합
+//      - qrText 제공 시 QR 코드를 시각적 우측 상단에 그림 (회전 보정)
+//   2. mergeAndPrint(buffers, qrTexts?)
+//      - 여러 ArrayBuffer 를 병합 (qrTexts[i] 가 buffers[i] 의 QR 텍스트)
 //      - hidden iframe + contentWindow.print() 으로 인쇄
 //
 // 레퍼런스: d:/project/stock_management/src/renderer/services/invoiceService.ts
 // ============================================================
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFPage, degrees } from 'pdf-lib';
+import QRCode from 'qrcode';
+
+// ── QR 코드 크기/여백 (PDF pt 단위, 1pt ≈ 0.353mm) ──
+const QR_SIZE_PT = 50;     // ≈ 17.6mm 정사각형 (라벨 인쇄·스캔 적정)
+const QR_MARGIN_PT = 8;    // ≈ 2.8mm 가장자리 여백
+
+/**
+ * 시각적 우측 상단(visual top-right)에 QR 을 업라이트로 그린다.
+ * /Rotate 메타데이터를 고려해 stored 좌표 + drawImage rotate 를 계산.
+ *
+ * pdf-lib drawImage 의 rotate 는 (x, y) 앵커(이미지 BL) 기준 CCW 양수.
+ * 뷰어가 페이지를 R° CW 회전 시키므로, 이미지를 -R° (CCW = R° CW 보정) 회전
+ * → 결과적으로 이미지가 화면에서 업라이트로 보임.
+ */
+async function drawQrAtVisualTopRight(
+  pdfDoc: PDFDocument,
+  page: PDFPage,
+  qrText: string,
+  rotation: 0 | 90 | 180 | 270,
+  cropX: number,
+  cropY: number,
+  cropW: number,
+  cropH: number,
+): Promise<void> {
+  // QR PNG Data URL 생성 → pdf-lib embedPng 가 data URL 직접 수용
+  const qrDataUrl = await QRCode.toDataURL(qrText, {
+    margin: 0,
+    width: 200,                       // 픽셀 해상도
+    errorCorrectionLevel: 'M',
+  });
+  const qrImage = await pdfDoc.embedPng(qrDataUrl);
+
+  // 회전별 (BL 앵커 위치, 이미지 회전각) 계산
+  //   각 case 의 rotateDeg 는 pdf-lib 기준 (CCW 양수)
+  let x: number;
+  let y: number;
+  let rotateDeg: number;
+
+  switch (rotation) {
+    case 0:
+      // 기본 — 이미지 BL 앵커가 stored TR 안쪽 (margin 내부)
+      x = cropX + cropW - QR_SIZE_PT - QR_MARGIN_PT;
+      y = cropY + cropH - QR_SIZE_PT - QR_MARGIN_PT;
+      rotateDeg = 0;
+      break;
+    case 90:
+      // 뷰어가 90° CW 회전 → 시각 TR = stored TL 영역.
+      // 이미지를 -90° (CCW 270 = CW 90 보정) 회전. BL 앵커는 회전 후 bbox 가
+      // stored TL 안쪽 사각형에 들어가도록 (cropX+QR+M, cropY+H-QR-M).
+      x = cropX + QR_SIZE_PT + QR_MARGIN_PT;
+      y = cropY + cropH - QR_SIZE_PT - QR_MARGIN_PT;
+      rotateDeg = -90;
+      break;
+    case 180:
+      // 뷰어가 180° 회전 → 시각 TR = stored BL 영역. 이미지 180° 회전.
+      x = cropX + QR_SIZE_PT + QR_MARGIN_PT;
+      y = cropY + QR_SIZE_PT + QR_MARGIN_PT;
+      rotateDeg = 180;
+      break;
+    case 270:
+      // 뷰어가 270° CW (= 90° CCW) → 시각 TR = stored BR 영역. 이미지 90° CCW (= -270 ≡ 90).
+      x = cropX + cropW - QR_SIZE_PT - QR_MARGIN_PT;
+      y = cropY + QR_SIZE_PT + QR_MARGIN_PT;
+      rotateDeg = 90;
+      break;
+  }
+
+  page.drawImage(qrImage, {
+    x,
+    y,
+    width: QR_SIZE_PT,
+    height: QR_SIZE_PT,
+    rotate: degrees(rotateDeg),
+  });
+}
 
 // ── pdfjs-dist 워커 설정 ──────────────────────────────────────
 // Next.js 환경에서는 /public/pdf-worker/pdf.worker.min.mjs 정적 서빙 경로 사용
@@ -43,7 +119,10 @@ async function getPdfjs(): Promise<typeof import('pdfjs-dist')> {
 //   270: stored.x = display.y,        stored.y = H - display.x
 //   (W = 저장 페이지 너비, H = 저장 페이지 높이)
 // ============================================================
-export async function cropPdfToContent(arrayBuffer: ArrayBuffer): Promise<PDFDocument> {
+export async function cropPdfToContent(
+  arrayBuffer: ArrayBuffer,
+  qrText?: string,
+): Promise<PDFDocument> {
   const pdfjsLib = await getPdfjs();
 
   // ── 1) 콘텐츠 영역 감지 (저해상도 픽셀 스캔) ──
@@ -153,6 +232,26 @@ export async function cropPdfToContent(arrayBuffer: ArrayBuffer): Promise<PDFDoc
   // ── 4) CropBox + MediaBox 설정 (원본 /Rotate 그대로 보존) ──
   srcPage.setCropBox(storedX, storedY, storedW, storedH);
   srcPage.setMediaBox(storedX, storedY, storedW, storedH);
+
+  // ── 5) (옵션) QR 코드를 시각 우측 상단에 추가 (회전 보정) ──
+  //    실패 시 인쇄 자체는 계속 → console.error 로 디버그 가능
+  if (qrText) {
+    try {
+      await drawQrAtVisualTopRight(
+        srcDoc,
+        srcPage,
+        qrText,
+        rotation,
+        storedX,
+        storedY,
+        storedW,
+        storedH,
+      );
+    } catch (err) {
+      console.error(`QR 그리기 실패 (text="${qrText}"):`, err);
+    }
+  }
+
   return srcDoc;
 }
 
@@ -172,13 +271,17 @@ export interface MergePrintResult {
   failedIndices: number[];
 }
 
-export async function mergeAndPrint(buffers: ArrayBuffer[]): Promise<MergePrintResult> {
+export async function mergeAndPrint(
+  buffers: ArrayBuffer[],
+  qrTexts?: string[],   // buffers[i] 의 QR 텍스트 (personal_order_no 등). 미제공 시 QR 없이 인쇄.
+): Promise<MergePrintResult> {
   const failedIndices: number[] = [];
   const mergedDoc = await PDFDocument.create();
 
   for (let i = 0; i < buffers.length; i++) {
     try {
-      const croppedDoc = await cropPdfToContent(buffers[i]);
+      const qrText = qrTexts?.[i];
+      const croppedDoc = await cropPdfToContent(buffers[i], qrText);
       const [copiedPage] = await mergedDoc.copyPages(croppedDoc, [0]);
       mergedDoc.addPage(copiedPage);
     } catch (err) {

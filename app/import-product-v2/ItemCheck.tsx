@@ -663,36 +663,41 @@ const ItemCheck: React.FC = () => {
         }
 
         // 2) URL → ArrayBuffer 병렬 다운로드 (Promise.all)
+        //    no↔buffer 대응 보존 → mergeAndPrint 에 QR 텍스트(personal_order_no) 동시 전달
         const urlsMap = json.urls as Record<string, string | null>;
         const downloadTasks = targetNos
           .map((no) => ({ no, url: urlsMap[no] }))
           .filter((task): task is { no: string; url: string } => !!task.url);
 
-        const results = await Promise.all(
+        const results: { no: string; buffer: ArrayBuffer | null }[] = await Promise.all(
           downloadTasks.map(async ({ no, url }) => {
             try {
               const pdfRes = await fetch(url);
               if (!pdfRes.ok) {
                 console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
-                return null;
+                return { no, buffer: null };
               }
-              return await pdfRes.arrayBuffer();
+              return { no, buffer: await pdfRes.arrayBuffer() };
             } catch (err) {
               console.error(`PDF 다운로드 오류 (${no}):`, err);
-              return null;
+              return { no, buffer: null };
             }
           })
         );
 
-        const buffers: ArrayBuffer[] = results.filter((b): b is ArrayBuffer => b !== null);
+        const successful = results.filter(
+          (r): r is { no: string; buffer: ArrayBuffer } => r.buffer !== null,
+        );
+        const buffers = successful.map((r) => r.buffer);
+        const qrTexts = successful.map((r) => r.no);  // personal_order_no = QR 내용 (라벨 표준)
 
         if (buffers.length === 0) {
           alert(t('importProductV2.alerts.invoiceDownloadFailed'));
           return;
         }
 
-        // 3) 크롭 + 병합 + 인쇄
-        const result = await mergeAndPrint(buffers);
+        // 3) 크롭 + QR 추가 + 병합 + 인쇄
+        const result = await mergeAndPrint(buffers, qrTexts);
         if (result.success === 0) {
           alert(t('importProductV2.alerts.invoicePrintFailed'));
         }

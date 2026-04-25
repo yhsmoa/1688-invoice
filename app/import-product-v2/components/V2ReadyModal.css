@@ -137,23 +137,40 @@
   font-size: 12px;
 }
 
-/* 상품 정보 */
+/* 상품 정보 — container query 컨텍스트 (카드 너비 기준) */
 .v2-ready-item-info {
   flex: 1;
+  min-width: 0;                 /* flex 부모에서 축소 허용 */
+  container-type: inline-size;
+  container-name: pr-item;
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 13px;
 }
 
-/* 글번호 | 바코드 */
+/* 글번호 행: 무조건 1줄 — 컨테이너 좁아지면 단계적 폰트 축소 (아래 @container) */
 .v2-pr-order-barcode-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;            /* 줄바꿈 방지 */
+  min-width: 0;
   font-size: 14px;
+  line-height: 1.4;
   color: #666;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 컨테이너 폭 단계별 폰트 축소 — 모달 너비/화면 크기 변화에 따라 자동 조정 */
+@container pr-item (max-width: 380px) {
+  .v2-pr-order-barcode-row { font-size: 12px; gap: 6px; }
+  .v2-pr-item-no-badge { font-size: 12px; padding: 1px 6px; }
+}
+@container pr-item (max-width: 300px) {
+  .v2-pr-order-barcode-row { font-size: 11px; gap: 4px; }
+  .v2-pr-item-no-badge { font-size: 11px; padding: 1px 5px; }
 }
 
 .v2-pr-separator {
