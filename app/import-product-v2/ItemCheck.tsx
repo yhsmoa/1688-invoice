@@ -1523,6 +1523,8 @@ const ItemCheck: React.FC = () => {
         items={cancelItems}
         selectedUserId={selectedUserId}
         selectedOperator={selectedWorker}
+        arrivalMap={arrivalMap}
+        returnMap={returnMap}
         onSaveComplete={() => {
           setIsCancelModalOpen(false);
           setSelectedRows(new Set());

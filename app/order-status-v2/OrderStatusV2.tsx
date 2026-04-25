@@ -737,6 +737,8 @@ const OrderStatusV2: React.FC = () => {
         items={cancelItems}
         selectedUserId={selectedUserId}
         selectedOperator=""  /* order-status-v2 에는 담당자 드롭박스가 없음 → null 저장 */
+        arrivalMap={arrivalMap}
+        returnMap={returnMap}
         onSaveComplete={() => {
           setIsCancelModalOpen(false);
           setSelectedRows(new Set());

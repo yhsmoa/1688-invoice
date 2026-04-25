@@ -8,6 +8,10 @@ import './V2CancelModal.css';
 // 타입 정의
 // ============================================================
 
+/** 취소 타입 — Phase 1 마이그레이션으로 분리됨 */
+type CancelType = 'CANCEL' | 'RETURN';
+type Requester = '유화무역' | '고객';
+
 interface V2CancelModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,6 +23,10 @@ interface V2CancelModalProps {
   selectedOperator: string;
   /** 저장 완료 후 콜백 (모달 닫기 + 목록 새로고침) */
   onSaveComplete: () => void;
+  /** item_id → ARRIVAL 합계 — 입력 한도 계산용. 미제공 시 한도 검증 skip (구버전 호환) */
+  arrivalMap?: Map<string, number>;
+  /** item_id → RETURN 합계 (기존) — RETURN 한도 계산용 */
+  returnMap?: Map<string, number>;
 }
 
 /** 아이템별 입력 폼 데이터 */
@@ -38,10 +46,17 @@ const EMPTY_FORM: ItemFormData = {
   cancel_reason: '',
 };
 
-type Requester = '유화무역' | '고객';
-
 // ============================================================
 // V2CancelModal 컴포넌트
+//
+// Phase 3 변경 사항:
+//   - 타입 (주문 취소 / 반품 접수) 라디오 신규 — 미선택 기본
+//   - 요청자 라디오 미선택 기본 (이전: 유화무역 자동 선택)
+//   - 입력 한도 검증:
+//       CANCEL: qty ≤ order_qty - ARRIVAL   (입고 안 된 수량 안에서만 취소)
+//       RETURN: qty ≤ ARRIVAL - 기존 RETURN  (입고된 것 중 안 돌려보낸 만큼만)
+//   - 두 라디오 모두 선택해야 [반품 접수] 활성
+//   - cancel_type 을 API 에 전달
 // ============================================================
 
 const V2CancelModal: React.FC<V2CancelModalProps> = ({
@@ -51,16 +66,19 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
   selectedUserId,
   selectedOperator,
   onSaveComplete,
+  arrivalMap,
+  returnMap,
 }) => {
   // ── 아이템별 입력 상태 (key = item.id)
   const [formData, setFormData] = useState<Map<string, ItemFormData>>(new Map());
 
-  // ── 공통 필드
-  const [requester, setRequester] = useState<Requester>('유화무역');
+  // ── 공통 필드 — 모두 미선택 기본 (사용자가 명시적으로 선택해야 함)
+  const [cancelType, setCancelType] = useState<CancelType | null>(null);
+  const [requester, setRequester] = useState<Requester | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savingStep, setSavingStep] = useState<'saving' | 'verifying'>('saving');
 
-  // ── 모달 열릴 때마다 폼 초기화
+  // ── 모달 열릴 때마다 폼 초기화 (cancelType, requester 모두 null 로)
   useEffect(() => {
     if (isOpen) {
       const initialMap = new Map<string, ItemFormData>();
@@ -68,7 +86,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         initialMap.set(item.id, { ...EMPTY_FORM });
       });
       setFormData(initialMap);
-      setRequester('유화무역');
+      setCancelType(null);
+      setRequester(null);
     }
   }, [isOpen, items]);
 
@@ -81,6 +100,27 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // ============================================================
+  // 입력 한도 계산 (cancelType 별)
+  //   CANCEL: order_qty - ARRIVAL
+  //   RETURN: ARRIVAL - 기존 RETURN
+  //   maps 미제공 시 Infinity (검증 skip — 구버전 호환)
+  // ============================================================
+  const computeInputLimit = useCallback(
+    (item: FtOrderItem): number => {
+      if (!cancelType) return Infinity;        // 타입 미선택 시 한도 적용 안 함
+      if (!arrivalMap) return Infinity;         // map 미제공 (구버전 호환)
+      const arrival = arrivalMap.get(item.id) ?? 0;
+      if (cancelType === 'CANCEL') {
+        return Math.max(0, (item.order_qty ?? 0) - arrival);
+      }
+      // RETURN
+      const existingReturn = returnMap?.get(item.id) ?? 0;
+      return Math.max(0, arrival - existingReturn);
+    },
+    [cancelType, arrivalMap, returnMap]
+  );
 
   // ============================================================
   // 아이템별 필드 업데이트
@@ -108,21 +148,42 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
   );
 
   // ============================================================
-  // 유효성: qty > 0 인 항목이 하나 이상
+  // 유효성:
+  //   1. cancelType + requester 둘 다 선택됨
+  //   2. qty > 0 인 항목이 하나 이상
+  //   3. 모든 qty 가 inputLimit 이하 (한도 초과 입력 금지)
   // ============================================================
-  const isValid = (() => {
-    for (const [, data] of formData) {
-      const q = parseInt(data.qty, 10);
-      if (!isNaN(q) && q > 0) return true;
+  const validation = (() => {
+    if (!cancelType || !requester) {
+      return { valid: false, hasQty: false, errors: [] as string[] };
     }
-    return false;
+    let hasAnyQty = false;
+    const errors: string[] = [];
+    for (const item of items) {
+      const data = formData.get(item.id);
+      if (!data) continue;
+      const q = parseInt(data.qty, 10);
+      if (isNaN(q) || q <= 0) continue;
+      hasAnyQty = true;
+      const limit = computeInputLimit(item);
+      if (q > limit) {
+        errors.push(`${item.item_no || item.id}: 입력 ${q} > 한도 ${limit}`);
+      }
+    }
+    return { valid: hasAnyQty && errors.length === 0, hasQty: hasAnyQty, errors };
   })();
 
   // ============================================================
-  // [취소 접수] 클릭 — API 호출
+  // [반품 접수] 클릭 — API 호출
   // ============================================================
   const handleSubmit = useCallback(async () => {
-    if (!isValid || isSaving) return;
+    if (!validation.valid || isSaving) return;
+    if (!cancelType || !requester) return;
+
+    if (validation.errors.length > 0) {
+      alert('한도 초과 항목이 있습니다:\n\n' + validation.errors.join('\n'));
+      return;
+    }
 
     // qty가 입력된 항목만 전송
     const submitItems = items
@@ -146,6 +207,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           service_fee: data.service_fee ? parseFloat(data.service_fee) : null,
           cancel_reason: data.cancel_reason || null,
           requester,
+          cancel_type: cancelType,
         };
       })
       .filter(Boolean);
@@ -179,7 +241,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [isValid, isSaving, items, formData, requester, selectedUserId, selectedOperator, onSaveComplete]);
+  }, [validation, isSaving, items, formData, requester, cancelType, selectedUserId, selectedOperator, onSaveComplete]);
 
   if (!isOpen) return null;
 
@@ -195,7 +257,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
             헤더
         ──────────────────────────────────────── */}
         <div className="v2-cancel-header">
-          <h2>취소 접수</h2>
+          <h2>취소 / 반품 접수</h2>
           <button className="v2-cancel-close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -207,9 +269,29 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
             <div className="v2-cancel-empty">선택된 항목이 없습니다.</div>
           ) : (
             <>
-              {/* ── 1. 요청자 선택 (최상단) */}
+              {/* ── 1. 타입 선택 (필수, 미선택 기본) ── */}
               <div className="v2-cancel-global-section">
-                <span className="v2-cancel-field-label">요청자</span>
+                <span className="v2-cancel-field-label v2-cancel-field-label-required">
+                  타입 <span className="v2-cancel-required">* 필수</span>
+                </span>
+                <div className="v2-cancel-requester-toggle">
+                  {(['CANCEL', 'RETURN'] as CancelType[]).map((c) => (
+                    <button
+                      key={c}
+                      className={`v2-cancel-requester-btn ${cancelType === c ? 'active' : ''}`}
+                      onClick={() => setCancelType(c)}
+                    >
+                      {c === 'CANCEL' ? '주문 취소' : '반품 접수'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── 2. 요청자 선택 (필수, 미선택 기본) ── */}
+              <div className="v2-cancel-global-section">
+                <span className="v2-cancel-field-label v2-cancel-field-label-required">
+                  요청자 <span className="v2-cancel-required">* 필수</span>
+                </span>
                 <div className="v2-cancel-requester-toggle">
                   {(['유화무역', '고객'] as Requester[]).map((r) => (
                     <button
@@ -223,9 +305,13 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                 </div>
               </div>
 
-              {/* ── 2. 아이템 카드 목록 */}
+              {/* ── 3. 아이템 카드 목록 */}
               {items.map((item) => {
                 const data = formData.get(item.id) ?? { ...EMPTY_FORM };
+                const limit = computeInputLimit(item);
+                const qtyNum = parseInt(data.qty, 10);
+                const isOverLimit = !isNaN(qtyNum) && qtyNum > limit && cancelType !== null;
+
                 return (
                   <div key={item.id} className="v2-cancel-item-card">
                     {/* ── 카드 헤더: 배지 + 상품 정보 */}
@@ -242,16 +328,20 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
                     {/* ── 입력 필드 그리드: 수량 | 가격 | 배송비 | 서비스료 */}
                     <div className="v2-cancel-item-fields">
-                      {/* 수량 (필수) */}
+                      {/* 수량 (필수) — 한도 표시 + 초과 입력 시 강조 */}
                       <div className="v2-cancel-field-group">
                         <label className="v2-cancel-field-label v2-cancel-field-label-required">
                           수량 <span className="v2-cancel-required">* 필수</span>
+                          {cancelType && limit !== Infinity && (
+                            <span className="v2-cancel-limit-hint"> (최대 {limit})</span>
+                          )}
                         </label>
                         <input
                           type="number"
-                          className="v2-cancel-input"
+                          className={`v2-cancel-input ${isOverLimit ? 'v2-cancel-input-error' : ''}`}
                           value={data.qty}
                           min={1}
+                          max={limit !== Infinity ? limit : undefined}
                           placeholder="수량 입력"
                           onChange={(e) => updateField(item.id, 'qty', e.target.value)}
                         />
@@ -316,7 +406,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         </div>
 
         {/* ────────────────────────────────────────
-            푸터 — 닫기 / 취소 접수 버튼
+            푸터 — 닫기 / 반품 접수 버튼
         ──────────────────────────────────────── */}
         <div className="v2-cancel-footer">
           <button className="v2-cancel-btn-secondary" onClick={onClose} disabled={isSaving}>
@@ -325,7 +415,14 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           <button
             className="v2-cancel-btn-primary"
             onClick={handleSubmit}
-            disabled={!isValid || isSaving || !selectedUserId}
+            disabled={!validation.valid || isSaving || !selectedUserId}
+            title={
+              !cancelType ? '타입을 먼저 선택해주세요' :
+              !requester ? '요청자를 먼저 선택해주세요' :
+              !validation.hasQty ? '수량을 입력하세요' :
+              validation.errors.length > 0 ? '한도 초과 항목이 있습니다' :
+              undefined
+            }
           >
             {isSaving ? (
               <span className="v2-cancel-saving">
@@ -333,7 +430,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                 {savingStep === 'saving' ? '저장 중...' : '검증 중...'}
               </span>
             ) : (
-              '반품 접수'
+              '접수'
             )}
           </button>
         </div>
