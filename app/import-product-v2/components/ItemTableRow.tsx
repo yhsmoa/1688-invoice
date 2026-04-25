@@ -20,13 +20,17 @@ interface ItemTableRowProps {
   editingCell: { id: string; field: string } | null;
   cellValue: string;
   importQtyValue: number | undefined;
-  /** ft_fulfillments type=ARRIVAL quantity 합계 */
+  /** ft_fulfillment_inbounds type=ARRIVAL quantity 합계 */
   arrivalQty: number;
-  /** ft_fulfillments type=PACKED quantity 합계 */
+  /** ft_fulfillment_outbounds type=PACKED quantity 합계 (전체) */
   packedQty: number;
-  /** ft_fulfillments type=CANCEL quantity 합계 */
+  /** ft_fulfillment_inbounds type=CANCEL quantity 합계 (raw) — 주문 취소 */
   cancelQty: number;
-  /** ft_fulfillments type=SHIPMENT quantity 합계 */
+  /** ft_fulfillment_inbounds type=RETURN quantity 합계 (raw) — 반품 접수 */
+  returnQty: number;
+  /** PACKED + shipment_id NOT NULL (item 기준) — 진행 공식용 */
+  shippedItemQty: number;
+  /** product_id 기준 출고 합계 (출고 컬럼 표시용) */
   shipmentQty: number;
   /** Storage 에 해당 personal_order_no.pdf 존재 여부 — P 배지 '운송장 출력' 조건 */
   hasInvoicePdf: boolean;
@@ -56,6 +60,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   arrivalQty,
   packedQty,
   cancelQty,
+  returnQty,
+  shippedItemQty,
   shipmentQty,
   hasInvoicePdf,
   onSelectRow,
@@ -73,8 +79,15 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 진행 = 개수 - 입고 - 취소
-  const progressQty = (item.order_qty ?? 0) - arrivalQty - cancelQty;
+  // 진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw, 종결 잔여 의미)
+  //   - CANCEL: 주문 취소 (단순 접수도 차감 — raw)
+  //   - RETURN: 반품 접수 (입고 후 돌려보냄, 단순 접수도 차감 — raw)
+  //   - 출고완료PACKED: shipment_id 부여된 PACKED (출고 V2 → 쉽먼트 V2 [출고] 시점)
+  const progressQty =
+    (item.order_qty ?? 0) - cancelQty - returnQty - shippedItemQty;
+
+  // 취소 컬럼 표시값 — CANCEL + RETURN 합산 (사용자 결정: 단일 컬럼 합산)
+  const cancelDisplayQty = cancelQty + returnQty;
 
   // 입고 열에 표시할 값: 수정값 > 0이면 수정값, 아니면 빈칸
   const displayImportQty = importQtyValue != null ? importQtyValue : null;
@@ -303,10 +316,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         )}
       </td>
 
-      {/* 취소 — ft_fulfillments type=CANCEL quantity 합계 */}
+      {/* 취소 — CANCEL + RETURN 합산 표시 (사용자 결정: 단일 컬럼) */}
       <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
-        {cancelQty > 0 && (
-          <span className="v2-qty-badge v2-cancel-qty">{cancelQty}</span>
+        {cancelDisplayQty > 0 && (
+          <span className="v2-qty-badge v2-cancel-qty">{cancelDisplayQty}</span>
         )}
       </td>
 

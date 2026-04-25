@@ -128,17 +128,23 @@ export function useFtOrderItems() {
 }
 
 // ============================================================
-// useFtFulfillmentSummary — ARRIVAL/PACKED/CANCEL/SHIPMENT 집계
+// useFtFulfillmentSummary — ARRIVAL/PACKED/CANCEL/RETURN/SHIPMENT 집계
 //   · items 변경 시 자동 refetch
 //   · rawFulfillments: FulfillmentLogModal 표시용 원본
+//
+// returnMap, shippedItemMap 신규 — 진행 공식 갱신용:
+//   진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw)
 // ============================================================
 type FulfillmentMaps = {
   arrivalMap: Map<string, number>;
   packedMap: Map<string, number>;
   cancelMap: Map<string, number>;
+  returnMap: Map<string, number>;
   shipmentMap: Map<string, number>;
   /** PACKED + shipment_id NOT NULL → product_id 기준 출고 집계 */
   exportMap: Map<string, number>;
+  /** PACKED + shipment_id NOT NULL → order_item_id 기준 (진행 공식용) */
+  shippedItemMap: Map<string, number>;
   rawFulfillments: FulfillmentRow[];
 };
 
@@ -146,8 +152,10 @@ const EMPTY_MAPS: FulfillmentMaps = {
   arrivalMap: new Map(),
   packedMap: new Map(),
   cancelMap: new Map(),
+  returnMap: new Map(),
   shipmentMap: new Map(),
   exportMap: new Map(),
+  shippedItemMap: new Map(),
   rawFulfillments: [],
 };
 
@@ -184,8 +192,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
           const arrival  = new Map<string, number>();
           const packed   = new Map<string, number>();
           const cancel   = new Map<string, number>();
+          const ret      = new Map<string, number>();
           const shipment = new Map<string, number>();
           const exportMap = new Map<string, number>();
+          const shippedItem = new Map<string, number>();
 
           for (const row of json.data as FulfillmentRow[]) {
             const { order_item_id, quantity, type, product_id, shipment_id } = row;
@@ -195,11 +205,16 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
               arrival.set(order_item_id, (arrival.get(order_item_id) ?? 0) + qty);
             } else if (type === 'PACKED') {
               packed.set(order_item_id, (packed.get(order_item_id) ?? 0) + qty);
-              if (shipment_id != null && product_id) {
-                exportMap.set(product_id, (exportMap.get(product_id) ?? 0) + qty);
+              if (shipment_id != null) {
+                shippedItem.set(order_item_id, (shippedItem.get(order_item_id) ?? 0) + qty);
+                if (product_id) {
+                  exportMap.set(product_id, (exportMap.get(product_id) ?? 0) + qty);
+                }
               }
             } else if (type === 'CANCEL') {
               cancel.set(order_item_id, (cancel.get(order_item_id) ?? 0) + qty);
+            } else if (type === 'RETURN') {
+              ret.set(order_item_id, (ret.get(order_item_id) ?? 0) + qty);
             } else if (type === 'SHIPMENT') {
               shipment.set(order_item_id, (shipment.get(order_item_id) ?? 0) + qty);
             }
@@ -209,8 +224,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
             arrivalMap: arrival,
             packedMap: packed,
             cancelMap: cancel,
+            returnMap: ret,
             shipmentMap: shipment,
             exportMap,
+            shippedItemMap: shippedItem,
             rawFulfillments: json.data as FulfillmentRow[],
           });
         }

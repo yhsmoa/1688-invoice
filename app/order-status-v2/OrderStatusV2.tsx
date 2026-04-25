@@ -48,7 +48,9 @@ const OrderStatusV2: React.FC = () => {
     arrivalMap,
     packedMap,
     cancelMap,
+    returnMap,
     exportMap,
+    shippedItemMap,
     rawFulfillments,
     refreshFulfillments,
   } = useFtFulfillmentSummary(items);
@@ -529,8 +531,14 @@ const OrderStatusV2: React.FC = () => {
                       const arrivalQty = arrivalMap.get(item.id) ?? 0;
                       const packedQty = packedMap.get(item.id) ?? 0;
                       const cancelQty = cancelMap.get(item.id) ?? 0;
+                      const returnQty = returnMap.get(item.id) ?? 0;
+                      const shippedItemQty = shippedItemMap.get(item.id) ?? 0;
                       const shipmentQty = exportMap.get(item.product_id ?? '') ?? 0;
-                      const progressQty = (item.order_qty ?? 0) - arrivalQty - cancelQty;
+                      // 진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw)
+                      const progressQty =
+                        (item.order_qty ?? 0) - cancelQty - returnQty - shippedItemQty;
+                      // 취소 컬럼 표시 — CANCEL + RETURN 합산 (단일 컬럼)
+                      const cancelDisplayQty = cancelQty + returnQty;
 
                       // ── 타입 배지 ──
                       const typeBadge = resolveSizeBadge(
@@ -599,7 +607,7 @@ const OrderStatusV2: React.FC = () => {
                             {packedQty > 0 ? packedQty : ''}
                           </td>
                           <td className="os-v2-col-num os-v2-cell-cancel">
-                            {cancelQty > 0 ? cancelQty : ''}
+                            {cancelDisplayQty > 0 ? cancelDisplayQty : ''}
                           </td>
                           <td className="os-v2-col-num os-v2-cell-shipment">
                             {shipmentQty > 0 ? shipmentQty : ''}

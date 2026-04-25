@@ -20,14 +20,18 @@ interface ItemTableProps {
   modifiedImportQty: Map<string, number>;
   /** item_id → ARRIVAL quantity 합계 */
   arrivalMap: Map<string, number>;
-  /** item_id → PACKED quantity 합계 */
+  /** item_id → PACKED quantity 합계 (전체) */
   packedMap: Map<string, number>;
-  /** item_id → CANCEL quantity 합계 */
+  /** item_id → CANCEL quantity 합계 (raw — 단순 접수 포함) */
   cancelMap: Map<string, number>;
+  /** item_id → RETURN quantity 합계 (raw — 단순 접수 포함) */
+  returnMap: Map<string, number>;
   /** item_id → SHIPMENT quantity 합계 */
   shipmentMap: Map<string, number>;
   /** product_id → 출고(PACKED + shipment_id NOT NULL) quantity 합계 */
   exportMap: Map<string, number>;
+  /** item_id → 출고완료PACKED(shipment_id NOT NULL) quantity 합계 — 진행 공식용 */
+  shippedItemMap: Map<string, number>;
   /** Storage 에 PDF 가 존재하는 personal_order_no Set — P 배지 '운송장 출력' 조건부 표시용 */
   invoicePdfSet: Set<string>;
   onSelectAll: (checked: boolean) => void;
@@ -58,8 +62,10 @@ const ItemTable: React.FC<ItemTableProps> = ({
   arrivalMap,
   packedMap,
   cancelMap,
+  returnMap,
   shipmentMap,
   exportMap,
+  shippedItemMap,
   invoicePdfSet,
   onSelectAll,
   onSelectRow,
@@ -159,6 +165,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 arrivalQty={arrivalMap.get(item.id) ?? 0}
                 packedQty={packedMap.get(item.id) ?? 0}
                 cancelQty={cancelMap.get(item.id) ?? 0}
+                returnQty={returnMap.get(item.id) ?? 0}
+                shippedItemQty={shippedItemMap.get(item.id) ?? 0}
                 shipmentQty={exportMap.get(item.product_id ?? '') ?? 0}
                 hasInvoicePdf={
                   !!item.personal_order_no && invoicePdfSet.has(item.personal_order_no)

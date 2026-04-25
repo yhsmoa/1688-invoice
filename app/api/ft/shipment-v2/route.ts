@@ -154,9 +154,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ── 3) inbound(ARRIVAL/CANCEL) + outbound(PACKED) 이력 조회 → available_qty 계산 ──
+    // ── 3) inbound(ARRIVAL/RETURN) + outbound(PACKED) 이력 조회 → available_qty 계산 ──
+    //
+    // 출고가능수량 공식 (raw):
+    //   available = ARRIVAL - PACKED출고완료 - RETURN
+    //
+    //   - CANCEL 은 입고된 적 없으니 재고 영향 없음 → 차감하지 않음
+    //   - RETURN 은 입고된 것 중 일부를 돌려보낸 것 → 재고 차감
     const [inboundFf, outboundFf] = await Promise.all([
-      // ft_fulfillments: ARRIVAL + CANCEL
+      // ft_fulfillment_inbounds: ARRIVAL + RETURN (CANCEL 은 재고 영향 없어 조회 불필요지만 확장 위해 함께 조회)
       batchIn<{ order_item_id: string; quantity: number; type: string }>(
         'ft_fulfillment_inbounds', 'order_item_id, quantity, type', 'order_item_id', orderItemIds
       ),
@@ -166,7 +172,7 @@ export async function GET(request: NextRequest) {
       ),
     ]);
 
-    // 입고 = ARRIVAL - CANCEL - (PACKED where shipment_id IS NOT NULL)
+    // available = ARRIVAL - PACKED출고완료 - RETURN
     const availableMap = new Map<string, number>();
     // 전체 PACKED 수량 (box_code 무관, order_item_id 기준)
     const totalPackedMap = new Map<string, number>();
@@ -174,9 +180,11 @@ export async function GET(request: NextRequest) {
     for (const f of inboundFf) {
       if (f.type === 'ARRIVAL') {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) + f.quantity);
-      } else if (f.type === 'CANCEL') {
+      } else if (f.type === 'RETURN') {
+        // RETURN 은 받은 것 돌려보냄 → 재고 차감
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
+      // CANCEL 은 재고 영향 없음 (입고된 적 없음) → 무시
     }
 
     for (const f of outboundFf) {

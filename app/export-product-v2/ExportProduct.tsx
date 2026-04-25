@@ -190,23 +190,28 @@ const ExportProduct: React.FC = () => {
       const ffRows: { order_item_id: string; quantity: number; type: string }[] =
         ffJson.success ? ffJson.data || [] : [];
 
-      // 타입별 합계 맵 생성
+      // 타입별 합계 맵 생성 (ARRIVAL / PACKED / RETURN — CANCEL 은 재고 영향 없으므로 미사용)
       const arrivalMap = new Map<string, number>();
       const packedMap = new Map<string, number>();
-      const cancelMap = new Map<string, number>();
+      const returnMap = new Map<string, number>();
       ffRows.forEach((r) => {
         const map =
-          r.type === 'ARRIVAL' ? arrivalMap : r.type === 'PACKED' ? packedMap : r.type === 'CANCEL' ? cancelMap : null;
+          r.type === 'ARRIVAL' ? arrivalMap
+          : r.type === 'PACKED'  ? packedMap
+          : r.type === 'RETURN'  ? returnMap
+          : null;
         if (map) map.set(r.order_item_id, (map.get(r.order_item_id) ?? 0) + r.quantity);
       });
 
       // 3) available_qty 계산 및 0 이하 필터
+      //    공식: available = ARRIVAL - PACKED - RETURN
+      //          (CANCEL 은 입고 전 사건이라 재고 영향 없음 — 차감하지 않음)
       const withQty = items
         .map((item) => {
           const arrival = arrivalMap.get(item.id) ?? 0;
           const packed = packedMap.get(item.id) ?? 0;
-          const cancel = cancelMap.get(item.id) ?? 0;
-          return { ...item, available_qty: arrival - packed - cancel, packed_qty: packed };
+          const ret = returnMap.get(item.id) ?? 0;
+          return { ...item, available_qty: arrival - packed - ret, packed_qty: packed };
         })
         .filter((item) => item.available_qty > 0);
 

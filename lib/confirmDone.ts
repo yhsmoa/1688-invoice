@@ -32,9 +32,17 @@ async function fetchAll<T>(
 // confirmDoneForUser
 //   PROCESSING ft_order_items 중 남은수량 <= 0인 항목을 DONE으로 전환
 //
-//   남은수량 = order_qty
-//            - SUM(CANCEL quantity from ft_fulfillment_inbounds)
-//            - SUM(PACKED quantity WHERE shipment_id IS NOT NULL from ft_fulfillment_outbounds)
+//   남은수량 공식 (DONE 필터):
+//     남은수량 = order_qty
+//              - CANCEL_done           ← ft_cancel_details.status='DONE' (cancel_type='CANCEL')
+//              - RETURN_done           ← ft_cancel_details.status='DONE' (cancel_type='RETURN')
+//              - 출고완료PACKED        ← ft_fulfillment_outbounds.type='PACKED' & shipment_id IS NOT NULL
+//
+//   주의: CANCEL/RETURN 단순 접수(PENDING) 는 카운트 안 함 — DONE 만 종결 인정
+//         (단순 접수는 화면 '진행' 컬럼에는 raw 로 표시됨, 별도 공식)
+//
+//   구현 단순화: ft_cancel_details 의 status='DONE' SUM(qty) 만으로 CANCEL+RETURN 합산
+//              (cancel_type 무관 — 둘 다 같은 의미로 차감)
 // ============================================================
 export async function confirmDoneForUser(
   userId: string
@@ -56,23 +64,24 @@ export async function confirmDoneForUser(
   const itemIds = items.map((i) => i.id);
   const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean))];
 
-  // ── 2) 배치 조회: CANCEL(inbound) + SHIPMENT(outbound) ──
+  // ── 2) 배치 조회: ft_cancel_details(status=DONE) + 출고완료PACKED ──
   const BATCH = 100;
-  const cancelRows: { order_item_id: string; quantity: number; type: string }[] = [];
+  const cancelDoneRows: { order_items_id: string; qty: number | null }[] = [];
   const shipmentRows: { product_id: string | null; quantity: number; type: string; shipment_id: string | null }[] = [];
 
-  // CANCEL은 ft_fulfillment_inbounds에서 order_item_id 기준 조회 (모든 CANCEL 취소수량)
+  // CANCEL/RETURN DONE 만 → ft_cancel_details 에서 order_items_id 기준 조회
+  //   cancel_type 구분 없이 status='DONE' 모두 합산 (둘 다 동일하게 차감)
   for (let i = 0; i < itemIds.length; i += BATCH) {
     const batch = itemIds.slice(i, i + BATCH);
 
     const { data, error } = await supabase
-      .from('ft_fulfillment_inbounds')
-      .select('order_item_id, quantity, type')
-      .in('order_item_id', batch)
-      .eq('type', 'CANCEL');
+      .from('ft_cancel_details')
+      .select('order_items_id, qty')
+      .in('order_items_id', batch)
+      .eq('status', 'DONE');
 
     if (error) throw error;
-    if (data) cancelRows.push(...data);
+    if (data) cancelDoneRows.push(...data);
   }
 
   // SHIPMENT은 ft_fulfillment_outbounds에서 product_id 기준 조회 (shipment_id 있는 PACKED만)
@@ -89,16 +98,19 @@ export async function confirmDoneForUser(
     if (data) shipmentRows.push(...data);
   }
 
-  // ── 3) 집계: CANCEL(전부) + SHIPMENT(shipment_id 있는 것만) ──
-  const cancelMap = new Map<string, number>();
+  // ── 3) 집계: CANCEL_done+RETURN_done(item별) + 출고완료PACKED(product별) ──
+  const cancelDoneMap = new Map<string, number>();
   const shipmentByProductMap = new Map<string | null, number>();
 
-  // CANCEL 집계 (item별 독립 처리, 모든 CANCEL 취소수량)
-  for (const row of cancelRows) {
-    cancelMap.set(row.order_item_id, (cancelMap.get(row.order_item_id) ?? 0) + row.quantity);
+  // CANCEL_done + RETURN_done — item별 합산 (cancel_type 무관)
+  for (const row of cancelDoneRows) {
+    cancelDoneMap.set(
+      row.order_items_id,
+      (cancelDoneMap.get(row.order_items_id) ?? 0) + (row.qty ?? 0),
+    );
   }
 
-  // SHIPMENT 집계 (product별로 합산, shipment_id 있는 PACKED만, 같은 product_id에 속한 모든 item이 동일한 shipmentQty 적용)
+  // 출고완료PACKED — product별 합산 (shipment_id 있는 PACKED만)
   for (const row of shipmentRows) {
     if (row.shipment_id != null) {
       shipmentByProductMap.set(row.product_id, (shipmentByProductMap.get(row.product_id) ?? 0) + row.quantity);
@@ -110,9 +122,9 @@ export async function confirmDoneForUser(
 
   for (const item of items) {
     const orderQty = item.order_qty ?? 0;
-    const cancelQty = cancelMap.get(item.id) ?? 0;
+    const cancelDoneQty = cancelDoneMap.get(item.id) ?? 0;     // CANCEL_done + RETURN_done
     const shipmentQty = shipmentByProductMap.get(item.product_id) ?? 0;
-    const remaining = orderQty - cancelQty - shipmentQty;
+    const remaining = orderQty - cancelDoneQty - shipmentQty;
 
     if (remaining <= 0) {
       doneIds.push(item.id);

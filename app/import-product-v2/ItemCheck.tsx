@@ -143,7 +143,7 @@ const ItemCheck: React.FC = () => {
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
-  const { arrivalMap, packedMap, cancelMap, shipmentMap, exportMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
+  const { arrivalMap, packedMap, cancelMap, returnMap, shipmentMap, exportMap, shippedItemMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
 
   // ============================================================
   // 5) Worker / PC-NO 드롭박스
@@ -452,12 +452,16 @@ const ItemCheck: React.FC = () => {
     const { id } = editingCell;
     const numValue = cellValue.trim() === '' ? 0 : parseInt(cellValue, 10);
 
-    // 진행 = 개수 - 입고 - 취소
+    // 입고 입력 한도 = order_qty - ARRIVAL - CANCEL  (raw, RETURN 무관)
+    //   - ARRIVAL: 이미 입고된 수량
+    //   - CANCEL: 입고 안 들어올 (취소된) 수량
+    //   - RETURN: 입고된 후 돌려보낸 수량 — 입고 한도엔 영향 없음
+    //     (RETURN 이 발생해도 supplier 가 보낸 ARRIVAL 자체는 변동 없음)
     const item = activeItems.find((i) => i.id === id);
-    const progressQty = (item?.order_qty ?? 0) - (arrivalMap.get(id) ?? 0) - (cancelMap.get(id) ?? 0);
+    const inputLimit = (item?.order_qty ?? 0) - (arrivalMap.get(id) ?? 0) - (cancelMap.get(id) ?? 0);
 
-    if (numValue > progressQty) {
-      alert(`작업 수량(${numValue})이 진행 수량(${progressQty})을 초과할 수 없습니다.`);
+    if (numValue > inputLimit) {
+      alert(`작업 수량(${numValue})이 입고 가능 수량(${inputLimit})을 초과할 수 없습니다.`);
       setEditingCell(null);
       setCellValue('');
       return;
@@ -1407,8 +1411,10 @@ const ItemCheck: React.FC = () => {
               arrivalMap={arrivalMap}
               packedMap={packedMap}
               cancelMap={cancelMap}
+              returnMap={returnMap}
               shipmentMap={shipmentMap}
               exportMap={exportMap}
+              shippedItemMap={shippedItemMap}
               invoicePdfSet={invoicePdfSet}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
