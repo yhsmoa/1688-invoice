@@ -446,12 +446,19 @@
   line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 15px;
+  white-space: nowrap;
+  font-size: 13px;
+  max-width: 100%;
 }
 
 .return-v2-1688-order-number {
   color: #666;
-  font-size: 14px;
+  font-size: 11px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .return-v2-link {
@@ -638,6 +645,7 @@
   flex-direction: column;
   gap: 2px;
   line-height: 1.4;
+  min-width: 0;
 }
 
 /* 반품금액 셀 */
