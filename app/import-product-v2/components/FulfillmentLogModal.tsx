@@ -23,8 +23,8 @@ interface FulfillmentLogModalProps {
 const TYPE_LABEL: Record<string, string> = {
   ARRIVAL: '입고',
   PACKED: '포장',
-  CANCEL: '주문 취소',
-  RETURN: '반품 접수',
+  CANCEL: '취소',
+  RETURN: '반품',
   SHIPMENT: '출고',
 };
 
