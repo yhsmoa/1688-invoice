@@ -71,7 +71,12 @@ interface BoxInfo {
   user_code: string;
 }
 
-const OPERATOR_OPTIONS = ['소현', '장뢰', '3'];
+interface Worker {
+  id: string;
+  name: string;
+  name_kr: string;
+  role: string;
+}
 
 // ============================================================
 // 한글 키보드 → 영문 대문자 변환 맵
@@ -128,8 +133,21 @@ const ExportProduct: React.FC = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
 
-  // 담당자 드롭박스
+  // 담당자 드롭박스 (invoiceManager_employees, /api/hr/workers)
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedOperator, setSelectedOperator] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/hr/workers');
+        const json = await res.json();
+        if (json.success) setWorkers(json.data);
+      } catch (err) {
+        console.error('workers 조회 오류:', err);
+      }
+    })();
+  }, []);
 
   // P=X 모드: 체크 시 P/X 상호 허용 (타입 불일치 무시)
   const [isPxEqual, setIsPxEqual] = useState(false);
@@ -1372,11 +1390,13 @@ const ExportProduct: React.FC = () => {
                   <input type="checkbox" checked={isAllEqual} onChange={(e) => setIsAllEqual(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                   A=B=C=P=X
                 </label>
-                {/* 담당자 드롭박스 */}
+                {/* 담당자 드롭박스 (/api/hr/workers) */}
                 <select className="v2-export-coupang-user-dropdown" value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)}>
                   <option value="">담당자</option>
-                  {OPERATOR_OPTIONS.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                      {w.name} {w.name_kr}
+                    </option>
                   ))}
                 </select>
                 {/* 사업자 드롭박스 — 선택 시 prefix 자동입력 + 출고 데이터 로드 */}
