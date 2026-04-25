@@ -53,17 +53,6 @@ const STATUS_OPTIONS = [
 /** 요청자 옵션 (드롭다운) */
 const REQUESTER_OPTIONS = ['유화무역', '고객'];
 
-/** cancel_type → 화면 표시 라벨 (CANCEL=주문취소, RETURN=반품접수) */
-const TYPE_LABEL: Record<string, string> = {
-  CANCEL: '주문취소',
-  RETURN: '반품접수',
-};
-
-/** cancel_type → 배지 CSS 클래스 (시각적 구분) */
-const TYPE_BADGE_CLASS: Record<string, string> = {
-  CANCEL: 'return-v2-type-cancel',
-  RETURN: 'return-v2-type-return',
-};
 
 /** 인라인 편집 가능한 status 집합 (접수·진행 단계만) */
 const EDITABLE_STATUSES = new Set(['PENDING', 'PROCESSING']);
@@ -735,13 +724,9 @@ const ReturnProductV2: React.FC = () => {
                               />
                             </td>
 
-                            {/* col 2: 유형 (CANCEL=주문취소 / RETURN=반품접수) — Phase 5 */}
-                            <td style={{ textAlign: 'center' }}>
-                              <span
-                                className={`return-v2-type-badge ${TYPE_BADGE_CLASS[detail.cancel_type ?? 'CANCEL'] || ''}`}
-                              >
-                                {TYPE_LABEL[detail.cancel_type ?? 'CANCEL'] || detail.cancel_type || '-'}
-                              </span>
+                            {/* col 2: 유형 (CANCEL / RETURN) */}
+                            <td style={{ textAlign: 'center', fontSize: 12 }}>
+                              {detail.cancel_type ?? 'CANCEL'}
                             </td>
 
                             {/* col 3: 주문번호 (item_no + 1688_order_no 2행) */}

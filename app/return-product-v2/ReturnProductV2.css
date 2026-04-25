@@ -545,33 +545,6 @@
   color: #1e40af;
 }
 
-/* ============================================================ */
-/* 유형 배지 — CANCEL(주문취소) / RETURN(반품접수) 구분 (Phase 5) */
-/* ============================================================ */
-.return-v2-type-badge {
-  display: inline-block;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  min-width: 52px;
-  text-align: center;
-  user-select: none;
-}
-
-/* CANCEL — 주문취소 (회색 톤) */
-.return-v2-type-badge.return-v2-type-cancel {
-  background-color: #f3f4f6;
-  color: #4b5563;
-  border: 1px solid #d1d5db;
-}
-
-/* RETURN — 반품접수 (적색 톤) */
-.return-v2-type-badge.return-v2-type-return {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
 
 /* ============================================================ */
 /* 클릭 가능한 셀 (요청 컬럼)                                  */
