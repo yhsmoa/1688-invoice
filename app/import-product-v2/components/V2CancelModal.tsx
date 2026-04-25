@@ -273,10 +273,10 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
             <div className="v2-cancel-empty">선택된 항목이 없습니다.</div>
           ) : (
             <>
-              {/* ── 1. 타입 선택 (필수, 미선택 기본) ── */}
+              {/* ── 1. 타입 + 요청자 선택 (한 줄) ── */}
               <div className="v2-cancel-global-section">
                 <span className="v2-cancel-field-label v2-cancel-field-label-required">
-                  타입 <span className="v2-cancel-required">* 필수</span>
+                  타입 <span className="v2-cancel-required">*</span>
                 </span>
                 <div className="v2-cancel-requester-toggle">
                   {(['CANCEL', 'RETURN'] as CancelType[]).map((c) => (
@@ -289,12 +289,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* ── 2. 요청자 선택 (필수, 미선택 기본) ── */}
-              <div className="v2-cancel-global-section">
-                <span className="v2-cancel-field-label v2-cancel-field-label-required">
-                  요청자 <span className="v2-cancel-required">* 필수</span>
+                <span className="v2-cancel-field-label v2-cancel-field-label-required" style={{ marginLeft: 16 }}>
+                  요청자 <span className="v2-cancel-required">*</span>
                 </span>
                 <div className="v2-cancel-requester-toggle">
                   {(['유화무역', '고객'] as Requester[]).map((r) => (
