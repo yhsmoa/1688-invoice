@@ -144,6 +144,8 @@ export async function GET(request: NextRequest) {
     }
 
     // ── "fulfillments.id" dot 컬럼 → fulfillments_id 로 매핑 ──
+    //   cancel_type 도 응답 포함 — 'CANCEL'(주문취소) | 'RETURN'(반품접수) 구분용.
+    //   NULL 가능성 (마이그레이션 직후) → DEFAULT 'CANCEL' 로 fallback.
     const allData = allRaw.map((row) => ({
       id: row.id,
       status: row.status,
@@ -161,6 +163,7 @@ export async function GET(request: NextRequest) {
       '1688_order_no': row['1688_order_no'],
       requester: row.requester,
       fulfillments_id: row['fulfillments.id'] ?? null,
+      cancel_type: (row.cancel_type as string | null) ?? 'CANCEL',
     }));
 
     return NextResponse.json({ success: true, data: allData });

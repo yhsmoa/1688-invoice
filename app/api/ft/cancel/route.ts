@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
 // ============================================================
-// 취소 접수 아이템 타입
+// 취소 / 반품 종류
+//   CANCEL — 입고 전 주문 취소 (재고 영향 없음)
+//   RETURN — 입고 후 반품 (재고 차감)
+// ============================================================
+type CancelType = 'CANCEL' | 'RETURN';
+
+const VALID_CANCEL_TYPES: CancelType[] = ['CANCEL', 'RETURN'];
+
+// ============================================================
+// 취소/반품 접수 아이템 타입
 // ============================================================
 interface CancelItem {
   order_item_id: string;
@@ -19,15 +28,17 @@ interface CancelItem {
   service_fee: number | null;
   cancel_reason: string | null;
   requester: string | null;      // '유화무역' | '고객'
+  /** 'CANCEL' (주문 취소) | 'RETURN' (반품 접수). 미지정 시 기본 'CANCEL' (구버전 호환) */
+  cancel_type?: CancelType;
 }
 
 // ============================================================
 // POST /api/ft/cancel
-// 반품 접수 처리:
-//   1) ft_fulfillments INSERT (type='CANCEL') per item → id 반환
-//   2) ft_cancel_details INSERT per item (fulfillments.id 연결) → id 반환
+// 취소/반품 접수 처리:
+//   1) ft_fulfillment_inbounds INSERT (type=cancel_type) per item → id 반환
+//   2) ft_cancel_details INSERT per item (fulfillments.id 연결, cancel_type 동기화) → id 반환
 //   3) 저장 검증:
-//      - ft_fulfillments: 반환된 id로 SELECT
+//      - ft_fulfillment_inbounds: 반환된 id로 SELECT
 //      - ft_cancel_details: 반환된 id로 SELECT (PK 기준)
 //
 // 주의: ft_cancel_details 검증 시 'fulfillments.id' 컬럼 필터 사용 금지
@@ -63,19 +74,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // cancel_type 검증 — 미지정 시 기본 'CANCEL' (구버전 호환)
+    const invalidType = items.find(
+      (item) => item.cancel_type !== undefined && !VALID_CANCEL_TYPES.includes(item.cancel_type),
+    );
+    if (invalidType) {
+      return NextResponse.json(
+        { success: false, error: `cancel_type 은 'CANCEL' 또는 'RETURN' 이어야 합니다.` },
+        { status: 400 }
+      );
+    }
+
     const insertedFulfillmentIds: string[] = [];
     const insertedCancelDetailIds: string[] = [];
 
     // ── 아이템별 순차 처리
     for (const item of items) {
+      // 아이템별 cancel_type — 미지정 시 'CANCEL' (구버전 호환)
+      const cancelType: CancelType = item.cancel_type ?? 'CANCEL';
 
-      // ── Step 1: ft_fulfillments INSERT (type='CANCEL')
-      // ft_fulfillments (inbound) — CANCEL 타입
+      // ── Step 1: ft_fulfillment_inbounds INSERT (type=cancelType)
       const { data: ffData, error: ffError } = await supabase
         .from('ft_fulfillment_inbounds')
         .insert({
           order_item_id: item.order_item_id,
-          type: 'CANCEL',
+          type: cancelType,
           quantity: item.qty,
           operator_name: operator_name || null,
           order_no: item.order_no || null,
@@ -89,14 +112,14 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (ffError) {
-        console.error('ft_fulfillments CANCEL insert 오류:', ffError);
+        console.error(`ft_fulfillment_inbounds ${cancelType} insert 오류:`, ffError);
         throw ffError;
       }
 
       const fulfillmentId = ffData?.id ?? null;
       if (fulfillmentId) insertedFulfillmentIds.push(fulfillmentId);
 
-      // ── Step 2: ft_cancel_details INSERT → id 반환받아 검증에 사용
+      // ── Step 2: ft_cancel_details INSERT — cancel_type 동기화
       // 'fulfillments.id' 컬럼명에 점(.)이 포함되어 있어
       // 이후 필터 조건으로 사용 불가 (PostgREST join traversal 오인식)
       // → insert 반환값(id)을 수집해 PK 기준으로 검증
@@ -118,6 +141,7 @@ export async function POST(request: NextRequest) {
           '1688_order_no': item.order_1688_id || null,
           requester: item.requester || null,
           'fulfillments.id': fulfillmentId,
+          cancel_type: cancelType,        // ft_fulfillment_inbounds.type 와 항상 동기화
         })
         .select('id')
         .single();

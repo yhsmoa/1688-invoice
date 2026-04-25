@@ -3,10 +3,18 @@ import { supabase } from '../../../../lib/supabase';
 
 // ============================================================
 // 공통 상수 — 테이블 분리 기준
+//
+// INBOUND_TYPES:
+//   ARRIVAL — 입고 (재고 +)
+//   CANCEL  — 주문 취소 (입고 전, 재고 영향 없음)
+//   RETURN  — 반품 접수 (입고 후 돌려보냄, 재고 -)
 // ============================================================
-const INBOUND_TYPES  = ['ARRIVAL', 'CANCEL'];   // → ft_fulfillments
-const OUTBOUND_TYPES = ['PACKED', 'SHIPMENT'];   // → ft_fulfillment_outbounds
+const INBOUND_TYPES  = ['ARRIVAL', 'CANCEL', 'RETURN'];   // → ft_fulfillment_inbounds
+const OUTBOUND_TYPES = ['PACKED', 'SHIPMENT'];             // → ft_fulfillment_outbounds
 const ALL_TYPES      = [...INBOUND_TYPES, ...OUTBOUND_TYPES];
+
+// ── ft_cancel_details 연동되는 inbound type (철회 시 cancel_details 도 같이 삭제) ──
+const CANCEL_LIKE_TYPES = new Set(['CANCEL', 'RETURN']);
 
 const INBOUND_TABLE  = 'ft_fulfillment_inbounds';
 const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
@@ -15,7 +23,7 @@ const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 // DELETE /api/ft/fulfillments?id=xxx
 // ft_fulfillments 단건 삭제 + 연동 처리
 //
-// type=CANCEL인 경우:
+// type=CANCEL 또는 RETURN 인 경우 (CANCEL_LIKE_TYPES):
 //   1) ft_cancel_details 연동 삭제 (fulfillments.id 컬럼으로 연결)
 //   2) ft_order_items status 재계산
 //      → 남은수량 > 0 이고 status='DONE' → 'PROCESSING' 복구
@@ -71,15 +79,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { order_item_id, type: ffType } = ffRow;
+    const isCancelLike = CANCEL_LIKE_TYPES.has(ffType);
 
-    // ── Step 2: ft_cancel_details 연동 삭제 (CANCEL 타입만) ──
+    // ── Step 2: ft_cancel_details 연동 삭제 (CANCEL 또는 RETURN 타입) ──
     // 주의: 'fulfillments.id' 컬럼은 PostgREST에서 dot(.)을 외래키 join으로 오인식
     //       → .eq('fulfillments.id', id) 는 항상 0행 반환 (사용 불가)
     //       → 해결책: SELECT * 로 조회 후 JS에서 r['fulfillments.id'] === id 필터링
     //         (SELECT * 는 모든 컬럼을 실제 이름 그대로 반환하므로 dot 컬럼도 정상 포함)
     let cancelDetailDeletedCount = 0;
 
-    if (ffType === 'CANCEL') {
+    if (isCancelLike) {
       // order_items_id로 후보 행 조회 → JS에서 fulfillments.id 매칭
       const { data: cdAllRows, error: cdSelectErr } = await supabase
         .from('ft_cancel_details')
@@ -109,7 +118,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         cancelDetailDeletedCount = cdIds.length;
-        console.log(`ft_cancel_details 삭제: ${cancelDetailDeletedCount}건`);
+        console.log(`ft_cancel_details 삭제 (${ffType} 철회): ${cancelDetailDeletedCount}건`);
       }
     }
 
@@ -124,11 +133,17 @@ export async function DELETE(request: NextRequest) {
       throw ffDeleteErr;
     }
 
-    // ── Step 4: ft_order_items status 재계산 (CANCEL 타입만) ──
-    // 시나리오: CANCEL 철회 시 DONE이었던 항목이 PROCESSING으로 복구될 수 있음
+    // ── Step 4: ft_order_items status 재계산 (CANCEL 또는 RETURN 철회 시) ──
+    // 시나리오: CANCEL/RETURN 철회 시 DONE이었던 항목이 PROCESSING으로 복구될 수 있음
+    //
+    // 남은수량 공식 (DONE 필터):
+    //   남은수량 = order_qty - CANCEL_done - RETURN_done - 출고완료PACKED
+    //
+    //   CANCEL_done + RETURN_done 는 ft_cancel_details 에서 status='DONE' 인 행 합산
+    //   (cancel/return 모두 ft_cancel_details 에 cancel_type 으로 저장됨)
     let statusRestored = false;
 
-    if (ffType === 'CANCEL') {
+    if (isCancelLike) {
       // 현재 order_item 상태 조회
       const { data: orderItem } = await supabase
         .from('ft_order_items')
@@ -137,13 +152,14 @@ export async function DELETE(request: NextRequest) {
         .single();
 
       if (orderItem && orderItem.status === 'DONE') {
-        // 삭제 후 남은 CANCEL(inbound) + 출고완료 PACKED(outbound) 합계 재계산
-        const [cancelRows, packedRows] = await Promise.all([
+        // 삭제 후 남은 CANCEL_done + RETURN_done 합계 (ft_cancel_details.status='DONE')
+        // + 출고완료 PACKED(outbound) 합계 재계산
+        const [cancelDoneRows, packedRows] = await Promise.all([
           supabase
-            .from(INBOUND_TABLE)
-            .select('quantity')
-            .eq('order_item_id', order_item_id)
-            .eq('type', 'CANCEL'),
+            .from('ft_cancel_details')
+            .select('qty')
+            .eq('order_items_id', order_item_id)
+            .eq('status', 'DONE'),
           supabase
             .from(OUTBOUND_TABLE)
             .select('quantity, shipment_id')
@@ -151,11 +167,11 @@ export async function DELETE(request: NextRequest) {
             .eq('type', 'PACKED'),
         ]);
 
-        let cancelSum = 0;
+        let cancelDoneSum = 0;
         let shippedSum = 0;
 
-        for (const row of (cancelRows.data ?? [])) {
-          cancelSum += row.quantity ?? 0;
+        for (const row of (cancelDoneRows.data ?? [])) {
+          cancelDoneSum += row.qty ?? 0;
         }
         for (const row of (packedRows.data ?? [])) {
           if (row.shipment_id != null) {
@@ -163,8 +179,8 @@ export async function DELETE(request: NextRequest) {
           }
         }
 
-        // 남은수량 = order_qty - CANCEL합계 - 출고완료PACKED합계
-        const remaining = (orderItem.order_qty ?? 0) - cancelSum - shippedSum;
+        // 남은수량 = order_qty - (CANCEL_done + RETURN_done) - 출고완료PACKED
+        const remaining = (orderItem.order_qty ?? 0) - cancelDoneSum - shippedSum;
 
         if (remaining > 0) {
           const { error: restoreErr } = await supabase
@@ -177,7 +193,7 @@ export async function DELETE(request: NextRequest) {
             // status 복구 실패는 치명적이지 않으므로 로그만 남김
           } else {
             statusRestored = true;
-            console.log(`ft_order_items DONE→PROCESSING 복구 — id: ${order_item_id}, 남은수량: ${remaining}`);
+            console.log(`ft_order_items DONE→PROCESSING 복구 — id: ${order_item_id}, 남은수량: ${remaining} (${ffType} 철회)`);
           }
         }
       }
@@ -191,10 +207,10 @@ export async function DELETE(request: NextRequest) {
 
     const ffDeleted = !verifyFF || verifyFF.length === 0;
 
-    // CANCEL 타입: ft_cancel_details도 검증
+    // CANCEL 또는 RETURN 타입: ft_cancel_details도 검증
     // 동일하게 JS 필터 방식 사용 (dot 컬럼 filter 불가 회피)
     let cdDeleted = true;
-    if (ffType === 'CANCEL') {
+    if (isCancelLike) {
       const { data: verifyCD } = await supabase
         .from('ft_cancel_details')
         .select('*')
@@ -401,7 +417,7 @@ export async function POST(request: NextRequest) {
       const type = (item.type as string) || 'PACKED';
 
       if (INBOUND_TYPES.includes(type)) {
-        // ARRIVAL / CANCEL → ft_fulfillments (inbound)
+        // ARRIVAL / CANCEL / RETURN → ft_fulfillment_inbounds
         inboundRows.push({
           order_item_id: item.order_item_id as string,
           type,
