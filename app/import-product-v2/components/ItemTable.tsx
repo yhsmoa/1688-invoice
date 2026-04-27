@@ -34,6 +34,9 @@ interface ItemTableProps {
   shippedItemMap: Map<string, number>;
   /** Storage 에 PDF 가 존재하는 personal_order_no Set — P 배지 '운송장 출력' 조건부 표시용 */
   invoicePdfSet: Set<string>;
+  /** personal_order_no → 출력된 item_id Set — 재출력 가능 여부 판정용
+   *    비어있음/없음 = 첫 출력 가능 / 있음 = item.id ∈ Set 일 때만 재출력 가능 */
+  printedItemIdsMap: Map<string, Set<string>>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
@@ -67,6 +70,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   exportMap,
   shippedItemMap,
   invoicePdfSet,
+  printedItemIdsMap,
   onSelectAll,
   onSelectRow,
   onStartEditingCell,
@@ -171,6 +175,15 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 hasInvoicePdf={
                   !!item.personal_order_no && invoicePdfSet.has(item.personal_order_no)
                 }
+                isInvoicePrintable={(() => {
+                  // 출력 가능 = PDF 존재 + (prints 비어있음 || item.id ∈ prints)
+                  if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') return false;
+                  const no = item.personal_order_no;
+                  if (!no || !invoicePdfSet.has(no)) return false;
+                  const printedSet = printedItemIdsMap.get(no);
+                  if (!printedSet || printedSet.size === 0) return true;
+                  return printedSet.has(item.id);
+                })()}
                 onSelectRow={onSelectRow}
                 onStartEditingCell={onStartEditingCell}
                 onCellValueChange={onCellValueChange}

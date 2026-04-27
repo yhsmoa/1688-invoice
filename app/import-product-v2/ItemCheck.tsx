@@ -562,6 +562,12 @@ const ItemCheck: React.FC = () => {
   const [invoicePdfSet, setInvoicePdfSet] = useState<Set<string>>(new Set());
   const [isCheckingInvoices, setIsCheckingInvoices] = useState(false);
 
+  // ── 운송장 출력 이력 — personal_order_no → 출력된 item_id Set ──
+  //    비어있음 = 자유 출력 가능 (첫 출력)
+  //    있음 = 선택된 item_ids 가 이 Set 의 부분집합일 때만 재출력 가능
+  //    (분실/손상 대응 시 동일 조합 재출력)
+  const [printedItemIdsMap, setPrintedItemIdsMap] = useState<Map<string, Set<string>>>(new Map());
+
   // ============================================================
   // 12) 처리준비 모달
   // ============================================================
@@ -640,10 +646,69 @@ const ItemCheck: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedUserId, activePersonalOrderNosKey]);
 
+  // ── activeItems 의 P 상품 personal_order_no 집합 변경 시 출력 이력 조회 ──
+  //    invoicePdfSet 과 동일 트리거 — 데이터 일관성 위해.
+  useEffect(() => {
+    if (!selectedUserId || !activePersonalOrderNosKey) {
+      setPrintedItemIdsMap(new Map());
+      return;
+    }
+
+    const orderNos = activePersonalOrderNosKey.split('|');
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/ft/personal-invoice-prints/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: selectedUserId,
+            personal_order_nos: orderNos,
+          }),
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (!json.success) {
+          console.error('personal-invoice-prints check 실패:', json.error);
+          setPrintedItemIdsMap(new Map());
+          return;
+        }
+        const map = new Map<string, Set<string>>();
+        const raw = json.printedItemIdsByOrderNo as Record<string, string[]>;
+        for (const [no, ids] of Object.entries(raw)) {
+          map.set(no, new Set(ids));
+        }
+        setPrintedItemIdsMap(map);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('personal-invoice-prints check 오류:', err);
+          setPrintedItemIdsMap(new Map());
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [selectedUserId, activePersonalOrderNosKey]);
+
+  // ── 출력 가능 헬퍼 — 단일 item 의 송장 출력 가능 여부 ──
+  //    Storage PDF 존재 + (prints 비어있음 || item.id ∈ prints) 일 때 true.
+  const isItemInvoicePrintable = useCallback(
+    (item: FtOrderItem): boolean => {
+      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') return false;
+      const no = item.personal_order_no?.trim();
+      if (!no || !invoicePdfSet.has(no)) return false;
+      const printedSet = printedItemIdsMap.get(no);
+      if (!printedSet || printedSet.size === 0) return true; // 첫 출력
+      return printedSet.has(item.id);                         // 재출력 (조합 안)
+    },
+    [invoicePdfSet, printedItemIdsMap]
+  );
+
   // ── 송장 출력 — 핵심 로직 (signed URL → 다운로드 → crop + merge + print) ──
   //    targetNos 받아 호출 → 두 진입점(모달 [송장 출력] / 사이드바 [운송장]) 공유.
+  //    itemIdsByNo: 출력 성공 후 ft_personal_invoice_prints 에 기록할 item_id 매핑.
   const printInvoicesByOrderNos = useCallback(
-    async (targetNos: string[]) => {
+    async (targetNos: string[], itemIdsByNo: Map<string, string[]>) => {
       if (!selectedUserId) return;
       if (targetNos.length === 0) {
         alert(t('importProductV2.alerts.noInvoiceToPrint'));
@@ -680,7 +745,7 @@ const ItemCheck: React.FC = () => {
                 console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
                 return null;
               }
-              return await pdfRes.arrayBuffer();
+              return { no, buffer: await pdfRes.arrayBuffer() };
             } catch (err) {
               console.error(`PDF 다운로드 오류 (${no}):`, err);
               return null;
@@ -688,7 +753,10 @@ const ItemCheck: React.FC = () => {
           })
         );
 
-        const buffers: ArrayBuffer[] = results.filter((b): b is ArrayBuffer => b !== null);
+        const successResults = results.filter(
+          (r): r is { no: string; buffer: ArrayBuffer } => r !== null
+        );
+        const buffers = successResults.map((r) => r.buffer);
 
         if (buffers.length === 0) {
           alert(t('importProductV2.alerts.invoiceDownloadFailed'));
@@ -699,20 +767,96 @@ const ItemCheck: React.FC = () => {
         const result = await mergeAndPrint(buffers);
         if (result.success === 0) {
           alert(t('importProductV2.alerts.invoicePrintFailed'));
+          return;
         }
+
+        // 4) 출력 성공한 personal_order_no 들에 대해 prints 기록 UPSERT.
+        //    인쇄 실패한 송장은 mergeAndPrint 의 success 카운트로만 알 수 있어
+        //    개별 매핑이 어려움 → 다운로드 성공한 송장 모두 기록 (보수적 접근).
+        //    재출력 시에도 ON CONFLICT 로 printed_at 만 갱신.
+        await Promise.all(
+          successResults.map(async ({ no }) => {
+            const itemIds = itemIdsByNo.get(no);
+            if (!itemIds || itemIds.length === 0) return;
+            try {
+              const insertRes = await fetch('/api/ft/personal-invoice-prints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  personal_order_no: no,
+                  item_ids: itemIds,
+                  user_id: selectedUserId,
+                  printed_by: selectedWorker || null,
+                }),
+              });
+              const insertJson = await insertRes.json();
+              if (!insertJson.success) {
+                console.error(`prints 기록 실패 (${no}):`, insertJson.error);
+              }
+            } catch (err) {
+              console.error(`prints 기록 오류 (${no}):`, err);
+            }
+          })
+        );
+
+        // 5) 로컬 printedItemIdsMap 즉시 갱신 (재호출 없이 UI 반영)
+        setPrintedItemIdsMap((prev) => {
+          const next = new Map(prev);
+          for (const { no } of successResults) {
+            const itemIds = itemIdsByNo.get(no);
+            if (!itemIds || itemIds.length === 0) continue;
+            const existing = new Set(next.get(no) ?? []);
+            // 첫 출력만 조합 영구 등록 — 기존 prints 가 비어있을 때만 새 ids 추가.
+            // 재출력은 같은 ids 라 차이 없음.
+            if (existing.size === 0) {
+              for (const id of itemIds) existing.add(id);
+            }
+            next.set(no, existing);
+          }
+          return next;
+        });
       } catch (err) {
         console.error('송장 출력 오류:', err);
         alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
       }
     },
-    [selectedUserId, t]
+    [selectedUserId, selectedWorker, t]
   );
 
   // ── 모달 [송장 출력] — readyItems(작업값 입력 항목) 의 P 상품 ──
+  //   출력 가능 룰: PDF 존재 + (prints 비어있음 OR readyItems P-item ⊆ prints)
+  //   itemIdsByNo: 송장별로 readyItems 안의 P 상품 id 묶음
   const handlePrintInvoices = useCallback(() => {
-    const targetNos = uniquePersonalOrderNos.filter((no) => invoicePdfSet.has(no));
-    return printInvoicesByOrderNos(targetNos);
-  }, [uniquePersonalOrderNos, invoicePdfSet, printInvoicesByOrderNos]);
+    // 1) personal_order_no 별 readyItems P-item id 매핑
+    const itemIdsByNo = new Map<string, string[]>();
+    for (const { item } of readyItems) {
+      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') continue;
+      const no = item.personal_order_no?.trim();
+      if (!no || !invoicePdfSet.has(no)) continue;
+      const arr = itemIdsByNo.get(no) ?? [];
+      arr.push(item.id);
+      itemIdsByNo.set(no, arr);
+    }
+
+    // 2) 룰 검증 + 차단 송장 분리
+    const targetNos: string[] = [];
+    const blockedNos: string[] = [];
+    for (const [no, ids] of itemIdsByNo.entries()) {
+      const printedSet = printedItemIdsMap.get(no);
+      if (!printedSet || printedSet.size === 0) {
+        targetNos.push(no);
+        continue;
+      }
+      const isSubset = ids.every((id) => printedSet.has(id));
+      if (isSubset) targetNos.push(no);
+      else blockedNos.push(no);
+    }
+
+    if (blockedNos.length > 0) {
+      alert(`이미 다른 조합으로 출력된 송장이 있어 차단됩니다:\n${blockedNos.join(', ')}`);
+    }
+    return printInvoicesByOrderNos(targetNos, itemIdsByNo);
+  }, [readyItems, invoicePdfSet, printedItemIdsMap, printInvoicesByOrderNos]);
 
   // ── 사이드바 [운송장] — 체크박스 선택된 행의 P 상품 (라벨 버튼과 동일 패턴) ──
   const handlePrintInvoicesFromSelection = useCallback(() => {
@@ -720,34 +864,54 @@ const ItemCheck: React.FC = () => {
       alert(t('importProductV2.alerts.selectItems'));
       return;
     }
-    // 선택된 행 중 P + personal_order_no + PDF 매칭된 것만 dedup
-    const targetNos = [
-      ...new Set(
-        items
-          .filter((item) => selectedRows.has(item.id))
-          .filter((item) => item.shipment_type?.trim().toUpperCase() === 'PERSONAL')
-          .map((item) => item.personal_order_no?.trim())
-          .filter((no): no is string => !!no && invoicePdfSet.has(no))
-      ),
-    ];
-    return printInvoicesByOrderNos(targetNos);
-  }, [selectedRows, items, invoicePdfSet, t, printInvoicesByOrderNos]);
 
-  // 모달 [송장 출력] 버튼 활성화 조건 — readyItems 기준
-  const invoicePrintable =
-    !isCheckingInvoices && uniquePersonalOrderNos.some((no) => invoicePdfSet.has(no));
-
-  // 사이드바 [운송장] 버튼 활성화 조건 — 선택된 행 중 P + PDF 매칭 ≥ 1
-  const selectedShippingPrintable = useMemo(() => {
-    if (selectedRows.size === 0) return false;
+    // 1) 선택된 행 → personal_order_no 별 item id 매핑 (P + PDF 매칭만)
+    const itemIdsByNo = new Map<string, string[]>();
     for (const item of items) {
       if (!selectedRows.has(item.id)) continue;
       if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') continue;
       const no = item.personal_order_no?.trim();
-      if (no && invoicePdfSet.has(no)) return true;
+      if (!no || !invoicePdfSet.has(no)) continue;
+      const arr = itemIdsByNo.get(no) ?? [];
+      arr.push(item.id);
+      itemIdsByNo.set(no, arr);
+    }
+
+    // 2) 룰 검증 + 차단 송장 분리
+    const targetNos: string[] = [];
+    const blockedNos: string[] = [];
+    for (const [no, ids] of itemIdsByNo.entries()) {
+      const printedSet = printedItemIdsMap.get(no);
+      if (!printedSet || printedSet.size === 0) {
+        targetNos.push(no);
+        continue;
+      }
+      const isSubset = ids.every((id) => printedSet.has(id));
+      if (isSubset) targetNos.push(no);
+      else blockedNos.push(no);
+    }
+
+    if (blockedNos.length > 0) {
+      alert(`이미 다른 조합으로 출력된 송장이 있어 차단됩니다:\n${blockedNos.join(', ')}`);
+    }
+    return printInvoicesByOrderNos(targetNos, itemIdsByNo);
+  }, [selectedRows, items, invoicePdfSet, printedItemIdsMap, t, printInvoicesByOrderNos]);
+
+  // 모달 [송장 출력] 버튼 활성화 조건 — readyItems 기준 (P + PDF 매칭 + 출력 가능 룰)
+  const invoicePrintable = useMemo(() => {
+    if (isCheckingInvoices) return false;
+    return readyItems.some(({ item }) => isItemInvoicePrintable(item));
+  }, [readyItems, isCheckingInvoices, isItemInvoicePrintable]);
+
+  // 사이드바 [운송장] 버튼 활성화 조건 — 선택된 행 중 출력 가능 룰 통과 ≥ 1
+  const selectedShippingPrintable = useMemo(() => {
+    if (selectedRows.size === 0) return false;
+    for (const item of items) {
+      if (!selectedRows.has(item.id)) continue;
+      if (isItemInvoicePrintable(item)) return true;
     }
     return false;
-  }, [items, selectedRows, invoicePdfSet]);
+  }, [items, selectedRows, isItemInvoicePrintable]);
 
   // ============================================================
   // 13) 반품 모달 — 체크박스 선택 시 선택 항목, 미선택 시 전체 항목
@@ -1416,6 +1580,7 @@ const ItemCheck: React.FC = () => {
               exportMap={exportMap}
               shippedItemMap={shippedItemMap}
               invoicePdfSet={invoicePdfSet}
+              printedItemIdsMap={printedItemIdsMap}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
               onStartEditingCell={startEditingCell}

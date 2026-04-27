@@ -34,6 +34,8 @@ interface ItemTableRowProps {
   shipmentQty: number;
   /** Storage 에 해당 personal_order_no.pdf 존재 여부 — P 배지 '운송장 출력' 조건 */
   hasInvoicePdf: boolean;
+  /** 운송장 출력 가능 여부 — false 면 동일 송장 다른 조합으로 이미 출력됨 (차단) */
+  isInvoicePrintable: boolean;
   onSelectRow: (id: string, checked: boolean) => void;
   onStartEditingCell: (id: string, field: string, value: number | string | null | undefined) => void;
   onCellValueChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -64,6 +66,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   shippedItemQty,
   shipmentQty,
   hasInvoicePdf,
+  isInvoicePrintable,
   onSelectRow,
   onStartEditingCell,
   onCellValueChange,
@@ -210,9 +213,15 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                   {isPersonal ? (
                     <>
                       <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
-                      {/* '운송장 출력' 배지: Storage 에 매칭 PDF 가 존재할 때만 표시 */}
+                      {/* '운송장 출력' 배지: Storage 에 매칭 PDF 가 존재할 때만 표시.
+                          isInvoicePrintable=false 면 다른 조합 출력 끝남 → 회색 차단 표시 */}
                       {hasInvoicePdf && (
-                        <span className="label-badge shipping">{t('importProduct.badge.shippingLabel')}</span>
+                        <span
+                          className={`label-badge shipping ${isInvoicePrintable ? '' : 'shipping-blocked'}`}
+                          title={isInvoicePrintable ? '' : '이미 다른 조합으로 출력되어 사용 불가'}
+                        >
+                          {t('importProduct.badge.shippingLabel')}
+                        </span>
                       )}
                     </>
                   ) : item.composition && String(item.composition).trim() ? (

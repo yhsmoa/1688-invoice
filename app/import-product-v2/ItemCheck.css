@@ -1659,3 +1659,10 @@
   background-color: #ede9fe;
   color: #6d28d9;
 }
+
+/* 운송장 출력 차단 — 이미 다른 조합으로 출력되어 같은 송장 재사용 불가 (회색 + 취소선) */
+.label-badge.shipping.shipping-blocked {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
