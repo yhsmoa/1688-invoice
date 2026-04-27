@@ -213,13 +213,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                   {isPersonal ? (
                     <>
                       <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
-                      {/* '운송장 출력' 배지: Storage 에 매칭 PDF 가 존재할 때만 표시.
-                          isInvoicePrintable=false 면 다른 조합 출력 끝남 → 회색 차단 표시 */}
-                      {hasInvoicePdf && (
-                        <span
-                          className={`label-badge shipping ${isInvoicePrintable ? '' : 'shipping-blocked'}`}
-                          title={isInvoicePrintable ? '' : '이미 다른 조합으로 출력되어 사용 불가'}
-                        >
+                      {/* '운송장 출력' 배지: PDF 존재 + 출력 가능(첫 출력 또는 같은 조합) 일 때만 노출.
+                          이미 다른 조합으로 출력된 송장은 배지 자체를 숨김 (UI 단순화) */}
+                      {hasInvoicePdf && isInvoicePrintable && (
+                        <span className="label-badge shipping">
                           {t('importProduct.badge.shippingLabel')}
                         </span>
                       )}
@@ -234,8 +231,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                 </div>
 
                 {/* ── 1-1번째 줄(P 전용): personal_order_no — '운송장 출력' 배지와 세트 노출 ──
-                     hasInvoicePdf 조건으로 송장 출력 배지와 동일하게 PDF 매칭된 경우만 표시 */}
-                {isPersonal && hasInvoicePdf && item.personal_order_no && (
+                     배지와 동일 조건(hasInvoicePdf + isInvoicePrintable) 으로 일관성 유지 */}
+                {isPersonal && hasInvoicePdf && isInvoicePrintable && item.personal_order_no && (
                   <div className="v2-personal-order-no-line">
                     <span className="v2-personal-order-no-connector">ㄴ</span>
                     <span className="v2-personal-order-no-value">{item.personal_order_no}</span>
