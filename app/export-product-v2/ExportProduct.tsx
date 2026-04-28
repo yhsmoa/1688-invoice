@@ -166,9 +166,6 @@ const ExportProduct: React.FC = () => {
   // ── selectedBox: activeBoxInfo의 box_code ──
   const selectedBox = activeBoxInfo?.box_code || '';
 
-  // 타입 선택 (A/B/C/P/X)
-  const [selectedType, setSelectedType] = useState('');
-
   // ft_users (V2 전용)
   const { users: ftUsers } = useFtUsers();
 
@@ -755,16 +752,38 @@ const ExportProduct: React.FC = () => {
       return;
     }
 
-    // ── 박스 타입(A/B/C/P/X)과 상품 size_code 불일치 검증 ──
-    // A=B=C=P=X 모드: 모든 타입 허용 / P=X 모드: P와 X 상호 허용
-    if (selectedType && found.size_code !== selectedType) {
+    // ── 박스 사이즈(A/B/C/P/X)와 상품 size_code 불일치 검증 ──
+    //   박스코드(BO-A-08) 의 두번째 토큰을 사이즈로 사용. processScan 과 동일 기준.
+    //   A=B=C=P=X 모드: 모든 사이즈 허용 / P=X 모드: P↔X 만 상호 허용
+    const boxSizeCode = getSizeCodeFromBoxNumber(selectedBox);
+    const productSizeCode = found.size_code || null;
+    if (boxSizeCode && productSizeCode && boxSizeCode !== productSizeCode) {
       if (!isAllEqual) {
         const pxGroup = ['P', 'X'];
-        const isAllowed = isPxEqual && pxGroup.includes(selectedType) && pxGroup.includes(found.size_code);
+        const isAllowed = isPxEqual && pxGroup.includes(boxSizeCode) && pxGroup.includes(productSizeCode);
         if (!isAllowed) {
           playErrorSound();
           setCurrentExportItem(found);
           setLastScanSuccess(false);
+
+          // scanHistory 에 에러 항목 추가 (processScan 라인 1095-1107 과 동일 형식)
+          const scanTime = new Date().toLocaleString('ko-KR', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+          });
+          setScanHistory((prev) => [...prev, {
+            box_number: selectedBox,
+            order_number: trimmed,
+            product_name: `${found.item_name || ''} [사이즈 불일치: 박스=${boxSizeCode}, 상품=${productSizeCode}]`,
+            option_name: found.option_name || '',
+            china_options: [found.china_option1, found.china_option2].filter(Boolean).join(', '),
+            scanned_qty: 1,
+            barcode: found.barcode || '',
+            available_qty: found.available_qty,
+            scan_method: '스캔',
+            scan_time: scanTime,
+            is_error: true,
+          }]);
           return;
         }
       }
