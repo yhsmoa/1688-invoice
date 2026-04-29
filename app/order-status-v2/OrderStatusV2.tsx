@@ -12,6 +12,7 @@ import {
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
+import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import { formatDeliveryDisplay } from './utils/deliveryStatusMap';
 import { resolveSizeBadge } from '../../lib/sizeCode';
@@ -219,7 +220,8 @@ const OrderStatusV2: React.FC = () => {
 
   // ============================================================
   // 5) 처리 로그 모달 + 주문번호 컨텍스트 팝업
-  //    주문번호 셀 클릭 → 컨텍스트 팝업 (1688_order_no 복사 / 처리 로그 열기)
+  //    주문번호 셀 클릭 → 컨텍스트 팝업 (1688_order_no 복사 / 페이지 방문)
+  //    상품정보 셀 클릭 → 처리 로그 드로워 직접 오픈
   // ============================================================
   const [logModalItem, setLogModalItem] = useState<FtOrderItem | null>(null);
   const [logDeliveryCodes, setLogDeliveryCodes] = useState<string[]>([]);
@@ -302,26 +304,74 @@ const OrderStatusV2: React.FC = () => {
     }
   }, [orderPopup]);
 
-  // 팝업 → [처리 로그]
-  const handlePopupOpenLog = useCallback(() => {
+  // 팝업 → [페이지 방문] (site_url 새 탭 오픈)
+  const handlePopupVisitPage = useCallback(() => {
     if (!orderPopup) return;
     const item = orderPopup.item;
     setOrderPopup(null);
-    openLogDrawer(item);
-  }, [orderPopup, openLogDrawer]);
+    const url = item.site_url?.trim();
+    if (!url) return;
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    window.open(normalized, '_blank', 'noopener,noreferrer');
+  }, [orderPopup]);
 
   const handleLogModalClose = useCallback(() => {
     setLogModalItem(null);
     setLogDeliveryCodes([]);
   }, []);
 
-  // 상품정보 클릭 → site_url 새 탭 오픈
-  const handleProductInfoClick = useCallback((item: FtOrderItem) => {
-    const url = item.site_url?.trim();
-    if (!url) return;
-    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-    window.open(normalized, '_blank', 'noopener,noreferrer');
+  // ============================================================
+  // 6) 타입 배지 변경 팝업 (A/B/C/X)
+  //    타입 셀 클릭 → 컨텍스트 팝업 → 선택 시 ft_order_items PATCH
+  // ============================================================
+  const [typePopup, setTypePopup] = useState<{
+    item: FtOrderItem;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleTypeCellClick = useCallback((e: React.MouseEvent, item: FtOrderItem) => {
+    setTypePopup({ item, x: e.clientX, y: e.clientY });
   }, []);
+
+  // ── 타입 코드 → DB 필드 매핑 ──
+  const TYPE_FIELD_MAP: Record<string, { shipment_type: string; coupang_shipment_size?: string }> = {
+    A: { shipment_type: 'COUPANG', coupang_shipment_size: 'Small' },
+    B: { shipment_type: 'COUPANG', coupang_shipment_size: 'Medium' },
+    C: { shipment_type: 'COUPANG', coupang_shipment_size: 'Large' },
+    X: { shipment_type: 'DIRECT' },
+  };
+
+  const handleTypeChange = useCallback(async (code: 'A' | 'B' | 'C' | 'X') => {
+    if (!typePopup) return;
+    const { item } = typePopup;
+    setTypePopup(null);
+
+    const fields = TYPE_FIELD_MAP[code];
+    if (!fields) return;
+
+    // ── optimistic 로컬 업데이트 ──
+    const prevShipmentType = item.shipment_type;
+    const prevSize = item.coupang_shipment_size;
+    patchItem(item.id, fields);
+
+    // ── PATCH /api/ft/order-items ──
+    try {
+      const res = await fetch('/api/ft/order-items', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, fields }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        patchItem(item.id, { shipment_type: prevShipmentType, coupang_shipment_size: prevSize });
+        alert('타입 변경 실패: ' + (json.error || '알 수 없는 오류'));
+      }
+    } catch (err) {
+      patchItem(item.id, { shipment_type: prevShipmentType, coupang_shipment_size: prevSize });
+      alert('타입 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
+    }
+  }, [typePopup, patchItem]);
 
   // ============================================================
   // 7) 비고 KR/CN 인라인 편집 (contentEditable + blur 저장)
@@ -570,7 +620,7 @@ const OrderStatusV2: React.FC = () => {
                               onChange={(e) => handleSelectRow(item.id, e.target.checked)}
                             />
                           </td>
-                          {/* 주문번호 (item_no) — 클릭 → 컨텍스트 팝업 (복사 / 처리 로그)
+                          {/* 주문번호 (item_no) — 클릭 → 컨텍스트 팝업 (1688 복사 / 페이지 방문)
                               드래그로 텍스트 선택한 경우(복사 의도)는 팝업 skip */}
                           <td
                             className="os-v2-clickable os-v2-col-orderno"
@@ -581,14 +631,14 @@ const OrderStatusV2: React.FC = () => {
                           >
                             {item.item_no || '-'}
                           </td>
-                          {/* 상품정보 (item_name + option_name) — 클릭 시 site_url 새 탭
+                          {/* 상품정보 (item_name + option_name) — 클릭 시 처리 로그 드로워 오픈
                               드래그 복사 시 클릭 액션 skip */}
                           <td
-                            className={item.site_url ? 'os-v2-clickable' : undefined}
-                            onClick={item.site_url ? () => {
+                            className="os-v2-clickable"
+                            onClick={() => {
                               if ((window.getSelection()?.toString().length ?? 0) > 0) return;
-                              handleProductInfoClick(item);
-                            } : undefined}
+                              openLogDrawer(item);
+                            }}
                           >
                             {[item.item_name, item.option_name].filter(Boolean).join(', ') || '-'}
                           </td>
@@ -612,7 +662,11 @@ const OrderStatusV2: React.FC = () => {
                           <td className="os-v2-col-num os-v2-cell-shipment">
                             {shipmentQty > 0 ? shipmentQty : ''}
                           </td>
-                          <td className="os-v2-col-type">
+                          {/* 타입 배지 — 클릭 시 A/B/C/X 변경 팝업 */}
+                          <td
+                            className="os-v2-col-type os-v2-clickable"
+                            onClick={(e) => handleTypeCellClick(e, item)}
+                          >
                             {typeBadge ? (
                               <span className={`size-badge ${typeBadge.colorClass}`}>
                                 {typeBadge.code}
@@ -762,7 +816,7 @@ const OrderStatusV2: React.FC = () => {
       />
 
       {/* ============================================================ */}
-      {/* 주문번호 컨텍스트 팝업 — 1688_order_no 복사 / 처리 로그 열기      */}
+      {/* 주문번호 컨텍스트 팝업 — 1688_order_no 복사 / 페이지 방문         */}
       {/* ============================================================ */}
       {orderPopup && (
         <>
@@ -785,12 +839,26 @@ const OrderStatusV2: React.FC = () => {
             </button>
             <button
               className="os-v2-popup-item"
-              onClick={handlePopupOpenLog}
+              onClick={handlePopupVisitPage}
+              disabled={!orderPopup.item.site_url?.trim()}
             >
-              처리 로그
+              페이지 방문
             </button>
           </div>
         </>
+      )}
+
+      {/* ============================================================ */}
+      {/* 타입 변경 팝업 — A/B/C/X 선택                                  */}
+      {/* ============================================================ */}
+      {typePopup && (
+        <TypeChangePopup
+          item={typePopup.item}
+          x={typePopup.x}
+          y={typePopup.y}
+          onClose={() => setTypePopup(null)}
+          onSelect={handleTypeChange}
+        />
       )}
     </div>
   );
