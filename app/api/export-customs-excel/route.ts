@@ -223,7 +223,8 @@ export async function POST(request: NextRequest) {
           const totalQuantity = itemList.reduce((sum, item) => sum + (parseInt(item.out_quantity) || 0), 0);
 
           // 전체 데이터 기준 품목별 단가 사용 (이미 달러로 환산됨)
-          const unitPriceUSD = globalUnitPrices[itemKey] || 0;
+          // 단가를 먼저 2자리 반올림 후 합계 계산 (표시값과 일치하도록)
+          const unitPriceUSD = Math.round((globalUnitPrices[itemKey] || 0) * 100) / 100;
           const totalPriceUSD = unitPriceUSD * totalQuantity;
 
           // Supabase에서 품목 정보 조회 (여러 개 있을 경우 첫 번째만 사용)
