@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
 
     // available = ARRIVAL - PACKED출고완료 - RETURN
     const availableMap = new Map<string, number>();
-    // 전체 PACKED 수량 (box_code 무관, order_item_id 기준)
+    // 전체 출고준비 수량 (PACKED + shipment_id 배정 완료, order_item_id 기준)
     const totalPackedMap = new Map<string, number>();
 
     for (const f of inboundFf) {
@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
       if (f.type === 'PACKED' && f.shipment_id != null) {
         availableMap.set(f.order_item_id, (availableMap.get(f.order_item_id) ?? 0) - f.quantity);
       }
-      if (f.type === 'PACKED') {
+      if (f.type === 'PACKED' && f.shipment_id == null) {
         totalPackedMap.set(f.order_item_id, (totalPackedMap.get(f.order_item_id) ?? 0) + f.quantity);
       }
     }
