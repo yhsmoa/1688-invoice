@@ -59,17 +59,26 @@ const OrderStatusV2: React.FC = () => {
   // 배송 상태 (im_1688_orders_delivery_status)
   const { statusMap: deliveryStatusMap } = use1688DeliveryStatus(items);
 
+  // 상태 필터 (PROCESSING 기본 / ALL 전체)
+  const [statusMode, setStatusMode] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
+
   // 검색 state — filteredItems 계산 전에 선언 (TDZ 회피)
   const [searchInput, setSearchInput] = useState('');
   // null = 필터 비활성(전체), Set = 해당 id 만 표시
   const [searchFilteredIds, setSearchFilteredIds] = useState<Set<string> | null>(null);
   const [searching, setSearching] = useState(false);
 
-  // ── 검색 필터 적용 (필터 없으면 items 전체) ──
+  // ── ALL 모드 시 역순 정렬 (API는 item_no ASC 고정이므로 클라이언트에서 처리) ──
+  const sortedItems = useMemo(() => {
+    if (statusMode === 'ALL') return [...items].reverse();
+    return items;
+  }, [items, statusMode]);
+
+  // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) ──
   const filteredItems = useMemo(() => {
-    if (searchFilteredIds === null) return items;
-    return items.filter((i) => searchFilteredIds.has(i.id));
-  }, [items, searchFilteredIds]);
+    if (searchFilteredIds === null) return sortedItems;
+    return sortedItems.filter((i) => searchFilteredIds.has(i.id));
+  }, [sortedItems, searchFilteredIds]);
 
   // ── 페이지네이션 (100개/page) — filteredItems 기준 ──
   const {
@@ -92,11 +101,20 @@ const OrderStatusV2: React.FC = () => {
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const userId = e.target.value;
       setSelectedUserId(userId);
-      if (userId) fetchItems(userId, 'PROCESSING');
+      if (userId) fetchItems(userId, statusMode);
       else clearItems();
     },
-    [fetchItems, clearItems]
+    [fetchItems, clearItems, statusMode]
   );
+
+  // statusMode 변경 시 재조회 (유저가 선택된 경우에만)
+  useEffect(() => {
+    if (!selectedUserId) return;
+    setSearchInput('');
+    setSearchFilteredIds(null);
+    fetchItems(selectedUserId, statusMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusMode]);
 
   // ============================================================
   // 3) 검색 — 5개 필드 OR 매칭
@@ -523,9 +541,19 @@ const OrderStatusV2: React.FC = () => {
               </button>
             </div>
 
-            {/* ── 액션 바: 반품 버튼 (오른쪽) ── */}
+            {/* ── 액션 바: 상태 필터 (왼쪽) / 반품 버튼 (오른쪽) ── */}
             <div className="order-status-v2-action-bar">
-              <div className="order-status-v2-action-left" />
+              <div className="order-status-v2-action-left">
+                <select
+                  className="order-status-v2-status-select"
+                  value={statusMode}
+                  onChange={(e) => setStatusMode(e.target.value as 'PROCESSING' | 'ALL')}
+                  disabled={!selectedUserId}
+                >
+                  <option value="PROCESSING">PROCESSING</option>
+                  <option value="ALL">ALL</option>
+                </select>
+              </div>
               <div className="order-status-v2-action-right">
                 <button
                   className="order-status-v2-move-btn"

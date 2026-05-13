@@ -156,6 +156,22 @@
   cursor: not-allowed;
 }
 
+.order-status-v2-status-select {
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.order-status-v2-status-select:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .order-status-v2-ship-btn {
   padding: 6px 18px;
   background-color: #dc2626;
