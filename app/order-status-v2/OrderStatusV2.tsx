@@ -97,6 +97,8 @@ const OrderStatusV2: React.FC = () => {
     [paginatedData]
   );
 
+
+
   const handleUserChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const userId = e.target.value;
@@ -607,14 +609,14 @@ const OrderStatusV2: React.FC = () => {
                     paginatedData.map((item, idx) => {
                       // ── 수량 계산 (import-product-v2 ItemTableRow 로직 1:1) ──
                       const arrivalQty = arrivalMap.get(item.id) ?? 0;
-                      const packedQty = packedMap.get(item.id) ?? 0;
+                      const packedQty = packedMap.get(item.product_id ?? '') ?? 0;
                       const cancelQty = cancelMap.get(item.id) ?? 0;
                       const returnQty = returnMap.get(item.id) ?? 0;
                       const shippedItemQty = shippedItemMap.get(item.id) ?? 0;
                       const shipmentQty = exportMap.get(item.product_id ?? '') ?? 0;
-                      // 진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw)
+                      // 진행 = order_qty - 취소(order_item_id) - 반품(order_item_id) - 출고완료PACKED(product_id)
                       const progressQty =
-                        (item.order_qty ?? 0) - cancelQty - returnQty - shippedItemQty;
+                        (item.order_qty ?? 0) - cancelQty - returnQty - shipmentQty;
                       // 취소 컬럼 표시 — CANCEL + RETURN 합산 (단일 컬럼)
                       const cancelDisplayQty = cancelQty + returnQty;
 

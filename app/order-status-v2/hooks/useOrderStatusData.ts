@@ -205,7 +205,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
             if (type === 'ARRIVAL') {
               arrival.set(order_item_id, (arrival.get(order_item_id) ?? 0) + qty);
             } else if (type === 'PACKED') {
-              packed.set(order_item_id, (packed.get(order_item_id) ?? 0) + qty);
+              // 출고 기준과 동일하게 product_id 기준 합산
+              if (product_id) {
+                packed.set(product_id, (packed.get(product_id) ?? 0) + qty);
+              }
               if (shipment_id != null) {
                 shippedItem.set(order_item_id, (shippedItem.get(order_item_id) ?? 0) + qty);
                 if (product_id) {
