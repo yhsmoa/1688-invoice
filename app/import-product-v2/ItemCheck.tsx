@@ -143,7 +143,7 @@ const ItemCheck: React.FC = () => {
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
-  const { arrivalMap, packedMap, cancelMap, returnMap, shipmentMap, exportMap, shippedItemMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems);
+  const { arrivalMap, packedMap, cancelMap, returnMap, shipmentMap, exportMap, shippedItemMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems, selectedUserId);
 
   // ============================================================
   // 5) Worker / PC-NO 드롭박스

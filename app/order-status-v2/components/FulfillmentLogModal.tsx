@@ -64,10 +64,20 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
   }, []);
 
   // ── 해당 아이템의 로그 (시간순 오름차순) ──
+  //   inbound (ARRIVAL/CANCEL/RETURN): order_item_id 기준 (행 단위 이벤트)
+  //   outbound (PACKED/SHIPMENT): product_id 기준 (동일 product 의 sibling 행 이력 포함)
   const logs = useMemo(() => {
     if (!item) return [];
     return rawFulfillments
-      .filter((f) => f.order_item_id === item.id)
+      .filter((f) => {
+        if (f.type === 'ARRIVAL' || f.type === 'CANCEL' || f.type === 'RETURN') {
+          return f.order_item_id === item.id;
+        }
+        if (f.type === 'PACKED' || f.type === 'SHIPMENT') {
+          return item.product_id ? f.product_id === item.product_id : false;
+        }
+        return false;
+      })
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [item, rawFulfillments]);
 

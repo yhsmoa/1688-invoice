@@ -212,7 +212,7 @@ const EMPTY_MAPS: FulfillmentMaps = {
   rawFulfillments: [],
 };
 
-export function useFtFulfillmentSummary(items: FtOrderItem[]) {
+export function useFtFulfillmentSummary(items: FtOrderItem[], userId: string) {
   const [maps, setMaps] = useState<FulfillmentMaps>(EMPTY_MAPS);
   const [loadingFulfillments, setLoadingFulfillments] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -222,6 +222,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
 
   // items id 목록이 실제로 바뀔 때 또는 refreshKey 변경 시 fetch
   const itemIdsKey = items.map((i) => i.id).join(',');
+  // outbound 조회용 — 동일 product_id 공유 행의 PACKED 이력 누락 방지
+  const productIdsKey = Array.from(
+    new Set(items.map((i) => i.product_id).filter((v): v is string => !!v))
+  ).join(',');
 
   useEffect(() => {
     if (!itemIdsKey) {
@@ -238,7 +242,11 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
         const res = await fetch('/api/ft/fulfillments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_item_ids: itemIdsKey.split(',').filter(Boolean) }),
+          body: JSON.stringify({
+            order_item_ids: itemIdsKey.split(',').filter(Boolean),
+            product_ids: productIdsKey ? productIdsKey.split(',').filter(Boolean) : undefined,
+            user_id: userId || undefined,
+          }),
         });
         const json = await res.json();
 
@@ -261,7 +269,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
             if (type === 'ARRIVAL') {
               arrival.set(order_item_id, (arrival.get(order_item_id) ?? 0) + qty);
             } else if (type === 'PACKED') {
-              packed.set(order_item_id, (packed.get(order_item_id) ?? 0) + qty);
+              // 출고 기준과 동일하게 product_id 기준 합산 (sibling order_item_id 의 PACKED 도 포함)
+              if (product_id) {
+                packed.set(product_id, (packed.get(product_id) ?? 0) + qty);
+              }
               // PACKED + shipment_id NOT NULL → 출고완료
               if (shipment_id != null) {
                 shippedItem.set(order_item_id, (shippedItem.get(order_item_id) ?? 0) + qty);
@@ -302,7 +313,7 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
 
     // cleanup: race condition 방지
     return () => { cancelled = true; };
-  }, [itemIdsKey, refreshKey]);
+  }, [itemIdsKey, productIdsKey, userId, refreshKey]);
 
   return { ...maps, loadingFulfillments, refreshFulfillments };
 }

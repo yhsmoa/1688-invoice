@@ -160,7 +160,7 @@ const EMPTY_MAPS: FulfillmentMaps = {
   rawFulfillments: [],
 };
 
-export function useFtFulfillmentSummary(items: FtOrderItem[]) {
+export function useFtFulfillmentSummary(items: FtOrderItem[], userId: string) {
   const [maps, setMaps] = useState<FulfillmentMaps>(EMPTY_MAPS);
   const [loadingFulfillments, setLoadingFulfillments] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -168,6 +168,10 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
   const refreshFulfillments = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const itemIdsKey = items.map((i) => i.id).join(',');
+  // outbound 조회용 — 동일 product_id 공유 행의 PACKED 이력 누락 방지
+  const productIdsKey = Array.from(
+    new Set(items.map((i) => i.product_id).filter((v): v is string => !!v))
+  ).join(',');
 
   useEffect(() => {
     if (!itemIdsKey) {
@@ -183,7 +187,11 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
         const res = await fetch('/api/ft/fulfillments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_item_ids: itemIdsKey.split(',').filter(Boolean) }),
+          body: JSON.stringify({
+            order_item_ids: itemIdsKey.split(',').filter(Boolean),
+            product_ids: productIdsKey ? productIdsKey.split(',').filter(Boolean) : undefined,
+            user_id: userId || undefined,
+          }),
         });
         const json = await res.json();
 
@@ -244,7 +252,7 @@ export function useFtFulfillmentSummary(items: FtOrderItem[]) {
 
     fetchSummary();
     return () => { cancelled = true; };
-  }, [itemIdsKey, refreshKey]);
+  }, [itemIdsKey, productIdsKey, userId, refreshKey]);
 
   return { ...maps, loadingFulfillments, refreshFulfillments };
 }

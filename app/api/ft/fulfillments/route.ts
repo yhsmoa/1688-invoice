@@ -324,11 +324,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, order_item_ids } = body;
+    const { items, order_item_ids, product_ids, user_id } = body;
 
     // ── [1] 조회 모드 ──────────────────────────────────────────
     // Supabase .in()도 내부적으로 URL 쿼리 파라미터 → ID 수가 많으면 실패
     // 100개 단위로 배치 조회 후 합산
+    //
+    // inbound (ARRIVAL/CANCEL/RETURN): order_item_id 기준 (per 행)
+    // outbound (PACKED/SHIPMENT):
+    //   · product_ids + user_id 제공 시 → product_id IN (product_ids) AND user_id = user_id
+    //     (purchase-agent 패턴 — 동일 product_id 공유 행의 이력 누락 방지)
+    //   · 미제공 시 → 기존 order_item_id 기준 (backward compat: export-product-v2 등)
     if (order_item_ids && Array.isArray(order_item_ids)) {
       try {
         if (order_item_ids.length === 0) {
@@ -342,33 +348,65 @@ export async function POST(request: NextRequest) {
         const SELECT_COLS_OUTBOUND = 'id, order_item_id, quantity, type, created_at, operator_name, product_id, shipment_id';
         const PAGE = 1000;
 
+        // ── 공통 페이징 조회 헬퍼 ──
+        const fetchTable = async (
+          table: string,
+          selectCols: string,
+          filterCol: string,
+          batch: string[],
+          extraEq?: { col: string; value: string }
+        ) => {
+          const rows: typeof allData = [];
+          let from = 0;
+          while (true) {
+            let query = supabase
+              .from(table)
+              .select(selectCols)
+              .in(filterCol, batch);
+            if (extraEq) query = query.eq(extraEq.col, extraEq.value);
+            const { data, error } = await query.range(from, from + PAGE - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            rows.push(...data);
+            if (data.length < PAGE) break;
+            from += PAGE;
+          }
+          return rows;
+        };
+
+        // ── inbound: order_item_id 기준 (항상) ──
         for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
           const batch = order_item_ids.slice(i, i + BATCH_SIZE);
+          const inRows = await fetchTable(INBOUND_TABLE, SELECT_COLS_INBOUND, 'order_item_id', batch);
+          allData.push(...inRows);
+        }
 
-          // ── inbound + outbound 병렬 페이징 조회 ──
-          const fetchTable = async (table: string, selectCols: string) => {
-            const rows: typeof allData = [];
-            let from = 0;
-            while (true) {
-              const { data, error } = await supabase
-                .from(table)
-                .select(selectCols)
-                .in('order_item_id', batch)
-                .range(from, from + PAGE - 1);
-              if (error) throw error;
-              if (!data || data.length === 0) break;
-              rows.push(...data);
-              if (data.length < PAGE) break;
-              from += PAGE;
-            }
-            return rows;
-          };
+        // ── outbound: product_id 기준 (신규) 또는 order_item_id 기준 (backward compat) ──
+        const useProductIdFilter =
+          Array.isArray(product_ids) &&
+          product_ids.length > 0 &&
+          typeof user_id === 'string' &&
+          user_id.length > 0;
 
-          const [inRows, outRows] = await Promise.all([
-            fetchTable(INBOUND_TABLE, SELECT_COLS_INBOUND),
-            fetchTable(OUTBOUND_TABLE, SELECT_COLS_OUTBOUND),
-          ]);
-          allData.push(...inRows, ...outRows);
+        if (useProductIdFilter) {
+          const uniqueProductIds = Array.from(new Set(product_ids as string[])).filter(Boolean);
+          for (let i = 0; i < uniqueProductIds.length; i += BATCH_SIZE) {
+            const batch = uniqueProductIds.slice(i, i + BATCH_SIZE);
+            const outRows = await fetchTable(
+              OUTBOUND_TABLE,
+              SELECT_COLS_OUTBOUND,
+              'product_id',
+              batch,
+              { col: 'user_id', value: user_id as string }
+            );
+            allData.push(...outRows);
+          }
+        } else {
+          for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
+            const batch = order_item_ids.slice(i, i + BATCH_SIZE);
+            const outRows = await fetchTable(OUTBOUND_TABLE, SELECT_COLS_OUTBOUND, 'order_item_id', batch);
+            allData.push(...outRows);
+          }
         }
 
         return NextResponse.json({ success: true, data: allData });

@@ -54,7 +54,7 @@ const OrderStatusV2: React.FC = () => {
     shippedItemMap,
     rawFulfillments,
     refreshFulfillments,
-  } = useFtFulfillmentSummary(items);
+  } = useFtFulfillmentSummary(items, selectedUserId);
 
   // 배송 상태 (im_1688_orders_delivery_status)
   const { statusMap: deliveryStatusMap } = use1688DeliveryStatus(items);
