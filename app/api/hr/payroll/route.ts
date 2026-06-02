@@ -44,18 +44,35 @@ export async function GET(request: NextRequest) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    // ── 1. 해당 월 출퇴근 기록 조회 ───────────────────────────
-    const { data: records, error: recordsError } = await supabase
-      .from('invoiceManager_emplyee_records')
-      .select('id, employee_id, work_date, clock_in, clock_out, total_minutes')
-      .gte('work_date', startDate)
-      .lte('work_date', endDate)
-      .not('clock_in', 'is', null)
-      .order('work_date', { ascending: true });
+    // ── 1. 해당 월 출퇴근 기록 조회 (Supabase 1000행 우회: range 루프) ──
+    type RecordRow = {
+      id: string;
+      employee_id: string;
+      work_date: string;
+      clock_in: string | null;
+      clock_out: string | null;
+      total_minutes: number | null;
+    };
+    const PAGE = 1000;
+    const records: RecordRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('invoiceManager_emplyee_records')
+        .select('id, employee_id, work_date, clock_in, clock_out, total_minutes')
+        .gte('work_date', startDate)
+        .lte('work_date', endDate)
+        .not('clock_in', 'is', null)
+        .order('work_date', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      records.push(...(data as RecordRow[]));
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
 
-    if (recordsError) throw recordsError;
-
-    if (!records || records.length === 0) {
+    if (records.length === 0) {
       return NextResponse.json({
         success: true,
         year,

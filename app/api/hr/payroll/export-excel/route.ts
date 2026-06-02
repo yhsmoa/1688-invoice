@@ -39,16 +39,27 @@ export async function GET(request: NextRequest) {
     const startDate   = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate     = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    const { data: records, error: recErr } = await supabase
-      .from('invoiceManager_emplyee_records')
-      .select('employee_id, total_minutes')
-      .gte('work_date', startDate)
-      .lte('work_date', endDate)
-      .not('clock_in', 'is', null);
+    // ── Supabase 1000행 우회: range 루프 ──
+    type RecordRow = { employee_id: string; total_minutes: number | null };
+    const PAGE = 1000;
+    const records: RecordRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('invoiceManager_emplyee_records')
+        .select('employee_id, total_minutes')
+        .gte('work_date', startDate)
+        .lte('work_date', endDate)
+        .not('clock_in', 'is', null)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      records.push(...(data as RecordRow[]));
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
 
-    if (recErr) throw recErr;
-
-    if (!records || records.length === 0) {
+    if (records.length === 0) {
       return NextResponse.json(
         { success: false, error: '해당 월 근무 기록이 없습니다.' },
         { status: 404 }
