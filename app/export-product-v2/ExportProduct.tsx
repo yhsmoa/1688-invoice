@@ -195,50 +195,74 @@ const ExportProduct: React.FC = () => {
       }
 
       // 2) fulfillment 집계 (배치 POST)
+      //    product_ids + user_id 동시 전달 → API 가 outbound 를 product_id 기준으로 조회
+      //    (동일 product_id sibling 의 PACKED 이력 누락 방지)
       const orderItemIds = items.map((i) => i.id);
+      const productIds = Array.from(
+        new Set(items.map((i) => i.product_id).filter((v): v is string => !!v))
+      );
       const ffRes = await fetch('/api/ft/fulfillments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_item_ids: orderItemIds }),
+        body: JSON.stringify({
+          order_item_ids: orderItemIds,
+          product_ids: productIds.length > 0 ? productIds : undefined,
+          user_id: userId || undefined,
+        }),
       });
       const ffJson = await ffRes.json();
       const ffRows: { order_item_id: string; quantity: number; type: string }[] =
         ffJson.success ? ffJson.data || [] : [];
 
-      // 타입별 합계 맵 생성 (ARRIVAL / PACKED / RETURN — CANCEL 은 재고 영향 없으므로 미사용)
-      const arrivalMap = new Map<string, number>();
-      const packedMap = new Map<string, number>();
-      const returnMap = new Map<string, number>();
+      // 타입별 합계 맵 — order_item_id 기준 (sibling 별 잔량을 알아야 MIN 가능)
+      const arrivalByOII = new Map<string, number>();
+      const packedByOII = new Map<string, number>();
+      const returnByOII = new Map<string, number>();
       ffRows.forEach((r) => {
+        if (!r.order_item_id) return; // silently skip
         const map =
-          r.type === 'ARRIVAL' ? arrivalMap
-          : r.type === 'PACKED'  ? packedMap
-          : r.type === 'RETURN'  ? returnMap
+          r.type === 'ARRIVAL' ? arrivalByOII
+          : r.type === 'PACKED'  ? packedByOII
+          : r.type === 'RETURN'  ? returnByOII
           : null;
         if (map) map.set(r.order_item_id, (map.get(r.order_item_id) ?? 0) + r.quantity);
       });
 
-      // 3) available_qty 계산 및 0 이하 필터
-      //    공식: available = ARRIVAL - PACKED - RETURN
-      //          (CANCEL 은 입고 전 사건이라 재고 영향 없음 — 차감하지 않음)
-      const withQty = items
-        .map((item) => {
-          const arrival = arrivalMap.get(item.id) ?? 0;
-          const packed = packedMap.get(item.id) ?? 0;
-          const ret = returnMap.get(item.id) ?? 0;
-          return { ...item, available_qty: arrival - packed - ret, packed_qty: packed };
-        })
-        .filter((item) => item.available_qty > 0);
+      // 3) product_id 별 그룹핑 후 sibling 잔량의 MIN 으로 available_qty 계산
+      //    공식: available = MIN over siblings of (ARRIVAL - PACKED - RETURN)
+      //    - 단일 상품(1 sibling): MIN([x]) = x
+      //    - 세트 상품(N siblings): 병목 컴포넌트 기준
+      //    product_id NULL 행은 합산에서 silently skip (스캔 시 자연스럽게 에러 흐름 진입)
+      const byProduct = new Map<string, typeof items>();
+      for (const it of items) {
+        if (!it.product_id) continue;
+        const arr = byProduct.get(it.product_id) ?? [];
+        arr.push(it);
+        byProduct.set(it.product_id, arr);
+      }
 
-      // 4) size_code 결정 — ft_order_items 자체 값(shipment_type + coupang_shipment_size)으로 로컬 계산
-      //    화면 배지 표시와 동일한 데이터 소스 사용 → 스캔 결과와 UI 일치 보장
-      const result: ExportOrderItem[] = withQty.map((item) => ({
-        ...item,
-        size_code: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
-      }));
+      const result: ExportOrderItem[] = [];
+      for (const [, rows] of byProduct) {
+        const siblingAvail = rows.map((r) => {
+          const a = arrivalByOII.get(r.id) ?? 0;
+          const p = packedByOII.get(r.id) ?? 0;
+          const rt = returnByOII.get(r.id) ?? 0;
+          return a - p - rt;
+        });
+        const available = siblingAvail.length > 0 ? Math.min(...siblingAvail) : 0;
+        if (available <= 0) continue;
+        // 대표 row — 동일 product_id 면 item_name/option_name/product_no 동일 → 표시 차이 없음
+        const rep = rows[0];
+        result.push({
+          ...rep,
+          available_qty: available,
+          packed_qty: packedByOII.get(rep.id) ?? 0,
+          size_code: resolveScanSizeCode(rep.shipment_type, rep.coupang_shipment_size),
+        });
+      }
 
       setExportItems(result);
-      console.log(`출고 준비 데이터: ${result.length}개 (전체 ${items.length}개 중 available > 0)`);
+      console.log(`출고 준비 데이터: ${result.length}개 product_id (전체 ${items.length}개 행 중 available > 0)`);
     } catch (err) {
       console.error('출고 데이터 로드 오류:', err);
       setExportItems([]);
