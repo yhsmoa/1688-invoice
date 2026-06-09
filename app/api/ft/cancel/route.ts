@@ -18,6 +18,8 @@ interface CancelItem {
   item_no: string | null;
   item_name: string | null;
   option_name: string | null;
+  china_option1: string | null;
+  china_option2: string | null;
   order_no: string | null;
   product_no: string | null;
   product_id: string | null;
@@ -132,6 +134,8 @@ export async function POST(request: NextRequest) {
           item_no: item.item_no || null,
           item_name: item.item_name || null,
           option_name: item.option_name || null,
+          china_option1: item.china_option1 || null,
+          china_option2: item.china_option2 || null,
           qty: item.qty,
           total_price_cny: item.total_price_cny ?? null,
           delivery_price_cny: item.delivery_price_cny ?? null,

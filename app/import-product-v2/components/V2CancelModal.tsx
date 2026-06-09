@@ -201,6 +201,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           item_no: item.item_no,
           item_name: item.item_name,
           option_name: item.option_name,
+          china_option1: item.china_option1,
+          china_option2: item.china_option2,
           order_no: item.order_no,
           product_no: item.product_no,
           product_id: item.product_id,
