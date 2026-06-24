@@ -187,6 +187,33 @@
         "etc": "기타"
       }
     },
+    "cancelReason": {
+      "selectCategory": "사유 선택",
+      "selectDetail": "상세 선택",
+      "category": {
+        "defect": "불량",
+        "soldout": "품절",
+        "shipError": "발송오류",
+        "customer": "고객요청",
+        "set": "세트",
+        "noResponse": "판매자 응답없음"
+      },
+      "detail": {
+        "stain": "얼룩",
+        "deco": "장식/부자재",
+        "scratch": "기스",
+        "pattern": "패턴",
+        "color": "색상",
+        "etc": "기타",
+        "missing": "발송누락",
+        "wrong": "오발송",
+        "soldout": "품절",
+        "custCancel": "고객취소",
+        "notionCancel": "노션취소",
+        "setCancel": "세트취소",
+        "noContact": "연락안됨"
+      }
+    },
     "searchType": {
       "delivery": "배송번호",
       "order": "1688 주문번호",

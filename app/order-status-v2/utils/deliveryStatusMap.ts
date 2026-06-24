@@ -36,12 +36,16 @@ export interface DeliveryStatusInfo {
 // 표시 포맷 생성
 //
 // 규칙:
-//   "{이모지} {한글}"
+//   "{이모지} {배송상태}"
+//   - lang === 'zh' : 배송상태를 원본 중국어 그대로 표시 (한글 매핑 안 함)
+//   - 그 외(ko)     : 한글 매핑 적용
 //   order_status === '待发货' 이고 description 이 있으면 뒤에 description 추가
 // ============================================================
-export function formatDeliveryDisplay(info: DeliveryStatusInfo): string {
+export function formatDeliveryDisplay(info: DeliveryStatusInfo, lang: string = 'ko'): string {
   const os = ORDER_STATUS_EMOJI[info.order_status] ?? info.order_status;
-  const ds = DELIVERY_STATUS_KR[info.delivery_status] ?? info.delivery_status;
+  const ds = lang === 'zh'
+    ? info.delivery_status
+    : (DELIVERY_STATUS_KR[info.delivery_status] ?? info.delivery_status);
 
   const parts = [os, ds].filter(Boolean);
   let result = parts.join(' ').trim();

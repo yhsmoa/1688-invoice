@@ -181,6 +181,33 @@
         "etc": "其他"
       }
     },
+    "cancelReason": {
+      "selectCategory": "选择原因",
+      "selectDetail": "选择详情",
+      "category": {
+        "defect": "不良",
+        "soldout": "缺货",
+        "shipError": "发货错误",
+        "customer": "客户要求",
+        "set": "套装",
+        "noResponse": "卖家无回复"
+      },
+      "detail": {
+        "stain": "污渍",
+        "deco": "装饰/辅料",
+        "scratch": "划痕",
+        "pattern": "图案",
+        "color": "颜色",
+        "etc": "其他",
+        "missing": "漏发",
+        "wrong": "错发",
+        "soldout": "缺货",
+        "custCancel": "客户取消",
+        "notionCancel": "Notion取消",
+        "setCancel": "套装取消",
+        "noContact": "无法联系"
+      }
+    },
     "searchType": {
       "delivery": "配送单号",
       "order": "1688 订单号",

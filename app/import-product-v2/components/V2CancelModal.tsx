@@ -1,8 +1,50 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import './V2CancelModal.css';
+
+// ============================================================
+// 반품 사유 선택지 (2단 드롭박스)
+//   - 표시: 언어설정(ko/zh) — t('importProductV2.cancelReason.*')
+//   - 저장: 항상 한글 (ko 필드) — "카테고리 - 상세" 또는 "카테고리"
+// ============================================================
+const REASON_TREE: { key: string; ko: string; details: { key: string; ko: string }[] }[] = [
+  { key: 'defect', ko: '불량', details: [
+    { key: 'stain', ko: '얼룩' },
+    { key: 'deco', ko: '장식/부자재' },
+    { key: 'scratch', ko: '기스' },
+    { key: 'pattern', ko: '패턴' },
+    { key: 'color', ko: '색상' },
+    { key: 'etc', ko: '기타' },
+  ] },
+  { key: 'soldout', ko: '품절', details: [] },
+  { key: 'shipError', ko: '발송오류', details: [
+    { key: 'missing', ko: '발송누락' },
+    { key: 'wrong', ko: '오발송' },
+    { key: 'soldout', ko: '품절' },
+  ] },
+  { key: 'customer', ko: '고객요청', details: [
+    { key: 'custCancel', ko: '고객취소' },
+    { key: 'notionCancel', ko: '노션취소' },
+  ] },
+  { key: 'set', ko: '세트', details: [
+    { key: 'setCancel', ko: '세트취소' },
+  ] },
+  { key: 'noResponse', ko: '판매자 응답없음', details: [
+    { key: 'noContact', ko: '연락안됨' },
+  ] },
+];
+
+// 저장용 한글 사유 문자열 생성 ("카테고리 - 상세" / "카테고리")
+function buildReasonKo(categoryKey: string, detailKey: string): string | null {
+  if (!categoryKey) return null;
+  const cat = REASON_TREE.find((c) => c.key === categoryKey);
+  if (!cat) return null;
+  const det = cat.details.find((d) => d.key === detailKey);
+  return det ? `${cat.ko} - ${det.ko}` : cat.ko;
+}
 
 // ============================================================
 // 타입 정의
@@ -37,7 +79,9 @@ interface ItemFormData {
   total_price_cny: string;
   delivery_price_cny: string;
   service_fee: string;
-  cancel_reason: string;
+  cancel_reason: string;     // 직접 입력 (드롭박스 미선택 시)
+  reason_category: string;   // 사유 드롭박스 1 (REASON_TREE key)
+  reason_detail: string;     // 사유 드롭박스 2 (detail key)
 }
 
 const EMPTY_FORM: ItemFormData = {
@@ -46,6 +90,8 @@ const EMPTY_FORM: ItemFormData = {
   delivery_price_cny: '',
   service_fee: '',
   cancel_reason: '',
+  reason_category: '',
+  reason_detail: '',
 };
 
 // ============================================================
@@ -72,6 +118,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
   cancelMap,
   returnMap,
 }) => {
+  const { t } = useTranslation();
+
   // ── 아이템별 입력 상태 (key = item.id)
   const [formData, setFormData] = useState<Map<string, ItemFormData>>(new Map());
 
@@ -144,6 +192,11 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
             : '';
         }
 
+        // 사유 카테고리 변경 시 상세 선택 초기화
+        if (field === 'reason_category') {
+          updated.reason_detail = '';
+        }
+
         next.set(itemId, updated);
         return next;
       });
@@ -211,7 +264,10 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           total_price_cny: data.total_price_cny ? parseFloat(data.total_price_cny) : null,
           delivery_price_cny: data.delivery_price_cny ? parseFloat(data.delivery_price_cny) : null,
           service_fee: data.service_fee ? parseFloat(data.service_fee) : null,
-          cancel_reason: data.cancel_reason || null,
+          // 드롭박스 선택 시 한글 "카테고리 - 상세", 미선택 시 직접 입력값
+          cancel_reason: data.reason_category
+            ? buildReasonKo(data.reason_category, data.reason_detail)
+            : (data.cancel_reason.trim() || null),
           requester,
           cancel_type: cancelType,
         };
@@ -389,16 +445,60 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* ── 반품 사유 (textarea) */}
+                    {/* ── 반품 사유 (드롭박스 2단 선택 또는 직접 입력 — 상호 비활성) */}
                     <div className="v2-cancel-reason-group">
                       <label className="v2-cancel-field-label">반품 사유</label>
-                      <textarea
-                        className="v2-cancel-textarea"
-                        value={data.cancel_reason}
-                        placeholder="반품 사유를 입력하세요"
-                        rows={2}
-                        onChange={(e) => updateField(item.id, 'cancel_reason', e.target.value)}
-                      />
+
+                      {(() => {
+                        const hasText = data.cancel_reason.trim() !== '';
+                        const selectedCat = REASON_TREE.find((c) => c.key === data.reason_category);
+                        const details = selectedCat?.details ?? [];
+                        return (
+                          <>
+                            <div className="v2-cancel-reason-selects">
+                              {/* 1단: 사유 카테고리 */}
+                              <select
+                                className="v2-cancel-reason-select"
+                                value={data.reason_category}
+                                disabled={hasText}
+                                onChange={(e) => updateField(item.id, 'reason_category', e.target.value)}
+                              >
+                                <option value="">{t('importProductV2.cancelReason.selectCategory')}</option>
+                                {REASON_TREE.map((c) => (
+                                  <option key={c.key} value={c.key}>
+                                    {t(`importProductV2.cancelReason.category.${c.key}`)}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {/* 2단: 상세 (카테고리에 상세가 있을 때만 활성) */}
+                              <select
+                                className="v2-cancel-reason-select"
+                                value={data.reason_detail}
+                                disabled={hasText || !data.reason_category || details.length === 0}
+                                onChange={(e) => updateField(item.id, 'reason_detail', e.target.value)}
+                              >
+                                <option value="">{t('importProductV2.cancelReason.selectDetail')}</option>
+                                {details.map((d) => (
+                                  <option key={d.key} value={d.key}>
+                                    {t(`importProductV2.cancelReason.detail.${d.key}`)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* 직접 입력 — 드롭박스 선택 시 비활성 */}
+                            <textarea
+                              className="v2-cancel-textarea"
+                              value={data.cancel_reason}
+                              placeholder="직접 입력 (드롭박스 미선택 시)"
+                              rows={2}
+                              disabled={data.reason_category !== ''}
+                              onChange={(e) => updateField(item.id, 'cancel_reason', e.target.value)}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 );

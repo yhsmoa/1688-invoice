@@ -232,7 +232,41 @@
 .v2-cancel-reason-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+}
+
+/* 사유 2단 드롭박스 */
+.v2-cancel-reason-selects {
+  display: flex;
+  gap: 8px;
+}
+
+.v2-cancel-reason-select {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 13px;
+  color: #111;
+  background: white;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.v2-cancel-reason-select:focus {
+  outline: none;
+  border-color: #18181b;
+  box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.1);
+}
+
+/* 비활성(상호 배타) 시각화 — 드롭박스/직접입력 */
+.v2-cancel-reason-select:disabled,
+.v2-cancel-textarea:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
 .v2-cancel-textarea {

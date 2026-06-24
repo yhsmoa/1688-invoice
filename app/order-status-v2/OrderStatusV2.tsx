@@ -16,6 +16,7 @@ import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import { formatDeliveryDisplay } from './utils/deliveryStatusMap';
 import { resolveSizeBadge } from '../../lib/sizeCode';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './OrderStatusV2.css';
 
 // ============================================================
@@ -35,6 +36,9 @@ function getSetGroupKey(item: FtOrderItem): string | null {
 }
 
 const OrderStatusV2: React.FC = () => {
+  // 현재 언어 (배송 상태 표시 — zh 면 원본 중국어 그대로)
+  const { language } = useLanguage();
+
   // ============================================================
   // 1) 사용자 드롭박스 (ft_users)
   // ============================================================
@@ -709,7 +713,7 @@ const OrderStatusV2: React.FC = () => {
                               const oid = item['1688_order_id'];
                               if (!oid) return '';
                               const info = deliveryStatusMap.get(oid);
-                              return info ? formatDeliveryDisplay(info) : '';
+                              return info ? formatDeliveryDisplay(info, language) : '';
                             })()}
                           </td>
                           {/* ── 비고 KR (note_notice) — 인라인 편집 ── */}
