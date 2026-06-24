@@ -35,6 +35,7 @@ import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
 import V2CancelModal from './components/V2CancelModal';
 import V2NoteModal from './components/V2NoteModal';
+import V2CustomerConfirmModal from './components/V2CustomerConfirmModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
@@ -72,6 +73,9 @@ const ItemCheck: React.FC = () => {
 
   // ── 비고 모달 state ──
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  // ── 고객확인 모달 state ──
+  const [isCustomerConfirmModalOpen, setIsCustomerConfirmModalOpen] = useState(false);
 
   // ── FulfillmentLogModal delivery_codes state ──
   const [logDeliveryCodes, setLogDeliveryCodes] = useState<string[]>([]);
@@ -942,6 +946,21 @@ const ItemCheck: React.FC = () => {
     return users.find((u) => u.id === selectedUserId) || null;
   }, [users, selectedUserId]);
 
+  // ── 고객확인 모달 대상 — 체크된 항목 (Notion 전송) ──
+  const customerConfirmItems = useMemo(
+    () => items.filter((item) => selectedRows.has(item.id)),
+    [items, selectedRows]
+  );
+
+  // [고객확인] 버튼 클릭 — 선택 항목이 있을 때만 모달 open
+  const handleCustomerConfirmClick = useCallback(() => {
+    if (selectedRows.size === 0) {
+      alert(t('importProductV2.alerts.selectItems'));
+      return;
+    }
+    setIsCustomerConfirmModalOpen(true);
+  }, [selectedRows, t]);
+
   // PC-NO → operator_id (라벨 저장용)
   const operatorId = selectedPcNo;
 
@@ -1676,6 +1695,7 @@ const ItemCheck: React.FC = () => {
           onLabelClick={handleLabelClick}
           onImportClick={() => setIsReadyModalOpen(true)}
           onShippingClick={handlePrintInvoicesFromSelection}
+          onCustomerConfirmClick={handleCustomerConfirmClick}
         />
       </div>
 
@@ -1749,6 +1769,21 @@ const ItemCheck: React.FC = () => {
         onSaveComplete={() => {
           setIsNoteModalOpen(false);
           if (selectedUserId) fetchItems(selectedUserId, statusFilter);
+        }}
+      />
+
+      {/* ============================================================ */}
+      {/* 고객확인 모달 — 체크된 항목을 Notion 으로 전송 */}
+      {/* ============================================================ */}
+      <V2CustomerConfirmModal
+        isOpen={isCustomerConfirmModalOpen}
+        onClose={() => setIsCustomerConfirmModalOpen(false)}
+        items={customerConfirmItems}
+        sellerCode={selectedUser?.user_code || ''}
+        arrivalMap={arrivalMap}
+        onSaveComplete={() => {
+          setIsCustomerConfirmModalOpen(false);
+          setSelectedRows(new Set());
         }}
       />
     </div>

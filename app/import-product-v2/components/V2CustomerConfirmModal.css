@@ -1,0 +1,407 @@
+/* ============================================================ */
+/* V2 고객확인 모달 스타일                                        */
+/*   - 체크된 항목별 카드 (이미지 2단 + 속성 체크박스)            */
+/*   - V2CancelModal 의 오버레이/다이얼로그 톤과 일관성 유지       */
+/* ============================================================ */
+
+/* ── 배경 오버레이 ── */
+.v2-cc-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── 모달 박스 ── */
+.v2-cc-dialog {
+  background: #fff;
+  border-radius: 8px;
+  width: 92%;
+  max-width: 760px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================ */
+/* 헤더                                                          */
+/* ============================================================ */
+.v2-cc-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.v2-cc-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #111;
+  font-weight: 700;
+}
+
+.v2-cc-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.v2-cc-close-btn:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.v2-cc-close-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================ */
+/* 바디 (스크롤 영역)                                            */
+/* ============================================================ */
+.v2-cc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.v2-cc-empty {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* ============================================================ */
+/* 아이템 카드                                                   */
+/* ============================================================ */
+.v2-cc-item-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fafafa;
+}
+
+/* ── 카드 헤더: 아이템번호 - 중국옵션 ── */
+.v2-cc-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.v2-cc-item-no {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.v2-cc-item-sep {
+  color: #9ca3af;
+}
+
+.v2-cc-item-option {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* ============================================================ */
+/* 이미지 2단 (좌: img_url / 우: 첨부)                            */
+/* ============================================================ */
+.v2-cc-image-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.v2-cc-image-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v2-cc-image-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.v2-cc-image-box {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.v2-cc-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.v2-cc-image-empty {
+  font-size: 13px;
+  color: #bbb;
+}
+
+/* ── 첨부 이미지 드롭존 (클릭/드래그앤드롭) ── */
+.v2-cc-dropzone {
+  cursor: pointer;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.v2-cc-dropzone:hover {
+  border-color: #2563eb;
+  background: #f0f6ff;
+}
+
+.v2-cc-dropzone.dragover {
+  border-color: #2563eb;
+  background: #e0edff;
+}
+
+.v2-cc-dropzone-empty {
+  padding: 0 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 첨부 미리보기 위 교체 안내 (하단 오버레이) */
+.v2-cc-dropzone-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 0;
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  background: rgba(17, 24, 39, 0.6);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.v2-cc-dropzone:hover .v2-cc-dropzone-hint {
+  opacity: 1;
+}
+
+/* ============================================================ */
+/* 확인 속성 체크박스                                            */
+/* ============================================================ */
+.v2-cc-attr-section {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+/* ── 확인수량 행 (확인수량 : [입력] / 입고개수) ── */
+.v2-cc-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.v2-cc-qty-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.v2-cc-qty-input {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.v2-cc-qty-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* 확인수량 미입력 강조 (저장 시도 후) */
+.v2-cc-qty-input-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.v2-cc-qty-divider {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.v2-cc-qty-arrival {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.v2-cc-qty-caption {
+  font-size: 11px;
+  font-weight: 500;
+  font-style: normal;
+  color: #9ca3af;
+}
+
+.v2-cc-attr-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.v2-cc-attr-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.v2-cc-attr-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+.v2-cc-attr-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.v2-cc-etc-input {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.v2-cc-etc-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* ============================================================ */
+/* 푸터                                                          */
+/* ============================================================ */
+.v2-cc-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.v2-cc-btn-secondary {
+  padding: 9px 18px;
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.v2-cc-btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.v2-cc-btn-primary {
+  padding: 9px 22px;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  min-width: 96px;
+}
+
+.v2-cc-btn-primary:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.v2-cc-btn-primary:disabled,
+.v2-cc-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 저장 중 스피너 ── */
+.v2-cc-saving {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-cc-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: v2-cc-spin 0.7s linear infinite;
+}
+
+@keyframes v2-cc-spin {
+  to { transform: rotate(360deg); }
+}

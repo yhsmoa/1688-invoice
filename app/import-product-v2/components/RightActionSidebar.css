@@ -60,6 +60,14 @@
   cursor: not-allowed;
 }
 
+/* ── 고객확인 구분선 (기존 액션 ↔ 고객확인 분리) ── */
+.v2-right-action-divider {
+  width: 60%;
+  height: 1px;
+  margin: 8px auto;
+  background-color: #374151;
+}
+
 /* ── 이모지 ── */
 .v2-right-action-emoji {
   font-size: 22px;

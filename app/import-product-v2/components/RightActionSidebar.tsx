@@ -27,6 +27,8 @@ interface RightActionSidebarProps {
   onLabelClick:    () => void;
   onImportClick:   () => void;
   onShippingClick: () => void | Promise<void>;
+  /** 고객확인 — 체크된 항목을 Notion 으로 전송 (사이드바 하단 분리 버튼) */
+  onCustomerConfirmClick: () => void;
   // ── 버튼별 disabled 여부 ──
   /** 사용자 미선택 또는 데이터 0건 시 비활성화 (공통 버튼 disabled) */
   disabled: boolean;
@@ -62,6 +64,7 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
   onLabelClick,
   onImportClick,
   onShippingClick,
+  onCustomerConfirmClick,
   disabled,
   shippingEnabled,
   importBadgeCount,
@@ -101,6 +104,20 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
           </button>
         );
       })}
+
+      {/* ── 고객확인 — 기존 액션과 구분선으로 분리 (Notion 전송) ── */}
+      <div className="v2-right-action-divider" />
+      <button
+        className="v2-right-action-btn"
+        onClick={onCustomerConfirmClick}
+        disabled={disabled}
+        type="button"
+      >
+        <span className="v2-right-action-emoji">🙋</span>
+        <span className="v2-right-action-label">
+          {t('importProductV2.buttons.customerConfirm')}
+        </span>
+      </button>
     </aside>
   );
 };

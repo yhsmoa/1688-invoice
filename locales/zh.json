@@ -167,7 +167,19 @@
       "missing": "未入库",
       "label": "标签",
       "shipping": "运单",
-      "import": "入库"
+      "import": "入库",
+      "customerConfirm": "客户确认"
+    },
+    "customerConfirm": {
+      "attr": {
+        "neckline": "领口",
+        "sleeve": "袖子",
+        "hem": "下摆",
+        "pattern": "图案",
+        "material": "面料",
+        "color": "颜色",
+        "etc": "其他"
+      }
     },
     "searchType": {
       "delivery": "配送单号",
