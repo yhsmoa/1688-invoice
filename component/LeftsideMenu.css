@@ -1,30 +1,63 @@
+/* ============================================================ */
+/* 좌측 사이드 메뉴                                              */
+/*   - 평소: 이모지만 보이는 축소 레일 (콘텐츠 영역 최대 확보)   */
+/*   - HOVER: 패널이 우측으로 확장되어 라벨 표시 (오버레이)      */
+/*     · 확장은 absolute 오버레이라 콘텐츠가 밀리지 않음         */
+/* ============================================================ */
+
+:root {
+  --leftside-rail-width: 60px;       /* 축소 시 차지 너비 (콘텐츠가 밀리는 폭) */
+  --leftside-expanded-width: 230px;  /* HOVER 확장 너비 */
+}
+
+/* 레일(자리 차지 요소) — 콘텐츠는 이 너비만큼만 밀림 */
 .leftside-menu {
-  width: 230px;
+  width: var(--leftside-rail-width);
+  flex-shrink: 0;
   min-height: 100vh;
-  padding: 24px 0;
+  position: relative;
+  z-index: 50;
+  transition: width 0.3s ease, margin-left 0.3s ease;
+}
+
+/* 실제 패널 — absolute 오버레이. HOVER 시 우측으로 확장 */
+.leftside-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--leftside-rail-width);
+  background-color: white;
   border-right: 1px solid #e2e8f0;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, margin-left 0.3s ease;
-  position: relative;
-  background-color: white;
-}
-
-.leftside-menu.closed {
-  transform: translateX(-100%);
-  margin-left: -230px;
-}
-
-.leftside-nav {
-  padding: 0 16px;
+  padding: 24px 0;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 48px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: width 0.25s ease, box-shadow 0.25s ease, transform 0.3s ease;
+}
+
+.leftside-menu:hover .leftside-nav {
+  width: var(--leftside-expanded-width);
+  box-shadow: 6px 0 18px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+}
+
+/* closed (상단 토글) — 완전히 숨김 */
+.leftside-menu.closed {
+  width: 0;
+  margin-left: 0;
+}
+
+.leftside-menu.closed .leftside-nav {
+  transform: translateX(-100%);
 }
 
 .menu-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 10px;
   flex: 1;
 }
 
@@ -35,12 +68,14 @@
 .menu-link {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 11px 9px;
   color: #333;
   text-decoration: none;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .menu-link:hover {
@@ -48,17 +83,44 @@
   color: #007bff;
 }
 
+/* 아이콘(이모지) — 축소/확장 양쪽에서 항상 표시, 고정폭으로 정렬 */
+.menu-icon {
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 라벨/화살표 — 축소 시 숨김(투명), HOVER 시 표시 */
+.menu-text {
+  flex: 1;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
 .dropdown-arrow {
   margin-left: auto;
   font-size: 12px;
-  transition: transform 0.2s ease;
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.leftside-menu:hover .menu-text,
+.leftside-menu:hover .dropdown-arrow {
+  opacity: 1;
 }
 
 .dropdown-arrow.open {
   transform: rotate(180deg);
 }
 
-/* 하위메뉴 스타일 */
+/* 하위메뉴 — 축소(미HOVER) 상태에서는 숨김 */
+.leftside-menu:not(:hover) .submenu-list {
+  display: none;
+}
+
 .submenu-list {
   list-style: none;
   margin: 0;
@@ -82,6 +144,7 @@
   border-radius: 6px;
   transition: all 0.2s ease;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .submenu-link:hover {
@@ -126,4 +189,4 @@
 
 .language-dropdown-menu option {
   padding: 8px;
-} 
+}
