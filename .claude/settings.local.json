@@ -47,7 +47,17 @@
       "Bash(find /d/1688-invoice -name *.sql -type f)",
       "Bash(node debug-donecount.js)",
       "Bash(node debug-donecount2.js)",
-      "Bash(find /d/1688-invoice/app/chinaorder -type f -name *)"
+      "Bash(find /d/1688-invoice/app/chinaorder -type f -name *)",
+      "Bash(git fetch *)",
+      "Bash(git status *)",
+      "Bash(echo \"=== 파일 수정 시각 ===\" && stat -c '%y' .claude/settings.local.json 2>/dev/null || stat .claude/settings.local.json; echo; echo \"=== 변경 내용 \\(diff\\) ===\" && git diff .claude/settings.local.json)",
+      "Bash(node -e \"const j=require\\('./locales/ko.json'\\); console.log\\(JSON.stringify\\(j.importProductV2?.buttons||{}, null, 2\\)\\); console.log\\('--- alerts ---'\\); console.log\\(JSON.stringify\\(j.importProductV2?.alerts||{}, null, 2\\)\\);\")",
+      "Bash(node -e \"const j=require\\('./locales/zh.json'\\); console.log\\(JSON.stringify\\(j.importProductV2?.buttons||{}, null, 2\\)\\);\")",
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('./locales/ko.json'\\); require\\('./locales/zh.json'\\); console.log\\('✅ ko.json / zh.json 유효'\\); const ko=require\\('./locales/ko.json'\\); const zh=require\\('./locales/zh.json'\\); console.log\\('ko.customerConfirm =', ko.importProductV2.buttons.customerConfirm\\); console.log\\('zh.customerConfirm =', zh.importProductV2.buttons.customerConfirm\\);\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e \"const ko=require\\('./locales/ko.json'\\),zh=require\\('./locales/zh.json'\\); console.log\\('ko attr:', JSON.stringify\\(ko.importProductV2.customerConfirm.attr\\)\\); console.log\\('zh attr:', JSON.stringify\\(zh.importProductV2.customerConfirm.attr\\)\\);\")",
+      "Bash(set -e)"
     ],
     "deny": []
   }
