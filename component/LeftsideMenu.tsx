@@ -13,6 +13,7 @@ const LeftsideMenu: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isInvoiceMenuOpen, setIsInvoiceMenuOpen] = useState(false);
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
+  const [isV1MenuOpen, setIsV1MenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const { checkUnsavedChanges } = useSaveContext();
@@ -30,6 +31,10 @@ const LeftsideMenu: React.FC = () => {
     setIsHrMenuOpen(!isHrMenuOpen);
   };
 
+  const toggleV1Menu = () => {
+    setIsV1MenuOpen(!isV1MenuOpen);
+  };
+
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     if (checkUnsavedChanges()) {
@@ -41,48 +46,49 @@ const LeftsideMenu: React.FC = () => {
     <aside className={`leftside-menu ${isSidebarOpen ? 'open' : 'closed'}`}>
       <nav className="leftside-nav">
         <ul className="menu-list">
+          {/* ============================================================ */}
+          {/* V2 메뉴 (상단)                                              */}
+          {/* ============================================================ */}
           <li className="menu-item">
-            <Link href="/order-stats" className="menu-link" onClick={(e) => handleNavigation(e, '/order-stats')}>
-              <span className="menu-icon">📊</span>
-              <span className="menu-text">주문 통계</span>
+            <Link href="/order-status-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/order-status-v2')}>
+              <span className="menu-icon">📋</span>
+              <span className="menu-text">주문상태 V2</span>
             </Link>
           </li>
           <li className="menu-item">
-            <Link href="/chinaorder" className="menu-link" onClick={(e) => handleNavigation(e, '/chinaorder')}>
-              <span className="menu-icon">🛒</span>
-              <span className="menu-text">{t('menu.chinaOrder')}</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/order-search" className="menu-link" onClick={(e) => handleNavigation(e, '/order-search')}>
-              <span className="menu-icon">🔍</span>
-              <span className="menu-text">{t('menu.orderSearch')}</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/order-check" className="menu-link" onClick={(e) => handleNavigation(e, '/order-check')}>
-              <span className="menu-icon">✅</span>
-              <span className="menu-text">{t('menu.orderCheck')}</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/import-product" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product')}>
+            <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
               <span className="menu-icon">📦</span>
-              <span className="menu-text">{t('menu.importProduct')}</span>
+              <span className="menu-text">상품입고 V2</span>
             </Link>
           </li>
           <li className="menu-item">
-            <Link href="/export-product" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product')}>
+            <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
               <span className="menu-icon">📤</span>
-              <span className="menu-text">{t('menu.exportProduct')}</span>
+              <span className="menu-text">상품출고 V2</span>
             </Link>
           </li>
           <li className="menu-item">
-            <Link href="/shipment" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment')}>
+            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
               <span className="menu-icon">🚚</span>
-              <span className="menu-text">쉽먼트</span>
+              <span className="menu-text">쉽먼트 V2</span>
             </Link>
           </li>
+          <li className="menu-item">
+            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
+              <span className="menu-icon">🚢</span>
+              <span className="menu-text">출고완료 V2</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
+              <span className="menu-icon">📦</span>
+              <span className="menu-text">반품접수 V2</span>
+            </Link>
+          </li>
+
+          {/* ============================================================ */}
+          {/* 공통 드롭다운 (영수증 저장 / 수출 송장 / 인사 관리)         */}
+          {/* ============================================================ */}
           <li className="menu-item">
             <div className="menu-link" onClick={toggleInvoiceMenu}>
               <span className="menu-icon">📄</span>
@@ -162,41 +168,55 @@ const LeftsideMenu: React.FC = () => {
               </ul>
             )}
           </li>
+
+          {/* ============================================================ */}
+          {/* V1 메뉴 (드롭다운, 최하단) — 기존 V1 기능 모음              */}
+          {/* ============================================================ */}
           <li className="menu-item">
-            <Link href="/order-status-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/order-status-v2')}>
-              <span className="menu-icon">📋</span>
-              <span className="menu-text">주문상태 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
-              <span className="menu-icon">📦</span>
-              <span className="menu-text">상품입고 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
-              <span className="menu-icon">📤</span>
-              <span className="menu-text">상품출고 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
-              <span className="menu-icon">🚚</span>
-              <span className="menu-text">쉽먼트 V2 😈</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
-              <span className="menu-icon">🚢</span>
-              <span className="menu-text">출고완료 V2</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
-              <span className="menu-icon">📦</span>
-              <span className="menu-text">반품접수 V2 😈</span>
-            </Link>
+            <div className="menu-link" onClick={toggleV1Menu}>
+              <span className="menu-icon">🗂️</span>
+              <span className="menu-text">V1</span>
+              <span className={`dropdown-arrow ${isV1MenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isV1MenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/order-stats" className="submenu-link" onClick={(e) => handleNavigation(e, '/order-stats')}>
+                    <span className="submenu-text">주문 통계</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/chinaorder" className="submenu-link" onClick={(e) => handleNavigation(e, '/chinaorder')}>
+                    <span className="submenu-text">{t('menu.chinaOrder')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/order-search" className="submenu-link" onClick={(e) => handleNavigation(e, '/order-search')}>
+                    <span className="submenu-text">{t('menu.orderSearch')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/order-check" className="submenu-link" onClick={(e) => handleNavigation(e, '/order-check')}>
+                    <span className="submenu-text">{t('menu.orderCheck')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/import-product" className="submenu-link" onClick={(e) => handleNavigation(e, '/import-product')}>
+                    <span className="submenu-text">{t('menu.importProduct')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/export-product" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-product')}>
+                    <span className="submenu-text">{t('menu.exportProduct')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/shipment" className="submenu-link" onClick={(e) => handleNavigation(e, '/shipment')}>
+                    <span className="submenu-text">쉽먼트</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
         </ul>
       </nav>
