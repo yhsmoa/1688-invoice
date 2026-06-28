@@ -56,7 +56,12 @@ const fmtTx = (n: number | null): string => {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
-const PaymentHistory: React.FC = () => {
+interface PaymentHistoryProps {
+  /** 페이지 타이틀 — 고객계좌 / 무역계좌 공용 */
+  title?: string;
+}
+
+const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' }) => {
   const { t } = useTranslation();
 
   // State 관리
@@ -74,11 +79,11 @@ const PaymentHistory: React.FC = () => {
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingDateValue, setEditingDateValue] = useState<string>('');
 
-  // 검색 필터 상태 — 월 단위 (기본 = 당월)
-  const [filterYear, setFilterYear] = useState<string>(() => String(new Date().getFullYear()));
-  const [filterMonth, setFilterMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  // 검색 필터 상태 — 월 단위 기간 (몇년몇월 ~ 몇년몇월, 기본 = 당월~당월)
+  const [startYear, setStartYear] = useState<string>(() => String(new Date().getFullYear()));
+  const [startMonth, setStartMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
+  const [endYear, setEndYear] = useState<string>(() => String(new Date().getFullYear()));
+  const [endMonth, setEndMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
 
   // 모달 상태
   const [showAddModal, setShowAddModal] = useState(false);
@@ -122,24 +127,6 @@ const PaymentHistory: React.FC = () => {
   const getCurrentDate = (): string => {
     return formatDate(new Date());
   };
-
-  // 선택 월의 시작/종료일 (YYYY-MM-01 ~ 말일)
-  const monthRange = (year: string, month: string): { start: string; end: string } => {
-    const y = Number(year);
-    const m = Number(month);
-    const lastDay = new Date(y, m, 0).getDate();   // m월 말일
-    return {
-      start: `${year}-${month}-01`,
-      end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
-    };
-  };
-
-  // 월(연/월) 변경 시 조회 기간(start/end) 갱신
-  useEffect(() => {
-    const { start, end } = monthRange(filterYear, filterMonth);
-    setStartDate(start);
-    setEndDate(end);
-  }, [filterYear, filterMonth]);
 
   // 쿠팡 사용자 목록 가져오기
   const fetchCoupangUsers = async () => {
@@ -275,7 +262,10 @@ const PaymentHistory: React.FC = () => {
   //   · 차감 → 음수, 충전 → 충전열, 누적은 전체 기준
   // ============================================================
   const displayRows = useMemo<DisplayTx[]>(() => {
-    const prefix = `${filterYear}-${filterMonth}`;
+    // 기간 범위 (YYYY-MM-01 ~ 종료월 말일) — 문자열 비교 (date='YYYY-MM-DD')
+    const startKey = `${startYear}-${startMonth}-01`;
+    const endLast = new Date(Number(endYear), Number(endMonth), 0).getDate();
+    const endKey = `${endYear}-${endMonth}-${String(endLast).padStart(2, '0')}`;
     const term = searchTerm.trim().toLowerCase();
 
     const sorted = [...itemData].sort((a, b) => {
@@ -307,8 +297,8 @@ const PaymentHistory: React.FC = () => {
         cumulative += amt;
       }
 
-      // 누적은 전체 기준으로 진행, 표시는 선택 월 + 검색어만
-      if (!(r.date && r.date.startsWith(prefix))) continue;
+      // 누적은 전체 기준으로 진행, 표시는 선택 기간 + 검색어만
+      if (!(r.date && r.date >= startKey && r.date <= endKey)) continue;
       if (term) {
         const hay = `${r.description ?? ''} ${r.transaction_type ?? ''} ${r.user_id ?? ''} ${r.admin_note ?? ''}`.toLowerCase();
         if (!hay.includes(term)) continue;
@@ -316,12 +306,12 @@ const PaymentHistory: React.FC = () => {
       out.push({ ...r, expense, delivery, service, extra, total, charge, refund: null, balance: cumulative });
     }
     return out;
-  }, [itemData, filterYear, filterMonth, searchTerm]);
+  }, [itemData, startYear, startMonth, endYear, endMonth, searchTerm]);
 
   // 필터 변경 시 첫 페이지로
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterYear, filterMonth, searchTerm]);
+  }, [startYear, startMonth, endYear, endMonth, searchTerm]);
 
   // 페이지네이션
   const totalPages = Math.max(1, Math.ceil(displayRows.length / itemsPerPage));
@@ -421,9 +411,9 @@ const PaymentHistory: React.FC = () => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, '결제내역');
 
-      // 파일명: 결제내역_업체명_시작일~종료일.xlsx
-      const dateRange = startDate && endDate ? `${startDate}~${endDate}` : new Date().toISOString().slice(0, 10);
-      const fileName = `결제내역_${selectedCoupangUser}_${dateRange}.xlsx`;
+      // 파일명: {타이틀}_업체명_시작월~종료월.xlsx
+      const dateRange = `${startYear}${startMonth}~${endYear}${endMonth}`;
+      const fileName = `${title}_${selectedCoupangUser}_${dateRange}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
     } catch (error) {
@@ -781,7 +771,7 @@ const PaymentHistory: React.FC = () => {
           <div className="payment-history-container">
             {/* 타이틀 행 - 왼쪽: 제목, 오른쪽: 사용자 선택 및 업데이트 */}
             <div className="payment-history-title-row">
-              <h1 className="payment-history-title">결제내역</h1>
+              <h1 className="payment-history-title">{title}</h1>
               <div className="payment-history-title-controls">
                 <select
                   className="payment-history-user-dropdown"
@@ -834,61 +824,53 @@ const PaymentHistory: React.FC = () => {
               </div>
             </div>
 
-            {/* 잔액 보드 — 트랜잭션 Σ충전−Σ차감 (단일 잔액) */}
-            <div className="payment-history-balance-section">
-              <div className="payment-history-balance-board">
-                <div className="payment-history-balance-item">
-                  <span className="payment-history-balance-label">잔액:</span>
-                  <span className="payment-history-balance-value">
-                    {balance !== null ? balance.toLocaleString() : '-'}
-                  </span>
-                </div>
+            {/* 기간 (잔액 보드 위, 보드 밖 좌측) — 몇년몇월 ~ 몇년몇월 */}
+            <div className="payment-history-period-row">
+              <select className="payment-history-period-select" value={startYear} onChange={(e) => setStartYear(e.target.value)}>
+                {Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() + 1 - i)).map((y) => (
+                  <option key={y} value={y}>{y}년</option>
+                ))}
+              </select>
+              <select className="payment-history-period-select" value={startMonth} onChange={(e) => setStartMonth(e.target.value)}>
+                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                  <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                ))}
+              </select>
+              <span className="payment-history-period-tilde">~</span>
+              <select className="payment-history-period-select" value={endYear} onChange={(e) => setEndYear(e.target.value)}>
+                {Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() + 1 - i)).map((y) => (
+                  <option key={y} value={y}>{y}년</option>
+                ))}
+              </select>
+              <select className="payment-history-period-select" value={endMonth} onChange={(e) => setEndMonth(e.target.value)}>
+                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                  <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                ))}
+              </select>
+
+              {/* 잔액 — 기간 반대편(오른쪽), 보드 없음 */}
+              <div className="payment-history-balance-inline">
+                <span className="payment-history-balance-label">잔액:</span>
+                <span className="payment-history-balance-value">
+                  {balance !== null ? balance.toLocaleString() : '-'}
+                </span>
               </div>
             </div>
 
-            {/* 검색 영역 */}
+            {/* 검색 영역 — 알약형 검색 입력 */}
             <div className="payment-history-search-section">
-              <div className="payment-history-search-board">
-                <div className="payment-history-search-form-wrapper">
-                  {/* 월(연/월) 필터 + 검색어 */}
-                  <div className="payment-history-search-rows">
-                    <div className="payment-history-search-row">
-                      {/* 연도 */}
-                      <select
-                        className="payment-history-search-dropdown"
-                        value={filterYear}
-                        onChange={(e) => setFilterYear(e.target.value)}
-                      >
-                        {Array.from({ length: 4 }, (_, i) => String(new Date().getFullYear() + 1 - i)).map((y) => (
-                          <option key={y} value={y}>{y}년</option>
-                        ))}
-                      </select>
-                      {/* 월 */}
-                      <select
-                        className="payment-history-search-dropdown"
-                        value={filterMonth}
-                        onChange={(e) => setFilterMonth(e.target.value)}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
-                          <option key={m} value={m}>{parseInt(m, 10)}월</option>
-                        ))}
-                      </select>
-                      {/* 검색어 */}
-                      <input
-                        type="text"
-                        className="payment-history-search-input"
-                        placeholder="검색어를 입력하세요"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyPress={handleSearchKeyPress}
-                      />
-                    </div>
-                  </div>
-                  {/* 검색 버튼 (2줄 높이) */}
-                  <button className="payment-history-search-button" onClick={handleSearchClick}>
-                    {t('importProduct.search')}
-                  </button>
-                </div>
+              <div className="payment-history-search-pill">
+                <svg className="payment-history-search-pill-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z" />
+                </svg>
+                <input
+                  type="text"
+                  className="payment-history-search-pill-input"
+                  placeholder="주문번호, 상품명, 고객명으로 검색"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                />
               </div>
             </div>
 

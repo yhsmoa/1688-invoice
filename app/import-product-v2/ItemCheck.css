@@ -284,6 +284,55 @@
   background-color: #27272a;
 }
 
+/* 검색유형 드롭박스 — 필터행(선택형 컨트롤) 안에서는 고정폭 */
+.v2-search-filter-row .v2-search-dropdown {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+/* ── 알약형 검색 입력 (아이콘 버튼 + 큰 라운드 입력) — 보드 밖 ── */
+.v2-search-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.v2-search-pill:focus-within {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.12);
+}
+.v2-search-pill-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #9ca3af;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.v2-search-pill-icon-btn:hover:not(:disabled) { color: #4b5563; }
+.v2-search-pill-icon-btn:disabled { cursor: default; }
+.v2-search-pill-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  color: #374151;
+}
+.v2-search-pill-input::placeholder { color: #b9b9c3; }
+
 /* 테이블 */
 .v2-table-board {
   background: white;

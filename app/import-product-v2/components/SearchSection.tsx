@@ -49,9 +49,8 @@ const SearchSection: React.FC<SearchSectionProps> = ({
 
   return (
     <div className="v2-search-section">
-      <div className="v2-search-board">
-        {/* ── 1행: 상태 필터 + [상품별로 보기] ── */}
-        <div className="v2-search-filter-row">
+      {/* ── 선택형 컨트롤 (보드 없이 좌상단) ── */}
+      <div className="v2-search-filter-row">
           {/* PROCESSING / ALL 라디오 */}
           <label
             className={`v2-status-filter-radio ${statusFilter === 'PROCESSING' ? 'active' : ''}`}
@@ -91,16 +90,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             {t('importProductV2.filter.groupByProduct')}
           </label>
 
-          {/* 전체 건수 */}
-          {statusFilter === 'ALL' && (
-            <span className="v2-status-filter-count">
-              전체 {filteredItemsCount}건
-            </span>
-          )}
-        </div>
-
-        {/* ── 2행: 검색 폼 ── */}
-        <div className="v2-search-form-container">
+          {/* 검색유형 드롭박스 (선택형 — 좌상단 배치) */}
           <select
             className="v2-search-dropdown"
             value={searchType}
@@ -111,6 +101,32 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             <option value="일반검색">{t('importProductV2.searchType.general')}</option>
             <option value="비고검색">{t('importProductV2.searchType.note')}</option>
           </select>
+
+          {/* 전체 건수 */}
+          {statusFilter === 'ALL' && (
+            <span className="v2-status-filter-count">
+              전체 {filteredItemsCount}건
+            </span>
+          )}
+        </div>
+
+      {/* ── 알약형 검색 입력 — 아이콘 클릭 / Enter 로 검색 ── */}
+      <div className="v2-search-pill">
+          <button
+            type="button"
+            className="v2-search-pill-icon-btn"
+            onClick={onSearchClick}
+            disabled={isSearching}
+            aria-label={t('importProductV2.search')}
+          >
+            {isSearching ? (
+              <span className="v2-spinner" />
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z" />
+              </svg>
+            )}
+          </button>
           <input
             type="text"
             placeholder={
@@ -119,20 +135,12 @@ const SearchSection: React.FC<SearchSectionProps> = ({
               : searchType === '비고검색' ? t('importProductV2.searchPlaceholder.note')
               : t('importProductV2.searchPlaceholder.general')
             }
-            className="v2-search-input"
+            className="v2-search-pill-input"
             value={searchTerm}
             onChange={onSearchInputChange}
             onKeyPress={onSearchKeyPress}
           />
-          <button
-            className="v2-search-button"
-            onClick={onSearchClick}
-            disabled={isSearching}
-          >
-            {isSearching ? t('importProductV2.searching') : t('importProductV2.search')}
-          </button>
         </div>
-      </div>
     </div>
   );
 };

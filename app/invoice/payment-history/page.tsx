@@ -1,5 +1,5 @@
 import PaymentHistory from './PaymentHistory';
 
 export default function PaymentHistoryPage() {
-  return <PaymentHistory />;
+  return <PaymentHistory title="고객계좌" />;
 }
