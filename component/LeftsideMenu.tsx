@@ -91,20 +91,20 @@ const LeftsideMenu: React.FC = () => {
           {/* ============================================================ */}
           <li className="menu-item">
             <div className="menu-link" onClick={toggleInvoiceMenu}>
-              <span className="menu-icon">📄</span>
-              <span className="menu-text">영수증 저장</span>
+              <span className="menu-icon">🏦</span>
+              <span className="menu-text">계좌관리</span>
               <span className={`dropdown-arrow ${isInvoiceMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isInvoiceMenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
                   <Link href="/invoice/payment-history" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history')}>
-                    <span className="submenu-text">결제내역</span>
+                    <span className="submenu-text">고객계좌</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
-                  <Link href="/invoice/order-refund" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/order-refund')}>
-                    <span className="submenu-text">주문취소</span>
+                  <Link href="/invoice/trade-account" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account')}>
+                    <span className="submenu-text">무역계좌</span>
                   </Link>
                 </li>
               </ul>
@@ -213,6 +213,11 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/shipment" className="submenu-link" onClick={(e) => handleNavigation(e, '/shipment')}>
                     <span className="submenu-text">쉽먼트</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/invoice/order-refund" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/order-refund')}>
+                    <span className="submenu-text">주문취소</span>
                   </Link>
                 </li>
               </ul>

@@ -725,93 +725,52 @@
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;            /* 15컬럼 — 가로 스크롤 허용 */
 }
 
+/* ============================================================ */
+/* 거래내역 테이블 — 참조(transactions) 페이지 동일 디자인       */
+/* ============================================================ */
 .payment-history-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  font-size: 9pt;
 }
 
-/* 테이블 열 너비 - 비율 1:4:1:2:3:2:2 (총 15) */
-/* 체크박스 */
-.payment-history-table th:nth-child(1),
-.payment-history-table td:nth-child(1) {
-  width: 50px;
-  min-width: 50px;
-  text-align: center;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* 타입 - 비율 1 (약 7%) */
-.payment-history-table th:nth-child(2),
-.payment-history-table td:nth-child(2) {
-  width: 7%;
-  text-align: center;
-}
-
-/* 내용 - 비율 4 (약 27%) */
-.payment-history-table th:nth-child(3),
-.payment-history-table td:nth-child(3) {
-  width: 27%;
-  text-align: left;
-}
-
-/* 수량 - 비율 1 (약 7%) */
-.payment-history-table th:nth-child(4),
-.payment-history-table td:nth-child(4) {
-  width: 7%;
-  text-align: center;
-}
-
-/* 금액 - 비율 2 (약 10%) */
-.payment-history-table th:nth-child(5),
-.payment-history-table td:nth-child(5) {
-  width: 10%;
-  text-align: right;
-}
-
-/* 정리 - 비율 3 (약 20%) */
-.payment-history-table th:nth-child(6),
-.payment-history-table td:nth-child(6) {
-  width: 20%;
-  text-align: left;
-}
-
-/* 상태 - 비율 2 (약 13%) */
-.payment-history-table th:nth-child(7),
-.payment-history-table td:nth-child(7) {
-  width: 13%;
-  text-align: center;
-}
-
-/* 날짜 - 비율 2 (약 13%) */
-.payment-history-table th:nth-child(8),
-.payment-history-table td:nth-child(8) {
-  width: 13%;
-  text-align: center;
-}
-
-.payment-history-table th {
-  background-color: #f8f9fa;
-  padding: 16px;
-  text-align: left;
+/* 헤더 */
+.txn-th {
+  padding: 6px 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: #333;
-  border: 1px solid #e2e8f0;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
   white-space: nowrap;
 }
+.txn-th-left { text-align: left; }
+.txn-th-center { text-align: center; }
+.txn-th-right { text-align: right; }
 
-.payment-history-table td {
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  word-break: break-all;
+/* 셀 */
+.txn-td {
+  padding: 6px 10px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
 }
+.txn-td-left { text-align: left; }
+.txn-td-center { text-align: center; }
+.txn-td-right { text-align: right; font-variant-numeric: tabular-nums; }
+.txn-td-total { color: #1f2937; font-weight: 500; }
+.txn-td-charge { color: #1d4ed8; font-weight: 500; }
+.txn-td-balance { color: #111827; font-weight: 600; }
+.txn-td-desc { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.txn-td-note { max-width: 200px; overflow: hidden; text-overflow: ellipsis; color: #9ca3af; }
+
+/* 타입별 행 배경 (충전=연블루 / 차감=연주황) */
+.txn-row-charge { background: rgba(219, 234, 254, 0.5); }
+.txn-row-deduct { background: rgba(255, 237, 213, 0.45); }
+.payment-history-table tbody tr:hover { background: #f3f4f6; }
 
 /* 상품 썸네일 */
 .payment-history-product-thumbnail {

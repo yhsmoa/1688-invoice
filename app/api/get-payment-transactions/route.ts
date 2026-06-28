@@ -13,37 +13,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'user_id가 필요합니다.' }, { status: 400 });
     }
 
-    let query = supabase
-      .from('invoiceManager_transactions')
-      .select('id, order_code, user_id, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, date, created_at, updated_at')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false });
+    // 1000행 limit 대응 — 페이지네이션 루프로 전체 조회 (누적잔액 정확도 보장)
+    const PAGE = 1000;
+    const all: unknown[] = [];
+    let from = 0;
+    while (true) {
+      let query = supabase
+        .from('invoiceManager_transactions')
+        .select('id, order_code, user_id, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, date, created_at, updated_at')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE - 1);
 
-    // 기간 필터 (date 기준)
-    if (startDate) {
-      query = query.gte('date', startDate);
+      // 기간 필터 (date 기준)
+      if (startDate) query = query.gte('date', startDate);
+      if (endDate) query = query.lte('date', endDate);
+      // 타입 필터
+      if (transactionType && transactionType !== 'all') query = query.eq('transaction_type', transactionType);
+
+      const { data, error } = await query;
+      if (error) {
+        return NextResponse.json({
+          success: false,
+          error: '트랜잭션 조회 실패',
+          details: error.message
+        }, { status: 500 });
+      }
+
+      const chunk = data ?? [];
+      all.push(...chunk);
+      if (chunk.length < PAGE) break;
+      from += PAGE;
     }
-    if (endDate) {
-      query = query.lte('date', endDate);
-    }
 
-    // 타입 필터
-    if (transactionType && transactionType !== 'all') {
-      query = query.eq('transaction_type', transactionType);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({
-        success: false,
-        error: '트랜잭션 조회 실패',
-        details: error.message
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data: data || [] });
+    return NextResponse.json({ success: true, data: all });
 
   } catch (error) {
     return NextResponse.json({

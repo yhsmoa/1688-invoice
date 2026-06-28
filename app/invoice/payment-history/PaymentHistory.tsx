@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
@@ -28,48 +28,74 @@ export interface PaymentHistoryData {
   site_url?: string | null;
 }
 
+// 오늘 날짜 (KST, YYYY-MM-DD) — 모달 날짜 기본값
+const todayKST = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+
+// ============================================================
+// 표시용 행 (참조 페이지 transactions 와 동일 구조)
+//   · 차감 → 지출/배송/서비스/기타/총비용 음수
+//   · 충전 → 충전 열
+//   · balance → 전체 이력 기준 누적 (통장식)
+// ============================================================
+interface DisplayTx extends PaymentHistoryData {
+  expense: number | null;
+  delivery: number | null;
+  service: number | null;
+  extra: number | null;
+  total: number | null;
+  charge: number | null;
+  refund: number | null;
+  balance: number;
+}
+
+// 숫자 포맷 (빈값은 공백, -0 → 0)
+const fmtTx = (n: number | null): string => {
+  if (n == null) return '';
+  const v = n === 0 ? 0 : n;
+  return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+};
+
 const PaymentHistory: React.FC = () => {
   const { t } = useTranslation();
 
   // State 관리
   const [itemData, setItemData] = useState<PaymentHistoryData[]>([]);
-  const [filteredData, setFilteredData] = useState<PaymentHistoryData[]>([]);
   const [loading, setLoading] = useState(false);
   const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string, user_id?: string}[]>([]);
   const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [selectAll, setSelectAll] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
-  const [liveBalance, setLiveBalance] = useState<number | null>(null);
 
   // 날짜 편집 상태
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingDateValue, setEditingDateValue] = useState<string>('');
 
-  // 검색 필터 상태
-  const [periodType, setPeriodType] = useState<string>('30days');
+  // 검색 필터 상태 — 월 단위 (기본 = 당월)
+  const [filterYear, setFilterYear] = useState<string>(() => String(new Date().getFullYear()));
+  const [filterMonth, setFilterMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [searchType, setSearchType] = useState<string>('all');
 
   // 모달 상태
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalType, setAddModalType] = useState<'charge' | 'deduct' | '1688order'>('charge');
   const [isSaving, setIsSaving] = useState(false);
 
-  // 충전 폼 상태
+  // 충전 폼 상태 (date 기본값 = 오늘, 수정 가능)
   const [chargeForm, setChargeForm] = useState({
+    date: todayKST(),
     description: '',
     amount: '',
     adminNote: ''
   });
 
-  // 차감 폼 상태
+  // 차감 폼 상태 (date 기본값 = 오늘, 수정 가능)
   const [deductForm, setDeductForm] = useState({
+    date: todayKST(),
     description: '',
     amount: '',
     order1688Id: '',  // 1688 주문번호 (1688_order_id 컬럼에 저장)
@@ -80,6 +106,7 @@ const PaymentHistory: React.FC = () => {
   });
 
   // 1688 주문 엑셀 업로드 상태
+  const [order1688Date, setOrder1688Date] = useState<string>(todayKST());  // 1688 주문 저장 날짜 (기본 오늘)
   const [orderExcelFile, setOrderExcelFile] = useState<File | null>(null);
   const [isUploadingOrderExcel, setIsUploadingOrderExcel] = useState(false);
   const orderExcelInputRef = useRef<HTMLInputElement>(null);
@@ -96,57 +123,23 @@ const PaymentHistory: React.FC = () => {
     return formatDate(new Date());
   };
 
-  // 기간 타입에 따라 시작/종료 날짜 계산
-  const calculateDateRange = (type: string): { start: string; end: string } => {
-    const today = new Date();
-    const end = formatDate(today);
-    let start = '';
-
-    switch (type) {
-      case '30days':
-        const days30 = new Date(today);
-        days30.setDate(today.getDate() - 30);
-        start = formatDate(days30);
-        break;
-      case '3months':
-        const months3 = new Date(today);
-        months3.setMonth(today.getMonth() - 3);
-        start = formatDate(months3);
-        break;
-      case '6months':
-        const months6 = new Date(today);
-        months6.setMonth(today.getMonth() - 6);
-        start = formatDate(months6);
-        break;
-      case '1year':
-        const year1 = new Date(today);
-        year1.setFullYear(today.getFullYear() - 1);
-        start = formatDate(year1);
-        break;
-      case 'all':
-        start = '';
-        break;
-      default:
-        start = formatDate(new Date(today.setDate(today.getDate() - 30)));
-    }
-
-    return { start, end: type === 'all' ? '' : end };
+  // 선택 월의 시작/종료일 (YYYY-MM-01 ~ 말일)
+  const monthRange = (year: string, month: string): { start: string; end: string } => {
+    const y = Number(year);
+    const m = Number(month);
+    const lastDay = new Date(y, m, 0).getDate();   // m월 말일
+    return {
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
+    };
   };
 
-  // 기간 드롭박스 변경 핸들러
-  const handlePeriodChange = (type: string) => {
-    setPeriodType(type);
-    const { start, end } = calculateDateRange(type);
-    setStartDate(start);
-    setEndDate(end);
-  };
-
-  // 초기 날짜 설정 (최근 30일)
+  // 월(연/월) 변경 시 조회 기간(start/end) 갱신
   useEffect(() => {
-    const { start, end } = calculateDateRange('30days');
+    const { start, end } = monthRange(filterYear, filterMonth);
     setStartDate(start);
     setEndDate(end);
-  }, []);
+  }, [filterYear, filterMonth]);
 
   // 쿠팡 사용자 목록 가져오기
   const fetchCoupangUsers = async () => {
@@ -174,21 +167,18 @@ const PaymentHistory: React.FC = () => {
     if (!selectedCoupangUser) {
       setHasLoadedData(false);
       setItemData([]);
-      setFilteredData([]);
       setBalance(null);
-      setLiveBalance(null);
     }
   }, [selectedCoupangUser]);
 
-  // 잔액 조회
+  // 잔액 조회 — 참조 페이지와 동일 공식: 트랜잭션(Σ충전−Σ차감) + 완료환불(ft_cancel_details DONE)
   const fetchBalance = async (masterAccount: string) => {
     try {
-      const response = await fetch(`/api/get-invoice-balance?master_account=${encodeURIComponent(masterAccount)}`);
+      const response = await fetch(`/api/get-customer-balance?master_account=${encodeURIComponent(masterAccount)}`);
       const result = await response.json();
 
       if (result.success) {
         setBalance(result.balance);
-        console.log('잔액 조회 성공:', result.balance);
       } else {
         console.warn('잔액 조회 실패:', result.error);
         setBalance(null);
@@ -199,39 +189,15 @@ const PaymentHistory: React.FC = () => {
     }
   };
 
-  // 라이브 잔액 조회 (master_account 사용)
-  const fetchLiveBalance = async (masterAccount: string) => {
-    try {
-      const response = await fetch(`/api/get-live-balance?master_account=${encodeURIComponent(masterAccount)}`);
-      const result = await response.json();
-
-      if (result.success) {
-        setLiveBalance(result.liveBalance);
-        console.log('라이브 잔액 조회 성공:', result.liveBalance);
-      } else {
-        console.warn('라이브 잔액 조회 실패:', result.error);
-        setLiveBalance(null);
-      }
-    } catch (error) {
-      console.error('라이브 잔액 조회 오류:', error);
-      setLiveBalance(null);
-    }
-  };
-
   // 트랜잭션 데이터 조회
   const fetchTransactions = async (userId: string) => {
     try {
-      const params = new URLSearchParams({ user_id: userId });
-      if (startDate) params.append('start_date', startDate);
-      if (endDate) params.append('end_date', endDate);
-      if (searchType !== 'all') params.append('transaction_type', searchType);
-
-      const response = await fetch(`/api/get-payment-transactions?${params}`);
+      // 누적 잔액(통장식) 계산을 위해 전체 이력 로드 — 월 필터는 표시 단계(displayRows)에서 적용
+      const response = await fetch(`/api/get-payment-transactions?user_id=${encodeURIComponent(userId)}`);
       const result = await response.json();
 
       if (result.success) {
         setItemData(result.data);
-        setFilteredData(result.data);
       } else {
         console.error('트랜잭션 조회 실패:', result.error);
       }
@@ -263,7 +229,6 @@ const PaymentHistory: React.FC = () => {
 
       if (selectedUser.master_account) {
         await fetchBalance(selectedUser.master_account);
-        await fetchLiveBalance(selectedUser.master_account);
       }
 
       // 트랜잭션 조회 (user_id 사용)
@@ -278,35 +243,6 @@ const PaymentHistory: React.FC = () => {
     }
   };
 
-  // 전체 선택/해제
-  const handleSelectAll = () => {
-    if (selectAll) {
-      setSelectedItems(new Set());
-      setSelectAll(false);
-    } else {
-      const allIds = new Set(paginatedData.map(item => item.id));
-      setSelectedItems(allIds);
-      setSelectAll(true);
-    }
-  };
-
-  // 개별 선택/해제
-  const handleSelectItem = (itemId: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId);
-      setSelectAll(false);
-    } else {
-      newSelected.add(itemId);
-      // 현재 페이지의 모든 항목이 선택되었는지 확인
-      if (newSelected.size === paginatedData.length &&
-          paginatedData.every(item => newSelected.has(item.id))) {
-        setSelectAll(true);
-      }
-    }
-    setSelectedItems(newSelected);
-  };
-
   // 검색 기능 - API 호출로 필터링
   const handleSearchClick = async () => {
     if (!selectedCoupangUser) {
@@ -319,35 +255,8 @@ const PaymentHistory: React.FC = () => {
 
     setLoading(true);
     try {
-      // API 호출하여 데이터 가져오기
-      const params = new URLSearchParams({ user_id: selectedUser.user_id });
-      if (startDate) params.append('start_date', startDate);
-      if (endDate) params.append('end_date', endDate);
-      if (searchType !== 'all') params.append('transaction_type', searchType);
-
-      const response = await fetch(`/api/get-payment-transactions?${params}`);
-      const result = await response.json();
-
-      if (result.success) {
-        const fetchedData = result.data;
-        setItemData(fetchedData);
-
-        // 검색어가 있으면 클라이언트에서 추가 필터링
-        if (searchTerm.trim()) {
-          const searchLower = searchTerm.toLowerCase().trim();
-          const filtered = fetchedData.filter((item: PaymentHistoryData) =>
-            item.description?.toLowerCase().includes(searchLower) ||
-            item.transaction_type?.toLowerCase().includes(searchLower)
-          );
-          setFilteredData(filtered);
-        } else {
-          // 검색어가 없으면 전체 데이터 표시
-          setFilteredData(fetchedData);
-        }
-      } else {
-        console.error('트랜잭션 조회 실패:', result.error);
-      }
-
+      // 전체 이력 로드 (월/검색어 필터는 displayRows 에서 처리)
+      await fetchTransactions(selectedUser.user_id);
       setCurrentPage(1);
     } finally {
       setLoading(false);
@@ -360,11 +269,65 @@ const PaymentHistory: React.FC = () => {
     }
   };
 
+  // ============================================================
+  // 표시 행 — 전체 이력 누적잔액 계산 후 선택 월 + 검색어 필터 (참조 페이지 동일)
+  //   · 정렬: date ASC, created_at ASC (오래된 순)
+  //   · 차감 → 음수, 충전 → 충전열, 누적은 전체 기준
+  // ============================================================
+  const displayRows = useMemo<DisplayTx[]>(() => {
+    const prefix = `${filterYear}-${filterMonth}`;
+    const term = searchTerm.trim().toLowerCase();
+
+    const sorted = [...itemData].sort((a, b) => {
+      const d = (a.date ?? '').localeCompare(b.date ?? '');
+      if (d !== 0) return d;
+      return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+    });
+
+    let cumulative = 0;
+    const out: DisplayTx[] = [];
+    for (const r of sorted) {
+      const amt = r.amount ?? 0;
+      let expense: number | null = null;
+      let delivery: number | null = null;
+      let service: number | null = null;
+      let extra: number | null = null;
+      let total: number | null = null;
+      let charge: number | null = null;
+
+      if (r.transaction_type === '차감') {
+        expense = -(r.price ?? 0);
+        delivery = -(r.delivery_fee ?? 0);
+        service = -(r.service_fee ?? 0);
+        extra = -(r.extra_fee ?? 0);
+        total = -amt;
+        cumulative += -amt;
+      } else if (r.transaction_type === '충전') {
+        charge = amt;
+        cumulative += amt;
+      }
+
+      // 누적은 전체 기준으로 진행, 표시는 선택 월 + 검색어만
+      if (!(r.date && r.date.startsWith(prefix))) continue;
+      if (term) {
+        const hay = `${r.description ?? ''} ${r.transaction_type ?? ''} ${r.user_id ?? ''} ${r.admin_note ?? ''}`.toLowerCase();
+        if (!hay.includes(term)) continue;
+      }
+      out.push({ ...r, expense, delivery, service, extra, total, charge, refund: null, balance: cumulative });
+    }
+    return out;
+  }, [itemData, filterYear, filterMonth, searchTerm]);
+
+  // 필터 변경 시 첫 페이지로
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterYear, filterMonth, searchTerm]);
+
   // 페이지네이션
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(displayRows.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  const paginatedData = displayRows.slice(startIndex, endIndex);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -421,7 +384,7 @@ const PaymentHistory: React.FC = () => {
 
   // 엑셀 다운로드 핸들러
   const handleExcelDownload = async () => {
-    if (filteredData.length === 0) {
+    if (displayRows.length === 0) {
       alert('다운로드할 데이터가 없습니다.');
       return;
     }
@@ -436,7 +399,7 @@ const PaymentHistory: React.FC = () => {
       };
 
       // 테이블 컬럼 순서대로 데이터 변환
-      const excelData = filteredData.map((item) => ({
+      const excelData = displayRows.map((item) => ({
         '업체': item.user_id || '',
         '주문코드': item.order_code || '',
         '타입': item.transaction_type || '',
@@ -472,8 +435,9 @@ const PaymentHistory: React.FC = () => {
   // 모달 닫기 및 폼 초기화
   const handleCloseModal = () => {
     setShowAddModal(false);
-    setChargeForm({ description: '', amount: '', adminNote: '' });
-    setDeductForm({ description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
+    setChargeForm({ date: todayKST(), description: '', amount: '', adminNote: '' });
+    setDeductForm({ date: todayKST(), description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
+    setOrder1688Date(todayKST());
     setOrderExcelFile(null);
     if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
   };
@@ -509,7 +473,7 @@ const PaymentHistory: React.FC = () => {
           description: chargeForm.description || null,
           amount: Number(chargeForm.amount),
           admin_note: chargeForm.adminNote || null,
-          date: getCurrentDate()
+          date: chargeForm.date || getCurrentDate()
         })
       });
 
@@ -517,10 +481,9 @@ const PaymentHistory: React.FC = () => {
 
       if (result.success) {
         alert('충전이 완료되었습니다.');
-        setBalance(result.newBalance);
         await fetchTransactions(selectedUser.user_id);
         if (selectedUser.master_account) {
-          await fetchLiveBalance(selectedUser.master_account);
+          await fetchBalance(selectedUser.master_account);
         }
         handleCloseModal();
       } else {
@@ -569,7 +532,7 @@ const PaymentHistory: React.FC = () => {
           service_fee: deductForm.serviceFee ? Number(deductForm.serviceFee) : null,
           extra_fee: deductForm.extraFee ? Number(deductForm.extraFee) : null,
           admin_note: deductForm.adminNote || null,
-          date: getCurrentDate()
+          date: deductForm.date || getCurrentDate()
         })
       });
 
@@ -577,10 +540,9 @@ const PaymentHistory: React.FC = () => {
 
       if (result.success) {
         alert('차감이 완료되었습니다.');
-        setBalance(result.newBalance);
         await fetchTransactions(selectedUser.user_id);
         if (selectedUser.master_account) {
-          await fetchLiveBalance(selectedUser.master_account);
+          await fetchBalance(selectedUser.master_account);
         }
         handleCloseModal();
       } else {
@@ -728,7 +690,7 @@ const PaymentHistory: React.FC = () => {
           price,
           status: '정상',
           admin_note: null,
-          date: getCurrentDate()
+          date: order1688Date || getCurrentDate()
         })
       });
 
@@ -736,10 +698,9 @@ const PaymentHistory: React.FC = () => {
 
       if (result.success) {
         alert(`1688 주문이 저장되었습니다.\n주문번호: ${orderCode}\n수량: ${totalItemQty}개\n차감금액: ${finalAmount.toLocaleString()}원`);
-        setBalance(result.newBalance);
         await fetchTransactions(selectedUser.user_id);
         if (selectedUser.master_account) {
-          await fetchLiveBalance(selectedUser.master_account);
+          await fetchBalance(selectedUser.master_account);
         }
         setOrderExcelFile(null);
         if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
@@ -800,7 +761,6 @@ const PaymentHistory: React.FC = () => {
           item.id === itemId ? { ...item, date: editingDateValue } : item
         );
         setItemData(updatedData);
-        setFilteredData(updatedData);
         setEditingDateId(null);
         setEditingDateValue('');
       } else {
@@ -860,7 +820,7 @@ const PaymentHistory: React.FC = () => {
                 <button
                   className="payment-history-download-btn"
                   onClick={handleExcelDownload}
-                  disabled={filteredData.length === 0}
+                  disabled={displayRows.length === 0}
                 >
                   엑셀 다운로드
                 </button>
@@ -874,20 +834,13 @@ const PaymentHistory: React.FC = () => {
               </div>
             </div>
 
-            {/* 잔액 보드 */}
+            {/* 잔액 보드 — 트랜잭션 Σ충전−Σ차감 (단일 잔액) */}
             <div className="payment-history-balance-section">
               <div className="payment-history-balance-board">
                 <div className="payment-history-balance-item">
                   <span className="payment-history-balance-label">잔액:</span>
                   <span className="payment-history-balance-value">
                     {balance !== null ? balance.toLocaleString() : '-'}
-                  </span>
-                </div>
-                <div className="payment-history-balance-divider"></div>
-                <div className="payment-history-balance-item">
-                  <span className="payment-history-balance-label">라이브 잔액:</span>
-                  <span className="payment-history-balance-value">
-                    {liveBalance !== null ? liveBalance.toLocaleString() : '-'}
                   </span>
                 </div>
               </div>
@@ -897,45 +850,30 @@ const PaymentHistory: React.FC = () => {
             <div className="payment-history-search-section">
               <div className="payment-history-search-board">
                 <div className="payment-history-search-form-wrapper">
-                  {/* 검색폼 2줄 컨테이너 */}
+                  {/* 월(연/월) 필터 + 검색어 */}
                   <div className="payment-history-search-rows">
-                    {/* 1줄: 기간 드롭박스, 시작날짜, 종료날짜 */}
                     <div className="payment-history-search-row">
+                      {/* 연도 */}
                       <select
                         className="payment-history-search-dropdown"
-                        value={periodType}
-                        onChange={(e) => handlePeriodChange(e.target.value)}
+                        value={filterYear}
+                        onChange={(e) => setFilterYear(e.target.value)}
                       >
-                        <option value="30days">최근 30일</option>
-                        <option value="3months">최근 3개월</option>
-                        <option value="6months">최근 6개월</option>
-                        <option value="1year">최근 1년</option>
-                        <option value="all">전체</option>
+                        {Array.from({ length: 4 }, (_, i) => String(new Date().getFullYear() + 1 - i)).map((y) => (
+                          <option key={y} value={y}>{y}년</option>
+                        ))}
                       </select>
-                      <input
-                        type="date"
-                        className="payment-history-date-input"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                      />
-                      <input
-                        type="date"
-                        className="payment-history-date-input"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                    </div>
-                    {/* 2줄: 타입 드롭박스, 검색입력폼 */}
-                    <div className="payment-history-search-row">
+                      {/* 월 */}
                       <select
                         className="payment-history-search-dropdown"
-                        value={searchType}
-                        onChange={(e) => setSearchType(e.target.value)}
+                        value={filterMonth}
+                        onChange={(e) => setFilterMonth(e.target.value)}
                       >
-                        <option value="all">전체</option>
-                        <option value="충전">충전</option>
-                        <option value="차감">차감</option>
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                          <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                        ))}
                       </select>
+                      {/* 검색어 */}
                       <input
                         type="text"
                         className="payment-history-search-input"
@@ -962,119 +900,77 @@ const PaymentHistory: React.FC = () => {
                 <table className="payment-history-table">
                   <thead>
                     <tr>
-                      <th>
-                        <input
-                          type="checkbox"
-                          checked={selectAll}
-                          onChange={handleSelectAll}
-                          className="payment-history-table-checkbox"
-                        />
-                      </th>
-                      <th>타입</th>
-                      <th>내용</th>
-                      <th>수량</th>
-                      <th>금액</th>
-                      <th>정리</th>
-                      <th>상태</th>
-                      <th>날짜</th>
+                      <th className="txn-th txn-th-left">생성일</th>
+                      <th className="txn-th txn-th-left">사업자</th>
+                      <th className="txn-th txn-th-center">타입</th>
+                      <th className="txn-th txn-th-left">내용</th>
+                      <th className="txn-th txn-th-center">수량</th>
+                      <th className="txn-th txn-th-right">지출금액</th>
+                      <th className="txn-th txn-th-right">배송비</th>
+                      <th className="txn-th txn-th-right">서비스비</th>
+                      <th className="txn-th txn-th-right">기타비용</th>
+                      <th className="txn-th txn-th-right">총비용</th>
+                      <th className="txn-th txn-th-right">충전</th>
+                      <th className="txn-th txn-th-right">환불</th>
+                      <th className="txn-th txn-th-right">잔액</th>
+                      <th className="txn-th txn-th-center">상태</th>
+                      <th className="txn-th txn-th-left">관리자비고</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedData.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="payment-history-empty-data">
+                        <td colSpan={15} className="payment-history-empty-data">
                           {t('importProduct.table.noData')}
                         </td>
                       </tr>
                     ) : (
-                      paginatedData.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            <input
-                              type="checkbox"
-                              checked={selectedItems.has(item.id)}
-                              onChange={() => handleSelectItem(item.id)}
-                              className="payment-history-table-checkbox"
-                            />
-                          </td>
-                          <td>
-                            <span className={`payment-history-type-badge ${item.transaction_type === '충전' ? 'charge' : item.transaction_type === '차감' ? 'deduct' : ''}`}>
-                              {item.transaction_type || '-'}
-                            </span>
-                          </td>
-                          <td>
-                            {item.description || '-'}
-                            {item.admin_note && (
-                              <>
-                                <br />
-                                <span className="payment-history-admin-note">
-                                  {item.admin_note}
-                                </span>
-                              </>
-                            )}
-                          </td>
-                          <td>{item.item_qty ?? '-'}</td>
-                          <td>
-                            {item.amount?.toLocaleString() ?? '-'}
-                            {item.balance_after != null && (
-                              <>
-                                <br />
-                                <span className="payment-history-balance-after">
-                                  ({item.balance_after.toLocaleString()})
-                                </span>
-                              </>
-                            )}
-                          </td>
-                          <td>
-                            {item.transaction_type === '차감' && (item.price || item.delivery_fee || item.service_fee || item.extra_fee) ? (
-                              <span className="payment-history-fee-info">
-                                {item.price ? `금액:${item.price.toLocaleString()}` : ''}
-                                {item.price && (item.delivery_fee || item.service_fee || item.extra_fee) ? ' / ' : ''}
-                                {item.delivery_fee ? `배송:${item.delivery_fee.toLocaleString()}` : ''}
-                                {item.delivery_fee && (item.service_fee || item.extra_fee) ? ' / ' : ''}
-                                {item.service_fee ? `서비스:${item.service_fee.toLocaleString()}` : ''}
-                                {item.service_fee && item.extra_fee ? ' / ' : ''}
-                                {item.extra_fee ? `기타:${item.extra_fee.toLocaleString()}` : ''}
-                              </span>
-                            ) : '-'}
-                          </td>
-                          <td>{item.status || '-'}</td>
-                          <td className="payment-history-date-cell">
-                            {editingDateId === item.id ? (
-                              <div className="payment-history-date-edit">
-                                <input
-                                  type="date"
-                                  className="payment-history-date-input"
-                                  value={editingDateValue}
-                                  onChange={handleDateChange}
-                                  autoFocus
-                                />
-                                <div className="payment-history-date-buttons">
-                                  <button
-                                    className="payment-history-date-save-btn"
-                                    onClick={() => handleDateSave(item.id)}
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    className="payment-history-date-cancel-btn"
-                                    onClick={handleDateCancel}
-                                  >
-                                    ✕
-                                  </button>
+                      paginatedData.map((row) => {
+                        const rowClass =
+                          row.transaction_type === '충전' ? 'txn-row-charge'
+                          : row.transaction_type === '차감' ? 'txn-row-deduct'
+                          : '';
+                        return (
+                          <tr key={row.id} className={rowClass}>
+                            {/* 생성일 (클릭하여 날짜 수정 — 기능 유지) */}
+                            <td className="txn-td txn-td-left payment-history-date-cell">
+                              {editingDateId === row.id ? (
+                                <div className="payment-history-date-edit">
+                                  <input
+                                    type="date"
+                                    className="payment-history-date-input"
+                                    value={editingDateValue}
+                                    onChange={handleDateChange}
+                                    autoFocus
+                                  />
+                                  <div className="payment-history-date-buttons">
+                                    <button className="payment-history-date-save-btn" onClick={() => handleDateSave(row.id)}>✓</button>
+                                    <button className="payment-history-date-cancel-btn" onClick={handleDateCancel}>✕</button>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <span
-                                className="payment-history-date-text"
-                                onClick={() => handleDateClick(item)}
-                              >
-                                {item.date || '-'}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                              ) : (
+                                <span className="payment-history-date-text" onClick={() => handleDateClick(row)}>
+                                  {row.date || '-'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="txn-td txn-td-left">{row.user_id || '-'}</td>
+                            <td className="txn-td txn-td-center">{row.transaction_type || '-'}</td>
+                            <td className="txn-td txn-td-left txn-td-desc" title={row.description ?? ''}>{row.description || '-'}</td>
+                            <td className="txn-td txn-td-center">{row.item_qty ?? ''}</td>
+                            <td className="txn-td txn-td-right">{fmtTx(row.expense)}</td>
+                            <td className="txn-td txn-td-right">{fmtTx(row.delivery)}</td>
+                            <td className="txn-td txn-td-right">{fmtTx(row.service)}</td>
+                            <td className="txn-td txn-td-right">{fmtTx(row.extra)}</td>
+                            <td className="txn-td txn-td-right txn-td-total">{fmtTx(row.total)}</td>
+                            <td className="txn-td txn-td-right txn-td-charge">{fmtTx(row.charge)}</td>
+                            <td className="txn-td txn-td-right">{fmtTx(row.refund)}</td>
+                            <td className="txn-td txn-td-right txn-td-balance">{fmtTx(row.balance)}</td>
+                            <td className="txn-td txn-td-center">{row.status || '-'}</td>
+                            <td className="txn-td txn-td-left txn-td-note">{row.admin_note || '-'}</td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1082,7 +978,7 @@ const PaymentHistory: React.FC = () => {
             </div>
 
             {/* 페이지네이션 */}
-            {!loading && filteredData.length > 0 && (
+            {!loading && displayRows.length > 0 && (
               <div className="payment-history-pagination">
                 <button
                   onClick={goToPrevPage}
@@ -1126,7 +1022,7 @@ const PaymentHistory: React.FC = () => {
                 </button>
 
                 <span className="payment-history-page-info">
-                  {currentPage} / {totalPages} {t('importProduct.pagination.page')} ({t('importProduct.pagination.total')} {filteredData.length}개)
+                  {currentPage} / {totalPages} {t('importProduct.pagination.page')} ({t('importProduct.pagination.total')} {displayRows.length}개)
                 </span>
               </div>
             )}
@@ -1168,6 +1064,17 @@ const PaymentHistory: React.FC = () => {
               {/* 충전 폼 */}
               {addModalType === 'charge' && (
                 <div className="payment-history-modal-form-deduct">
+                  {/* 날짜 - 1줄 (기본 오늘, 수정 가능) */}
+                  <div className="form-row-single">
+                    <div className="form-item">
+                      <label>날짜</label>
+                      <input
+                        type="date"
+                        value={chargeForm.date}
+                        onChange={(e) => setChargeForm({ ...chargeForm, date: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   {/* 항목 - 1줄 */}
                   <div className="form-row-single">
                     <div className="form-item">
@@ -1210,6 +1117,17 @@ const PaymentHistory: React.FC = () => {
               {/* 차감 폼 */}
               {addModalType === 'deduct' && (
                 <div className="payment-history-modal-form-deduct">
+                  {/* 날짜 - 1줄 (기본 오늘, 수정 가능) */}
+                  <div className="form-row-single">
+                    <div className="form-item">
+                      <label>날짜</label>
+                      <input
+                        type="date"
+                        value={deductForm.date}
+                        onChange={(e) => setDeductForm({ ...deductForm, date: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   {/* 항목 - 1줄 */}
                   <div className="form-row-single">
                     <div className="form-item">
@@ -1298,6 +1216,17 @@ const PaymentHistory: React.FC = () => {
               {/* 1688 주문 - 엑셀 업로드 */}
               {addModalType === '1688order' && (
                 <div className="payment-history-modal-upload">
+                  {/* 날짜 (기본 오늘, 수정 가능) */}
+                  <div className="form-row-single" style={{ marginBottom: 12, width: '100%' }}>
+                    <div className="form-item">
+                      <label>날짜</label>
+                      <input
+                        type="date"
+                        value={order1688Date}
+                        onChange={(e) => setOrder1688Date(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <input
                     type="file"
                     id="modal-excel-upload"
