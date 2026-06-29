@@ -29,6 +29,8 @@ interface SearchSectionProps {
   // ── 상품별로 보기 (정렬 전환, 클라이언트 처리) ──
   groupByProduct: boolean;
   onGroupByProductChange: (value: boolean) => void;
+  // ── 우측 액션 버튼들 (1688 XLSX ~ 주문 ID) — 배송번호 행 오른쪽 ──
+  rightButtons?: React.ReactNode;
 }
 
 const SearchSection: React.FC<SearchSectionProps> = ({
@@ -44,6 +46,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   filteredItemsCount,
   groupByProduct,
   onGroupByProductChange,
+  rightButtons,
 }) => {
   const { t } = useTranslation();
 
@@ -90,28 +93,32 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             {t('importProductV2.filter.groupByProduct')}
           </label>
 
-          {/* 검색유형 드롭박스 (선택형 — 좌상단 배치) */}
-          <select
-            className="v2-search-dropdown"
-            value={searchType}
-            onChange={onSearchTypeChange}
-          >
-            <option value="배송번호">{t('importProductV2.searchType.delivery')}</option>
-            <option value="주문번호">{t('importProductV2.searchType.order')}</option>
-            <option value="일반검색">{t('importProductV2.searchType.general')}</option>
-            <option value="비고검색">{t('importProductV2.searchType.note')}</option>
-          </select>
-
           {/* 전체 건수 */}
           {statusFilter === 'ALL' && (
             <span className="v2-status-filter-count">
               전체 {filteredItemsCount}건
             </span>
           )}
+
+          {/* 액션 버튼(1688 XLSX ~ 주문 ID) — 필터행 오른쪽 (입력폼 위) */}
+          {rightButtons && <div className="v2-search-action-buttons">{rightButtons}</div>}
         </div>
 
-      {/* ── 알약형 검색 입력 — 아이콘 클릭 / Enter 로 검색 ── */}
-      <div className="v2-search-pill">
+      {/* ── 배송번호(검색유형, 좌) + 알약 검색 입력(우) — 같은 행 ── */}
+      <div className="v2-search-bottom-row">
+        <select
+          className="v2-search-dropdown"
+          value={searchType}
+          onChange={onSearchTypeChange}
+        >
+          <option value="배송번호">{t('importProductV2.searchType.delivery')}</option>
+          <option value="주문번호">{t('importProductV2.searchType.order')}</option>
+          <option value="일반검색">{t('importProductV2.searchType.general')}</option>
+          <option value="비고검색">{t('importProductV2.searchType.note')}</option>
+        </select>
+
+        {/* 알약형 검색 입력 — 아이콘 클릭 / Enter 로 검색 */}
+        <div className="v2-search-pill">
           <button
             type="button"
             className="v2-search-pill-icon-btn"
@@ -141,6 +148,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onKeyPress={onSearchKeyPress}
           />
         </div>
+      </div>
     </div>
   );
 };

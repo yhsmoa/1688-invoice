@@ -193,15 +193,21 @@
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
 }
 
-/* 엑셀 업로드 버튼 - 검정 계열 */
+/* 엑셀 업로드 버튼 - 검정 계열 (크기 통일: 고정폭 + 가운데 정렬) */
 .v2-excel-upload-btn {
   background-color: #18181b;
   color: white;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  width: 130px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .v2-excel-upload-btn:hover {
@@ -284,20 +290,37 @@
   background-color: #27272a;
 }
 
-/* 검색유형 드롭박스 — 필터행(선택형 컨트롤) 안에서는 고정폭 */
-.v2-search-filter-row .v2-search-dropdown {
+/* 배송번호(검색유형, 좌) + 알약 입력(우) — 같은 행 */
+.v2-search-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v2-search-bottom-row .v2-search-dropdown {
   flex: 0 0 auto;
-  min-width: 120px;
+  min-width: 140px;
+}
+.v2-search-bottom-row .v2-search-pill {
+  flex: 1;
+  width: auto;
+  margin-top: 0;
+}
+/* 액션 버튼들 — 필터행 오른쪽 (입력폼 위) */
+.v2-search-action-buttons {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* ── 알약형 검색 입력 (아이콘 버튼 + 큰 라운드 입력) — 보드 밖 ── */
+/* ── 알약형 검색 입력 (아이콘 버튼 + 큰 라운드 입력) — 보드 밖, 높이 1.5배 ── */
 .v2-search-pill {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  margin-top: 12px;
-  padding: 12px 20px;
+  margin-top: 0;
+  padding: 21px 24px;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 9999px;

@@ -1468,100 +1468,10 @@ const ItemCheck: React.FC = () => {
             {/* ============================================================ */}
             {/* 컨트롤 바: 왼쪽(버튼) / 오른쪽(액션 버튼) */}
             {/* ============================================================ */}
-            <div className="v2-excel-upload-section">
-              <div className="v2-control-left">
-
-                {/* ⬆️ 1688 XLSX 업로드 버튼 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={handleXlsxClick}
-                  disabled={isUploadingExcel}
-                >
-                  {isUploadingExcel ? (
-                    <span className="v2-button-loading">
-                      <span className="v2-spinner"></span>
-                      {t('importProductV2.buttons.uploading')}
-                    </span>
-                  ) : (
-                    `⬆️ ${t('importProductV2.buttons.xlsx')}`
-                  )}
-                </button>
-                <input
-                  ref={excelFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  style={{ display: 'none' }}
-                  onChange={handleXlsxFileChange}
-                />
-
-                {/* 📋 배송상황 CSV 업로드 버튼 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={handleCsvClick}
-                  disabled={isUploadingCsv}
-                >
-                  {isUploadingCsv ? (
-                    <span className="v2-button-loading">
-                      <span className="v2-spinner"></span>
-                      {t('importProductV2.buttons.uploading')}
-                    </span>
-                  ) : (
-                    `📋 ${t('importProductV2.buttons.csv')}`
-                  )}
-                </button>
-                <input
-                  ref={csvFileInputRef}
-                  type="file"
-                  accept=".csv"
-                  style={{ display: 'none' }}
-                  onChange={handleCsvFileChange}
-                />
-
-                {/* ⬇️ XLSX 다운 버튼 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={handleXlsxDownload}
-                  disabled={isDownloadingExcel || !selectedUserId}
-                >
-                  {isDownloadingExcel ? (
-                    <span className="v2-button-loading">
-                      <span className="v2-spinner"></span>
-                      다운로드 중
-                    </span>
-                  ) : (
-                    '⬇️ XLSX 다운'
-                  )}
-                </button>
-
-                {/* 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭 */}
-                <button
-                  className="v2-excel-upload-btn"
-                  onClick={handleOrderIdClick}
-                  disabled={isMatchingOrderId}
-                >
-                  {isMatchingOrderId ? (
-                    <span className="v2-button-loading">
-                      <span className="v2-spinner"></span>
-                      매칭 중
-                    </span>
-                  ) : (
-                    '🔗 주문 ID'
-                  )}
-                </button>
-                <input
-                  ref={orderIdFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  style={{ display: 'none' }}
-                  onChange={handleOrderIdFileChange}
-                />
-              </div>
-
-              {/* 5개 액션 버튼(비고/반품/미입고/라벨/입고)은 우측 액션 사이드바로 이전 */}
-            </div>
-
             {/* ============================================================ */}
-            {/* 검색 영역 (상태 필터 + [상품별로 보기] 체크박스 + 검색 폼)    */}
+            {/* 검색 영역 (상태 필터 + 검색유형/액션버튼 + 알약 검색 폼)      */}
+            {/*   · 액션 버튼(1688 XLSX ~ 주문 ID)은 rightButtons 로 전달 →     */}
+            {/*     배송번호(검색유형) 맞은편 오른쪽, 입력폼 위에 배치          */}
             {/* ============================================================ */}
             <SearchSection
               searchType={searchType}
@@ -1576,6 +1486,94 @@ const ItemCheck: React.FC = () => {
               filteredItemsCount={filteredItems.length}
               groupByProduct={groupByProduct}
               onGroupByProductChange={setGroupByProduct}
+              rightButtons={
+                <>
+                  {/* ⬆️ 1688 XLSX 업로드 버튼 */}
+                  <button
+                    className="v2-excel-upload-btn"
+                    onClick={handleXlsxClick}
+                    disabled={isUploadingExcel}
+                  >
+                    {isUploadingExcel ? (
+                      <span className="v2-button-loading">
+                        <span className="v2-spinner"></span>
+                        {t('importProductV2.buttons.uploading')}
+                      </span>
+                    ) : (
+                      `⬆️ ${t('importProductV2.buttons.xlsx')}`
+                    )}
+                  </button>
+                  <input
+                    ref={excelFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    style={{ display: 'none' }}
+                    onChange={handleXlsxFileChange}
+                  />
+
+                  {/* 📋 배송상황 CSV 업로드 버튼 */}
+                  <button
+                    className="v2-excel-upload-btn"
+                    onClick={handleCsvClick}
+                    disabled={isUploadingCsv}
+                  >
+                    {isUploadingCsv ? (
+                      <span className="v2-button-loading">
+                        <span className="v2-spinner"></span>
+                        {t('importProductV2.buttons.uploading')}
+                      </span>
+                    ) : (
+                      `📋 ${t('importProductV2.buttons.csv')}`
+                    )}
+                  </button>
+                  <input
+                    ref={csvFileInputRef}
+                    type="file"
+                    accept=".csv"
+                    style={{ display: 'none' }}
+                    onChange={handleCsvFileChange}
+                  />
+
+                  {/* ⬇️ XLSX 다운 버튼 */}
+                  <button
+                    className="v2-excel-upload-btn"
+                    onClick={handleXlsxDownload}
+                    disabled={isDownloadingExcel || !selectedUserId}
+                  >
+                    {isDownloadingExcel ? (
+                      <span className="v2-button-loading">
+                        <span className="v2-spinner"></span>
+                        다운로드 중
+                      </span>
+                    ) : (
+                      '⬇️ XLSX 다운'
+                    )}
+                  </button>
+
+                  {/* 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭 */}
+                  <button
+                    className="v2-excel-upload-btn"
+                    onClick={handleOrderIdClick}
+                    disabled={isMatchingOrderId}
+                  >
+                    {isMatchingOrderId ? (
+                      <span className="v2-button-loading">
+                        <span className="v2-spinner"></span>
+                        매칭 중
+                      </span>
+                    ) : (
+                      '🔗 주문 ID'
+                    )}
+                  </button>
+                  <input
+                    ref={orderIdFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    style={{ display: 'none' }}
+                    onChange={handleOrderIdFileChange}
+                  />
+                </>
+              }
             />
 
             {/* ============================================================ */}
