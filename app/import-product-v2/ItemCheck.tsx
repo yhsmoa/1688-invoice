@@ -952,6 +952,15 @@ const ItemCheck: React.FC = () => {
     [items, selectedRows]
   );
 
+  // ── 비고 모달 초기값 — 선택 항목들의 note_cn 이 모두 같으면 그 값(수정), 다르면 '' ──
+  const noteModalInitial = useMemo(() => {
+    const notes = items
+      .filter((item) => selectedRows.has(item.id))
+      .map((item) => item.note_cn || '');
+    const unique = Array.from(new Set(notes));
+    return unique.length === 1 ? unique[0] : '';
+  }, [items, selectedRows]);
+
   // [고객확인] 버튼 클릭 — 선택 항목이 있을 때만 모달 open
   const handleCustomerConfirmClick = useCallback(() => {
     if (selectedRows.size === 0) {
@@ -1764,6 +1773,7 @@ const ItemCheck: React.FC = () => {
         isOpen={isNoteModalOpen}
         onClose={() => setIsNoteModalOpen(false)}
         selectedIds={[...selectedRows]}
+        initialNote={noteModalInitial}
         onSaveComplete={() => {
           setIsNoteModalOpen(false);
           if (selectedUserId) fetchItems(selectedUserId, statusFilter);

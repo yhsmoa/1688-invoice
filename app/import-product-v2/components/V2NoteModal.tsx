@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // ============================================================
 // V2NoteModal — 비고 입력 모달
-// 체크된 아이템들에 대해 ft_order_items.note_notice 일괄 저장
+// 체크된 아이템들에 대해 ft_order_items.note_cn 일괄 저장/수정
+// (note_cn = 상품명 셀 하단 빨간색으로 표시되는 비고)
 // ============================================================
 
 interface V2NoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedIds: string[];
+  /** 선택 항목들의 기존 note_cn — 모두 동일할 때 수정용으로 미리 채움 (다르면 '') */
+  initialNote?: string;
   onSaveComplete: () => void;
 }
 
@@ -18,10 +21,16 @@ const V2NoteModal: React.FC<V2NoteModalProps> = ({
   isOpen,
   onClose,
   selectedIds,
+  initialNote = '',
   onSaveComplete,
 }) => {
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // ── 모달이 열릴 때 기존 note_cn 값으로 초기화 (수정 지원) ──
+  useEffect(() => {
+    if (isOpen) setNoteText(initialNote);
+  }, [isOpen, initialNote]);
 
   // ── 저장: 기존 PATCH /api/ft/order-items 다건 업데이트 활용 ──
   const handleSave = async () => {
@@ -35,7 +44,7 @@ const V2NoteModal: React.FC<V2NoteModalProps> = ({
     try {
       const updates = selectedIds.map((id) => ({
         id,
-        fields: { note_notice: noteText.trim() },
+        fields: { note_cn: noteText.trim() },
       }));
 
       const res = await fetch('/api/ft/order-items', {
