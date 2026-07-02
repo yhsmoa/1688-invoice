@@ -32,6 +32,7 @@ interface ShipmentCompleteRow {
   composition: string | null;
   customs_category: string | null;
   shipment_no: string | null;
+  vendor_option_id: string | null;
 }
 
 interface ShipmentInfo {

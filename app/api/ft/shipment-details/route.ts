@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
       shipment_no: r.shipment_no || null,
       product_no: r.product_no || null,
       barcode: r.barcode || null,
+      vendor_option_id: r.vendor_option_id || null,
       item_name: r.item_name || null,
       option_name: r.option_name || null,
       china_option1: r.china_option1 || null,

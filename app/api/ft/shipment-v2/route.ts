@@ -115,9 +115,10 @@ export async function GET(request: NextRequest) {
       img_url: string | null; composition: string | null;
       customs_category: string | null;
       set_total: number | null; product_id: string | null;
+      vendor_option_id: string | null;
     }>(
       'ft_order_items',
-      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, order_qty, img_url, composition, customs_category, set_total, product_id',
+      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, order_qty, img_url, composition, customs_category, set_total, product_id, vendor_option_id',
       'id',
       orderItemIds
     );
@@ -273,6 +274,7 @@ export async function GET(request: NextRequest) {
         composition: oi?.composition || null,
         customs_category: oi?.customs_category || null,
         shipment_no: ff.shipment_no || null,
+        vendor_option_id: oi?.vendor_option_id || null,
       };
     });
 
