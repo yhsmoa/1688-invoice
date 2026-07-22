@@ -108,6 +108,104 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================
+// DELETE /api/ft/box-info?id=xxx
+// 박스 삭제 — 박스 안에 담긴 상품이 없을 때만 허용
+//
+// 거부 조건 (409):
+//   1) 이미 쉽먼트에 배정된 박스 (shipment_id NOT NULL)
+//   2) 박스에 담긴 출고 상품이 1건이라도 존재 (ft_fulfillment_outbounds)
+//      → box_info_id 또는 (box_code + user_id) 양쪽으로 확인
+//        (구 데이터는 box_info_id 가 NULL 일 수 있어 box_code 로 보조 확인)
+// ============================================================
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'id 파라미터가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // ── 1) 박스 조회 ──
+    const { data: box, error: boxErr } = await supabase
+      .from('ft_box_info')
+      .select('id, box_code, user_id, shipment_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (boxErr) throw boxErr;
+    if (!box) {
+      return NextResponse.json(
+        { success: false, error: '해당 박스를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // ── 2) 이미 출고(쉽먼트 배정)된 박스는 삭제 불가 ──
+    if (box.shipment_id) {
+      return NextResponse.json(
+        { success: false, reason: 'HAS_ITEMS', error: '이미 쉽먼트에 배정된 박스입니다. 담당자에게 문의해주세요.' },
+        { status: 409 }
+      );
+    }
+
+    // ── 3) 박스에 담긴 상품 확인 (box_info_id 기준) ──
+    const { count: byIdCount, error: byIdErr } = await supabase
+      .from('ft_fulfillment_outbounds')
+      .select('id', { count: 'exact', head: true })
+      .eq('box_info_id', id);
+
+    if (byIdErr) throw byIdErr;
+
+    // ── 3-b) 보조 확인: box_info_id 가 NULL 인 구 데이터 대비 ──
+    //   box_code 는 출고 후 재사용되므로(예: MB-A-01), 다른 박스/과거 출고분을
+    //   잘못 세지 않도록 box_info_id IS NULL + shipment_id IS NULL 인 행만 카운트.
+    const { count: byCodeCount, error: byCodeErr } = await supabase
+      .from('ft_fulfillment_outbounds')
+      .select('id', { count: 'exact', head: true })
+      .eq('box_code', box.box_code)
+      .eq('user_id', box.user_id)
+      .is('box_info_id', null)
+      .is('shipment_id', null);
+
+    if (byCodeErr) throw byCodeErr;
+
+    const itemCount = Math.max(byIdCount ?? 0, byCodeCount ?? 0);
+
+    if (itemCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          reason: 'HAS_ITEMS',
+          itemCount,
+          error: `박스에 상품 ${itemCount}건이 담겨 있어 삭제할 수 없습니다. 담당자에게 문의해주세요.`,
+        },
+        { status: 409 }
+      );
+    }
+
+    // ── 4) 빈 박스 → 삭제 ──
+    const { error: delErr } = await supabase
+      .from('ft_box_info')
+      .delete()
+      .eq('id', id);
+
+    if (delErr) throw delErr;
+
+    return NextResponse.json({ success: true, box_code: box.box_code });
+  } catch (error) {
+    console.error('ft_box_info DELETE 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '박스 삭제 중 오류가 발생했습니다.', details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error) },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================
 // PATCH /api/ft/box-info
 // 박스 정보 수정 (status, size, weight 등)
 // ============================================================

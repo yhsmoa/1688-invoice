@@ -162,6 +162,7 @@ const ExportProduct: React.FC = () => {
   const [boxCreateNo, setBoxCreateNo] = useState('');
   const [boxCreateSize, setBoxCreateSize] = useState('');
   const [availableBoxes, setAvailableBoxes] = useState<BoxInfo[]>([]);
+  const [isDeletingBox, setIsDeletingBox] = useState(false);
 
   // ── selectedBox: activeBoxInfo의 box_code ──
   const selectedBox = activeBoxInfo?.box_code || '';
@@ -1024,6 +1025,49 @@ const ExportProduct: React.FC = () => {
     setShowBoxSelectModal(false);
   }, []);
 
+  /** 박스 삭제 — 빈 박스만 삭제, 상품이 담겼으면 담당자 문의 안내 */
+  const handleBoxDelete = useCallback(async () => {
+    if (!activeBoxInfo) {
+      alert('삭제할 박스를 먼저 선택해주세요.');
+      return;
+    }
+
+    // ── 저장 전 스캔분도 '박스 안 상품' 이므로 삭제 차단 ──
+    const pendingCount = scanHistory.filter(
+      (s) => s.box_number === activeBoxInfo.box_code && !s.is_error
+    ).length;
+    if (pendingCount > 0) {
+      alert(`이 박스에 저장되지 않은 스캔 ${pendingCount}건이 있습니다.\n저장 또는 기록에서 삭제 후 다시 시도해주세요.`);
+      return;
+    }
+
+    if (!window.confirm(`박스 [${activeBoxInfo.box_code}] 를 삭제하시겠습니까?`)) return;
+
+    setIsDeletingBox(true);
+    try {
+      const res = await fetch(`/api/ft/box-info?id=${encodeURIComponent(activeBoxInfo.id)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+
+      if (!json.success) {
+        // 상품이 담긴 박스 → 담당자 문의 안내
+        alert(json.error || '박스 삭제에 실패했습니다.');
+        return;
+      }
+
+      alert(`박스 [${json.box_code || activeBoxInfo.box_code}] 가 삭제되었습니다.`);
+      setActiveBoxInfo(null);
+      setSelectedSize('');
+      fetchAvailableBoxes();
+    } catch (err) {
+      console.error('박스 삭제 오류:', err);
+      alert('박스 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeletingBox(false);
+    }
+  }, [activeBoxInfo, scanHistory, fetchAvailableBoxes]);
+
   // 보드용 스캔 처리 함수 (개수 자동 1)
   const handleBoardScan = (orderNumber: string) => {
     console.log('보드 스캔 - 입력된 주문번호:', `"${orderNumber}"`);
@@ -1471,6 +1515,13 @@ const ExportProduct: React.FC = () => {
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => setShowBoxCreateModal(true)}>박스생성</button>
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => { fetchAvailableBoxes(); setShowBoxSelectModal(true); }}>박스선택</button>
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}>{t('exportProduct.record')}</button>
+              <button
+                className="v2-export-box-action-btn v2-export-box-action-btn--delete"
+                onClick={handleBoxDelete}
+                disabled={!selectedOperator || !selectedFtUserId || !activeBoxInfo || isDeletingBox}
+              >
+                {isDeletingBox ? '삭제 중...' : '삭제'}
+              </button>
               <button
                 className={`v2-export-box-action-btn v2-export-box-action-btn--save ${hasUnsavedChanges ? 'has-changes' : ''}`}
                 onClick={handleFulfillmentSave}

@@ -1546,6 +1546,18 @@
   cursor: not-allowed;
 }
 
+/* 삭제 버튼 — 빈 박스 삭제용 (파괴적 동작이라 빨강 계열) */
+.v2-export-box-action-btn--delete {
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.v2-export-box-action-btn--delete:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
 .v2-export-box-action-btn--save {
   background-color: #a1a1aa;
   color: white;
