@@ -32,7 +32,15 @@ interface Employee {
 
 type EditableFields = Omit<Employee, 'id' | 'created_at' | 'access_authorization' | 'code'>;
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 50;
+
+// ============================================================
+// 정렬 기준 — 상태(WORKING→RESIGNED) → 직책(기업→매니저→검수→포장) → 입사일(오름차순)
+// ============================================================
+const STATUS_ORDER: Record<string, number> = { WORKING: 0, RESIGNED: 1 };
+const ROLE_ORDER: Record<string, number> = { 기업: 0, 매니저: 1, 검수: 2, 포장: 3 };
+const rankOf = (order: Record<string, number>, value: string | null): number =>
+  value != null && order[value] !== undefined ? order[value] : 99;
 
 // 필드 레이블 정의
 const FIELD_LABELS: Record<string, string> = {
@@ -165,12 +173,27 @@ const EmployeeManagement: React.FC = () => {
   // ============================================================
   const filteredEmployees = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter(
-      (e) =>
-        (e.name && e.name.toLowerCase().includes(q)) ||
-        (e.name_kr && e.name_kr.toLowerCase().includes(q))
-    );
+    const base = !q
+      ? employees
+      : employees.filter(
+          (e) =>
+            (e.name && e.name.toLowerCase().includes(q)) ||
+            (e.name_kr && e.name_kr.toLowerCase().includes(q))
+        );
+
+    // 정렬: 상태 → 직책 → 입사일(오름차순, 빈값은 뒤로)
+    return [...base].sort((a, b) => {
+      const s = rankOf(STATUS_ORDER, a.status) - rankOf(STATUS_ORDER, b.status);
+      if (s !== 0) return s;
+      const r = rankOf(ROLE_ORDER, a.role) - rankOf(ROLE_ORDER, b.role);
+      if (r !== 0) return r;
+      const ah = a.hire_date || '';
+      const bh = b.hire_date || '';
+      if (ah && bh) return ah.localeCompare(bh);
+      if (ah) return -1; // 입사일 있는 쪽 먼저
+      if (bh) return 1;
+      return 0;
+    });
   }, [employees, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE));
