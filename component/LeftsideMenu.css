@@ -87,9 +87,16 @@
 .menu-icon {
   width: 22px;
   flex-shrink: 0;
-  text-align: center;
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+}
+
+/* 단색 라인 SVG 아이콘 — 텍스트 색 상속 */
+.menu-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* 라벨/화살표 — 축소 시 숨김(투명), HOVER 시 표시 */
