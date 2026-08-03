@@ -1,0 +1,285 @@
+/* ============================================================
+   물량관리 페이지 스타일
+   ============================================================ */
+
+/* ── 메인 영역 ── */
+.vm-main {
+  flex: 1;
+  padding: 24px 28px 48px;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+/* ── 페이지 헤더 ── */
+.vm-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vm-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+/* ── 컨트롤 묶음 (기준일 / 근무시간 분모) ── */
+.vm-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* ── 기준일 전환 ── */
+.vm-basis {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vm-basis-label {
+  font-size: 12px;
+  color: #71717a;
+  margin-right: 2px;
+}
+
+.vm-basis-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.vm-basis-btn:hover {
+  color: #18181b;
+}
+
+.vm-basis-btn.active {
+  background: #18181b;
+  border-color: #18181b;
+  color: #ffffff;
+}
+
+/* ============================================================
+   요약 카드
+   ============================================================ */
+.vm-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.vm-sum-card {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vm-sum-card-accent {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.vm-sum-card-accent2 {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.vm-sum-card-accent2 .vm-sum-value {
+  color: #6d28d9;
+}
+
+.vm-sum-label {
+  font-size: 12px;
+  color: #71717a;
+}
+
+.vm-sum-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #18181b;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-sum-card-accent .vm-sum-value {
+  color: #1d4ed8;
+}
+
+.vm-sum-unit {
+  font-size: 11.5px;
+  color: #a1a1aa;
+}
+
+/* ============================================================
+   본문 테이블
+   ============================================================ */
+.vm-content {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 열이 많아 좁은 화면에서는 가로 스크롤 */
+.vm-table-wrap {
+  overflow-x: auto;
+}
+
+.vm-table {
+  width: 100%;
+  min-width: 1080px; /* 11열 확보 — 부족하면 wrap 에서 가로 스크롤 */
+  border-collapse: collapse;
+}
+
+.vm-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #52525b;
+  text-align: left;
+  padding: 11px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e4e7;
+  white-space: nowrap;
+}
+
+.vm-table td {
+  font-size: 13px;
+  color: #3f3f46;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f4f4f5;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.vm-table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* ── 컬럼 ── */
+.vm-col-week {
+  font-weight: 600;
+  color: #18181b;
+  width: 100px;
+}
+
+.vm-col-range {
+  color: #71717a;
+  width: 130px;
+}
+
+/* 숫자 컬럼 — th 는 `.vm-table th` 의 left 가 우선하므로 명시적으로 재정의 */
+.vm-col-num,
+.vm-table th.vm-col-num {
+  text-align: right;
+  width: 82px;
+}
+
+.vm-col-rate {
+  width: 170px;
+}
+
+.vm-strong {
+  font-weight: 700;
+  color: #18181b;
+}
+
+.vm-muted {
+  color: #a1a1aa;
+}
+
+.vm-accent {
+  font-weight: 700;
+  color: #6d28d9;
+}
+
+/* ── 시간당 출고량 막대 ── */
+.vm-rate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+
+.vm-rate-bar {
+  position: absolute;
+  left: 52px;
+  height: 6px;
+  background: #3b82f6;
+  border-radius: 3px;
+  max-width: calc(100% - 56px);
+  transition: width 0.2s;
+}
+
+.vm-rate-value {
+  width: 46px;
+  text-align: left;
+  font-weight: 700;
+  color: #1d4ed8;
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-none {
+  font-size: 12px;
+  color: #d4d4d8;
+}
+
+/* ============================================================
+   상태 표시
+   ============================================================ */
+.vm-state {
+  padding: 64px;
+  text-align: center;
+  font-size: 14px;
+  color: #a1a1aa;
+}
+
+.vm-state-error {
+  color: #b91c1c;
+}
+
+/* ============================================================
+   하단 안내
+   ============================================================ */
+.vm-footer-note {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.8;
+}
+
+.vm-footer-note code {
+  font-size: 11.5px;
+  color: #71717a;
+  background: #f4f4f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.vm-footer-note b {
+  color: #71717a;
+}
+
+.vm-warn {
+  color: #b45309;
+}

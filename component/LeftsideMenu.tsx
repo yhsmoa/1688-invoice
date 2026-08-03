@@ -99,6 +99,14 @@ const Icons = {
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
+  // DB 관리 — database
+  db: (
+    <svg {...iconProps}>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5v14a9 3 0 0 0 18 0V5" />
+      <path d="M3 12a9 3 0 0 0 18 0" />
+    </svg>
+  ),
   // V1 — layers
   v1: (
     <svg {...iconProps}>
@@ -113,6 +121,7 @@ const LeftsideMenu: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isInvoiceMenuOpen, setIsInvoiceMenuOpen] = useState(false);
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
+  const [isDbMenuOpen, setIsDbMenuOpen] = useState(false);
   const [isV1MenuOpen, setIsV1MenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
@@ -129,6 +138,10 @@ const LeftsideMenu: React.FC = () => {
 
   const toggleHrMenu = () => {
     setIsHrMenuOpen(!isHrMenuOpen);
+  };
+
+  const toggleDbMenu = () => {
+    setIsDbMenuOpen(!isDbMenuOpen);
   };
 
   const toggleV1Menu = () => {
@@ -263,6 +276,34 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/hr/payroll" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/payroll')}>
                     <span className="submenu-text">급여장부</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
+          </li>
+
+          {/* DB 관리 (드롭다운) */}
+          <li className="menu-item">
+            <div className="menu-link" onClick={toggleDbMenu}>
+              <span className="menu-icon">{Icons.db}</span>
+              <span className="menu-text">DB 관리</span>
+              <span className={`dropdown-arrow ${isDbMenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isDbMenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/db/orders" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/orders')}>
+                    <span className="submenu-text">주문 데이터 관리</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/db/volume" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/volume')}>
+                    <span className="submenu-text">물량관리</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/db/database" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/database')}>
+                    <span className="submenu-text">데이터베이스 관리</span>
                   </Link>
                 </li>
               </ul>

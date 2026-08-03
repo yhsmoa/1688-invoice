@@ -1,0 +1,290 @@
+/* ============================================================
+   주문 데이터 관리 페이지 스타일
+   ============================================================ */
+
+.odm-main {
+  flex: 1;
+  padding: 24px 28px 48px;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+/* ── 페이지 헤더 ── */
+.odm-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.odm-page-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.odm-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+.odm-page-sub {
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+/* ── 집계 단위 전환 (주간 / 월간) ── */
+.odm-period {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.odm-period-label {
+  font-size: 12px;
+  color: #71717a;
+  margin-right: 2px;
+}
+
+.odm-period-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.odm-period-btn:hover {
+  color: #18181b;
+}
+
+.odm-period-btn.active {
+  background: #18181b;
+  border-color: #18181b;
+  color: #ffffff;
+}
+
+/* ============================================================
+   요약 카드
+   ============================================================ */
+.odm-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.odm-sum-card {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.odm-sum-card-accent {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.odm-sum-card-accent .odm-sum-value {
+  color: #1d4ed8;
+}
+
+.odm-sum-card-accent2 {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.odm-sum-card-accent2 .odm-sum-value {
+  color: #6d28d9;
+}
+
+.odm-sum-label {
+  font-size: 12px;
+  color: #71717a;
+}
+
+.odm-sum-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #18181b;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.odm-sum-pct {
+  font-size: 15px;
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+.odm-sum-unit {
+  font-size: 11.5px;
+  color: #a1a1aa;
+}
+
+/* ============================================================
+   본문 테이블
+   ============================================================ */
+.odm-content {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 열이 많아 좁은 화면에서는 가로 스크롤 */
+.odm-table-wrap {
+  overflow-x: auto;
+}
+
+.odm-table {
+  width: 100%;
+  min-width: 1020px;
+  border-collapse: collapse;
+}
+
+.odm-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #52525b;
+  text-align: left;
+  padding: 11px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e4e7;
+  white-space: nowrap;
+}
+
+.odm-table td {
+  font-size: 13px;
+  color: #3f3f46;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f4f4f5;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.odm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.odm-table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* ── 컬럼 ── */
+.odm-col-week {
+  font-weight: 600;
+  color: #18181b;
+  width: 100px;
+}
+
+.odm-col-range {
+  color: #71717a;
+  width: 130px;
+}
+
+/* 숫자 컬럼 — th 는 `.odm-table th` 의 left 가 우선하므로 명시적으로 재정의 */
+.odm-col-num,
+.odm-table th.odm-col-num {
+  text-align: right;
+  width: 92px;
+}
+
+.odm-col-bar {
+  width: 190px;
+}
+
+.odm-muted {
+  color: #a1a1aa;
+}
+
+/* ── 주문수량 막대 ── */
+.odm-bar-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+
+.odm-bar-value {
+  width: 54px;
+  text-align: left;
+  font-weight: 700;
+  color: #1d4ed8;
+  font-variant-numeric: tabular-nums;
+}
+
+.odm-bar {
+  position: absolute;
+  left: 60px;
+  height: 6px;
+  background: #3b82f6;
+  border-radius: 3px;
+  max-width: calc(100% - 64px);
+  transition: width 0.2s;
+}
+
+/* ── 완료율 ── */
+.odm-done {
+  font-weight: 700;
+  color: #15803d;
+}
+
+.odm-progress {
+  font-weight: 700;
+  color: #b45309;
+}
+
+/* ============================================================
+   상태 표시
+   ============================================================ */
+.odm-state {
+  padding: 64px;
+  text-align: center;
+  font-size: 14px;
+  color: #a1a1aa;
+}
+
+.odm-state-error {
+  color: #b91c1c;
+}
+
+/* ============================================================
+   하단 안내
+   ============================================================ */
+.odm-footer-note {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.8;
+}
+
+.odm-footer-note code {
+  font-size: 11.5px;
+  color: #71717a;
+  background: #f4f4f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.odm-warn {
+  color: #b45309;
+}
+
+.odm-warn b {
+  color: #92400e;
+}

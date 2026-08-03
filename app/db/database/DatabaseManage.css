@@ -1,0 +1,464 @@
+/* ============================================================
+   데이터베이스 관리 페이지 스타일
+   ============================================================ */
+
+.dm-main {
+  flex: 1;
+  padding: 24px 28px 48px;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+/* ── 페이지 헤더 ── */
+.dm-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.dm-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+.dm-stats {
+  display: flex;
+  gap: 8px;
+}
+
+.dm-stats span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #52525b;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.dm-stats .dm-stat-warn {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+/* ============================================================
+   DB 연결 정보
+   ============================================================ */
+.dm-db-info {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dm-db-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dm-db-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2563eb;
+  border-radius: 5px;
+  padding: 3px 9px;
+  flex-shrink: 0;
+}
+
+.dm-db-label-sub {
+  background: #7c3aed;
+}
+
+.dm-db-row code {
+  font-size: 13px;
+  font-weight: 700;
+  color: #18181b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dm-db-desc {
+  font-size: 12px;
+  color: #71717a;
+}
+
+/* ============================================================
+   툴바 (뷰 전환 + 검색)
+   ============================================================ */
+.dm-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.dm-tabs {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 9px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.dm-tab {
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dm-tab:hover {
+  color: #18181b;
+}
+
+.dm-tab.active {
+  background: #18181b;
+  color: #ffffff;
+}
+
+.dm-search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+  padding: 9px 14px;
+  font-size: 13px;
+  border: 1px solid #e4e4e7;
+  border-radius: 9px;
+  background: #ffffff;
+  outline: none;
+}
+
+.dm-search:focus {
+  border-color: #2563eb;
+}
+
+/* ============================================================
+   그룹 / 페이지 카드
+   ============================================================ */
+.dm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dm-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dm-group-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+.dm-group-desc {
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+.dm-card {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+
+.dm-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.dm-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dm-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.dm-card-route {
+  font-size: 12px;
+  color: #71717a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dm-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.dm-count {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.dm-arrow {
+  font-size: 10px;
+  color: #a1a1aa;
+  transition: transform 0.15s;
+}
+
+.dm-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* ── 테이블 칩 목록 ── */
+.dm-card-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.dm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.dm-chip-missing {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+  text-decoration: line-through;
+}
+
+.dm-chip-external {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.dm-chip-source {
+  color: #3f6212;
+  background: #f7fee7;
+  border-color: #d9f99d;
+  font-family: inherit;
+}
+
+.dm-chip-mark {
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: inherit;
+  text-decoration: none;
+  background: rgba(0, 0, 0, 0.07);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.dm-none {
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+.dm-note {
+  font-size: 12px;
+  color: #a16207;
+  background: #fffbeb;
+  border-left: 3px solid #fbbf24;
+  border-radius: 0 5px 5px 0;
+  margin: 10px 0 0;
+  padding: 6px 10px;
+}
+
+/* ============================================================
+   상세 (펼침)
+   ============================================================ */
+.dm-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e4e4e7;
+}
+
+.dm-detail-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dm-detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #71717a;
+}
+
+.dm-detail-file code {
+  font-size: 12px;
+  color: #18181b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dm-api-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dm-api-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #71717a;
+  text-align: left;
+  padding: 6px 8px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.dm-api-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #f4f4f5;
+  vertical-align: top;
+}
+
+.dm-api-table td:first-child {
+  width: 34%;
+  white-space: nowrap;
+}
+
+.dm-api-table code {
+  font-size: 12px;
+  color: #18181b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dm-api-table td .dm-chip {
+  margin: 0 4px 4px 0;
+}
+
+/* ============================================================
+   테이블 기준 뷰
+   ============================================================ */
+.dm-table-view {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dm-table-view th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #52525b;
+  text-align: left;
+  padding: 10px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.dm-table-view td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f4f4f5;
+  vertical-align: top;
+}
+
+.dm-table-view tr:last-child td {
+  border-bottom: none;
+}
+
+.dm-col-table {
+  width: 260px;
+}
+
+.dm-col-count {
+  width: 60px;
+  font-size: 12px;
+  color: #71717a;
+}
+
+.dm-page-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.dm-page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #3f3f46;
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.dm-page-link code {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: #a1a1aa;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ============================================================
+   기타
+   ============================================================ */
+.dm-empty {
+  padding: 48px;
+  text-align: center;
+  font-size: 14px;
+  color: #a1a1aa;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+}
+
+.dm-footer-note {
+  margin-top: 24px;
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.7;
+}
+
+.dm-footer-note code {
+  font-size: 11.5px;
+  color: #71717a;
+  background: #f4f4f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
