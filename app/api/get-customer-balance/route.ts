@@ -15,9 +15,32 @@ import { supabase } from '../../../lib/supabase';
 //   · 1000행 limit 대응 — 모든 조회 페이지네이션 (CLAUDE.md §5)
 //
 // 검증(immong): tx_net(-31,494.53) + refund_done(76,218.46) = 44,723.93 (참조와 일치)
+//
+// 결제조건(payment_type) — invoiceManager_balance 계좌 단위 속성
+//   PREPAID (선불)  : 충전 후 차감 → 잔액이 양수인 것이 정상
+//   POSTPAID(후불)  : 차감 누적 후 정산 → 잔액이 음수(미정산액)인 것이 정상
+//   컬럼 미존재/미설정 시 PREPAID 로 간주 (기존 동작 유지)
 // ============================================================
 
 const PAGE = 1000;
+
+type PaymentType = 'PREPAID' | 'POSTPAID';
+
+/**
+ * 계좌의 결제조건 조회.
+ * payment_type 컬럼이 아직 없는 환경에서도 깨지지 않도록 select('*') 후 optional 접근.
+ */
+async function fetchPaymentType(masterAccount: string): Promise<PaymentType> {
+  const { data, error } = await supabase
+    .from('invoiceManager_balance')
+    .select('*')
+    .eq('master_account', masterAccount)
+    .maybeSingle();
+
+  if (error || !data) return 'PREPAID';
+  const raw = (data as Record<string, unknown>).payment_type;
+  return raw === 'POSTPAID' ? 'POSTPAID' : 'PREPAID';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,7 +119,8 @@ export async function GET(request: NextRequest) {
     }
 
     const balance = txNet + refundTotal;
-    return NextResponse.json({ success: true, balance, txNet, refundTotal });
+    const paymentType = await fetchPaymentType(masterAccount);
+    return NextResponse.json({ success: true, balance, txNet, refundTotal, paymentType });
   } catch (error) {
     return NextResponse.json(
       {

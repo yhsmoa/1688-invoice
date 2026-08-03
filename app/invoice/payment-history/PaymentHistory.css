@@ -1118,6 +1118,11 @@
   padding: 0 2px;
 }
 
+/* 후불 계좌 — 미정산액 강조 (차감 누적이므로 잔액과 구분) */
+.payment-history-balance-value.is-unsettled {
+  color: #b45309;
+}
+
 /* 잔액 — 기간 반대편(오른쪽), 보드 없음 */
 .payment-history-balance-inline {
   margin-left: auto;

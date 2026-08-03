@@ -74,6 +74,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  // 계좌 결제조건 — POSTPAID(후불)면 '잔액' 대신 '미정산액'으로 표기
+  const [paymentType, setPaymentType] = useState<'PREPAID' | 'POSTPAID'>('PREPAID');
 
   // 날짜 편집 상태
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
@@ -166,6 +168,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       if (result.success) {
         setBalance(result.balance);
+        setPaymentType(result.paymentType === 'POSTPAID' ? 'POSTPAID' : 'PREPAID');
       } else {
         console.warn('잔액 조회 실패:', result.error);
         setBalance(null);
@@ -850,9 +853,18 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
               {/* 잔액 — 기간 반대편(오른쪽), 보드 없음 */}
               <div className="payment-history-balance-inline">
-                <span className="payment-history-balance-label">잔액:</span>
-                <span className="payment-history-balance-value">
-                  {balance !== null ? balance.toLocaleString() : '-'}
+                <span className="payment-history-balance-label">
+                  {paymentType === 'POSTPAID' ? '미정산액:' : '잔액:'}
+                </span>
+                <span
+                  className={`payment-history-balance-value ${
+                    paymentType === 'POSTPAID' ? 'is-unsettled' : ''
+                  }`}
+                >
+                  {/* 후불은 차감 누적이라 음수가 정상 → 절대값으로 표기 */}
+                  {balance !== null
+                    ? (paymentType === 'POSTPAID' ? Math.abs(balance) : balance).toLocaleString()
+                    : '-'}
                 </span>
               </div>
             </div>
