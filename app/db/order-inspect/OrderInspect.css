@@ -1,0 +1,228 @@
+/* ============================================================ */
+/* 주문 검사 — 레이아웃                                          */
+/* ============================================================ */
+.oi-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.oi-main {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.oi-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0;
+  min-height: calc(100vh - 80px);
+}
+
+.oi-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.oi-title {
+  color: #333;
+  font-size: 2rem;
+  margin: 0 0 8px;
+}
+
+.oi-desc {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+/* ============================================================ */
+/* 업로드 영역                                                   */
+/* ============================================================ */
+.oi-upload {
+  background: #fff;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  margin-bottom: 20px;
+}
+
+.oi-upload:hover {
+  border-color: #3b82f6;
+  background: #f0f7ff;
+}
+
+.oi-upload.dragging {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.oi-upload.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.oi-upload-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.oi-upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.oi-upload-hint {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* ============================================================ */
+/* 알림 (오류 / 경고)                                            */
+/* ============================================================ */
+.oi-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.oi-warn {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.oi-empty {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  text-align: center;
+  color: #059669;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* ============================================================ */
+/* 요약 카드                                                     */
+/* ============================================================ */
+.oi-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.oi-stat {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 130px;
+}
+
+.oi-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.oi-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.oi-stat-value.ok  { color: #059669; }
+.oi-stat-value.bad { color: #dc2626; }
+
+/* ============================================================ */
+/* 결과 테이블 — 엑셀 병합(rowspan) 구조 재현                    */
+/* ============================================================ */
+.oi-table-wrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.oi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.oi-th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.oi-td {
+  padding: 8px 12px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.oi-right { text-align: right; }
+
+/* 병합 열 — 세로 구분선으로 주문 경계 강조 */
+.oi-merged {
+  background: #fcfcfd;
+  border-right: 1px solid #e5e7eb;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 주문 시작 행 — 위쪽 굵은 경계 */
+.oi-order-start > .oi-td {
+  border-top: 2px solid #e5e7eb;
+}
+
+.oi-order-no {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.oi-detail {
+  min-width: 260px;
+}
+
+.oi-detail-ko {
+  color: #111827;
+  line-height: 1.4;
+}
+
+/* 번역 원문(중국어) — 참고용 작은 회색 */
+.oi-detail-src {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+}

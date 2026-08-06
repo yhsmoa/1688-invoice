@@ -306,6 +306,11 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">데이터베이스 관리</span>
                   </Link>
                 </li>
+                <li className="submenu-item">
+                  <Link href="/db/order-inspect" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/order-inspect')}>
+                    <span className="submenu-text">주문 검사</span>
+                  </Link>
+                </li>
               </ul>
             )}
           </li>
