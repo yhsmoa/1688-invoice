@@ -15,7 +15,7 @@ import { supabase } from '../../../../lib/supabase';
 // 처리:
 //   1. 첨부 이미지 → Supabase Storage 공개 버킷 업로드 → public URL
 //   2. 항목당 Notion 페이지 1개 생성
-//      - properties : 상품명/주문번호/팀/상태/수량/생성일시 (구 스크립트 호환)
+//      - properties : 상품명/주문번호/팀/상태/수량/입고/생성일시/type(A·B·C·P·X)
 //      - children   : 옵션 정보 + 이미지(좌 img_url / 우 첨부) + 확인 항목 + 사이트 링크
 //   3. 항목별 성공/실패 집계 반환
 //
@@ -26,6 +26,49 @@ import { supabase } from '../../../../lib/supabase';
 const NOTION_API_URL = 'https://api.notion.com/v1/pages';
 const NOTION_VERSION = '2022-06-28';
 const STORAGE_BUCKET = 'customer-confirm';   // 첨부 이미지 공개 버킷
+
+// 사이즈 코드(A/B/C/P/X)를 넣을 Notion 속성 후보 — 대소문자/한글 표기 차이 대응
+const TYPE_PROP_CANDIDATES = ['type', 'Type', 'TYPE', '타입'];
+
+// ============================================================
+// Notion DB 스키마에서 사이즈 코드용 select 속성명 탐색 (요청당 1회 캐시)
+//
+// 존재하지 않는 속성을 body 에 넣으면 Notion 이 페이지 생성 자체를 거부한다.
+// → DB 에 실제로 있는 속성만 전송하도록 먼저 확인하고, 없으면 조용히 생략한다.
+//   (사이즈 코드 때문에 고객확인 전송 전체가 실패하는 것을 방지)
+// ============================================================
+let typePropCache: { key: string; resolved: string | null } | null = null;
+
+async function resolveTypeProperty(apiKey: string, databaseId: string): Promise<string | null> {
+  if (typePropCache && typePropCache.key === databaseId) return typePropCache.resolved;
+
+  let resolved: string | null = null;
+  try {
+    const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, 'Notion-Version': NOTION_VERSION },
+    });
+    if (res.ok) {
+      const db = await res.json();
+      const props = (db?.properties ?? {}) as Record<string, { type?: string }>;
+      for (const name of TYPE_PROP_CANDIDATES) {
+        if (props[name]?.type === 'select') { resolved = name; break; }
+      }
+      if (!resolved) {
+        console.warn(
+          `[customer-confirm] Notion DB 에 사이즈 코드용 select 속성이 없어 생략합니다. ` +
+          `후보: ${TYPE_PROP_CANDIDATES.join(', ')}`
+        );
+      }
+    } else {
+      console.warn(`[customer-confirm] Notion DB 스키마 조회 실패 (${res.status}) — type 속성 생략`);
+    }
+  } catch (err) {
+    console.warn('[customer-confirm] Notion DB 스키마 조회 오류 — type 속성 생략:', err);
+  }
+
+  typePropCache = { key: databaseId, resolved };
+  return resolved;
+}
 
 // ── 항목 메타 타입 (클라이언트 payload) ──
 interface ItemPayload {
@@ -41,6 +84,7 @@ interface ItemPayload {
   arrival_qty: number | null;   // 입고개수 (참고용)
   img_url: string | null;
   site_url: string | null;
+  size_code: string | null;     // 배송 사이즈 코드 A/B/C/P/X (Notion 'type')
   attributes: string[];   // 한글 라벨 (기타는 "기타: ..." 형태)
   has_file: boolean;
 }
@@ -170,6 +214,7 @@ async function createNotionPage(
   apiKey: string,
   databaseId: string,
   dateOnly: string,
+  typeProp: string | null,
 ): Promise<void> {
   // 상품명 = 상품명 + ", " + 옵션명 (구 스크립트 호환)
   const fullProductName =
@@ -181,6 +226,12 @@ async function createNotionPage(
       ? Number(item.confirm_qty)
       : null;
   const arrivalNum = Number(item.arrival_qty ?? 0) || 0;
+
+  // 사이즈 코드 — DB 에 해당 select 속성이 실제로 있을 때만 추가
+  const typeProperty =
+    typeProp && item.size_code
+      ? { [typeProp]: { select: { name: String(item.size_code) } } }
+      : {};
 
   const body = {
     parent: { database_id: databaseId },
@@ -194,6 +245,7 @@ async function createNotionPage(
       '수량': { number: confirmNum },
       '입고': { number: arrivalNum },
       '생성일시': { date: { start: dateOnly } },
+      ...typeProperty,
     },
     children: buildChildren(item, attachedUrl),
   };
@@ -258,6 +310,9 @@ export async function POST(request: NextRequest) {
     // ── 생성일시 (KST 기준 YYYY-MM-DD) ──
     const dateOnly = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 
+    // ── 사이즈 코드용 select 속성명 확인 (없으면 null → 생략) ──
+    const typeProp = await resolveTypeProperty(apiKey, databaseId);
+
     // ── 항목별 처리 (순차 — Notion rate limit 안전) ──
     let created = 0;
     const failed: { item_no: string; error: string }[] = [];
@@ -271,7 +326,7 @@ export async function POST(request: NextRequest) {
           attachedUrl = await uploadImage(item.id, file);
         }
 
-        await createNotionPage(item, sellerCode, attachedUrl, apiKey, databaseId, dateOnly);
+        await createNotionPage(item, sellerCode, attachedUrl, apiKey, databaseId, dateOnly, typeProp);
         created += 1;
       } catch (err) {
         console.error(`Notion 페이지 생성 실패 (${item.item_no}):`, err);

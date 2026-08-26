@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
+import { resolveSizeBadge } from '../../../lib/sizeCode';
 import './V2CustomerConfirmModal.css';
 
 // ============================================================
@@ -260,6 +261,8 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
         arrival_qty: arrivalMap.get(item.id) ?? 0,
         img_url: item.img_url,
         site_url: item.site_url,
+        // 배송 사이즈 코드 (A/B/C/P/X) — 화면 배지와 동일 로직, Notion 'type' 속성용
+        size_code: resolveSizeBadge(item.shipment_type, item.coupang_shipment_size)?.code ?? null,
         attributes: attributeLabels,
         has_file: !!form.file,
       };
