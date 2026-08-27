@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
+// 요청 정보를 쓰지 않는 GET 은 Next.js 가 빌드 시점에 정적 캐시하므로,
+// 배포 이후 추가된 데이터가 재배포 전까지 반영되지 않는다 → 매 요청 조회로 고정.
+export const dynamic = 'force-dynamic';
+
 // ============================================================
 // GET /api/hr/workers
 //
