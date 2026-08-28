@@ -141,13 +141,25 @@ export async function GET(request: NextRequest) {
     // master_id 로 호출된 경우 ft_users 에서 계좌명을 역추적한다.
     let acctName = masterAccount;
     if (!acctName && masterId) {
-      const { data: u } = await supabase
+      // master_id 컬럼이 없던 시절 데이터도 있으므로 balance_id 로도 찾아본다
+      const { data: byMaster } = await supabase
         .from('ft_users')
         .select('master_account')
-        .or(`master_id.eq.${masterId},balance_id.eq.${masterId}`)
+        .eq('master_id', masterId)
         .limit(1)
         .maybeSingle();
-      acctName = (u as { master_account?: string } | null)?.master_account ?? null;
+
+      acctName = (byMaster as { master_account?: string } | null)?.master_account ?? null;
+
+      if (!acctName) {
+        const { data: byBalance } = await supabase
+          .from('ft_users')
+          .select('master_account')
+          .eq('balance_id', masterId)
+          .limit(1)
+          .maybeSingle();
+        acctName = (byBalance as { master_account?: string } | null)?.master_account ?? null;
+      }
     }
     const paymentType = acctName ? await fetchPaymentType(acctName) : 'PREPAID';
     return NextResponse.json({ success: true, balance, txNet, refundTotal, paymentType });
