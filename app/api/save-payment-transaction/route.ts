@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const {
       user_id,
       master_account,
+      master_id,
       order_code,
       transaction_type,
       description,
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         user_id: ftUser?.id ?? user_id ?? null,
         user_name: ftUser?.username ?? (UUID_RE.test(String(user_id ?? '')) ? null : user_id ?? null),
         user_code: ftUser?.user_code ?? null,
-        master_id: ftUser?.balance_id ?? null,
+        master_id: master_id ?? ftUser?.balance_id ?? null,
         master_account: master_account || ftUser?.master_account || null,
         transaction_type,
         description: description || null,

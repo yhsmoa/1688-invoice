@@ -44,13 +44,21 @@ async function fetchPaymentType(masterAccount: string): Promise<PaymentType> {
 
 export async function GET(request: NextRequest) {
   try {
-    const masterAccount = new URL(request.url).searchParams.get('master_account');
-    if (!masterAccount) {
+    const params = new URL(request.url).searchParams;
+    // 계좌 식별 — master_id(UUID) 우선, 없으면 master_account(문자열, 구 방식)
+    const masterId = params.get('master_id');
+    const masterAccount = params.get('master_account');
+
+    if (!masterId && !masterAccount) {
       return NextResponse.json(
-        { success: false, error: 'master_account 파라미터가 필요합니다.' },
+        { success: false, error: 'master_id 또는 master_account 파라미터가 필요합니다.' },
         { status: 400 }
       );
     }
+
+    // 트랜잭션·잔액 조회에 사용할 필터 컬럼
+    const acctCol = masterId ? 'master_id' : 'master_account';
+    const acctVal = masterId ?? (masterAccount as string);
 
     // ── 1) 트랜잭션 합산 (Σ충전−Σ차감) + 사업자(user_id) 수집 ──
     let txNet = 0;
@@ -60,7 +68,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase
         .from('invoiceManager_transactions')
         .select('transaction_type, amount, user_id')
-        .eq('master_account', masterAccount)
+        .eq(acctCol, acctVal)
         .range(from, from + PAGE - 1);
       if (error) {
         return NextResponse.json(
@@ -129,7 +137,19 @@ export async function GET(request: NextRequest) {
     }
 
     const balance = txNet + refundTotal;
-    const paymentType = await fetchPaymentType(masterAccount);
+    // 결제조건은 invoiceManager_balance(master_account 키) 에 있으므로,
+    // master_id 로 호출된 경우 ft_users 에서 계좌명을 역추적한다.
+    let acctName = masterAccount;
+    if (!acctName && masterId) {
+      const { data: u } = await supabase
+        .from('ft_users')
+        .select('master_account')
+        .or(`master_id.eq.${masterId},balance_id.eq.${masterId}`)
+        .limit(1)
+        .maybeSingle();
+      acctName = (u as { master_account?: string } | null)?.master_account ?? null;
+    }
+    const paymentType = acctName ? await fetchPaymentType(acctName) : 'PREPAID';
     return NextResponse.json({ success: true, balance, txNet, refundTotal, paymentType });
   } catch (error) {
     return NextResponse.json(

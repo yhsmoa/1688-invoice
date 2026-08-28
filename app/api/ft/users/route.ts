@@ -10,17 +10,31 @@ export const dynamic = 'force-dynamic';
 // GET /api/ft/users
 // ft_users 테이블에서 사용자 목록 조회
 // ============================================================
+// 클라이언트로 내보내지 않는 민감 컬럼
+const SENSITIVE = new Set(['password']);
+
 export async function GET() {
   try {
+    // select('*') — master_id 컬럼이 아직 없는 환경에서도 쿼리가 깨지지 않도록.
+    // 대신 민감 컬럼은 응답에서 제거하고, master_id 는 없으면 balance_id 로 폴백한다.
     const { data, error } = await supabase
       .from('ft_users')
-      // username/master_account/balance_id — 고객계좌 등에서 계좌·거래 조회에 사용
-      .select('id, full_name, user_code, brand, vender_name, username, master_account, balance_id')
+      .select('*')
       .order('user_code', { ascending: true });
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data: data || [] });
+    const rows = (data ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(r)) {
+        if (!SENSITIVE.has(k)) out[k] = v;
+      }
+      out.master_id = r.master_id ?? r.balance_id ?? null;
+      return out;
+    });
+
+    return NextResponse.json({ success: true, data: rows });
   } catch (error) {
     console.error('ft_users 조회 오류:', error);
     return NextResponse.json(

@@ -63,8 +63,10 @@ interface FtUserOption {
   vender_name: string | null;
   full_name: string | null;
   username: string | null;
+  /** 계좌 그룹 (UUID) — 잔액·거래 집계 기준 */
+  master_id: string | null;
+  /** 구 방식 계좌명 — 하위호환용 */
   master_account: string | null;
-  balance_id: string | null;
 }
 
 /** 드롭다운 표시명 — "아이엠몽 BZ" (같은 업체 여러 계정 구분) */
@@ -178,9 +180,9 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
   }, [selectedUserId]);
 
   // 잔액 조회 — 참조 페이지와 동일 공식: 트랜잭션(Σ충전−Σ차감) + 완료환불(ft_cancel_details DONE)
-  const fetchBalance = async (masterAccount: string) => {
+  const fetchBalance = async (masterId: string) => {
     try {
-      const response = await fetch(`/api/get-customer-balance?master_account=${encodeURIComponent(masterAccount)}`);
+      const response = await fetch(`/api/get-customer-balance?master_id=${encodeURIComponent(masterId)}`);
       const result = await response.json();
 
       if (result.success) {
@@ -234,8 +236,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
     try {
       setLoading(true);
 
-      if (selectedUser.master_account) {
-        await fetchBalance(selectedUser.master_account);
+      if (selectedUser.master_id) {
+        await fetchBalance(selectedUser.master_id);
       }
 
       // 트랜잭션 조회 (user_id 사용)
@@ -467,7 +469,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
     }
 
     const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
+    if (!selectedUser || !selectedUser.master_id || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -480,6 +482,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: selectedUser.id,
+          master_id: selectedUser.master_id,
           master_account: selectedUser.master_account,
           transaction_type: '충전',
           description: chargeForm.description || null,
@@ -494,8 +497,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       if (result.success) {
         alert('충전이 완료되었습니다.');
         await fetchTransactions(selectedUser.id);
-        if (selectedUser.master_account) {
-          await fetchBalance(selectedUser.master_account);
+        if (selectedUser.master_id) {
+          await fetchBalance(selectedUser.master_id);
         }
         handleCloseModal();
       } else {
@@ -522,7 +525,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
     }
 
     const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
+    if (!selectedUser || !selectedUser.master_id || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -535,6 +538,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: selectedUser.id,
+          master_id: selectedUser.master_id,
           master_account: selectedUser.master_account,
           transaction_type: '차감',
           description: deductForm.description || null,
@@ -553,8 +557,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       if (result.success) {
         alert('차감이 완료되었습니다.');
         await fetchTransactions(selectedUser.id);
-        if (selectedUser.master_account) {
-          await fetchBalance(selectedUser.master_account);
+        if (selectedUser.master_id) {
+          await fetchBalance(selectedUser.master_id);
         }
         handleCloseModal();
       } else {
@@ -604,7 +608,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
     }
 
     const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
+    if (!selectedUser || !selectedUser.master_id || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -691,6 +695,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: selectedUser.id,
+          master_id: selectedUser.master_id,
           master_account: selectedUser.master_account,
           order_code: orderCode,
           transaction_type: '차감',
@@ -711,8 +716,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       if (result.success) {
         alert(`1688 주문이 저장되었습니다.\n주문번호: ${orderCode}\n수량: ${totalItemQty}개\n차감금액: ${finalAmount.toLocaleString()}원`);
         await fetchTransactions(selectedUser.id);
-        if (selectedUser.master_account) {
-          await fetchBalance(selectedUser.master_account);
+        if (selectedUser.master_id) {
+          await fetchBalance(selectedUser.master_id);
         }
         setOrderExcelFile(null);
         if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
