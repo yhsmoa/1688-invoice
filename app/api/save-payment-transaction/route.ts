@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+// ============================================================
+// invoiceManager_transactions 사용자 식별 체계
+//   user_id   : ft_users.id (UUID)        ← 기준 키
+//   user_name : ft_users.username         ← 원본 보존/가독용
+//   user_code : ft_users.user_code        ← 화면 표시용
+//   master_id : ft_users.balance_id (UUID) ← 계좌 그룹
+//   master_account 는 구 코드 호환을 위해 계속 채운다.
+//
+// 화면이 username 을 보내도 UUID 로 해석해 저장한다.
+// ============================================================
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface FtUserRef {
+  id: string;
+  username: string | null;
+  user_code: string | null;
+  balance_id: string | null;
+  master_account: string | null;
+}
+
+/** username 이든 UUID 든 받아서 ft_users 행을 찾는다 */
+async function findFtUser(raw: string | null | undefined): Promise<FtUserRef | null> {
+  const key = (raw ?? '').trim();
+  if (!key) return null;
+  const col = UUID_RE.test(key) ? 'id' : 'username';
+  const { data } = await supabase
+    .from('ft_users')
+    .select('id, username, user_code, balance_id, master_account')
+    .eq(col, key)
+    .maybeSingle();
+  return (data as FtUserRef) ?? null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -33,6 +66,9 @@ export async function POST(request: NextRequest) {
     }
 
     const amountNumber = Number(amount);
+
+    // 사용자 해석 (username / UUID 모두 허용) — 실패해도 저장은 진행
+    const ftUser = await findFtUser(user_id);
 
     // 1. 현재 잔액 조회
     const { data: balanceData, error: balanceError } = await supabase
@@ -69,8 +105,12 @@ export async function POST(request: NextRequest) {
       .from('invoiceManager_transactions')
       .insert({
         order_code: finalOrderCode,
-        user_id: user_id || null,
-        master_account: master_account || null,
+        // 새 체계: UUID 기준. username 이 와도 ft_users 로 해석해 저장.
+        user_id: ftUser?.id ?? user_id ?? null,
+        user_name: ftUser?.username ?? (UUID_RE.test(String(user_id ?? '')) ? null : user_id ?? null),
+        user_code: ftUser?.user_code ?? null,
+        master_id: ftUser?.balance_id ?? null,
+        master_account: master_account || ftUser?.master_account || null,
         transaction_type,
         description: description || null,
         '1688_order_id': order1688Id || null,

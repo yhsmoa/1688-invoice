@@ -79,20 +79,30 @@ export async function GET(request: NextRequest) {
       from += PAGE;
     }
 
-    // ── 2) 사업자 username → ft_users.id 매핑 ──
+    // ── 2) 사업자 식별자 → ft_users.id 매핑 ──
+    //   invoiceManager_transactions.user_id 는 ft_users.id(UUID) 로 이관됐으나,
+    //   과거 데이터에는 username 문자열이 남아 있을 수 있어 양쪽 모두 처리한다.
     let refundTotal = 0;
     if (subUsernames.size > 0) {
-      const { data: users, error: usersErr } = await supabase
-        .from('ft_users')
-        .select('id, username')
-        .in('username', Array.from(subUsernames));
-      if (usersErr) {
-        return NextResponse.json(
-          { success: false, error: 'ft_users 조회 실패', details: usersErr.message },
-          { status: 500 }
-        );
+      const raw = Array.from(subUsernames);
+      const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+      const ids = raw.filter(isUuid);                 // 이미 ft_users.id
+      const names = raw.filter((v) => !isUuid(v));    // 구 데이터(username)
+
+      if (names.length > 0) {
+        const { data: users, error: usersErr } = await supabase
+          .from('ft_users')
+          .select('id, username')
+          .in('username', names);
+        if (usersErr) {
+          return NextResponse.json(
+            { success: false, error: 'ft_users 조회 실패', details: usersErr.message },
+            { status: 500 }
+          );
+        }
+        for (const u of users ?? []) if (u.id) ids.push(u.id);
       }
-      const ids = (users ?? []).map((u) => u.id).filter(Boolean);
 
       // ── 3) ft_cancel_details (status='DONE') total_price_cny 합산 (페이지네이션) ──
       if (ids.length > 0) {

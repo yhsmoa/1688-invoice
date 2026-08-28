@@ -14,8 +14,9 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('ft_users')
-      .select('id, full_name, user_code, brand, vender_name')
-      .order('full_name', { ascending: true });
+      // username/master_account/balance_id — 고객계좌 등에서 계좌·거래 조회에 사용
+      .select('id, full_name, user_code, brand, vender_name, username, master_account, balance_id')
+      .order('user_code', { ascending: true });
 
     if (error) throw error;
 

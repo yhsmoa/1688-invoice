@@ -1,16 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+// invoiceManager_transactions.user_id 는 ft_users.id(UUID) 로 이관됐다.
+// 화면이 아직 username 을 보낼 수 있으므로 양쪽 모두 받아 UUID 로 해석한다.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveUserId(raw: string): Promise<string | null> {
+  if (UUID_RE.test(raw)) return raw;
+  const { data } = await supabase
+    .from('ft_users')
+    .select('id')
+    .eq('username', raw)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
+    const rawUserId = searchParams.get('user_id');
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
     const transactionType = searchParams.get('transaction_type');
 
-    if (!userId) {
+    if (!rawUserId) {
       return NextResponse.json({ success: false, error: 'user_id가 필요합니다.' }, { status: 400 });
+    }
+
+    const userId = await resolveUserId(rawUserId);
+    if (!userId) {
+      // 매칭되는 사용자가 없으면 빈 목록 (오류가 아니라 데이터 없음)
+      return NextResponse.json({ success: true, data: [] });
     }
 
     // 1000행 limit 대응 — 페이지네이션 루프로 전체 조회 (누적잔액 정확도 보장)

@@ -56,6 +56,21 @@ const fmtTx = (n: number | null): string => {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
+/** 드롭다운 항목 — /api/ft/users 응답 */
+interface FtUserOption {
+  id: string;
+  user_code: string | null;
+  vender_name: string | null;
+  full_name: string | null;
+  username: string | null;
+  master_account: string | null;
+  balance_id: string | null;
+}
+
+/** 드롭다운 표시명 — "아이엠몽 BZ" (같은 업체 여러 계정 구분) */
+const userLabel = (u: FtUserOption): string =>
+  [u.vender_name || u.full_name || u.username, u.user_code].filter(Boolean).join(' ');
+
 interface PaymentHistoryProps {
   /** 페이지 타이틀 — 고객계좌 / 무역계좌 공용 */
   title?: string;
@@ -67,8 +82,11 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
   // State 관리
   const [itemData, setItemData] = useState<PaymentHistoryData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [coupangUsers, setCoupangUsers] = useState<{coupang_name: string, googlesheet_id: string, user_code?: string, master_account?: string, user_id?: string}[]>([]);
-  const [selectedCoupangUser, setSelectedCoupangUser] = useState<string>('');
+  // ft_users 기준 — 선택 키는 id(UUID), 표시는 "업체명 + 코드"
+  //   같은 업체가 계정을 나눠 쓰는 경우(예: 아이엠몽 BZ / BR) 이름이 겹치므로
+  //   이름이 아니라 id 로 구분한다.
+  const [ftUsers, setFtUsers] = useState<FtUserOption[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -130,35 +148,34 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
     return formatDate(new Date());
   };
 
-  // 쿠팡 사용자 목록 가져오기
-  const fetchCoupangUsers = async () => {
+  // 사용자 목록 (ft_users)
+  const fetchFtUsers = async () => {
     try {
-      console.log('쿠팡 사용자 목록 가져오기 시작...');
-      const response = await fetch('/api/get-coupang-users');
+      const response = await fetch('/api/ft/users');
       const result = await response.json();
 
       if (result.success && result.data) {
-        setCoupangUsers(result.data);
+        setFtUsers(result.data as FtUserOption[]);
       } else {
-        console.warn('쿠팡 사용자 데이터를 가져오지 못했습니다:', result);
+        console.warn('사용자 목록을 가져오지 못했습니다:', result);
       }
     } catch (error) {
-      console.error('쿠팡 사용자 목록 가져오기 오류:', error);
+      console.error('사용자 목록 조회 오류:', error);
     }
   };
 
   useEffect(() => {
-    fetchCoupangUsers();
+    fetchFtUsers();
   }, []);
 
   // 드롭다운 선택 시 상태 초기화
   useEffect(() => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       setHasLoadedData(false);
       setItemData([]);
       setBalance(null);
     }
-  }, [selectedCoupangUser]);
+  }, [selectedUserId]);
 
   // 잔액 조회 — 참조 페이지와 동일 공식: 트랜잭션(Σ충전−Σ차감) + 완료환불(ft_cancel_details DONE)
   const fetchBalance = async (masterAccount: string) => {
@@ -198,18 +215,18 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
   // 업데이트 버튼 - 잔액 + 라이브 잔액 + 트랜잭션 조회
   const handleUpdate = async () => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
 
-    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
+    const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
     if (!selectedUser) {
       alert('선택한 사용자 정보를 찾을 수 없습니다.');
       return;
     }
 
-    if (!selectedUser.user_id) {
+    if (!selectedUser.id) {
       alert('선택한 사용자의 user_id 정보를 찾을 수 없습니다.');
       return;
     }
@@ -222,7 +239,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       }
 
       // 트랜잭션 조회 (user_id 사용)
-      await fetchTransactions(selectedUser.user_id);
+      await fetchTransactions(selectedUser.id);
       setHasLoadedData(true);
 
       setLoading(false);
@@ -235,18 +252,18 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
   // 검색 기능 - API 호출로 필터링
   const handleSearchClick = async () => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
 
-    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.user_id) return;
+    const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
+    if (!selectedUser || !selectedUser.id) return;
 
     setLoading(true);
     try {
       // 전체 이력 로드 (월/검색어 필터는 displayRows 에서 처리)
-      await fetchTransactions(selectedUser.user_id);
+      await fetchTransactions(selectedUser.id);
       setCurrentPage(1);
     } finally {
       setLoading(false);
@@ -416,7 +433,9 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       // 파일명: {타이틀}_업체명_시작월~종료월.xlsx
       const dateRange = `${startYear}${startMonth}~${endYear}${endMonth}`;
-      const fileName = `${title}_${selectedCoupangUser}_${dateRange}.xlsx`;
+      const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
+            const who = selectedUser ? userLabel(selectedUser) : '';
+            const fileName = `${title}_${who}_${dateRange}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
     } catch (error) {
@@ -437,7 +456,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
   // 충전 저장 핸들러
   const handleSaveCharge = async () => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
@@ -447,8 +466,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       return;
     }
 
-    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+    const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -460,7 +479,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.user_id,
+          user_id: selectedUser.id,
           master_account: selectedUser.master_account,
           transaction_type: '충전',
           description: chargeForm.description || null,
@@ -474,7 +493,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       if (result.success) {
         alert('충전이 완료되었습니다.');
-        await fetchTransactions(selectedUser.user_id);
+        await fetchTransactions(selectedUser.id);
         if (selectedUser.master_account) {
           await fetchBalance(selectedUser.master_account);
         }
@@ -492,7 +511,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
   // 차감 저장 핸들러
   const handleSaveDeduct = async () => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
@@ -502,8 +521,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       return;
     }
 
-    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+    const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -515,7 +534,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.user_id,
+          user_id: selectedUser.id,
           master_account: selectedUser.master_account,
           transaction_type: '차감',
           description: deductForm.description || null,
@@ -533,7 +552,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       if (result.success) {
         alert('차감이 완료되었습니다.');
-        await fetchTransactions(selectedUser.user_id);
+        await fetchTransactions(selectedUser.id);
         if (selectedUser.master_account) {
           await fetchBalance(selectedUser.master_account);
         }
@@ -574,7 +593,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
   // 1688 주문 엑셀 저장 핸들러
   const handleSave1688Order = async () => {
-    if (!selectedCoupangUser) {
+    if (!selectedUserId) {
       alert('쿠팡 사용자를 선택해주세요.');
       return;
     }
@@ -584,8 +603,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
       return;
     }
 
-    const selectedUser = coupangUsers.find(user => user.coupang_name === selectedCoupangUser);
-    if (!selectedUser || !selectedUser.master_account || !selectedUser.user_id) {
+    const selectedUser = ftUsers.find((u) => u.id === selectedUserId);
+    if (!selectedUser || !selectedUser.master_account || !selectedUser.id) {
       alert('선택한 사용자의 정보를 찾을 수 없습니다.');
       return;
     }
@@ -671,7 +690,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: selectedUser.user_id,
+          user_id: selectedUser.id,
           master_account: selectedUser.master_account,
           order_code: orderCode,
           transaction_type: '차감',
@@ -691,7 +710,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       if (result.success) {
         alert(`1688 주문이 저장되었습니다.\n주문번호: ${orderCode}\n수량: ${totalItemQty}개\n차감금액: ${finalAmount.toLocaleString()}원`);
-        await fetchTransactions(selectedUser.user_id);
+        await fetchTransactions(selectedUser.id);
         if (selectedUser.master_account) {
           await fetchBalance(selectedUser.master_account);
         }
@@ -778,28 +797,21 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
               <div className="payment-history-title-controls">
                 <select
                   className="payment-history-user-dropdown"
-                  value={selectedCoupangUser}
-                  onChange={(e) => setSelectedCoupangUser(e.target.value)}
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
                 >
                   <option value="">{t('importProduct.selectUser')}</option>
-                  {coupangUsers.map((user) => {
-                    const cacheKey = `sheet_data_${user.coupang_name}`;
-                    const hasCachedData = localStorage.getItem(cacheKey) !== null;
-                    const displayName = user.user_code
-                      ? `${user.user_code} ${user.coupang_name}`
-                      : user.coupang_name;
-
-                    return (
-                      <option key={user.coupang_name} value={user.coupang_name}>
-                        {displayName} {hasCachedData ? '●' : ''}
-                      </option>
-                    );
-                  })}
+                  {/* value 는 id(UUID) — 업체명이 겹쳐도(아이엠몽 BZ/BR) 정확히 구분된다 */}
+                  {ftUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {userLabel(user)}
+                    </option>
+                  ))}
                 </select>
                 <button
                   className="payment-history-upload-btn"
                   onClick={handleUpdate}
-                  disabled={!selectedCoupangUser || loading}
+                  disabled={!selectedUserId || loading}
                 >
                   {loading ? (
                     <span className="payment-history-button-loading">
