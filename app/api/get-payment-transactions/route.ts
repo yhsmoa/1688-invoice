@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
     while (true) {
       let query = supabase
         .from('invoiceManager_transactions')
-        .select('id, order_code, user_id, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, date, created_at, updated_at')
+        // user_name/user_code — 화면 '사업자' 열 표시용 (user_id 는 UUID 라 사람이 못 읽음)
+        .select('id, order_code, user_id, user_name, user_code, transaction_type, description, admin_note, item_qty, amount, price, delivery_fee, service_fee, extra_fee, balance_after, status, date, created_at, updated_at')
         .eq('user_id', userId)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })

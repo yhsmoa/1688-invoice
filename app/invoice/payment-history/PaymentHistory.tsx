@@ -26,6 +26,9 @@ export interface PaymentHistoryData {
   updated_at: string | null;
   delivery_status?: string | null;
   site_url?: string | null;
+  /** 표시용 — user_id(UUID) 대신 사람이 읽는 값 */
+  user_name?: string | null;
+  user_code?: string | null;
 }
 
 // 오늘 날짜 (KST, YYYY-MM-DD) — 모달 날짜 기본값
@@ -68,6 +71,14 @@ interface FtUserOption {
   /** 구 방식 계좌명 — 하위호환용 */
   master_account: string | null;
 }
+
+/**
+ * 표 '사업자' 열 표시값.
+ *   user_code 우선(BZ/BO/HI/MB) → user_name(immong) → 그래도 없으면 '-'.
+ *   user_id 는 UUID 라 화면에 그대로 노출하지 않는다.
+ */
+const userDisplay = (row: PaymentHistoryData): string =>
+  row.user_code || row.user_name || '-';
 
 /** 드롭다운 표시명 — "아이엠몽 BZ" (같은 업체 여러 계정 구분) */
 const userLabel = (u: FtUserOption): string =>
@@ -412,7 +423,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
 
       // 테이블 컬럼 순서대로 데이터 변환
       const excelData = displayRows.map((item) => ({
-        '업체': item.user_id || '',
+        '업체': userDisplay(item),
         '주문코드': item.order_code || '',
         '타입': item.transaction_type || '',
         '내용': item.description || '',
@@ -965,7 +976,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ title = '고객계좌' 
                                 </span>
                               )}
                             </td>
-                            <td className="txn-td txn-td-left">{row.user_id || '-'}</td>
+                            {/* 사업자 — user_id 는 UUID 이므로 코드/이름으로 표시 */}
+                            <td className="txn-td txn-td-left">{userDisplay(row)}</td>
                             <td className="txn-td txn-td-center">{row.transaction_type || '-'}</td>
                             <td className="txn-td txn-td-left txn-td-desc" title={row.description ?? ''}>{row.description || '-'}</td>
                             <td className="txn-td txn-td-center">{row.item_qty ?? ''}</td>
