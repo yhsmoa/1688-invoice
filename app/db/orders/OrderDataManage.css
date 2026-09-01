@@ -211,6 +211,20 @@
   color: #a1a1aa;
 }
 
+/* 배송유형 비중 — 수량 옆 괄호 표기 (쿠팡 6,762 (60%)) */
+.odm-pct {
+  color: #9ca3af;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 비중이 붙는 배송유형 3열은 조금 더 넓게 */
+.odm-col-type,
+.odm-table th.odm-col-type {
+  text-align: right;
+  width: 132px;
+}
+
 /* ── 주문수량 막대 ── */
 .odm-bar-cell {
   position: relative;

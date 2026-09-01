@@ -205,9 +205,9 @@ const OrderDataManage: React.FC = () => {
                       <th className="odm-col-num">주문건수</th>
                       <th className="odm-col-num">품목수</th>
                       <th className="odm-col-bar">주문수량</th>
-                      <th className="odm-col-num">쿠팡</th>
-                      <th className="odm-col-num">개인통관</th>
-                      <th className="odm-col-num">직배송</th>
+                      <th className="odm-col-type">쿠팡</th>
+                      <th className="odm-col-type">개인통관</th>
+                      <th className="odm-col-type">직배송</th>
                       <th className="odm-col-num">금액(CNY)</th>
                       <th className="odm-col-num">완료율</th>
                     </tr>
@@ -232,9 +232,25 @@ const OrderDataManage: React.FC = () => {
                               />
                             </div>
                           </td>
-                          <td className="odm-col-num">{nf(w.coupangQty)}</td>
-                          <td className="odm-col-num">{nf(w.personalQty)}</td>
-                          <td className="odm-col-num odm-muted">{nf(w.directQty)}</td>
+                          {/* 배송유형 — 수량 옆에 해당 구간 주문수량 대비 비중 표시 */}
+                          <td className="odm-col-type">
+                            {nf(w.coupangQty)}
+                            {w.qty > 0 && (
+                              <span className="odm-pct"> ({round1((w.coupangQty / w.qty) * 100)}%)</span>
+                            )}
+                          </td>
+                          <td className="odm-col-type">
+                            {nf(w.personalQty)}
+                            {w.qty > 0 && (
+                              <span className="odm-pct"> ({round1((w.personalQty / w.qty) * 100)}%)</span>
+                            )}
+                          </td>
+                          <td className="odm-col-type odm-muted">
+                            {nf(w.directQty)}
+                            {w.qty > 0 && (
+                              <span className="odm-pct"> ({round1((w.directQty / w.qty) * 100)}%)</span>
+                            )}
+                          </td>
                           <td className="odm-col-num odm-muted">{nf(w.amountCny)}</td>
                           <td className="odm-col-num">
                             {donePct !== null ? (
