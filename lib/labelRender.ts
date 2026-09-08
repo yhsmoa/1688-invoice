@@ -526,6 +526,36 @@ export function validateBarcode(symbology: Symbology, text: string): string | nu
   }
 }
 
+/**
+ * 바코드/QR 정렬 — 내용 캔버스를 영역 폭 캔버스 안에 좌/중/우로 놓는다.
+ * 영역 폭이 내용보다 좁으면 정렬 없이 내용 그대로 (잘라내지 않는다 — 스캔이 깨진다)
+ */
+function alignInBox(
+  content: HTMLCanvasElement,
+  boxW: number,
+  align: TextAlign
+): HTMLCanvasElement {
+  if (align === 'left' || boxW <= content.width) return content;
+  const out = newCanvas(boxW, content.height);
+  if (!out) return content;
+  const ctx = out.getContext('2d');
+  if (!ctx) return content;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  const x = align === 'center' ? Math.floor((boxW - content.width) / 2) : boxW - content.width;
+  ctx.drawImage(content, x, 0);
+  return out;
+}
+
+/** 바코드/QR 의 정렬 기준 영역 폭 (dots). 미지정 시 라벨 오른쪽 끝까지 */
+function codeBoxWidthDots(
+  el: { x_mm: number; max_w_mm?: number; rotate?: Rotation },
+  tpl: LabelTemplate
+): number {
+  if (el.max_w_mm) return Math.max(1, mmToDots(el.max_w_mm, tpl.dpi));
+  return Math.max(1, mmToDots(Math.max(1, tpl.width_mm - el.x_mm), tpl.dpi));
+}
+
 /** 렌더 실패 시 자리에 그리는 회색 안내 박스 (레이아웃이 무너지지 않게) */
 function placeholderRaster(w: number, h: number, msg: string): Raster | null {
   const canvas = newCanvas(w, h);
@@ -555,6 +585,8 @@ export function rasterBarcode(
   const readable = !!el.human_readable;
   const textPt = el.text_pt ?? BARCODE_TEXT_PT;
   const fontPx = Math.max(6, ptToDots(textPt, dpi));
+  const align: TextAlign = el.align ?? 'left';
+  const boxW = align === 'left' ? 0 : codeBoxWidthDots(el, tpl);
 
   const key = [
     'bc',
@@ -564,6 +596,7 @@ export function rasterBarcode(
     hDots,
     narrow,
     readable ? `t${fontPx}` : 0,
+    `${align}:${boxW}`,
     el.rotate ?? 0,
   ].join('|');
 
@@ -589,7 +622,7 @@ export function rasterBarcode(
     }
 
     if (!readable) {
-      const out = rotateCanvas(bars, el.rotate ?? 0);
+      const out = rotateCanvas(alignInBox(bars, boxW, align), el.rotate ?? 0);
       return { canvas: out, wDots: out.width, hDots: out.height };
     }
 
@@ -617,7 +650,7 @@ export function rasterBarcode(
     ctx.textAlign = 'center';
     ctx.fillText(text, Math.floor(totalW / 2), bars.height + gap);
 
-    const out = rotateCanvas(canvas, el.rotate ?? 0);
+    const out = rotateCanvas(alignInBox(canvas, boxW, align), el.rotate ?? 0);
     return { canvas: out, wDots: out.width, hDots: out.height };
   });
 }
@@ -632,7 +665,9 @@ export function rasterQr(el: QrElement, tpl: LabelTemplate, data: LabelData): Ra
   if (!text) return null;
 
   const cell = Math.max(1, Math.min(10, Math.round(el.cell)));
-  const key = ['qr', text, el.ecc, cell, el.rotate ?? 0].join('|');
+  const align: TextAlign = el.align ?? 'left';
+  const boxW = align === 'left' ? 0 : codeBoxWidthDots(el, tpl);
+  const key = ['qr', tpl.dpi, text, el.ecc, cell, `${align}:${boxW}`, el.rotate ?? 0].join('|');
 
   return cached(key, () => {
     let size = 0;
@@ -664,7 +699,7 @@ export function rasterQr(el: QrElement, tpl: LabelTemplate, data: LabelData): Ra
     }
 
     // QR 은 정사각형이라 회전해도 크기는 같지만, 데이터 방향을 맞추기 위해 동일 처리
-    const out = rotateCanvas(canvas, el.rotate ?? 0);
+    const out = rotateCanvas(alignInBox(canvas, boxW, align), el.rotate ?? 0);
     return { canvas: out, wDots: out.width, hDots: out.height };
   });
 }

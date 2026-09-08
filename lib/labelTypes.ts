@@ -136,6 +136,13 @@ export interface BarcodeElement extends ElementBase {
   human_readable?: boolean;
   /** 아래 숫자 글자 크기 pt (기본 7) */
   text_pt?: number;
+  /**
+   * 정렬 — 바코드 폭은 데이터 길이로 정해지므로 "영역 폭(max_w_mm)" 안에서 놓는다.
+   * max_w_mm 이 없으면 라벨 오른쪽 끝까지가 영역. 기본 left.
+   */
+  align?: TextAlign;
+  /** 정렬 기준 영역 폭 (mm). 없으면 x 부터 라벨 오른쪽 끝까지 */
+  max_w_mm?: number;
 }
 
 export interface QrElement extends ElementBase {
@@ -146,6 +153,10 @@ export interface QrElement extends ElementBase {
   cell: number;
   /** 오류정정 L/M/Q/H */
   ecc: 'L' | 'M' | 'Q' | 'H';
+  /** 정렬 (바코드와 같은 규칙) */
+  align?: TextAlign;
+  /** 정렬 기준 영역 폭 (mm) */
+  max_w_mm?: number;
 }
 
 export interface BoxElement extends ElementBase {

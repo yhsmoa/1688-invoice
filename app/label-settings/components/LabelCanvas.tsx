@@ -172,7 +172,11 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
           // 높이를 끌면 한 줄 텍스트도 영역(상자)이 된다
           if (isTextBox(o) || resizeH) patch.h_mm = tidy(Math.max(1, elH));
         } else if (o.type === 'barcode') {
-          patch = { h_mm: tidy(Math.max(2, elH)) };
+          patch = {};
+          if (resizeH) patch.h_mm = tidy(Math.max(2, elH));
+          if (resizeW) patch.max_w_mm = tidy(Math.max(2, elW)); // 정렬 기준 영역 폭
+        } else if (o.type === 'qr') {
+          if (resizeW) patch = { max_w_mm: tidy(Math.max(2, elW)) };
         } else if (o.type === 'box' || o.type === 'line') {
           patch = { w_mm: tidy(Math.max(0.2, elW)), h_mm: tidy(Math.max(0.1, elH)) };
         } else if (o.type === 'image') {
@@ -411,8 +415,16 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
                     {handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
                   </>
                 )}
-                {!el.locked && !rotated && el.type === 'barcode' &&
-                  handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
+                {/* 바코드: 아래(높이) · 오른쪽(정렬 영역 폭, 정렬이 켜진 경우) */}
+                {!el.locked && !rotated && el.type === 'barcode' && (
+                  <>
+                    {handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
+                    {(el.align ?? 'left') !== 'left' &&
+                      handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
+                  </>
+                )}
+                {!el.locked && !rotated && el.type === 'qr' && (el.align ?? 'left') !== 'left' &&
+                  handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
                 {!el.locked && (el.type === 'box' || el.type === 'line' || el.type === 'image') &&
                   handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
               </g>

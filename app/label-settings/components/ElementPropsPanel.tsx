@@ -487,6 +487,27 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
             </label>
             <div className="ls-hint ls-col-2">{SYMBOLOGY_HINT[el.symbology]}</div>
 
+            <label className="ls-field">
+              <span>정렬</span>
+              <select
+                value={el.align ?? 'left'}
+                onChange={(e) => patch({ align: e.target.value as TextAlign })}
+              >
+                {ALIGNS.map((a) => (
+                  <option key={a.key} value={a.key}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Num
+              label="정렬 영역 폭 (mm)"
+              value={el.max_w_mm}
+              optional
+              placeholder="비우면 끝까지"
+              min={1}
+              onChange={(v) => patch({ max_w_mm: v }, `el:${el.id}:maxw`)}
+            />
             <Num
               label="높이 (mm)"
               value={el.h_mm}
@@ -552,6 +573,27 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                 <option value="H">H — 30% 복원</option>
               </select>
             </label>
+            <label className="ls-field">
+              <span>정렬</span>
+              <select
+                value={el.align ?? 'left'}
+                onChange={(e) => patch({ align: e.target.value as TextAlign })}
+              >
+                {ALIGNS.map((a) => (
+                  <option key={a.key} value={a.key}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Num
+              label="정렬 영역 폭 (mm)"
+              value={el.max_w_mm}
+              optional
+              placeholder="비우면 끝까지"
+              min={1}
+              onChange={(v) => patch({ max_w_mm: v }, `el:${el.id}:maxw`)}
+            />
             <div className="ls-hint ls-col-2">
               셀 크기를 키우면 QR 전체가 커집니다. 스캐너가 잘 못 읽으면 셀을 1 올리세요.
             </div>
