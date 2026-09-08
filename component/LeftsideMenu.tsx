@@ -369,6 +369,16 @@ const LeftsideMenu: React.FC = () => {
               </ul>
             )}
           </li>
+
+          {/* ============================================================ */}
+          {/* 라벨 설정 (최하단) — 라벨 양식 + PC-NO별 프린터 매핑        */}
+          {/* ============================================================ */}
+          <li className="menu-item">
+            <Link href="/label-settings" className="menu-link" onClick={(e) => handleNavigation(e, '/label-settings')}>
+              <span className="menu-icon">🏷️</span>
+              <span className="menu-text">라벨 설정</span>
+            </Link>
+          </li>
         </ul>
       </nav>
     </aside>

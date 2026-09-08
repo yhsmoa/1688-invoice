@@ -149,6 +149,42 @@
   gap: 10px;
 }
 
+/* 즉시 출력 — 라벨 종류 선택 */
+.v2-label-print-type {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  margin-right: auto;   /* 좌측으로 밀어 저장 버튼과 분리 */
+}
+
+/* 즉시 출력 버튼 (QZ Tray) */
+.v2-label-print-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #18181b;
+  color: white;
+  min-width: 120px;
+}
+
+.v2-label-print-btn:hover:not(:disabled) {
+  background-color: #27272a;
+}
+
+.v2-label-print-btn:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 /* LABEL postgre 버튼 */
 .v2-label-postgre-btn {
   padding: 10px 20px;
@@ -199,4 +235,23 @@
 
 @keyframes v2-label-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ============================================================ */
+/* 즉시 출력 성공 표시 — alert 대신 버튼 옆에 잠깐                 */
+/* ============================================================ */
+.v2-label-print-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
+  animation: v2-label-status-in 0.2s ease-out;
+}
+
+@keyframes v2-label-status-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
 }

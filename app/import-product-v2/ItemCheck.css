@@ -356,6 +356,41 @@
 }
 .v2-search-pill-input::placeholder { color: #b9b9c3; }
 
+/* ── 라벨 설정 진입점 (페이지 하단) ── */
+.v2-label-settings-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.v2-label-settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #18181b;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s;
+  flex-shrink: 0;
+}
+
+.v2-label-settings-link:hover { background: #27272a; }
+
+.v2-label-settings-hint {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 /* 테이블 */
 .v2-table-board {
   background: white;

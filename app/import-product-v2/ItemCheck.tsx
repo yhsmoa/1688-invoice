@@ -1680,6 +1680,18 @@ const ItemCheck: React.FC = () => {
                 {t('importProductV2.table.noData')}
               </div>
             )}
+
+            {/* ============================================================ */}
+            {/* 라벨 설정 진입점 — 사용자별 라벨 양식 / 프린터 매핑          */}
+            {/* ============================================================ */}
+            <div className="v2-label-settings-entry">
+              <a href="/label-settings" className="v2-label-settings-link">
+                🏷️ 라벨 설정
+              </a>
+              <span className="v2-label-settings-hint">
+                라벨 양식(템플릿)과 PC-NO별 프린터를 지정하면 [라벨] 모달에서 바로 출력할 수 있습니다.
+              </span>
+            </div>
           </div>
         </main>
 

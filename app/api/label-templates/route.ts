@@ -1,0 +1,175 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../../lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
+// ============================================================
+// 라벨 템플릿 CRUD — label_templates
+//
+//   GET    /api/label-templates?user_id=&label_type=   목록
+//   POST   /api/label-templates                        생성
+//   PATCH  /api/label-templates                        수정 (id 필수)
+//   DELETE /api/label-templates?id=                    삭제
+//
+// user_id = null 인 행은 "공용 템플릿" (모든 사용자에게 노출)
+// is_default 는 (user_id, label_type) 당 1개 — DB 부분 유니크 인덱스로 강제되므로
+// 지정 시 같은 그룹의 기존 기본값을 먼저 해제한다.
+//
+// ※ 템플릿/매핑은 수십 건 규모라 1000행 페이지네이션 불필요 (설계상 상한 낮음)
+// ============================================================
+
+const TABLE = 'label_templates';
+
+/** is_default 지정 시 같은 (user_id, label_type) 그룹의 기존 기본값 해제 */
+async function clearDefault(userId: string | null, labelType: string, exceptId?: string) {
+  let q = supabase.from(TABLE).update({ is_default: false }).eq('label_type', labelType).eq('is_default', true);
+  q = userId ? q.eq('user_id', userId) : q.is('user_id', null);
+  if (exceptId) q = q.neq('id', exceptId);
+  const { error } = await q;
+  if (error) throw error;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const p = new URL(request.url).searchParams;
+    const userId = p.get('user_id');
+    const labelType = p.get('label_type');
+
+    let q = supabase.from(TABLE).select('*').order('created_at', { ascending: true });
+
+    // 특정 사용자 요청 시 = 그 사용자 것 + 공용
+    if (userId) q = q.or(`user_id.eq.${userId},user_id.is.null`);
+    if (labelType) q = q.eq('label_type', labelType);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: data ?? [] });
+  } catch (error) {
+    console.error('라벨 템플릿 조회 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '라벨 템플릿 조회 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      user_id = null,
+      name,
+      label_type,
+      width_mm,
+      height_mm,
+      gap_mm = 2,
+      dpi = 203,
+      density = null,
+      speed = null,
+      layout = [],
+      is_default = false,
+    } = body;
+
+    if (!name || !label_type) {
+      return NextResponse.json(
+        { success: false, error: '이름과 라벨 종류는 필수입니다.' },
+        { status: 400 }
+      );
+    }
+
+    if (is_default) await clearDefault(user_id, label_type);
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .insert({
+        user_id,
+        name,
+        label_type,
+        printer_lang: 'TSPL2',
+        width_mm,
+        height_mm,
+        gap_mm,
+        dpi,
+        density,
+        speed,
+        layout,
+        is_default,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error('라벨 템플릿 생성 오류:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: '라벨 템플릿 생성 중 오류가 발생했습니다.',
+        details: error instanceof Error ? error.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, ...fields } = body;
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'id가 필요합니다.' }, { status: 400 });
+    }
+
+    // 기본 템플릿으로 지정하는 경우 같은 그룹 해제 먼저
+    if (fields.is_default) {
+      const { data: cur } = await supabase
+        .from(TABLE)
+        .select('user_id, label_type')
+        .eq('id', id)
+        .maybeSingle();
+      const userId = (fields.user_id ?? cur?.user_id) ?? null;
+      const labelType = fields.label_type ?? cur?.label_type;
+      if (labelType) await clearDefault(userId, labelType, id);
+    }
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update({ ...fields, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error('라벨 템플릿 수정 오류:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: '라벨 템플릿 수정 중 오류가 발생했습니다.',
+        details: error instanceof Error ? error.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const id = new URL(request.url).searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'id가 필요합니다.' }, { status: 400 });
+    }
+    const { error } = await supabase.from(TABLE).delete().eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('라벨 템플릿 삭제 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '라벨 템플릿 삭제 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}

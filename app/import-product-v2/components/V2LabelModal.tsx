@@ -1,14 +1,22 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { FtOrderItem, FtUser } from '../hooks/useFtData';
 import { saveLabelData } from '../utils/saveLabelData';
+import { printLabels } from '../utils/printLabels';
+import type { LabelType } from '../../../lib/labelTypes';
 import './V2LabelModal.css';
 
 // ============================================================
-// V2 라벨 모달 — 수량 입력 + Supabase invoiceManager_label 저장
-// 저장 로직은 saveLabelData 공통 유틸 사용
+// V2 라벨 모달 — 수량 입력 + 저장 / 즉시 출력
+//
+//   [저장]      : Supabase invoiceManager_label (기존 BarTender 경로 유지)
+//   [즉시 출력] : QZ Tray 로 TSPL RAW 전송 → 그 자리에서 인쇄
+//                 템플릿·프린터는 [라벨 설정]에서 지정한 값을 자동 사용
 // ============================================================
+
+/** 즉시 출력 성공 표시 유지 시간 */
+const PRINTED_MSG_MS = 3000;
 
 interface V2LabelModalProps {
   isOpen: boolean;
@@ -39,6 +47,17 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
   // ============================================================
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  /** 즉시 출력할 라벨 종류 */
+  const [printType, setPrintType] = useState<LabelType>('barcode');
+  /** 즉시 출력 성공 표시 ("N장 전송됨") — 잠깐 보였다 사라진다 */
+  const [printedMsg, setPrintedMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!printedMsg) return;
+    const t = setTimeout(() => setPrintedMsg(null), PRINTED_MSG_MS);
+    return () => clearTimeout(t);
+  }, [printedMsg]);
 
   // ============================================================
   // 수량 값 조회: 사용자 입력 > modifiedImportQty > order_qty > 1
@@ -99,6 +118,41 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
       setIsSaving(false);
     }
   }, [items, selectedUser, operatorId, getQty, onSaveComplete, onClose]);
+
+  // ============================================================
+  // 즉시 출력 핸들러 — QZ Tray 로 그 자리에서 인쇄
+  //   PC-NO(operatorId) = 작업 자리, 템플릿/프린터는 라벨 설정값 사용
+  // ============================================================
+  const handlePrint = useCallback(async () => {
+    if (!operatorId) {
+      alert('PC-NO를 선택해주세요. (프린터 자리 구분에 필요)');
+      return;
+    }
+
+    setIsPrinting(true);
+    try {
+      const result = await printLabels({
+        items: items.map((item) => ({ item, qty: getQty(item) })),
+        userId: selectedUser?.id ?? null,
+        brand: selectedUser?.brand || null,
+        stationNo: operatorId,
+        labelType: printType,
+        printedBy: null,
+      });
+
+      if (result.success) {
+        // 성공은 창을 띄우지 않고 버튼 옆에 잠깐만 표시한다 (작업 흐름을 끊지 않게)
+        setPrintedMsg(`${result.printed}장 전송됨`);
+      } else {
+        alert(result.error || '출력에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('라벨 출력 오류:', error);
+      alert('라벨 출력 중 오류가 발생했습니다.');
+    } finally {
+      setIsPrinting(false);
+    }
+  }, [items, selectedUser, operatorId, getQty, printType]);
 
   // ============================================================
   // 모달이 닫혀있으면 렌더링하지 않음
@@ -176,6 +230,35 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
 
         {/* 하단 액션 */}
         <div className="v2-label-dialog-actions">
+          {/* 즉시 출력 — 종류 선택 + QZ Tray 인쇄 */}
+          <select
+            className="v2-label-print-type"
+            value={printType}
+            onChange={(e) => setPrintType(e.target.value as LabelType)}
+            disabled={isPrinting}
+          >
+            <option value="barcode">바코드 감열지</option>
+            <option value="care">케어라벨</option>
+          </select>
+
+          {printedMsg && <span className="v2-label-print-status">✓ {printedMsg}</span>}
+
+          <button
+            className="v2-label-print-btn"
+            onClick={handlePrint}
+            disabled={isPrinting || items.length === 0}
+            title="라벨 설정에서 지정한 템플릿·프린터로 그 자리에서 출력합니다"
+          >
+            {isPrinting ? (
+              <span className="v2-label-button-loading">
+                <span className="v2-spinner"></span>
+                출력 중...
+              </span>
+            ) : (
+              '즉시 출력'
+            )}
+          </button>
+
           <button
             className="v2-label-postgre-btn"
             onClick={handleSave}
