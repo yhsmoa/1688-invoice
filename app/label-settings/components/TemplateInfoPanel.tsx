@@ -1,7 +1,14 @@
 'use client';
 
 import React from 'react';
-import type { LabelTemplate, LabelType } from '../../../lib/labelTypes';
+import {
+  LABEL_MEDIA,
+  LABEL_CUTTER,
+  type LabelCutter,
+  type LabelMedia,
+  type LabelTemplate,
+  type LabelType,
+} from '../../../lib/labelTypes';
 import { userLabel, type FtUser } from '../hooks/useLabelSettingsData';
 import { LABEL_TYPES } from './TemplateListPanel';
 
@@ -91,16 +98,35 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch, mappedPrint
         />
       </label>
 
-      <label className="ls-field">
-        <span>라벨 간격 GAP (mm)</span>
-        <input
-          type="number"
-          step="0.5"
-          min={0}
-          value={draft.gap_mm}
-          onChange={(e) => onPatch({ gap_mm: Number(e.target.value) }, 'tpl:gap')}
-        />
+      <label className="ls-field ls-col-2">
+        <span>용지 종류</span>
+        <select
+          value={draft.media ?? 'gap'}
+          onChange={(e) => onPatch({ media: e.target.value as LabelMedia })}
+        >
+          {LABEL_MEDIA.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.label}
+            </option>
+          ))}
+        </select>
       </label>
+      <div className="ls-hint ls-col-2">
+        {LABEL_MEDIA.find((m) => m.key === (draft.media ?? 'gap'))?.hint}
+      </div>
+
+      {(draft.media ?? 'gap') !== 'continuous' && (
+        <label className="ls-field">
+          <span>{draft.media === 'blackmark' ? '블랙마크 높이 (mm)' : '라벨 간격 GAP (mm)'}</span>
+          <input
+            type="number"
+            step="0.5"
+            min={0}
+            value={draft.gap_mm}
+            onChange={(e) => onPatch({ gap_mm: Number(e.target.value) }, 'tpl:gap')}
+          />
+        </label>
+      )}
 
       <label className="ls-field">
         <span>해상도 (프린터 사양)</span>
@@ -184,6 +210,19 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch, mappedPrint
       <div className="ls-hint ls-col-2">
         글씨가 흐리면 농도를 올리고(보통 8~12), 번지면 내리세요. 속도는 낮을수록 선명합니다.
       </div>
+      <label className="ls-field ls-col-2">
+        <span>자동 절단 (절단기 달린 프린터)</span>
+        <select
+          value={draft.cutter ?? 'off'}
+          onChange={(e) => onPatch({ cutter: e.target.value as LabelCutter })}
+        >
+          {LABEL_CUTTER.map((c) => (
+            <option key={c.key} value={c.key}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   </section>
 );

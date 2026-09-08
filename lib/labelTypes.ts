@@ -11,6 +11,28 @@
 
 export type LabelType = 'care' | 'barcode';
 
+/** 용지 종류 (LabelTemplate.media 참고) */
+export type LabelMedia = 'gap' | 'continuous' | 'blackmark';
+
+/** 자동 절단 (LabelTemplate.cutter) */
+export type LabelCutter = 'off' | 'each' | 'batch';
+
+export const LABEL_CUTTER: { key: LabelCutter; label: string }[] = [
+  { key: 'off', label: '절단 안 함' },
+  { key: 'each', label: '매 장 절단' },
+  { key: 'batch', label: '묶음 끝에 한 번 절단' },
+];
+
+export const LABEL_MEDIA: { key: LabelMedia; label: string; hint: string }[] = [
+  { key: 'gap', label: '틈 있는 라벨 (일반 스티커)', hint: '라벨 사이 투명 틈을 센서가 찾습니다.' },
+  {
+    key: 'continuous',
+    label: '연속 용지 (케어라벨 리본)',
+    hint: '틈이 없는 롤. 틈 설정으로 찍으면 용지를 찾다가 빨간불로 멈춥니다.',
+  },
+  { key: 'blackmark', label: '블랙마크 용지', hint: '뒷면 검은 띠로 라벨을 구분합니다.' },
+];
+
 /** 바코드 심볼로지 (TSPL BARCODE 명령의 코드명과 동일) */
 export type Symbology = '128' | '128M' | 'EAN13' | 'EAN8' | 'UPCA' | '39' | '93';
 
@@ -187,7 +209,20 @@ export interface LabelTemplate {
   printer_lang: string;
   width_mm: number;
   height_mm: number;
+  /**
+   * 라벨 사이 틈(mm). media 가 gap 이면 GAP 명령, blackmark 면 BLINE(마크 높이)로 나간다.
+   * continuous 에서는 무시된다.
+   */
   gap_mm: number;
+  /**
+   * 용지 종류 — 센서 설정이 달라서 틀리면 프린터가 용지를 찾다가 빨간불로 멈춘다.
+   *   gap        : 라벨 사이에 틈이 있는 일반 스티커 (기본)
+   *   continuous : 틈 없는 연속 용지 — 케어라벨 리본(나일론·새틴)이 여기 해당
+   *   blackmark  : 뒷면 검은 띠로 구분하는 용지
+   */
+  media?: LabelMedia;
+  /** 자동 절단 — 절단기 달린 프린터에서 SET CUTTER 로 나간다 (기본 off) */
+  cutter?: LabelCutter;
   dpi: number;
   /**
    * 인쇄 농도 0~15 (TSPL DENSITY). 비우면 프린터 기본값.

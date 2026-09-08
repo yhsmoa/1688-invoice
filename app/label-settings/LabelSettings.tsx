@@ -57,6 +57,8 @@ const newTemplate = (labelType: LabelType): LabelTemplate => ({
   width_mm: labelType === 'care' ? 30 : 40,
   height_mm: labelType === 'care' ? 40 : 30,
   gap_mm: 2,
+  // 케어라벨은 보통 틈 없는 리본 → 연속 용지. 틈 설정으로 나가면 프린터가 멈춘다
+  media: labelType === 'care' ? 'continuous' : 'gap',
   dpi: labelType === 'care' ? 300 : 203,
   layout:
     labelType === 'care'
@@ -303,6 +305,8 @@ const LabelSettings: React.FC = () => {
         width_mm: draft.width_mm,
         height_mm: draft.height_mm,
         gap_mm: draft.gap_mm,
+        media: draft.media ?? 'gap',
+        cutter: draft.cutter ?? 'off',
         dpi: draft.dpi,
         density: draft.density ?? null,
         speed: draft.speed ?? null,

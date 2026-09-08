@@ -114,13 +114,34 @@ export function buildTsplJob(
   const parts: Uint8Array[] = [];
 
   parts.push(ascii(`SIZE ${tpl.width_mm} mm,${tpl.height_mm} mm${CRLF}`));
-  parts.push(ascii(`GAP ${tpl.gap_mm} mm,0${CRLF}`));
+  // 용지 센서 — 틀리면 프린터가 라벨 경계를 찾다가 에러로 멈춘다
+  switch (tpl.media ?? 'gap') {
+    case 'continuous':
+      parts.push(ascii(`GAP 0 mm,0${CRLF}`)); // 연속 용지: 틈 찾기 없음, SIZE 만큼 이송
+      break;
+    case 'blackmark':
+      parts.push(ascii(`BLINE ${tpl.gap_mm} mm,0${CRLF}`));
+      break;
+    default:
+      parts.push(ascii(`GAP ${tpl.gap_mm} mm,0${CRLF}`));
+  }
   // 농도/속도 — RAW 인쇄는 드라이버 설정을 거치지 않으므로 여기서 지정 (없으면 프린터 기본값)
   if (tpl.density != null && Number.isFinite(tpl.density)) {
     parts.push(ascii(`DENSITY ${Math.min(15, Math.max(0, Math.round(tpl.density)))}${CRLF}`));
   }
   if (tpl.speed != null && Number.isFinite(tpl.speed) && tpl.speed > 0) {
     parts.push(ascii(`SPEED ${tpl.speed}${CRLF}`));
+  }
+  // 자동 절단 — 1 = 매 장, BATCH = PRINT 묶음 끝, OFF = 안 함
+  switch (tpl.cutter ?? 'off') {
+    case 'each':
+      parts.push(ascii(`SET CUTTER 1${CRLF}`));
+      break;
+    case 'batch':
+      parts.push(ascii(`SET CUTTER BATCH${CRLF}`));
+      break;
+    default:
+      parts.push(ascii(`SET CUTTER OFF${CRLF}`));
   }
   parts.push(ascii(`DIRECTION 1${CRLF}`));
   parts.push(ascii(`REFERENCE 0,0${CRLF}`));
