@@ -89,7 +89,20 @@
       "Bash(node ./_fix2.mjs)",
       "Bash(node ./_split.mjs)",
       "Bash(grep -n \"odm-col-type\\\\|odm-col-num\\\\\">$\\\\|{nf\\(w.coupangQty\\)}\\\\|{nf\\(w.personalQty\\)}\\\\|{nf\\(w.directQty\\)}\" -B1 app/db/orders/OrderDataManage.tsx)",
-      "Bash(ls -lt \"C:/Users/USER/Documents/xwechat_files/wxid_6urmvebtcqlp22_9e7d/msg/file/2026-09/\" 2>/dev/null | head -10 *)"
+      "Bash(ls -lt \"C:/Users/USER/Documents/xwechat_files/wxid_6urmvebtcqlp22_9e7d/msg/file/2026-09/\" 2>/dev/null | head -10 *)",
+      "WebSearch",
+      "mcp__2f2e9684-9581-44c8-b2bd-13d0b9c47e6b__apply_migration",
+      "Bash(grep -n \"데이터 없음 안내\\\\|noData\\\\|</div>$\" app/import-product-v2/ItemCheck.tsx)",
+      "Bash(rm -rf /tmp/tsplcheck)",
+      "Bash(rm -rf /tmp/tsplcheck; echo \"임시파일 정리 완료\")",
+      "PowerShell(npm run type-check 2>&1)",
+      "PowerShell(git -C D:\\\\1688-invoice status --short)",
+      "PowerShell(\\(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 8181,8182 } | Select-Object LocalPort, OwningProcess | Format-Table -AutoSize | Out-String\\).Trim\\(\\))",
+      "PowerShell(node \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--1688-invoice\\\\1f714494-1718-40ff-bc85-a3ba6d77be20\\\\scratchpad\\\\create-templates.mjs\")",
+      "PowerShell(node \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--1688-invoice\\\\1f714494-1718-40ff-bc85-a3ba6d77be20\\\\scratchpad\\\\extract.js\" \"C:\\\\Users\\\\Administrator\\\\.claude\\\\projects\\\\D--1688-invoice\\\\1f714494-1718-40ff-bc85-a3ba6d77be20\\\\tool-results\\\\mcp-Claude_Browser-browser_batch-1788874465692.txt\" \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--1688-invoice\\\\1f714494-1718-40ff-bc85-a3ba6d77be20\\\\scratchpad\")",
+      "PowerShell($d = \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--1688-invoice\\\\1f714494-1718-40ff-bc85-a3ba6d77be20\\\\scratchpad\"; Start-Sleep -Seconds 2; if \\(Test-Path \"$d\\\\barcode-crop.b64\"\\) { [IO.File]::WriteAllBytes\\(\"$d\\\\barcode-crop.png\", [Convert]::FromBase64String\\(\\(Get-Content \"$d\\\\barcode-crop.b64\" -Raw\\).Trim\\(\\)\\)\\); \\(Get-Item \"$d\\\\barcode-crop.png\"\\).Length } else { \"b64 not yet written\" })",
+      "PowerShell(git status --short; Write-Output \"--- .env ignored? ---\"; git check-ignore .env; Write-Output \"--- secrets scan in tracked/untracked changes ---\"; git add -A --dry-run | Out-Null; $files = git status --short | ForEach-Object { $_.Substring\\(3\\).Trim\\('\"'\\) }; Select-String -Path $files -Pattern \"BEGIN \\(RSA |\\)PRIVATE KEY|SUPABASE_SERVICE_ROLE_KEY=|QZ_PRIVATE_KEY=\" -ErrorAction SilentlyContinue | Select-Object Path, LineNumber | Format-Table -AutoSize; Write-Output \"--- branch/remote ---\"; git branch --show-current; git remote -v | Select-Object -First 1)",
+      "Bash(git commit *)"
     ],
     "deny": []
   }
