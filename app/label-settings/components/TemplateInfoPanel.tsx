@@ -13,8 +13,8 @@ import { LABEL_TYPES } from './TemplateListPanel';
 // ============================================================
 
 const DPI_OPTIONS = [
-  { value: 203, label: '203 dpi (Deli DL-720 등)' },
-  { value: 300, label: '300 dpi (TSC TE310)' },
+  { value: 203, label: '203 dpi' },
+  { value: 300, label: '300 dpi' },
   { value: 600, label: '600 dpi' },
 ];
 
@@ -22,9 +22,11 @@ interface Props {
   draft: LabelTemplate;
   users: FtUser[];
   onPatch: (patch: Partial<LabelTemplate>, key?: string) => void;
+  /** 테스트 자리에 매핑된 이 종류의 프린터 (없으면 null) */
+  mappedPrinter: { station: number; name: string | null; dpi?: number };
 }
 
-const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => (
+const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch, mappedPrinter }) => (
   <section className="ls-panel">
     <div className="ls-panel-title">기본 정보</div>
 
@@ -101,7 +103,7 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => (
       </label>
 
       <label className="ls-field">
-        <span>해상도</span>
+        <span>해상도 (프린터 사양)</span>
         <select value={draft.dpi} onChange={(e) => onPatch({ dpi: Number(e.target.value) })}>
           {DPI_OPTIONS.map((d) => (
             <option key={d.value} value={d.value}>
@@ -110,6 +112,29 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => (
           ))}
         </select>
       </label>
+
+      {/* 해상도는 프린터를 고르는 값이 아니다 — 프린터는 아래 매핑에서, 여기는 그 프린터의 dpi */}
+      <div
+        className={`ls-hint ls-col-2 ${
+          mappedPrinter.dpi && mappedPrinter.dpi !== draft.dpi ? 'ls-hint-warn' : ''
+        }`}
+      >
+        {mappedPrinter.name ? (
+          <>
+            {mappedPrinter.station}번 자리 {draft.label_type === 'care' ? '케어라벨' : '바코드'}{' '}
+            프린터: <b>{mappedPrinter.name}</b>
+            {mappedPrinter.dpi ? ` (${mappedPrinter.dpi}dpi)` : ''}
+            {mappedPrinter.dpi && mappedPrinter.dpi !== draft.dpi
+              ? ` — 템플릿은 ${draft.dpi}dpi 라서 실제 크기가 달라집니다. 해상도를 ${mappedPrinter.dpi}로 맞추세요.`
+              : ''}
+          </>
+        ) : (
+          <>
+            해상도는 프린터를 고르는 값이 아닙니다. 프린터는 아래 <b>프린터 매핑</b>에서 자리별로
+            정하고, 여기에는 그 프린터의 사양 dpi 를 넣습니다.
+          </>
+        )}
+      </div>
 
       <label className="ls-field ls-check ls-col-2">
         <input

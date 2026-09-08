@@ -358,6 +358,15 @@ const LabelSettings: React.FC = () => {
       });
       return;
     }
+    // 프린터 해상도와 템플릿 해상도가 다르면 실제 크기가 달라진다 — 알고 찍게 한다
+    const info = data.printerInfo(printer);
+    if (info?.dpi && info.dpi !== draft.dpi) {
+      const go = window.confirm(
+        `프린터 "${printer}" 는 ${info.dpi}dpi 인데 템플릿은 ${draft.dpi}dpi 입니다.\n` +
+          `라벨이 ${info.dpi > draft.dpi ? '작게' : '크게'} 찍힙니다. 그래도 출력할까요?`
+      );
+      if (!go) return;
+    }
     try {
       await preloadTemplateAssets(draft); // 이미지(세탁 기호)가 빠진 채 나가지 않게
       const bytes = buildTsplJob(draft, sampleData, 1);
@@ -373,12 +382,19 @@ const LabelSettings: React.FC = () => {
   }, [draft, data, sampleData]);
 
   const handleSavePrinterMap = useCallback(
-    async (labelType: LabelType, printer: string) => {
-      const err = await data.savePrinterMap(labelType, printer);
+    async (station: number, labelType: LabelType, printer: string) => {
+      const err = await data.savePrinterMap(station, labelType, printer);
       if (err) setToast({ msg: err, kind: 'err' });
+      return err;
     },
     [data]
   );
+
+  /** 현재 템플릿 종류에 대해 테스트 자리에 매핑된 프린터 (+ 이 PC 가 아는 dpi) */
+  const mappedPrinter = useMemo(() => {
+    const name = draft ? data.printerFor(draft.label_type) : null;
+    return { station: data.stationNo, name, dpi: data.printerInfo(name)?.dpi };
+  }, [draft, data]);
 
   // ============================================================
   // 단축키
@@ -536,6 +552,7 @@ const LabelSettings: React.FC = () => {
                     draft={draft}
                     users={data.users}
                     onPatch={draftApi.patchTemplate}
+                    mappedPrinter={mappedPrinter}
                   />
                   <SampleDataPanel data={sampleData} onChange={setSampleData} />
                 </>
@@ -546,7 +563,7 @@ const LabelSettings: React.FC = () => {
                 onStationNo={data.setStationNo}
                 qzOk={data.qzOk}
                 qzPrinters={data.qzPrinters}
-                printerFor={data.printerFor}
+                printerAt={data.printerAt}
                 onSave={handleSavePrinterMap}
                 onRefreshQz={data.refreshQz}
               />

@@ -288,6 +288,41 @@ export async function listPrinters(): Promise<string[]> {
   }
 }
 
+export interface PrinterInfo {
+  name: string;
+  /** 드라이버가 보고한 해상도 (dpi). 모르면 undefined */
+  dpi?: number;
+  driver?: string;
+}
+
+/**
+ * 프린터 목록 + 해상도. printers.details() 가 dpi(density) 를 알려준다.
+ * details 가 실패하는 QZ 버전이면 이름만 돌려준다.
+ */
+export async function listPrinterDetails(): Promise<PrinterInfo[]> {
+  const names = await listPrinters();
+  try {
+    const qz = await connectQz();
+    const details = await qz.printers.details();
+    if (Array.isArray(details)) {
+      const byName = new Map<string, PrinterInfo>();
+      for (const d of details) {
+        if (!d?.name) continue;
+        const dpi = Number(d.density);
+        byName.set(String(d.name), {
+          name: String(d.name),
+          dpi: Number.isFinite(dpi) && dpi > 0 ? dpi : undefined,
+          driver: d.driver ? String(d.driver) : undefined,
+        });
+      }
+      return names.map((n) => byName.get(n) ?? { name: n });
+    }
+  } catch (err) {
+    console.error('프린터 상세 조회 실패 (이름만 사용):', err);
+  }
+  return names.map((n) => ({ name: n }));
+}
+
 /**
  * 연결 가능 여부 — 실패해도 예외를 던지지 않는다.
  * 프린터 조회로 실제 왕복 통신을 해봐야 확실하다.

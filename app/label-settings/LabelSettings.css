@@ -235,6 +235,69 @@
 .ls-fit-readout em { font-style: normal; color: #2563eb; }
 .ls-fit-readout strong { color: #dc2626; }
 
+.ls-hint-warn {
+  color: #92400e;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  padding: 6px 9px;
+  border-radius: 0 5px 5px 0;
+}
+
+/* 프린터 매핑 표 — 자리 × 라벨 종류 */
+.ls-map-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ls-map-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 11px;
+  padding: 2px 4px 6px;
+}
+
+.ls-map-table td {
+  padding: 3px 4px;
+  vertical-align: middle;
+  border-top: 1px solid #f3f4f6;
+}
+
+.ls-map-table tr.is-test td { background: #f5f8ff; }
+
+.ls-map-table select {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
+}
+
+.ls-map-table select.is-missing { border-color: #f59e0b; color: #92400e; }
+
+.ls-map-station {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ls-map-saved,
+.ls-map-error {
+  display: block;
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+
+.ls-map-saved { color: #15803d; }
+.ls-map-error { color: #b91c1c; }
+
 /* 미리보기 데이터 */
 .ls-sample-grid {
   display: grid;
