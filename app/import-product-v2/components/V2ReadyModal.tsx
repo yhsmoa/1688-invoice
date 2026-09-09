@@ -1,17 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
+import type { LabelType } from '../../../lib/labelTypes';
+import type { PrintLabelResult } from '../utils/printLabels';
 import './V2ReadyModal.css';
 
 // ============================================================
 // V2 처리준비 모달 - 수정된 입고 데이터 리스트 표시
-// "postgre + 저장" 클릭 시:
-//   1) invoice_fashion_label 저장 (LABEL postgre 동일 로직)
-//   2) ft_fulfillments 저장 (ARRIVAL)
+//
+// "postgre + 저장" / "송장 출력" — 기존 버튼. 이전부터 쓰던 사용자를 위해
+//   그대로 유지한다 (동작 변경 없음).
+//
+// [저장] [라벨 스티커] [케어 라벨] [모두] — 새 버튼 행.
+//   저장          : postgre + 저장 과 완전히 같은 동작 (같은 핸들러 공유)
+//   라벨 스티커    : 바코드 감열지 즉시 출력 (QZ Tray)
+//   케어 라벨      : 케어라벨 즉시 출력 (QZ Tray)
+//   모두          : 저장(안 됐으면) → 라벨 스티커 → 케어 라벨 순서로 진행.
+//                   중간 단계가 실패하면 알림만 띄우고 멈춘다 (다음 단계로 넘어가지 않음).
 // ============================================================
+
+/** 출력 성공 표시(플래시) 유지 시간 */
+const PRINT_FLASH_MS = 3000;
 
 export interface V2ReadyItem {
   item: FtOrderItem;
@@ -22,8 +34,17 @@ interface V2ReadyModalProps {
   isOpen: boolean;
   onClose: () => void;
   readyItems: V2ReadyItem[];
-  /** postgre + 저장 핸들러 (ItemCheck에서 전달) */
-  onSavePostgre: () => Promise<void>;
+  /**
+   * postgre + 저장 핸들러 (ItemCheck에서 전달).
+   * 성공하면 true, 실패하면 false — 실패 시 알림은 이 함수 안에서 띄운다.
+   * [모두] 버튼이 다음 단계(출력) 진행 여부를 이 반환값으로 판단한다.
+   */
+  onSavePostgre: () => Promise<boolean>;
+  /**
+   * 라벨 즉시 출력 핸들러 (ItemCheck에서 전달) — readyItems 를 QZ Tray 로 인쇄한다.
+   * 실패해도 예외를 던지지 않고 result.success = false 로 알려준다.
+   */
+  onPrintLabel: (labelType: LabelType) => Promise<PrintLabelResult>;
   /** 송장 출력 핸들러 (P 상품 PDF 병합 인쇄). 미제공 시 버튼 숨김 */
   onPrintInvoices?: () => Promise<void> | void;
   /** 송장 출력 가능 여부 (체크된 P 상품 중 Storage 에 PDF 존재 ≥ 1) */
@@ -39,6 +60,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   onClose,
   readyItems,
   onSavePostgre,
+  onPrintLabel,
   onPrintInvoices,
   invoicePrintable = false,
   isSaved = false,
@@ -51,9 +73,33 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   // ============================================================
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintingInvoices, setIsPrintingInvoices] = useState(false);
+  const [isPrintingBarcode, setIsPrintingBarcode] = useState(false);
+  const [isPrintingCare, setIsPrintingCare] = useState(false);
+  const [isRunningAll, setIsRunningAll] = useState(false);
+
+  /** 출력 성공 플래시 ("N장 전송됨") — 종류별로 따로 표시 */
+  const [barcodeFlash, setBarcodeFlash] = useState<string | null>(null);
+  const [careFlash, setCareFlash] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!barcodeFlash) return;
+    const timer = setTimeout(() => setBarcodeFlash(null), PRINT_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [barcodeFlash]);
+
+  useEffect(() => {
+    if (!careFlash) return;
+    const timer = setTimeout(() => setCareFlash(null), PRINT_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [careFlash]);
+
+  /** 바코드가 있는 항목이 하나도 없으면 라벨 출력 버튼들을 비활성화 */
+  const hasPrintableItems = readyItems.some(({ item }) => item.barcode);
+  /** 새/기존 저장·출력 버튼이 하나라도 동작 중이면 전부 잠근다 (동시 실행 방지) */
+  const isBusy = isSaving || isPrintingInvoices || isPrintingBarcode || isPrintingCare || isRunningAll;
 
   // ============================================================
-  // postgre + 저장 클릭 핸들러
+  // postgre + 저장 클릭 핸들러 — [postgre + 저장] [저장] 버튼 공용
   // ============================================================
   const handleSavePostgre = async () => {
     setIsSaving(true);
@@ -74,6 +120,57 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
       await onPrintInvoices();
     } finally {
       setIsPrintingInvoices(false);
+    }
+  };
+
+  // ============================================================
+  // 라벨 스티커 / 케어 라벨 — 종류 하나 출력 (성공 시 flash, 실패 시 알림)
+  // 반환값은 [모두] 버튼이 다음 단계 진행 여부를 판단하는 데 쓴다.
+  // ============================================================
+  const printOne = async (labelType: LabelType): Promise<boolean> => {
+    const setBusy = labelType === 'barcode' ? setIsPrintingBarcode : setIsPrintingCare;
+    const setFlash = labelType === 'barcode' ? setBarcodeFlash : setCareFlash;
+    const typeLabel = t(
+      labelType === 'barcode'
+        ? 'importProduct.processReady.labelSticker'
+        : 'importProduct.processReady.careLabel'
+    );
+
+    setBusy(true);
+    try {
+      const result = await onPrintLabel(labelType);
+      if (result.success) {
+        setFlash(`${typeLabel} ${t('importProduct.processReady.printedCount', { count: result.printed })}`);
+        return true;
+      }
+      alert(result.error || t('importProduct.processReady.printing'));
+      return false;
+    } catch (error) {
+      console.error('라벨 출력 오류:', error);
+      alert('라벨 출력 중 오류가 발생했습니다.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ============================================================
+  // [모두] — 저장(안 됐으면) → 라벨 스티커 → 케어 라벨, 순서대로.
+  // 한 단계라도 실패하면 그 단계에서 알림만 띄우고 다음 단계로 넘어가지 않는다.
+  // ============================================================
+  const handleRunAll = async () => {
+    setIsRunningAll(true);
+    try {
+      if (!isSaved) {
+        setIsSaving(true);
+        const saveOk = await onSavePostgre();
+        setIsSaving(false);
+        if (!saveOk) return;
+      }
+      if (!(await printOne('barcode'))) return;
+      await printOne('care');
+    } finally {
+      setIsRunningAll(false);
     }
   };
 
@@ -190,10 +287,12 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
         {/* 푸터 */}
         <div className="v2-process-ready-footer">
           <div className="v2-pr-footer-info">총 {readyItems.length}개</div>
+
+          {/* 기존 버튼 — 이전부터 쓰던 사용자를 위해 동작 그대로 유지 */}
           <div className="v2-pr-save-buttons-row">
             <button
               className="v2-pr-save-button v2-pr-save-postgre"
-              disabled={readyItems.length === 0 || isSaving || isSaved}
+              disabled={readyItems.length === 0 || isBusy || isSaved}
               onClick={handleSavePostgre}
             >
               {isSaving ? (
@@ -211,7 +310,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
             {onPrintInvoices && (
               <button
                 className="v2-pr-save-button v2-pr-save-invoice"
-                disabled={!invoicePrintable || isPrintingInvoices}
+                disabled={!invoicePrintable || isBusy}
                 onClick={handlePrintInvoices}
               >
                 {isPrintingInvoices ? (
@@ -224,6 +323,79 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 )}
               </button>
             )}
+          </div>
+
+          {/* 새 버튼 — 저장 / 종류별 즉시 출력 / 모두 순서대로 */}
+          <div className="v2-pr-quick-actions-row">
+            {(barcodeFlash || careFlash) && (
+              <div className="v2-pr-flash-row">
+                {barcodeFlash && <span className="v2-pr-flash">✓ {barcodeFlash}</span>}
+                {careFlash && <span className="v2-pr-flash">✓ {careFlash}</span>}
+              </div>
+            )}
+            <div className="v2-pr-quick-buttons-row">
+              <button
+                className="v2-pr-quick-button v2-pr-quick-save"
+                disabled={readyItems.length === 0 || isBusy || isSaved}
+                onClick={handleSavePostgre}
+              >
+                {isSaving && !isRunningAll ? (
+                  <span className="v2-pr-button-loading">
+                    <span className="v2-pr-spinner"></span>
+                    {t('importProduct.processReady.saving')}
+                  </span>
+                ) : isSaved ? (
+                  t('importProduct.processReady.saved')
+                ) : (
+                  t('importProduct.processReady.save')
+                )}
+              </button>
+
+              <button
+                className="v2-pr-quick-button v2-pr-quick-print"
+                disabled={!hasPrintableItems || isBusy}
+                onClick={() => printOne('barcode')}
+              >
+                {isPrintingBarcode && !isRunningAll ? (
+                  <span className="v2-pr-button-loading">
+                    <span className="v2-pr-spinner"></span>
+                    {t('importProduct.processReady.printing')}
+                  </span>
+                ) : (
+                  t('importProduct.processReady.labelSticker')
+                )}
+              </button>
+
+              <button
+                className="v2-pr-quick-button v2-pr-quick-print"
+                disabled={!hasPrintableItems || isBusy}
+                onClick={() => printOne('care')}
+              >
+                {isPrintingCare && !isRunningAll ? (
+                  <span className="v2-pr-button-loading">
+                    <span className="v2-pr-spinner"></span>
+                    {t('importProduct.processReady.printing')}
+                  </span>
+                ) : (
+                  t('importProduct.processReady.careLabel')
+                )}
+              </button>
+
+              <button
+                className="v2-pr-quick-button v2-pr-quick-all"
+                disabled={!hasPrintableItems || isBusy}
+                onClick={handleRunAll}
+              >
+                {isRunningAll ? (
+                  <span className="v2-pr-button-loading">
+                    <span className="v2-pr-spinner"></span>
+                    {t('importProduct.processReady.all')}
+                  </span>
+                ) : (
+                  t('importProduct.processReady.all')
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

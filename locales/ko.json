@@ -109,7 +109,14 @@
       "emptyMessage": "처리할 항목이 없습니다.",
       "mixRate": "혼용률",
       "backRef": "뒷장 참조",
-      "printInvoices": "송장 출력"
+      "printInvoices": "송장 출력",
+      "labelSticker": "라벨 스티커",
+      "careLabel": "케어 라벨",
+      "all": "모두",
+      "saving": "저장 중...",
+      "saved": "저장 완료",
+      "printing": "출력 중...",
+      "printedCount": "{{count}}장 전송됨"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",

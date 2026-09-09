@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FtOrderItem, FtUser } from '../hooks/useFtData';
 import { saveLabelData } from '../utils/saveLabelData';
 import { printLabels } from '../utils/printLabels';
@@ -10,9 +11,11 @@ import './V2LabelModal.css';
 // ============================================================
 // V2 라벨 모달 — 수량 입력 + 저장 / 즉시 출력
 //
-//   [저장]      : Supabase invoiceManager_label (기존 BarTender 경로 유지)
-//   [즉시 출력] : QZ Tray 로 TSPL RAW 전송 → 그 자리에서 인쇄
-//                 템플릿·프린터는 [라벨 설정]에서 지정한 값을 자동 사용
+//   [LABEL 저장]        : Supabase invoiceManager_label (기존 BarTender 경로 유지)
+//   [라벨 스티커]        : QZ Tray 로 바코드 감열지 즉시 출력
+//   [케어 라벨]          : QZ Tray 로 케어라벨 즉시 출력
+//     → 종류 선택 드롭다운 없이, 종류별 버튼을 바로 눌러 그 자리에서 인쇄한다.
+//       템플릿·프린터는 [라벨 설정]에서 지정한 값을 자동 사용
 // ============================================================
 
 /** 즉시 출력 성공 표시 유지 시간 */
@@ -45,18 +48,18 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
   // ============================================================
   // 수량 상태 관리 (item.id → qty)
   // ============================================================
+  const { t } = useTranslation();
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
-  /** 즉시 출력할 라벨 종류 */
-  const [printType, setPrintType] = useState<LabelType>('barcode');
+  const [isPrintingBarcode, setIsPrintingBarcode] = useState(false);
+  const [isPrintingCare, setIsPrintingCare] = useState(false);
   /** 즉시 출력 성공 표시 ("N장 전송됨") — 잠깐 보였다 사라진다 */
   const [printedMsg, setPrintedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!printedMsg) return;
-    const t = setTimeout(() => setPrintedMsg(null), PRINTED_MSG_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setPrintedMsg(null), PRINTED_MSG_MS);
+    return () => clearTimeout(timer);
   }, [printedMsg]);
 
   // ============================================================
@@ -122,37 +125,49 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
   // ============================================================
   // 즉시 출력 핸들러 — QZ Tray 로 그 자리에서 인쇄
   //   PC-NO(operatorId) = 작업 자리, 템플릿/프린터는 라벨 설정값 사용
+  //   종류(labelType)는 버튼별로 바로 넘어온다 (드롭다운 없음)
   // ============================================================
-  const handlePrint = useCallback(async () => {
-    if (!operatorId) {
-      alert('PC-NO를 선택해주세요. (프린터 자리 구분에 필요)');
-      return;
-    }
-
-    setIsPrinting(true);
-    try {
-      const result = await printLabels({
-        items: items.map((item) => ({ item, qty: getQty(item) })),
-        userId: selectedUser?.id ?? null,
-        brand: selectedUser?.brand || null,
-        stationNo: operatorId,
-        labelType: printType,
-        printedBy: null,
-      });
-
-      if (result.success) {
-        // 성공은 창을 띄우지 않고 버튼 옆에 잠깐만 표시한다 (작업 흐름을 끊지 않게)
-        setPrintedMsg(`${result.printed}장 전송됨`);
-      } else {
-        alert(result.error || '출력에 실패했습니다.');
+  const handlePrint = useCallback(
+    async (labelType: LabelType) => {
+      if (!operatorId) {
+        alert('PC-NO를 선택해주세요. (프린터 자리 구분에 필요)');
+        return;
       }
-    } catch (error) {
-      console.error('라벨 출력 오류:', error);
-      alert('라벨 출력 중 오류가 발생했습니다.');
-    } finally {
-      setIsPrinting(false);
-    }
-  }, [items, selectedUser, operatorId, getQty, printType]);
+
+      const setBusy = labelType === 'barcode' ? setIsPrintingBarcode : setIsPrintingCare;
+      const typeLabel = t(
+        labelType === 'barcode'
+          ? 'importProduct.processReady.labelSticker'
+          : 'importProduct.processReady.careLabel'
+      );
+
+      setBusy(true);
+      try {
+        const result = await printLabels({
+          items: items.map((item) => ({ item, qty: getQty(item) })),
+          userId: selectedUser?.id ?? null,
+          selectedUser,
+          brand: selectedUser?.brand || null,
+          stationNo: operatorId,
+          labelType,
+          printedBy: null,
+        });
+
+        if (result.success) {
+          // 성공은 창을 띄우지 않고 버튼 옆에 잠깐만 표시한다 (작업 흐름을 끊지 않게)
+          setPrintedMsg(`${typeLabel} ${t('importProduct.processReady.printedCount', { count: result.printed })}`);
+        } else {
+          alert(result.error || '출력에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('라벨 출력 오류:', error);
+        alert('라벨 출력 중 오류가 발생했습니다.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [items, selectedUser, operatorId, getQty, t]
+  );
 
   // ============================================================
   // 모달이 닫혀있으면 렌더링하지 않음
@@ -230,32 +245,38 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
 
         {/* 하단 액션 */}
         <div className="v2-label-dialog-actions">
-          {/* 즉시 출력 — 종류 선택 + QZ Tray 인쇄 */}
-          <select
-            className="v2-label-print-type"
-            value={printType}
-            onChange={(e) => setPrintType(e.target.value as LabelType)}
-            disabled={isPrinting}
-          >
-            <option value="barcode">바코드 감열지</option>
-            <option value="care">케어라벨</option>
-          </select>
-
           {printedMsg && <span className="v2-label-print-status">✓ {printedMsg}</span>}
+
+          {/* 즉시 출력 — 종류별 버튼 (드롭다운 없이 바로 그 종류로 인쇄) */}
+          <button
+            className="v2-label-print-btn"
+            onClick={() => handlePrint('barcode')}
+            disabled={isPrintingBarcode || isPrintingCare || items.length === 0}
+            title="라벨 설정에서 지정한 템플릿·프린터로 그 자리에서 출력합니다"
+          >
+            {isPrintingBarcode ? (
+              <span className="v2-label-button-loading">
+                <span className="v2-spinner"></span>
+                {t('importProduct.processReady.printing')}
+              </span>
+            ) : (
+              t('importProduct.processReady.labelSticker')
+            )}
+          </button>
 
           <button
             className="v2-label-print-btn"
-            onClick={handlePrint}
-            disabled={isPrinting || items.length === 0}
+            onClick={() => handlePrint('care')}
+            disabled={isPrintingBarcode || isPrintingCare || items.length === 0}
             title="라벨 설정에서 지정한 템플릿·프린터로 그 자리에서 출력합니다"
           >
-            {isPrinting ? (
+            {isPrintingCare ? (
               <span className="v2-label-button-loading">
                 <span className="v2-spinner"></span>
-                출력 중...
+                {t('importProduct.processReady.printing')}
               </span>
             ) : (
-              '즉시 출력'
+              t('importProduct.processReady.careLabel')
             )}
           </button>
 

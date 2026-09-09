@@ -39,7 +39,9 @@ import V2CustomerConfirmModal from './components/V2CustomerConfirmModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
+import { printLabels, type PrintLabelResult } from './utils/printLabels';
 import { mergeAndPrint } from '../../lib/invoicePdfClient';
+import type { LabelType } from '../../lib/labelTypes';
 
 // ============================================================
 // Worker 타입 (invoiceManager_employees)
@@ -998,19 +1000,23 @@ const ItemCheck: React.FC = () => {
   // ============================================================
   // 14) [저장] 모달 → ft_fulfillments(ARRIVAL) + 라벨 저장
   //     라벨 저장은 saveLabelData 공통 유틸 사용 ([라벨] 버튼과 동일)
+  //
+  //     반환값(boolean)은 [모두] 버튼이 "저장 성공해야 다음 단계(출력)로
+  //     진행" 을 판단하는 데 쓴다. 실패 시 알림은 이 함수 안에서 띄우므로
+  //     호출부는 false 를 받으면 조용히 멈추면 된다.
   // ============================================================
-  const handleReadySave = useCallback(async () => {
+  const handleReadySave = useCallback(async (): Promise<boolean> => {
     if (!selectedWorker) {
       alert('Worker를 선택해주세요.');
-      return;
+      return false;
     }
     if (!selectedPcNo) {
       alert('PC-NO를 선택해주세요.');
-      return;
+      return false;
     }
     if (!selectedUserId) {
       alert('사용자를 선택해주세요.');
-      return;
+      return false;
     }
 
     const currentUser = users.find((u) => u.id === selectedUserId) || null;
@@ -1067,12 +1073,46 @@ const ItemCheck: React.FC = () => {
       //   (모달 유지 → 사용자가 이어서 [송장 출력] 클릭 가능)
       setHasReadySaveCompleted(true);
       refreshFulfillments();
+      return true;
 
     } catch (error) {
       console.error('저장 오류:', error);
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
+      return false;
     }
   }, [readyItems, selectedWorker, selectedPcNo, selectedUserId, users, refreshFulfillments]);
+
+  // ============================================================
+  // 14-1) [모두] 버튼용 즉시 출력 — 처리준비 목록(readyItems) 을
+  //       QZ Tray 로 그 자리에서 인쇄한다. [라벨] 모달의 handlePrint 와
+  //       같은 printLabels() 유틸을 쓰되, 데이터 출처만 readyItems 로 다르다.
+  //       세트상품 병합은 printLabels() 내부에서 처리하므로 여기선 안 한다.
+  // ============================================================
+  const handleReadyPrint = useCallback(
+    async (labelType: LabelType): Promise<PrintLabelResult> => {
+      if (!selectedPcNo) {
+        return { success: false, printed: 0, error: 'PC-NO를 선택해주세요.' };
+      }
+      const printItems = readyItems
+        .filter(({ item }) => item.barcode)
+        .map(({ item, import_qty }) => ({ item, qty: import_qty }));
+      if (printItems.length === 0) {
+        return { success: false, printed: 0, error: '바코드가 있는 항목이 없습니다.' };
+      }
+
+      const currentUser = users.find((u) => u.id === selectedUserId) || null;
+      return printLabels({
+        items: printItems,
+        userId: selectedUserId || null,
+        selectedUser: currentUser,
+        brand: currentUser?.brand || null,
+        stationNo: selectedPcNo,
+        labelType,
+        printedBy: null,
+      });
+    },
+    [readyItems, selectedPcNo, selectedUserId, users]
+  );
 
   // ============================================================
   // 15) 1688 xlsx 업로드
@@ -1746,6 +1786,7 @@ const ItemCheck: React.FC = () => {
         onClose={handleReadyModalClose}
         readyItems={readyItems}
         onSavePostgre={handleReadySave}
+        onPrintLabel={handleReadyPrint}
         onPrintInvoices={handlePrintInvoices}
         invoicePrintable={invoicePrintable}
         isSaved={hasReadySaveCompleted}

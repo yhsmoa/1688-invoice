@@ -313,6 +313,81 @@
   opacity: 0.7;
 }
 
+/* ============================================================ */
+/* 빠른 실행 버튼 행 — [저장] [라벨 스티커] [케어 라벨] [모두]      */
+/* 기존 [postgre + 저장] [송장 출력] 은 그대로 두고 그 아래에 둔다   */
+/* ============================================================ */
+.v2-pr-quick-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.v2-pr-quick-buttons-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.v2-pr-quick-button {
+  flex: 1;
+  color: white;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-height: 40px;
+  /* 모달 폭이 좁아져도 "스티커" 같은 단어가 음절 중간에서 잘리지 않게 */
+  word-break: keep-all;
+}
+
+.v2-pr-quick-button:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 저장 — 기존 postgre+저장 버튼과 같은 파랑 계열 */
+.v2-pr-quick-save { background-color: #3b82f6; }
+.v2-pr-quick-save:hover:not(:disabled) { background-color: #2563eb; }
+
+/* 라벨 스티커 / 케어 라벨 — 즉시 출력(QZ Tray) 계열, 어두운 톤으로 구분 */
+.v2-pr-quick-print { background-color: #18181b; }
+.v2-pr-quick-print:hover:not(:disabled) { background-color: #27272a; }
+
+/* 모두 — 한 번에 전부 진행하는 대표 버튼, 눈에 띄는 색으로 구분 */
+.v2-pr-quick-all { background-color: #0d9488; }
+.v2-pr-quick-all:hover:not(:disabled) { background-color: #0f766e; }
+
+/* 출력 성공 플래시 — alert 대신 잠깐 표시 후 사라짐 */
+.v2-pr-flash-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.v2-pr-flash {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  animation: v2-pr-flash-in 0.2s ease-out;
+}
+
+@keyframes v2-pr-flash-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* 로딩 스피너 (버튼 내부) */
 .v2-pr-button-loading {
   display: inline-flex;

@@ -108,7 +108,14 @@
       "emptyMessage": "无待处理项目。",
       "mixRate": "混用率",
       "backRef": "参见背面",
-      "printInvoices": "运单打印"
+      "printInvoices": "运单打印",
+      "labelSticker": "条码标签",
+      "careLabel": "洗唛",
+      "all": "全部",
+      "saving": "保存中...",
+      "saved": "保存完成",
+      "printing": "打印中...",
+      "printedCount": "已发送{{count}}张"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",
