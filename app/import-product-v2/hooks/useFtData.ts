@@ -15,6 +15,8 @@ export interface FtUser {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  /** 여러 서브 계정을 묶는 상위 계정 식별자 (예: BZ/BR/BO 가 전부 "immong") */
+  master_account?: string | null;
 }
 
 export interface FtOrderItem {

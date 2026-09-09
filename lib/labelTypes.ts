@@ -319,6 +319,7 @@ export const ACCOUNT_FIELDS: { key: string; label: string }[] = [
   { key: 'acc_username', label: '아이디' },
   { key: 'acc_brand', label: '브랜드(계정)' },
   { key: 'acc_user_code', label: '사용자코드' },
+  { key: 'acc_master_account', label: '마스터 계정 (묶음 그룹)' },
   { key: 'acc_phone', label: '전화번호' },
   { key: 'acc_email', label: '이메일' },
   { key: 'acc_address', label: '주소' },
@@ -337,6 +338,7 @@ export function accountFieldsToLabelData(user: {
   username?: string | null;
   brand?: string | null;
   user_code?: string | null;
+  master_account?: string | null;
   phone?: string | null;
   email?: string | null;
   address?: string | null;
@@ -348,6 +350,7 @@ export function accountFieldsToLabelData(user: {
     acc_username: user.username ?? '',
     acc_brand: user.brand ?? '',
     acc_user_code: user.user_code ?? '',
+    acc_master_account: user.master_account ?? '',
     acc_phone: user.phone ?? '',
     acc_email: user.email ?? '',
     acc_address: user.address ?? '',
@@ -369,6 +372,7 @@ export const SAMPLE_LABEL_DATA: LabelData = {
   acc_username: 'sample_user',
   acc_brand: 'BZ',
   acc_user_code: 'BZ',
+  acc_master_account: 'sample_master',
   acc_phone: '010-0000-0000',
   acc_email: 'sample@example.com',
   acc_address: '서울시 강남구 테헤란로 1',
