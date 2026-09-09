@@ -49,10 +49,22 @@ export interface TemplateDraftApi {
     patch: ElementPatch,
     opts?: { commit?: boolean; key?: string }
   ) => void;
+  /**
+   * 여러 요소를 한 번에 patch — 다중 선택 드래그 이동용.
+   * entries 전체가 되돌리기 한 단계(같은 드래그 세션 = 같은 id 조합)로 묶인다.
+   */
+  patchElements: (
+    entries: { id: string; patch: ElementPatch }[],
+    opts?: { commit?: boolean; key?: string }
+  ) => void;
   /** overrides 로 초기값(예: 텍스트 영역 크기)을 덮어쓴다 */
   addElement: (type: LabelElement['type'], overrides?: ElementPatch) => string | null;
   removeElement: (id: string) => void;
+  /** 다중 선택 삭제 — 전부 한 번에, 되돌리기 한 단계 */
+  removeElements: (ids: string[]) => void;
   duplicateElement: (id: string) => string | null;
+  /** 다중 선택 복제 — 전부 한 번에, 되돌리기 한 단계. 새로 생긴 id 목록을 돌려준다(선택 갱신용) */
+  duplicateElements: (ids: string[]) => string[];
   /** dir: -1 = 뒤로(아래층), +1 = 앞으로(위층) */
   reorderElement: (id: string, dir: -1 | 1) => void;
   undo: () => void;
@@ -132,19 +144,27 @@ export function useTemplateDraft(): TemplateDraftApi {
   );
 
   // ============================================================
-  // 요소
+  // 요소 — 단일/다중 patch 는 같은 로직을 공유한다 (patchElement 는 얇은 래퍼)
   // ============================================================
-  const patchElement = useCallback(
-    (id: string, patch: ElementPatch, opts?: { commit?: boolean; key?: string }) => {
+  const patchElements = useCallback(
+    (
+      entries: { id: string; patch: ElementPatch }[],
+      opts?: { commit?: boolean; key?: string }
+    ) => {
+      if (entries.length === 0) return;
       const commit = opts?.commit ?? true;
+      // 여러 id 의 드래그 세션을 하나로 식별 — 어떤 조합인지까지 키에 넣어야
+      // "다른 다중선택으로 다시 드래그" 를 별개 되돌리기 단계로 잡는다.
+      const sessionKey =
+        entries.length === 1 ? entries[0].id : `multi:${entries.map((e) => e.id).sort().join(',')}`;
       let push: boolean;
 
       if (!commit) {
         // 연속 변경(드래그) — 첫 변경에서만 이전 상태를 기록
-        push = transientRef.current !== id;
-        transientRef.current = id;
+        push = transientRef.current !== sessionKey;
+        transientRef.current = sessionKey;
         coalesceRef.current = null;
-      } else if (transientRef.current === id) {
+      } else if (transientRef.current === sessionKey) {
         // 연속 변경의 마지막 확정 — 이미 기록해 두었으므로 덮어쓴다
         push = false;
         transientRef.current = null;
@@ -152,17 +172,26 @@ export function useTemplateDraft(): TemplateDraftApi {
         push = shouldPush(opts?.key);
       }
 
+      const patchMap = new Map(entries.map((e) => [e.id, e.patch]));
       apply(
         (cur) => ({
           ...cur,
-          layout: cur.layout.map((el) =>
-            el.id === id ? ({ ...el, ...patch } as LabelElement) : el
-          ),
+          layout: cur.layout.map((el) => {
+            const p = patchMap.get(el.id);
+            return p ? ({ ...el, ...p } as LabelElement) : el;
+          }),
         }),
         push
       );
     },
     [apply, shouldPush]
+  );
+
+  const patchElement = useCallback(
+    (id: string, patch: ElementPatch, opts?: { commit?: boolean; key?: string }) => {
+      patchElements([{ id, patch }], opts);
+    },
+    [patchElements]
   );
 
   const addElement = useCallback(
@@ -176,37 +205,52 @@ export function useTemplateDraft(): TemplateDraftApi {
     [apply]
   );
 
-  const removeElement = useCallback(
-    (id: string) => {
-      apply((cur) => ({ ...cur, layout: cur.layout.filter((el) => el.id !== id) }), true);
+  const removeElements = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids);
+      apply((cur) => ({ ...cur, layout: cur.layout.filter((el) => !idSet.has(el.id)) }), true);
       coalesceRef.current = null;
     },
     [apply]
   );
 
-  const duplicateElement = useCallback(
-    (id: string) => {
+  const removeElement = useCallback((id: string) => removeElements([id]), [removeElements]);
+
+  const duplicateElements = useCallback(
+    (ids: string[]): string[] => {
       // 원본 존재 여부는 ref 로 미리 확인한다 (업데이터는 나중에 실행됨)
-      if (!presentRef.current?.layout.some((el) => el.id === id)) return null;
-      const newId = newElementId();
+      const present = presentRef.current;
+      if (!present) return [];
+      const idSet = new Set(ids);
+      const idToNewId = new Map(present.layout.filter((el) => idSet.has(el.id)).map((el) => [el.id, newElementId()]));
+      if (idToNewId.size === 0) return [];
+
       apply((cur) => {
-        const idx = cur.layout.findIndex((el) => el.id === id);
-        if (idx < 0) return cur;
-        const src = cur.layout[idx];
-        const copy = {
-          ...src,
-          id: newId,
-          x_mm: Math.round((src.x_mm + 2) * 100) / 100,
-          y_mm: Math.round((src.y_mm + 2) * 100) / 100,
-        } as LabelElement;
-        const layout = [...cur.layout];
-        layout.splice(idx + 1, 0, copy);
+        const layout: LabelElement[] = [];
+        for (const el of cur.layout) {
+          layout.push(el);
+          const newId = idToNewId.get(el.id);
+          if (newId) {
+            layout.push({
+              ...el,
+              id: newId,
+              x_mm: Math.round((el.x_mm + 2) * 100) / 100,
+              y_mm: Math.round((el.y_mm + 2) * 100) / 100,
+            } as LabelElement);
+          }
+        }
         return { ...cur, layout };
       }, true);
       coalesceRef.current = null;
-      return newId;
+      return Array.from(idToNewId.values());
     },
     [apply]
+  );
+
+  const duplicateElement = useCallback(
+    (id: string) => duplicateElements([id])[0] ?? null,
+    [duplicateElements]
   );
 
   const reorderElement = useCallback(
@@ -268,9 +312,12 @@ export function useTemplateDraft(): TemplateDraftApi {
     markSaved,
     patchTemplate,
     patchElement,
+    patchElements,
     addElement,
     removeElement,
+    removeElements,
     duplicateElement,
+    duplicateElements,
     reorderElement,
     undo,
     redo,

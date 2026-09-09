@@ -9,6 +9,12 @@ export interface FtUser {
   user_code: string;
   brand: string | null;
   vender_name: string | null;
+  // /api/ft/users 는 ft_users 의 나머지 컬럼도 그대로 내려준다(비밀번호만 제외).
+  // 라벨 계정 정보 바인딩(lib/labelTypes.ts ACCOUNT_FIELDS)에서 쓴다.
+  username?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
 }
 
 export interface FtOrderItem {

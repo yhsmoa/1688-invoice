@@ -1,19 +1,28 @@
-import type { FtOrderItem } from '../hooks/useFtData';
+import type { FtOrderItem, FtUser } from '../hooks/useFtData';
 import { resolveScanSizeCode } from '../../../lib/sizeCode';
 import { buildTsplBatch } from '../../../lib/tspl';
 import { preloadTemplateAssets } from '../../../lib/labelRender';
 import { printRaw, QZ_NOT_RUNNING } from '../../../lib/qzTray';
-import type { LabelTemplate, LabelType, LabelData, LabelPrinterMap } from '../../../lib/labelTypes';
+import { getLocalPrinter, LOCAL_PRINTER_HELP } from '../../../lib/localPrinterMap';
+import {
+  accountFieldsToLabelData,
+  type LabelTemplate,
+  type LabelType,
+  type LabelData,
+} from '../../../lib/labelTypes';
 
 // ============================================================
 // 라벨 즉시 출력 — [라벨] 모달에서 QZ Tray 로 바로 인쇄
 //
-// 흐름 (설계 05):
+// 흐름:
 //   1. 세트상품 병합 (saveLabelData 와 동일 규칙)
 //   2. 템플릿 결정 — (사용자 + 종류 + is_default) → 공용 기본 → 없으면 안내
-//   3. 프린터 결정 — PC-NO + 종류 → label_printers
-//   4. 항목별 데이터 바인딩 → TSPL → QZ RAW (qty 만큼 장수)
-//   5. label_print_logs 기록
+//   3. 프린터 결정 — "이 템플릿을 이 PC 에서 어떤 프린터로 뽑을지" (브라우저 로컬 저장,
+//      lib/localPrinterMap.ts). PC-NO 개념이 아니다 — 같은 프린터도 PC 마다 QZ Tray 에
+//      보이는 이름이 달라서, 서버에 "자리 번호 → 프린터"로 저장하면 PC 가 바뀔 때마다
+//      깨진다. 대신 각 PC 가 "이 템플릿은 이 프린터" 를 스스로 한 번만 기억한다.
+//   4. 항목별 데이터 바인딩(상품 + 계정 정보) → TSPL → QZ RAW (qty 만큼 장수)
+//   5. label_print_logs 기록 (station_no 는 기록용 — 어느 자리에서 찍었는지 참고만 한다)
 //
 // 인쇄 실패가 입고/라벨 저장을 막지 않도록, 호출 측에서 결과만 안내한다.
 // ============================================================
@@ -22,9 +31,11 @@ export interface PrintLabelParams {
   items: { item: FtOrderItem; qty: number }[];
   /** ft_users.id — 사용자별 템플릿 선택용 */
   userId: string | null;
-  /** ft_users.brand — 라벨 brand 필드 */
+  /** 선택된 사업자 계정 — 라벨의 계정 정보 바인딩(ACCOUNT_FIELDS)에 쓴다 */
+  selectedUser?: FtUser | null;
+  /** ft_users.brand — 라벨 brand 필드 (하위 호환. selectedUser 가 있으면 그쪽이 우선 소스) */
   brand: string | null;
-  /** PC-NO (작업 자리) = operator_no */
+  /** PC-NO (작업 자리) — 이제 프린터 조회에는 안 쓰고, 인쇄 기록(label_print_logs)에만 남긴다 */
   stationNo: number;
   labelType: LabelType;
   /** 기록용 담당자 */
@@ -55,10 +66,20 @@ function mergeSets(items: { item: FtOrderItem; qty: number }[]) {
   return [...normal, ...Array.from(setGroups.values())];
 }
 
-/** 항목 → 라벨 바인딩 데이터 (saveLabelData 의 toLabelRow 와 같은 필드) */
-function toLabelData(item: FtOrderItem, qty: number, brand: string | null): LabelData {
+/**
+ * 항목 → 라벨 바인딩 데이터 (saveLabelData 의 toLabelRow 와 같은 필드)
+ * + 선택된 사업자 계정 정보(ACCOUNT_FIELDS, acc_ 접두사)도 같이 채운다.
+ */
+function toLabelData(
+  item: FtOrderItem,
+  qty: number,
+  brand: string | null,
+  selectedUser: FtUser | null | undefined
+): LabelData {
   return {
-    brand: brand || null,
+    // selectedUser.brand 가 있으면 그게 더 최신 값이지만, brand 파라미터를 명시적으로
+    // 넘긴 호출부(V2LabelModal 등)와의 하위 호환을 위해 brand 파라미터를 우선한다.
+    brand: brand || selectedUser?.brand || null,
     item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
     barcode: item.barcode || '',
     product_no: item.item_no || '',
@@ -66,6 +87,7 @@ function toLabelData(item: FtOrderItem, qty: number, brand: string | null): Labe
     composition: item.composition || null,
     recommanded_age: item.recommanded_age || null,
     qty,
+    ...accountFieldsToLabelData(selectedUser ?? null),
   };
 }
 
@@ -76,17 +98,21 @@ export function pickTemplate(
   labelType: LabelType
 ): LabelTemplate | null {
   const byType = templates.filter((t) => t.label_type === labelType);
+  const isSpecificallyFor = (t: LabelTemplate) =>
+    !!t.user_ids && t.user_ids.length > 0 && userId != null && t.user_ids.includes(userId);
+  const isShared = (t: LabelTemplate) => !t.user_ids || t.user_ids.length === 0;
+
   return (
-    byType.find((t) => t.is_default && t.user_id === userId) ??
-    byType.find((t) => t.is_default && t.user_id === null) ??
-    byType.find((t) => t.user_id === userId) ??
-    byType.find((t) => t.user_id === null) ??
+    byType.find((t) => t.is_default && isSpecificallyFor(t)) ??
+    byType.find((t) => t.is_default && isShared(t)) ??
+    byType.find((t) => isSpecificallyFor(t)) ??
+    byType.find((t) => isShared(t)) ??
     null
   );
 }
 
 export async function printLabels(params: PrintLabelParams): Promise<PrintLabelResult> {
-  const { items, userId, brand, stationNo, labelType, printedBy } = params;
+  const { items, userId, selectedUser, brand, stationNo, labelType, printedBy } = params;
 
   if (items.length === 0) {
     return { success: false, printed: 0, error: '출력할 항목이 없습니다.' };
@@ -109,27 +135,20 @@ export async function printLabels(params: PrintLabelParams): Promise<PrintLabelR
       };
     }
 
-    // ── 2) 프린터 ──
-    const prnRes = await fetch(`/api/label-printers?station_no=${stationNo}`);
-    const prnJson = await prnRes.json();
-    if (!prnJson.success) throw new Error(prnJson.error || '프린터 매핑 조회 실패');
-
-    const printer = (prnJson.data as LabelPrinterMap[]).find(
-      (m) => m.label_type === labelType
-    )?.qz_printer_name;
-
+    // ── 2) 프린터 — "이 템플릿을 이 PC 에서 어떤 프린터로" (브라우저 로컬 저장) ──
+    const printer = getLocalPrinter(template.id);
     if (!printer) {
       return {
         success: false,
         printed: 0,
-        error: `PC-NO ${stationNo}에 ${labelType === 'care' ? '케어라벨' : '바코드'} 프린터가 지정되지 않았습니다.\n[라벨 설정] > 프린터 매핑에서 지정해주세요.`,
+        error: `"${template.name}" 템플릿에 이 PC 의 프린터가 지정되지 않았습니다.\n${LOCAL_PRINTER_HELP}`,
       };
     }
 
-    // ── 3) 세트 병합 + 데이터 바인딩 ──
+    // ── 3) 세트 병합 + 데이터 바인딩 (상품 + 계정 정보) ──
     const merged = mergeSets(items);
     const rows = merged.map(({ item, qty }) => ({
-      data: toLabelData(item, qty, brand),
+      data: toLabelData(item, qty, brand, selectedUser),
       copies: qty,
     }));
 

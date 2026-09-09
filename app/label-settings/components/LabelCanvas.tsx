@@ -18,20 +18,23 @@ interface CanvasBox extends ElementBox {
 //
 // 구성 (겹쳐 놓는다)
 //   1) LabelPreview  : 인쇄와 동일한 래스터 (아래층)
-//   2) SVG 오버레이   : 격자 · 클릭 판정 · 선택 테두리 · 크기 핸들 (위층)
+//   2) SVG 오버레이   : 격자 · 클릭 판정 · 선택 테두리 · 크기 핸들 · 마퀴 선택 (위층)
 //   두 층 모두 같은 크기(mm × scale) 라 좌표가 정확히 겹친다.
 //
 // 좌표계
 //   · SVG viewBox 는 mm 단위 (0 0 width_mm height_mm)
 //   · 마우스 이동량(px) ÷ scale = 이동량(mm)
 //
-// 크기 핸들은 "화면에 보이는 상자" 기준으로 움직인다. 회전된 요소는
-// 화면 폭/높이를 요소 고유 폭/높이로 되돌려 저장한다 (90/270 이면 교환).
-// 바코드는 폭이 데이터로 정해지므로 회전 시 핸들을 숨긴다.
+// 다중 선택
+//   · 빈 곳을 드래그 = 마퀴(사각형) 선택 — 겹치는(잠금 제외) 요소 전부 선택
+//   · Shift/Ctrl(Cmd)+클릭 = 선택 토글 (그 클릭 자체는 이동을 시작하지 않는다)
+//   · 이미 여러 개가 선택된 상태에서 그중 하나를 수정 없이 드래그하면 전체가 같이 이동
+//   · 크기 조절 핸들은 "정확히 1개" 선택했을 때만 나온다 (여러 개 동시 리사이즈는 지원 안 함)
 // ============================================================
 
 const RULER = 18; // 눈금자 두께 (px)
 const HANDLE_PX = 8; // 크기 핸들 한 변 (px)
+const MARQUEE_THRESHOLD_MM = 0.3; // 이 이상 움직여야 "드래그"로 인정 (클릭과 구분)
 
 export type ElementPatch = Partial<Record<string, unknown>>;
 
@@ -43,27 +46,46 @@ interface LabelCanvasProps {
   showGrid: boolean;
   /** 스냅 간격 (mm). 0 이면 스냅 없음 */
   snapMm: number;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  selectedIds: string[];
+  /** 캔버스가 계산한 "새 선택 전체 목록"을 그대로 받는다 (교체든 토글이든 캔버스가 판단) */
+  onSelect: (ids: string[]) => void;
   /**
-   * 요소 변경.
+   * 요소 변경(들). 여러 개를 한 번에 옮길 때는 배열에 전부 담아 한 번에 부른다
+   * (되돌리기 한 단계로 묶기 위함).
    * commit=false → 드래그 중 (되돌리기 기록 없이 화면만 갱신)
    * commit=true  → 드래그 종료 (되돌리기 한 단계로 기록)
    */
-  onElementChange: (id: string, patch: ElementPatch, commit: boolean) => void;
+  onElementsChange: (entries: { id: string; patch: ElementPatch }[], commit: boolean) => void;
 }
 
 type DragMode = 'move' | 'resize-e' | 'resize-s' | 'resize-se';
 
-interface DragState {
-  id: string;
+interface ElementDragState {
+  kind: 'element';
+  /** move 는 여러 개 가능, resize 는 항상 1개(선택 1개일 때만 핸들이 뜨므로) */
+  ids: string[];
   mode: DragMode;
   startX: number;
   startY: number;
-  origin: LabelElement;
-  box: ElementBox;
-  lastPatch: ElementPatch | null;
+  origins: Map<string, { x_mm: number; y_mm: number }>;
+  boxes: Map<string, ElementBox>;
+  /** resize 계산의 기준이 되는 요소 (ids[0]과 동일) */
+  primary: LabelElement;
+  lastPatches: { id: string; patch: ElementPatch }[] | null;
 }
+
+interface MarqueeDragState {
+  kind: 'marquee';
+  startMmX: number;
+  startMmY: number;
+  curMmX: number;
+  curMmY: number;
+  /** 시작 시 Shift/Ctrl 이 눌려 있었는가 — true 면 기존 선택에 더한다 */
+  additive: boolean;
+  moved: boolean;
+}
+
+type DragState = ElementDragState | MarqueeDragState;
 
 /** 값 정리 — 스냅 간격이 있으면 그 배수로, 없으면 0.1mm 로 */
 function quantize(v: number, snapMm: number): number {
@@ -80,23 +102,32 @@ function tidy(v: number): number {
   return Math.round(v * 100) / 100;
 }
 
+function toggleId(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id];
+}
+
 const LabelCanvas: React.FC<LabelCanvasProps> = ({
   template,
   data,
   scale,
   showGrid,
   snapMm,
-  selectedId,
+  selectedIds,
   onSelect,
-  onElementChange,
+  onElementsChange,
 }) => {
   const W = template.width_mm;
   const H = template.height_mm;
   const cssW = Math.max(1, W * scale);
   const cssH = Math.max(1, H * scale);
 
+  const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** 마퀴 사각형을 화면에 그리기 위한 상태 (렌더가 필요해서 ref 가 아니라 state) */
+  const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; w: number; h: number } | null>(
+    null
+  );
   const rasterVersion = useRasterVersion();
 
   // ── 요소별 실제 점유 영역 (회전 반영) ──
@@ -115,27 +146,86 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template, data, rasterVersion]);
 
+  /** 클라이언트 px 좌표 → 이 캔버스의 mm 좌표 */
+  const toMm = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return { x: 0, y: 0 };
+      return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale };
+    },
+    [scale]
+  );
+
   // ============================================================
-  // 드래그
+  // 요소 드래그 시작 (이동/크기조절)
   // ============================================================
-  const startDrag = useCallback(
+  const startElementDrag = useCallback(
     (e: React.PointerEvent, el: LabelElement, mode: DragMode) => {
-      if (el.locked) return;
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
       e.preventDefault();
       e.stopPropagation();
-      onSelect(el.id);
+
+      // Shift/Ctrl+클릭 = 선택 토글만 하고 끝 (같은 제스처로 이동을 시작하지 않는다)
+      if (additive && mode === 'move') {
+        onSelect(toggleId(selectedIds, el.id));
+        return;
+      }
+      if (el.locked) {
+        if (mode === 'move') onSelect([el.id]);
+        return;
+      }
+
+      // 이미 여러 개가 선택돼 있고 그중 하나를 그대로 끌면 전체 이동, 아니면 단일 선택으로 교체
+      const ids =
+        mode === 'move' && selectedIds.length > 1 && selectedIds.includes(el.id)
+          ? selectedIds
+          : [el.id];
+      if (ids.length === 1) onSelect(ids);
+
+      const origins = new Map<string, { x_mm: number; y_mm: number }>();
+      const elBoxes = new Map<string, ElementBox>();
+      for (const id of ids) {
+        const target = id === el.id ? el : template.layout.find((x) => x.id === id);
+        if (!target) continue;
+        origins.set(id, { x_mm: target.x_mm, y_mm: target.y_mm });
+        elBoxes.set(id, boxes.get(id) ?? { x_mm: target.x_mm, y_mm: target.y_mm, w_mm: 5, h_mm: 5 });
+      }
+
       dragRef.current = {
-        id: el.id,
+        kind: 'element',
+        ids,
         mode,
         startX: e.clientX,
         startY: e.clientY,
-        origin: el,
-        box: boxes.get(el.id) ?? { x_mm: el.x_mm, y_mm: el.y_mm, w_mm: 5, h_mm: 5 },
-        lastPatch: null,
+        origins,
+        boxes: elBoxes,
+        primary: el,
+        lastPatches: null,
       };
       setDragging(true);
     },
-    [boxes, onSelect]
+    [boxes, onSelect, selectedIds, template.layout]
+  );
+
+  // ============================================================
+  // 마퀴(사각형) 선택 시작 — 빈 곳 드래그
+  // ============================================================
+  const startMarquee = useCallback(
+    (e: React.PointerEvent) => {
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+      const { x, y } = toMm(e.clientX, e.clientY);
+      dragRef.current = {
+        kind: 'marquee',
+        startMmX: x,
+        startMmY: y,
+        curMmX: x,
+        curMmY: y,
+        additive,
+        moved: false,
+      };
+      setDragging(true);
+    },
+    [toMm]
   );
 
   useEffect(() => {
@@ -144,59 +234,106 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
     const handleMove = (e: PointerEvent) => {
       const st = dragRef.current;
       if (!st) return;
+
+      if (st.kind === 'marquee') {
+        const { x, y } = toMm(e.clientX, e.clientY);
+        if (!st.moved && Math.hypot(x - st.startMmX, y - st.startMmY) > MARQUEE_THRESHOLD_MM) {
+          st.moved = true;
+        }
+        st.curMmX = x;
+        st.curMmY = y;
+        const x0 = Math.min(st.startMmX, x);
+        const y0 = Math.min(st.startMmY, y);
+        setMarqueeRect({ x: x0, y: y0, w: Math.abs(x - st.startMmX), h: Math.abs(y - st.startMmY) });
+        return;
+      }
+
       const dx = (e.clientX - st.startX) / scale;
       const dy = (e.clientY - st.startY) / scale;
-      const o = st.origin;
-      let patch: ElementPatch | null = null;
 
       if (st.mode === 'move') {
-        const x = clamp(quantize(o.x_mm + dx, snapMm), 0, Math.max(0, W - st.box.w_mm));
-        const y = clamp(quantize(o.y_mm + dy, snapMm), 0, Math.max(0, H - st.box.h_mm));
-        patch = { x_mm: tidy(x), y_mm: tidy(y) };
-      } else {
-        // ── 크기 조절: 화면에 보이는 상자 크기를 먼저 정하고, 회전이면 요소 고유 폭/높이로 되돌린다 ──
-        const resizeW = st.mode === 'resize-e' || st.mode === 'resize-se';
-        const resizeH = st.mode === 'resize-s' || st.mode === 'resize-se';
-        const screenW = resizeW
-          ? clamp(quantize(st.box.w_mm + dx, snapMm), 1, Math.max(1, W - o.x_mm))
-          : st.box.w_mm;
-        const screenH = resizeH
-          ? clamp(quantize(st.box.h_mm + dy, snapMm), 0.5, Math.max(0.5, H - o.y_mm))
-          : st.box.h_mm;
-        const swap = o.rotate === 90 || o.rotate === 270;
-        const elW = swap ? screenH : screenW;
-        const elH = swap ? screenW : screenH;
+        const entries = st.ids.map((id) => {
+          const origin = st.origins.get(id)!;
+          const box = st.boxes.get(id)!;
+          const x = clamp(quantize(origin.x_mm + dx, snapMm), 0, Math.max(0, W - box.w_mm));
+          const y = clamp(quantize(origin.y_mm + dy, snapMm), 0, Math.max(0, H - box.h_mm));
+          return { id, patch: { x_mm: tidy(x), y_mm: tidy(y) } as ElementPatch };
+        });
+        st.lastPatches = entries;
+        onElementsChange(entries, false);
+        return;
+      }
 
-        if (o.type === 'text') {
-          patch = { max_w_mm: tidy(Math.max(2, elW)) };
-          // 높이를 끌면 한 줄 텍스트도 영역(상자)이 된다
-          if (isTextBox(o) || resizeH) patch.h_mm = tidy(Math.max(1, elH));
-        } else if (o.type === 'barcode') {
-          patch = {};
-          if (resizeH) patch.h_mm = tidy(Math.max(2, elH));
-          if (resizeW) patch.max_w_mm = tidy(Math.max(2, elW)); // 정렬 기준 영역 폭
-        } else if (o.type === 'qr') {
-          if (resizeW) patch = { max_w_mm: tidy(Math.max(2, elW)) };
-        } else if (o.type === 'box' || o.type === 'line') {
-          patch = { w_mm: tidy(Math.max(0.2, elW)), h_mm: tidy(Math.max(0.1, elH)) };
-        } else if (o.type === 'image') {
-          // 비율 유지면 가로 기준으로 세로를 따라가게 한다
-          const keep = o.keep_ratio !== false && o.w_mm > 0 && o.h_mm > 0;
-          const w = Math.max(1, elW);
-          const h = keep ? (w * o.h_mm) / o.w_mm : Math.max(1, elH);
-          patch = { w_mm: tidy(w), h_mm: tidy(h) };
-        }
+      // ── 크기 조절 (선택 1개일 때만 진입) — 화면에 보이는 상자 크기를 먼저 정하고,
+      //    회전이면 요소 고유 폭/높이로 되돌린다 ──
+      const id = st.ids[0];
+      const o = st.primary;
+      const box = st.boxes.get(id)!;
+      const resizeW = st.mode === 'resize-e' || st.mode === 'resize-se';
+      const resizeH = st.mode === 'resize-s' || st.mode === 'resize-se';
+      const screenW = resizeW
+        ? clamp(quantize(box.w_mm + dx, snapMm), 1, Math.max(1, W - o.x_mm))
+        : box.w_mm;
+      const screenH = resizeH
+        ? clamp(quantize(box.h_mm + dy, snapMm), 0.5, Math.max(0.5, H - o.y_mm))
+        : box.h_mm;
+      const swap = o.rotate === 90 || o.rotate === 270;
+      const elW = swap ? screenH : screenW;
+      const elH = swap ? screenW : screenH;
+
+      let patch: ElementPatch | null = null;
+      if (o.type === 'text') {
+        patch = { max_w_mm: tidy(Math.max(2, elW)) };
+        // 높이를 끌면 한 줄 텍스트도 영역(상자)이 된다
+        if (isTextBox(o) || resizeH) patch.h_mm = tidy(Math.max(1, elH));
+      } else if (o.type === 'barcode') {
+        patch = {};
+        if (resizeH) patch.h_mm = tidy(Math.max(2, elH));
+        if (resizeW) patch.max_w_mm = tidy(Math.max(2, elW)); // 정렬 기준 영역 폭
+      } else if (o.type === 'qr') {
+        if (resizeW) patch = { max_w_mm: tidy(Math.max(2, elW)) };
+      } else if (o.type === 'box' || o.type === 'line') {
+        patch = { w_mm: tidy(Math.max(0.2, elW)), h_mm: tidy(Math.max(0.1, elH)) };
+      } else if (o.type === 'image') {
+        // 비율 유지면 가로 기준으로 세로를 따라가게 한다
+        const keep = o.keep_ratio !== false && o.w_mm > 0 && o.h_mm > 0;
+        const w = Math.max(1, elW);
+        const h = keep ? (w * o.h_mm) / o.w_mm : Math.max(1, elH);
+        patch = { w_mm: tidy(w), h_mm: tidy(h) };
       }
 
       if (!patch) return;
-      st.lastPatch = patch;
-      onElementChange(st.id, patch, false);
+      const entries = [{ id, patch }];
+      st.lastPatches = entries;
+      onElementsChange(entries, false);
     };
 
     const handleUp = () => {
       const st = dragRef.current;
-      // 실제로 움직였을 때만 되돌리기 한 단계로 확정한다
-      if (st?.lastPatch) onElementChange(st.id, st.lastPatch, true);
+      if (st?.kind === 'element') {
+        // 실제로 움직였을 때만 되돌리기 한 단계로 확정한다
+        if (st.lastPatches) onElementsChange(st.lastPatches, true);
+      } else if (st?.kind === 'marquee') {
+        if (!st.moved) {
+          // 그냥 클릭 — 빈 곳 클릭은 선택 해제, Shift/Ctrl+빈 곳 클릭은 유지
+          if (!st.additive) onSelect([]);
+        } else {
+          const x0 = Math.min(st.startMmX, st.curMmX);
+          const x1 = Math.max(st.startMmX, st.curMmX);
+          const y0 = Math.min(st.startMmY, st.curMmY);
+          const y1 = Math.max(st.startMmY, st.curMmY);
+          const hit = (template.layout || [])
+            .filter((el) => !el.hidden && !el.locked)
+            .filter((el) => {
+              const b = boxes.get(el.id);
+              if (!b) return false;
+              return b.x_mm < x1 && b.x_mm + b.w_mm > x0 && b.y_mm < y1 && b.y_mm + b.h_mm > y0;
+            })
+            .map((el) => el.id);
+          onSelect(st.additive ? Array.from(new Set([...selectedIds, ...hit])) : hit);
+        }
+        setMarqueeRect(null);
+      }
       dragRef.current = null;
       setDragging(false);
     };
@@ -209,7 +346,17 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleUp);
     };
-  }, [dragging, scale, snapMm, W, H, onElementChange]);
+  }, [dragging, scale, snapMm, W, H, onElementsChange, onSelect, toMm, template.layout, boxes, selectedIds]);
+
+  // ============================================================
+  // 요소 목록 클릭(list row) 이 아니라 캔버스 자체의 클릭 판정용 헬퍼
+  // ============================================================
+  const handleElementPointerDown = useCallback(
+    (e: React.PointerEvent, el: LabelElement) => {
+      startElementDrag(e, el, 'move');
+    },
+    [startElementDrag]
+  );
 
   // ============================================================
   // 눈금자
@@ -229,6 +376,9 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
   // 렌더링
   // ============================================================
   const handleMm = HANDLE_PX / scale;
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const singleSelected =
+    selectedIds.length === 1 ? template.layout.find((el) => el.id === selectedIds[0]) ?? null : null;
 
   return (
     <div className="lc-frame" style={{ gridTemplateColumns: `${RULER}px ${cssW}px` }}>
@@ -282,20 +432,21 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
         <LabelPreview template={template} data={data} scale={scale} className="lc-paper" />
 
         <svg
+          ref={svgRef}
           className="lc-overlay"
           width={cssW}
           height={cssH}
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
         >
-          {/* 빈 곳 클릭 → 선택 해제 */}
+          {/* 빈 곳 드래그 = 마퀴 선택, 그냥 클릭 = 선택 해제 (pointerup 에서 판단) */}
           <rect
             x={0}
             y={0}
             width={W}
             height={H}
             fill="transparent"
-            onPointerDown={() => onSelect(null)}
+            onPointerDown={startMarquee}
           />
 
           {/* 격자 */}
@@ -331,11 +482,11 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
             if (el.hidden) return null;
             const box = boxes.get(el.id);
             if (!box) return null;
-            const isBox = el.type === 'text' && isTextBox(el);
+            const isBoxText = el.type === 'text' && isTextBox(el);
             return (
               <g key={el.id}>
                 {/* 영역 텍스트는 상자 윤곽을 늘 옅게 보여준다 — "여기가 글이 흐르는 범위" */}
-                {isBox && (
+                {isBoxText && (
                   <rect
                     x={box.x_mm}
                     y={box.y_mm}
@@ -355,7 +506,7 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
                   height={Math.max(box.h_mm, 0.8)}
                   fill="transparent"
                   style={{ cursor: el.locked ? 'not-allowed' : 'move' }}
-                  onPointerDown={(e) => startDrag(e, el, 'move')}
+                  onPointerDown={(e) => handleElementPointerDown(e, el)}
                 />
                 {/* 잘림 표시 — 우하단 빨간 귀퉁이 */}
                 {box.clipped && (
@@ -371,65 +522,93 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
             );
           })}
 
-          {/* 선택 표시 + 크기 핸들 */}
+          {/* 선택 표시 (여러 개 가능) */}
           {(template.layout || []).map((el) => {
-            if (el.id !== selectedId || el.hidden) return null;
+            if (!selectedSet.has(el.id) || el.hidden) return null;
             const box = boxes.get(el.id);
             if (!box) return null;
             const outOfBounds =
               box.x_mm + box.w_mm > W + 0.05 || box.y_mm + box.h_mm > H + 0.05;
-            const rotated = !!el.rotate;
-
-            const handle = (cx: number, cy: number, mode: DragMode, cursor: string) => (
+            return (
               <rect
-                x={cx - handleMm / 2}
-                y={cy - handleMm / 2}
-                width={handleMm}
-                height={handleMm}
-                fill="#fff"
-                stroke="#2563eb"
-                strokeWidth={0.12}
-                style={{ cursor }}
-                onPointerDown={(e) => startDrag(e, el, mode)}
+                key={`sel_${el.id}`}
+                x={box.x_mm}
+                y={box.y_mm}
+                width={Math.max(box.w_mm, 0.8)}
+                height={Math.max(box.h_mm, 0.8)}
+                fill="none"
+                stroke={outOfBounds ? '#dc2626' : '#2563eb'}
+                strokeWidth={0.18}
+                strokeDasharray="0.7 0.4"
+                pointerEvents="none"
               />
             );
-
-            return (
-              <g key={`sel_${el.id}`}>
-                <rect
-                  x={box.x_mm}
-                  y={box.y_mm}
-                  width={Math.max(box.w_mm, 0.8)}
-                  height={Math.max(box.h_mm, 0.8)}
-                  fill="none"
-                  stroke={outOfBounds ? '#dc2626' : '#2563eb'}
-                  strokeWidth={0.18}
-                  strokeDasharray="0.7 0.4"
-                  pointerEvents="none"
-                />
-                {/* 텍스트: 오른쪽(폭) · 아래(높이) · 모서리(대각선) — 회전돼도 화면 기준으로 동작 */}
-                {!el.locked && el.type === 'text' && (
-                  <>
-                    {handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
-                    {handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
-                    {handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
-                  </>
-                )}
-                {/* 바코드: 아래(높이) · 오른쪽(정렬 영역 폭, 정렬이 켜진 경우) */}
-                {!el.locked && !rotated && el.type === 'barcode' && (
-                  <>
-                    {handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
-                    {(el.align ?? 'left') !== 'left' &&
-                      handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
-                  </>
-                )}
-                {!el.locked && !rotated && el.type === 'qr' && (el.align ?? 'left') !== 'left' &&
-                  handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
-                {!el.locked && (el.type === 'box' || el.type === 'line' || el.type === 'image') &&
-                  handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
-              </g>
-            );
           })}
+
+          {/* 크기 조절 핸들 — 정확히 1개 선택했을 때만 */}
+          {singleSelected &&
+            !singleSelected.hidden &&
+            (() => {
+              const el = singleSelected;
+              const box = boxes.get(el.id);
+              if (!box) return null;
+              const rotated = !!el.rotate;
+
+              const handle = (cx: number, cy: number, mode: DragMode, cursor: string) => (
+                <rect
+                  key={mode}
+                  x={cx - handleMm / 2}
+                  y={cy - handleMm / 2}
+                  width={handleMm}
+                  height={handleMm}
+                  fill="#fff"
+                  stroke="#2563eb"
+                  strokeWidth={0.12}
+                  style={{ cursor }}
+                  onPointerDown={(e) => startElementDrag(e, el, mode)}
+                />
+              );
+
+              return (
+                <g>
+                  {/* 텍스트: 오른쪽(폭) · 아래(높이) · 모서리(대각선) — 회전돼도 화면 기준으로 동작 */}
+                  {!el.locked && el.type === 'text' && (
+                    <>
+                      {handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
+                      {handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
+                      {handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
+                    </>
+                  )}
+                  {/* 바코드: 아래(높이) · 오른쪽(정렬 영역 폭, 정렬이 켜진 경우) */}
+                  {!el.locked && !rotated && el.type === 'barcode' && (
+                    <>
+                      {handle(box.x_mm + box.w_mm / 2, box.y_mm + box.h_mm, 'resize-s', 'ns-resize')}
+                      {(el.align ?? 'left') !== 'left' &&
+                        handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
+                    </>
+                  )}
+                  {!el.locked && !rotated && el.type === 'qr' && (el.align ?? 'left') !== 'left' &&
+                    handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm / 2, 'resize-e', 'ew-resize')}
+                  {!el.locked && (el.type === 'box' || el.type === 'line' || el.type === 'image') &&
+                    handle(box.x_mm + box.w_mm, box.y_mm + box.h_mm, 'resize-se', 'nwse-resize')}
+                </g>
+              );
+            })()}
+
+          {/* 마퀴 선택 사각형 */}
+          {marqueeRect && (
+            <rect
+              x={marqueeRect.x}
+              y={marqueeRect.y}
+              width={marqueeRect.w}
+              height={marqueeRect.h}
+              fill="#2563eb15"
+              stroke="#2563eb"
+              strokeWidth={0.15}
+              strokeDasharray="0.5 0.3"
+              pointerEvents="none"
+            />
+          )}
         </svg>
       </div>
     </div>

@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { LabelTemplate, LabelType } from '../../../lib/labelTypes';
+import { isSharedTemplate, type LabelTemplate, type LabelType } from '../../../lib/labelTypes';
 import { userLabel, type FtUser } from '../hooks/useLabelSettingsData';
 
 // ============================================================
-// 템플릿 목록 (좌측 컬럼 최상단)
+// 템플릿 목록 — 템플릿 보드(TemplateBoard)의 "템플릿" 탭 내용.
 //   종류/사용자로 걸러서 고르고, 여기서 새 템플릿을 만든다.
+//   카드 테두리·탭 전환은 TemplateBoard 가 담당하므로 여기는 내용만 그린다.
 // ============================================================
 
 export const LABEL_TYPES: { key: LabelType; label: string }[] = [
@@ -41,18 +42,13 @@ const TemplateListPanel: React.FC<Props> = ({
 }) => {
   const visible = templates.filter((t) => {
     if (filterType && t.label_type !== filterType) return false;
-    if (filterUserId === '__common__') return t.user_id === null;
-    if (filterUserId) return t.user_id === filterUserId;
+    if (filterUserId === '__common__') return isSharedTemplate(t);
+    if (filterUserId) return !!t.user_ids?.includes(filterUserId);
     return true;
   });
 
   return (
-    <section className="ls-panel">
-      <div className="ls-panel-title">
-        템플릿
-        <span className="ls-count">{visible.length}</span>
-      </div>
-
+    <>
       <div className="ls-row-2">
         <select value={filterType} onChange={(e) => onFilterType(e.target.value as LabelType | '')}>
           <option value="">전체 종류</option>
@@ -100,13 +96,18 @@ const TemplateListPanel: React.FC<Props> = ({
               </span>
               <span className="ls-item-meta">
                 {t.label_type === 'care' ? '케어' : '바코드'} · {t.width_mm}×{t.height_mm}mm ·{' '}
-                {t.dpi}dpi{t.user_id === null ? ' · 공용' : ''}
+                {t.dpi}dpi ·{' '}
+                {isSharedTemplate(t)
+                  ? '공용'
+                  : t.user_ids!.length === 1
+                    ? userLabel(users.find((u) => u.id === t.user_ids![0]) ?? ({} as FtUser)) || '지정 사용자'
+                    : `${t.user_ids!.length}명 전용`}
               </span>
             </button>
           ))
         )}
       </div>
-    </section>
+    </>
   );
 };
 

@@ -5,10 +5,7 @@ import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
 
-import TemplateListPanel from './components/TemplateListPanel';
-import TemplateInfoPanel from './components/TemplateInfoPanel';
-import PrinterMapPanel from './components/PrinterMapPanel';
-import SampleDataPanel from './components/SampleDataPanel';
+import TemplateBoard from './components/TemplateBoard';
 import CanvasToolbar, { type AlignAction } from './components/CanvasToolbar';
 import LabelCanvas from './components/LabelCanvas';
 import ElementListPanel from './components/ElementListPanel';
@@ -16,6 +13,7 @@ import ElementPropsPanel from './components/ElementPropsPanel';
 
 import { useLabelSettingsData } from './hooks/useLabelSettingsData';
 import { useTemplateDraft, type ElementPatch } from './hooks/useTemplateDraft';
+import { getLocalPrinter, LOCAL_PRINTER_HELP } from '../../lib/localPrinterMap';
 
 import {
   SAMPLE_LABEL_DATA,
@@ -35,12 +33,14 @@ import './LabelSettings.css';
 // ============================================================
 // 라벨 설정 — 3분할 편집기
 //
-//   왼쪽   : 템플릿 목록 · 기본 정보 · 프린터 매핑
-//   가운데 : 툴바 + 라벨 캔버스 (드래그로 배치)
-//   오른쪽 : 요소 목록 + 선택 요소 속성
+//   왼쪽   : 템플릿 보드(탭: 템플릿·기본정보·미리보기데이터·프린터) + 요소 목록
+//   가운데 : 툴바 + 라벨 캔버스 (드래그로 배치, 다중 선택 가능)
+//   오른쪽 : 선택 요소 속성
 //
 // 인쇄는 QZ Tray(localhost) 로 TSPL RAW 전송
 //   미리보기 래스터 = 인쇄 래스터 (lib/labelRender.ts 공용)
+//   프린터는 "템플릿마다 이 PC 에서 쓸 프린터" 를 브라우저에 로컬로 저장한다
+//   (lib/localPrinterMap.ts) — PC-NO 같은 자리 번호 개념은 새 인쇄 경로에 없다.
 // ============================================================
 
 const MIN_SCALE = 3;
@@ -50,7 +50,7 @@ const TOAST_MS = 2600;
 /** 새 템플릿 기본값 — 종류별로 실무에서 바로 쓸 만한 배치를 넣어 둔다 */
 const newTemplate = (labelType: LabelType): LabelTemplate => ({
   id: '',
-  user_id: null,
+  user_ids: null,
   name: labelType === 'care' ? '새 케어라벨' : '새 바코드 라벨',
   label_type: labelType,
   printer_lang: 'TSPL2',
@@ -118,12 +118,12 @@ const LabelSettings: React.FC = () => {
   const { draft, dirty } = draftApi;
   const { setHasUnsavedChanges } = useSaveContext();
 
-  // 목록 필터
+  // 목록 필터 (템플릿 보드의 "템플릿" 탭)
   const [filterUserId, setFilterUserId] = useState('');
   const [filterType, setFilterType] = useState<LabelType | ''>('');
 
-  // 편집 상태
-  const [selectedElId, setSelectedElId] = useState<string | null>(null);
+  // 편집 상태 — 다중 선택 가능
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   /** 미리보기·경고·테스트 출력에 쓰는 샘플 값 (긴 데이터로 영역을 잡아 보는 용도) */
   const [sampleData, setSampleData] = useState<LabelData>(SAMPLE_LABEL_DATA);
   const [saving, setSaving] = useState(false);
@@ -135,9 +135,10 @@ const LabelSettings: React.FC = () => {
   const [snapMm, setSnapMm] = useState(0.5);
   const stageWrapRef = useRef<HTMLDivElement>(null);
 
+  /** 선택이 정확히 1개일 때만 상세 속성을 보여준다 */
   const selectedEl = useMemo(
-    () => draft?.layout.find((el) => el.id === selectedElId) ?? null,
-    [draft, selectedElId]
+    () => (selectedIds.length === 1 ? draft?.layout.find((el) => el.id === selectedIds[0]) ?? null : null),
+    [draft, selectedIds]
   );
 
   // ── 토스트 자동 닫기 ──
@@ -188,7 +189,7 @@ const LabelSettings: React.FC = () => {
       if (tpl.id === draft?.id) return;
       if (!confirmDiscard()) return;
       draftApi.load(tpl);
-      setSelectedElId(null);
+      setSelectedIds([]);
       requestAnimationFrame(fitToView);
     },
     [draft?.id, confirmDiscard, draftApi, fitToView]
@@ -198,7 +199,7 @@ const LabelSettings: React.FC = () => {
     (type: LabelType) => {
       if (!confirmDiscard()) return;
       draftApi.load(newTemplate(type));
-      setSelectedElId(null);
+      setSelectedIds([]);
       requestAnimationFrame(fitToView);
     },
     [confirmDiscard, draftApi, fitToView]
@@ -207,9 +208,9 @@ const LabelSettings: React.FC = () => {
   // ============================================================
   // 요소 조작
   // ============================================================
-  const handleElementChange = useCallback(
-    (id: string, patch: ElementPatch, commit: boolean) => {
-      draftApi.patchElement(id, patch, { commit });
+  const handleElementsChange = useCallback(
+    (entries: { id: string; patch: ElementPatch }[], commit: boolean) => {
+      draftApi.patchElements(entries, { commit });
     },
     [draftApi]
   );
@@ -225,7 +226,7 @@ const LabelSettings: React.FC = () => {
             }
           : undefined;
       const id = draftApi.addElement(type, overrides);
-      if (id) setSelectedElId(id);
+      if (id) setSelectedIds([id]);
     },
     [draftApi, draft]
   );
@@ -233,20 +234,32 @@ const LabelSettings: React.FC = () => {
   const handleRemove = useCallback(
     (id: string) => {
       draftApi.removeElement(id);
-      setSelectedElId((cur) => (cur === id ? null : cur));
+      setSelectedIds((cur) => cur.filter((v) => v !== id));
     },
     [draftApi]
   );
+
+  const handleRemoveSelected = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    draftApi.removeElements(selectedIds);
+    setSelectedIds([]);
+  }, [draftApi, selectedIds]);
 
   const handleDuplicate = useCallback(
     (id: string) => {
       const newId = draftApi.duplicateElement(id);
-      if (newId) setSelectedElId(newId);
+      if (newId) setSelectedIds([newId]);
     },
     [draftApi]
   );
 
-  /** 선택 요소를 라벨 기준으로 정렬 */
+  const handleDuplicateSelected = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    const newIds = draftApi.duplicateElements(selectedIds);
+    if (newIds.length > 0) setSelectedIds(newIds);
+  }, [draftApi, selectedIds]);
+
+  /** 선택 요소를 라벨 기준으로 정렬 (선택 1개일 때만) */
   const handleAlign = useCallback(
     (action: AlignAction) => {
       if (!draft || !selectedEl) return;
@@ -299,7 +312,7 @@ const LabelSettings: React.FC = () => {
       const isNew = !draft.id;
       const payload = {
         ...(isNew ? {} : { id: draft.id }),
-        user_id: draft.user_id,
+        user_ids: draft.user_ids,
         name: draft.name,
         label_type: draft.label_type,
         width_mm: draft.width_mm,
@@ -343,7 +356,7 @@ const LabelSettings: React.FC = () => {
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       draftApi.load(null);
-      setSelectedElId(null);
+      setSelectedIds([]);
       await data.reloadTemplates();
       setToast({ msg: '삭제되었습니다.', kind: 'ok' });
     } catch (err) {
@@ -354,16 +367,20 @@ const LabelSettings: React.FC = () => {
 
   const handleTestPrint = useCallback(async () => {
     if (!draft) return;
-    const printer = data.printerFor(draft.label_type);
+    if (!draft.id) {
+      setToast({ msg: '먼저 저장해야 이 PC 의 프린터를 지정할 수 있습니다.', kind: 'err' });
+      return;
+    }
+    const printer = getLocalPrinter(draft.id);
     if (!printer) {
       setToast({
-        msg: `PC-NO ${data.stationNo}의 ${draft.label_type === 'care' ? '케어라벨' : '바코드'} 프린터가 지정되지 않았습니다.`,
+        msg: `"${draft.name}" 템플릿에 이 PC 의 프린터가 지정되지 않았습니다. ${LOCAL_PRINTER_HELP}`,
         kind: 'err',
       });
       return;
     }
     // 프린터 해상도와 템플릿 해상도가 다르면 실제 크기가 달라진다 — 알고 찍게 한다
-    const info = data.printerInfo(printer);
+    const info = data.qzPrinters.find((p) => p.name === printer);
     if (info?.dpi && info.dpi !== draft.dpi) {
       const go = window.confirm(
         `프린터 "${printer}" 는 ${info.dpi}dpi 인데 템플릿은 ${draft.dpi}dpi 입니다.\n` +
@@ -384,21 +401,6 @@ const LabelSettings: React.FC = () => {
       });
     }
   }, [draft, data, sampleData]);
-
-  const handleSavePrinterMap = useCallback(
-    async (station: number, labelType: LabelType, printer: string) => {
-      const err = await data.savePrinterMap(station, labelType, printer);
-      if (err) setToast({ msg: err, kind: 'err' });
-      return err;
-    },
-    [data]
-  );
-
-  /** 현재 템플릿 종류에 대해 테스트 자리에 매핑된 프린터 (+ 이 PC 가 아는 dpi) */
-  const mappedPrinter = useMemo(() => {
-    const name = draft ? data.printerFor(draft.label_type) : null;
-    return { station: data.stationNo, name, dpi: data.printerInfo(name)?.dpi };
-  }, [draft, data]);
 
   // ============================================================
   // 단축키
@@ -430,22 +432,22 @@ const LabelSettings: React.FC = () => {
         draftApi.redo();
         return;
       }
-      if (mod && e.key.toLowerCase() === 'd' && selectedElId) {
+      if (mod && e.key.toLowerCase() === 'd' && selectedIds.length > 0) {
         e.preventDefault();
-        handleDuplicate(selectedElId);
+        handleDuplicateSelected();
         return;
       }
       if (e.key === 'Escape') {
-        setSelectedElId(null);
+        setSelectedIds([]);
         return;
       }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElId) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault();
-        handleRemove(selectedElId);
+        handleRemoveSelected();
         return;
       }
 
-      // 방향키 미세 이동
+      // 방향키 미세 이동 — 선택된 요소 전부 같이 움직인다
       const step = e.shiftKey ? 1 : 0.1;
       const delta: Record<string, [number, number]> = {
         ArrowLeft: [-step, 0],
@@ -454,17 +456,23 @@ const LabelSettings: React.FC = () => {
         ArrowDown: [0, step],
       };
       const d = delta[e.key];
-      if (d && selectedEl) {
+      if (d && draft && selectedIds.length > 0) {
         e.preventDefault();
-        if (selectedEl.locked) return;
-        draftApi.patchElement(
-          selectedEl.id,
-          {
-            x_mm: Math.max(0, Math.round((selectedEl.x_mm + d[0]) * 100) / 100),
-            y_mm: Math.max(0, Math.round((selectedEl.y_mm + d[1]) * 100) / 100),
-          },
-          { key: `el:${selectedEl.id}:arrow` }
-        );
+        const entries = selectedIds
+          .map((id) => draft.layout.find((el) => el.id === id))
+          .filter((el): el is LabelElement => !!el && !el.locked)
+          .map((el) => ({
+            id: el.id,
+            patch: {
+              x_mm: Math.max(0, Math.round((el.x_mm + d[0]) * 100) / 100),
+              y_mm: Math.max(0, Math.round((el.y_mm + d[1]) * 100) / 100),
+            } as ElementPatch,
+          }));
+        if (entries.length > 0) {
+          draftApi.patchElements(entries, {
+            key: `el:arrow:${selectedIds.slice().sort().join(',')}`,
+          });
+        }
       }
     };
 
@@ -473,11 +481,10 @@ const LabelSettings: React.FC = () => {
   }, [
     draft,
     draftApi,
-    selectedEl,
-    selectedElId,
+    selectedIds,
     handleSave,
-    handleDuplicate,
-    handleRemove,
+    handleDuplicateSelected,
+    handleRemoveSelected,
   ]);
 
   // ── 요소별 경고 (규격 위반 · 글꼴 없음 · 라벨 밖) ──
@@ -518,7 +525,7 @@ const LabelSettings: React.FC = () => {
                 <>
                   {dirty && <span className="ls-dirty">● 저장 안 됨</span>}
                   <button className="ls-btn" onClick={handleTestPrint} disabled={!data.qzOk}>
-                    테스트 출력 (PC-NO {data.stationNo})
+                    테스트 출력
                   </button>
                   {draft.id && (
                     <button className="ls-btn-danger" onClick={handleDelete}>
@@ -535,9 +542,9 @@ const LabelSettings: React.FC = () => {
 
           {/* ── 3분할 작업 영역 ── */}
           <div className="ls-workspace">
-            {/* 왼쪽 */}
+            {/* 왼쪽 — 템플릿 보드 + 요소 목록 */}
             <div className="ls-col ls-col-left">
-              <TemplateListPanel
+              <TemplateBoard
                 templates={data.templates}
                 users={data.users}
                 loading={data.loading}
@@ -548,29 +555,27 @@ const LabelSettings: React.FC = () => {
                 onFilterUser={setFilterUserId}
                 onPick={pickTemplate}
                 onCreate={createTemplate}
+                draft={draft}
+                onPatchTemplate={draftApi.patchTemplate}
+                sampleData={sampleData}
+                onSampleDataChange={setSampleData}
+                qzOk={data.qzOk}
+                qzPrinters={data.qzPrinters}
+                onRefreshQz={data.refreshQz}
               />
 
               {draft && (
-                <>
-                  <TemplateInfoPanel
-                    draft={draft}
-                    users={data.users}
-                    onPatch={draftApi.patchTemplate}
-                    mappedPrinter={mappedPrinter}
-                  />
-                  <SampleDataPanel data={sampleData} onChange={setSampleData} />
-                </>
+                <ElementListPanel
+                  layout={draft.layout}
+                  selectedIds={selectedIds}
+                  warnings={warnings}
+                  onSelect={setSelectedIds}
+                  onPatch={(id, patch) => draftApi.patchElement(id, patch)}
+                  onRemove={handleRemove}
+                  onDuplicate={handleDuplicate}
+                  onReorder={draftApi.reorderElement}
+                />
               )}
-
-              <PrinterMapPanel
-                stationNo={data.stationNo}
-                onStationNo={data.setStationNo}
-                qzOk={data.qzOk}
-                qzPrinters={data.qzPrinters}
-                printerAt={data.printerAt}
-                onSave={handleSavePrinterMap}
-                onRefreshQz={data.refreshQz}
-              />
             </div>
 
             {/* 가운데 — 캔버스 */}
@@ -605,53 +610,54 @@ const LabelSettings: React.FC = () => {
                       scale={scale}
                       showGrid={showGrid}
                       snapMm={snapMm}
-                      selectedId={selectedElId}
-                      onSelect={setSelectedElId}
-                      onElementChange={handleElementChange}
+                      selectedIds={selectedIds}
+                      onSelect={setSelectedIds}
+                      onElementsChange={handleElementsChange}
                     />
                   </div>
 
                   <div className="ls-canvas-foot">
-                    미리보기는 실제 인쇄와 같은 방식으로 그립니다 ({draft.dpi}dpi). 요소를 끌어
-                    옮기고, 방향키로 0.1mm 씩 미세 조정하세요.
+                    미리보기는 실제 인쇄와 같은 방식으로 그립니다 ({draft.dpi}dpi). 빈 곳을 끌면
+                    여러 개를 한 번에 선택하고, Shift/Ctrl+클릭으로 선택을 더하거나 뺍니다.
                   </div>
                 </>
               )}
             </div>
 
-            {/* 오른쪽 — 요소 */}
+            {/* 오른쪽 — 선택 요소 속성 */}
             <div className="ls-col ls-col-right">
-              {draft ? (
-                <>
-                  <ElementListPanel
-                    layout={draft.layout}
-                    selectedId={selectedElId}
-                    warnings={warnings}
-                    onSelect={setSelectedElId}
-                    onPatch={(id, patch) => draftApi.patchElement(id, patch)}
-                    onRemove={handleRemove}
-                    onDuplicate={handleDuplicate}
-                    onReorder={draftApi.reorderElement}
-                  />
-
-                  {selectedEl ? (
-                    <ElementPropsPanel
-                      el={selectedEl}
-                      template={draft}
-                      data={sampleData}
-                      warning={warnings.get(selectedEl.id) ?? null}
-                      onPatch={(id, patch, opts) =>
-                        draftApi.patchElement(id, patch, { key: opts?.key })
-                      }
-                    />
-                  ) : (
-                    <div className="ls-panel ls-empty">
-                      캔버스나 목록에서 요소를 선택하면 속성이 여기 표시됩니다.
-                    </div>
-                  )}
-                </>
-              ) : (
+              {!draft ? (
                 <div className="ls-panel ls-empty">템플릿을 먼저 선택하세요.</div>
+              ) : selectedIds.length > 1 ? (
+                <div className="ls-panel">
+                  <div className="ls-panel-title">{selectedIds.length}개 선택됨</div>
+                  <div className="ls-hint">
+                    여러 요소를 함께 이동·삭제·복제할 수 있습니다. 속성을 편집하려면 하나만
+                    선택하세요.
+                  </div>
+                  <div className="ls-multi-actions">
+                    <button className="ls-btn-sm" onClick={handleDuplicateSelected}>
+                      복제 (Ctrl+D)
+                    </button>
+                    <button className="ls-btn-sm ls-btn-danger-sm" onClick={handleRemoveSelected}>
+                      삭제 (Delete)
+                    </button>
+                  </div>
+                </div>
+              ) : selectedEl ? (
+                <ElementPropsPanel
+                  el={selectedEl}
+                  template={draft}
+                  data={sampleData}
+                  warning={warnings.get(selectedEl.id) ?? null}
+                  onPatch={(id, patch, opts) =>
+                    draftApi.patchElement(id, patch, { key: opts?.key })
+                  }
+                />
+              ) : (
+                <div className="ls-panel ls-empty">
+                  캔버스나 목록에서 요소를 선택하면 속성이 여기 표시됩니다.
+                </div>
               )}
             </div>
           </div>

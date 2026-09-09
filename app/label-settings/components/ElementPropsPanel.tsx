@@ -2,7 +2,8 @@
 
 import React, { useRef } from 'react';
 import {
-  LABEL_FIELDS,
+  PRODUCT_FIELDS,
+  ACCOUNT_FIELDS,
   LABEL_FONTS,
   DEFAULT_FONT,
   ELEMENT_TYPE_LABEL,
@@ -195,11 +196,20 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                 value={el.field ?? ''}
                 onChange={(e) => patch({ field: e.target.value })}
               >
-                {LABEL_FIELDS.map((f) => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
+                <optgroup label="상품 데이터">
+                  {PRODUCT_FIELDS.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="계정 정보 (선택된 사업자)">
+                  {ACCOUNT_FIELDS.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </label>
           ) : (
@@ -225,11 +235,20 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                   }}
                 >
                   <option value="">＋ 필드 고르기…</option>
-                  {LABEL_FIELDS.map((f) => (
-                    <option key={f.key} value={f.key}>
-                      {f.label} — {`{${f.key}}`}
-                    </option>
-                  ))}
+                  <optgroup label="상품 데이터">
+                    {PRODUCT_FIELDS.map((f) => (
+                      <option key={f.key} value={f.key}>
+                        {f.label} — {`{${f.key}}`}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="계정 정보">
+                    {ACCOUNT_FIELDS.map((f) => (
+                      <option key={f.key} value={f.key}>
+                        {f.label} — {`{${f.key}}`}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </label>
 

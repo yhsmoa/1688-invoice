@@ -9,17 +9,20 @@ import {
 import type { ElementPatch } from '../hooks/useTemplateDraft';
 
 // ============================================================
-// 요소 목록 (우측 컬럼 상단)
+// 요소 목록 (왼쪽 컬럼, 템플릿 보드 아래)
 //
 // 목록 순서 = 인쇄 순서 = 겹칠 때 위아래 순서.
 // 마지막 항목이 가장 위에 그려지므로 ▲/▼ 로 순서를 바꾼다.
+//
+// Shift/Ctrl(Cmd)+클릭으로 여러 행을 함께 선택할 수 있다 (캔버스 다중 선택과 연동).
 // ============================================================
 
 interface Props {
   layout: LabelElement[];
-  selectedId: string | null;
+  selectedIds: string[];
   warnings: Map<string, string | null>;
-  onSelect: (id: string) => void;
+  /** 캔버스와 동일하게 "새 선택 전체 목록"을 그대로 받는다 */
+  onSelect: (ids: string[]) => void;
   onPatch: (id: string, patch: ElementPatch) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -28,18 +31,31 @@ interface Props {
 
 const ElementListPanel: React.FC<Props> = ({
   layout,
-  selectedId,
+  selectedIds,
   warnings,
   onSelect,
   onPatch,
   onRemove,
   onDuplicate,
   onReorder,
-}) => (
+}) => {
+  const selectedSet = new Set(selectedIds);
+
+  const handleRowClick = (e: React.MouseEvent, id: string) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      onSelect(selectedSet.has(id) ? selectedIds.filter((v) => v !== id) : [...selectedIds, id]);
+    } else {
+      onSelect([id]);
+    }
+  };
+
+  return (
   <section className="ls-panel ls-el-panel">
     <div className="ls-panel-title">
       요소
-      <span className="ls-count">{layout.length}</span>
+      <span className="ls-count">
+        {selectedIds.length > 1 ? `${selectedIds.length}/${layout.length} 선택` : layout.length}
+      </span>
     </div>
 
     {layout.length === 0 ? (
@@ -53,8 +69,8 @@ const ElementListPanel: React.FC<Props> = ({
           return (
             <div
               key={el.id}
-              className={`ls-el-row ${selectedId === el.id ? 'active' : ''} ${el.hidden ? 'is-hidden' : ''}`}
-              onClick={() => onSelect(el.id)}
+              className={`ls-el-row ${selectedSet.has(el.id) ? 'active' : ''} ${el.hidden ? 'is-hidden' : ''}`}
+              onClick={(e) => handleRowClick(e, el.id)}
             >
               <span className="ls-el-type">{ELEMENT_TYPE_LABEL[el.type]}</span>
               <span className="ls-el-desc" title={elementCaption(el)}>
@@ -132,6 +148,7 @@ const ElementListPanel: React.FC<Props> = ({
       </div>
     )}
   </section>
-);
+  );
+};
 
 export default ElementListPanel;

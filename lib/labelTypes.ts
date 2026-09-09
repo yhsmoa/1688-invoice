@@ -213,8 +213,12 @@ export function isBindable(el: LabelElement): el is BindableElement {
 // ============================================================
 export interface LabelTemplate {
   id: string;
-  /** ft_users.id — null 이면 공용 템플릿 */
-  user_id: string | null;
+  /**
+   * 이 템플릿을 쓸 수 있는 ft_users.id 목록.
+   * null/빈 배열 = 공용(모든 사용자). 값이 있으면 그 사용자들 전용.
+   *   한 템플릿을 여러 사업자가 같이 쓸 수도 있어서 배열이다 (예: 같은 양식을 쓰는 두 브랜드).
+   */
+  user_ids: string[] | null;
   name: string;
   label_type: LabelType;
   printer_lang: string;
@@ -248,12 +252,26 @@ export interface LabelTemplate {
   updated_at?: string;
 }
 
-/** PC-NO(작업 자리)별 프린터 매핑 */
+/** PC-NO(작업 자리)별 프린터 매핑 — 레거시(V1) 호환용. 새 인쇄 경로는 lib/localPrinterMap.ts 를 쓴다 */
 export interface LabelPrinterMap {
   id?: string;
   station_no: number;
   label_type: LabelType;
   qz_printer_name: string;
+}
+
+/** 템플릿이 공용인지 (모든 사용자가 쓸 수 있는지) */
+export function isSharedTemplate(tpl: Pick<LabelTemplate, 'user_ids'>): boolean {
+  return !tpl.user_ids || tpl.user_ids.length === 0;
+}
+
+/** 이 템플릿을 그 사용자가 쓸 수 있는지 (공용이거나 목록에 포함) */
+export function templateUsableBy(
+  tpl: Pick<LabelTemplate, 'user_ids'>,
+  userId: string | null
+): boolean {
+  if (isSharedTemplate(tpl)) return true;
+  return userId != null && !!tpl.user_ids?.includes(userId);
 }
 
 // ============================================================
@@ -273,8 +291,8 @@ export interface LabelData {
   [key: string]: unknown;
 }
 
-/** 편집기 필드 드롭다운 목록 */
-export const LABEL_FIELDS: { key: keyof LabelData & string; label: string }[] = [
+/** 편집기 필드 드롭다운 — 상품(주문 항목)마다 달라지는 값 */
+export const PRODUCT_FIELDS: { key: keyof LabelData & string; label: string }[] = [
   { key: 'brand', label: '브랜드' },
   { key: 'item_name', label: '상품명 + 옵션' },
   { key: 'barcode', label: '바코드' },
@@ -285,7 +303,58 @@ export const LABEL_FIELDS: { key: keyof LabelData & string; label: string }[] = 
   { key: 'qty', label: '수량' },
 ];
 
-/** 미리보기/테스트출력용 샘플 값 */
+/** 기존 이름 유지 (하위 호환) — 새 코드는 PRODUCT_FIELDS 를 직접 쓴다 */
+export const LABEL_FIELDS = PRODUCT_FIELDS;
+
+/**
+ * 편집기 필드 드롭다운 — 선택된 사업자(ft_users) 계정 정보.
+ * 비밀번호·내부 식별자(balance_id/master_id 등)는 라벨에 찍을 이유가 없어서 뺐다.
+ * 나머지는 사업자마다 어떤 걸 쓸지 다르므로 전부 바인딩 가능하게 열어 둔다.
+ * 값은 printLabels()/미리보기가 LabelData 에 `acc_` 접두사로 merge 해서 채운다
+ * (상품 필드와 이름이 겹치지 않게 하기 위함 — 예: 상품의 brand 와 계정의 brand).
+ */
+export const ACCOUNT_FIELDS: { key: string; label: string }[] = [
+  { key: 'acc_vender_name', label: '거래처명(사업자명)' },
+  { key: 'acc_full_name', label: '담당자명' },
+  { key: 'acc_username', label: '아이디' },
+  { key: 'acc_brand', label: '브랜드(계정)' },
+  { key: 'acc_user_code', label: '사용자코드' },
+  { key: 'acc_phone', label: '전화번호' },
+  { key: 'acc_email', label: '이메일' },
+  { key: 'acc_address', label: '주소' },
+];
+
+/** 바인딩 드롭다운에 그룹으로 같이 보여줄 전체 필드 (상품 + 계정) */
+export const ALL_BINDABLE_FIELDS = [
+  { group: '상품 데이터', fields: PRODUCT_FIELDS },
+  { group: '계정 정보', fields: ACCOUNT_FIELDS },
+];
+
+/** printLabels()/미리보기에서 selectedUser(ft_users 행)를 LabelData 에 병합할 때 쓴다 */
+export function accountFieldsToLabelData(user: {
+  vender_name?: string | null;
+  full_name?: string | null;
+  username?: string | null;
+  brand?: string | null;
+  user_code?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+} | null): Partial<LabelData> {
+  if (!user) return {};
+  return {
+    acc_vender_name: user.vender_name ?? '',
+    acc_full_name: user.full_name ?? '',
+    acc_username: user.username ?? '',
+    acc_brand: user.brand ?? '',
+    acc_user_code: user.user_code ?? '',
+    acc_phone: user.phone ?? '',
+    acc_email: user.email ?? '',
+    acc_address: user.address ?? '',
+  };
+}
+
+/** 미리보기/테스트출력용 샘플 값 (상품 데이터 + 계정 정보) */
 export const SAMPLE_LABEL_DATA: LabelData = {
   brand: 'BZ',
   item_name: '여성 블라우스 SM-BBTHDY5F207, 아이보리',
@@ -295,6 +364,14 @@ export const SAMPLE_LABEL_DATA: LabelData = {
   composition: '폴리에스터 100%',
   recommanded_age: '성인',
   qty: 3,
+  acc_vender_name: '(주)샘플상사',
+  acc_full_name: '홍길동',
+  acc_username: 'sample_user',
+  acc_brand: 'BZ',
+  acc_user_code: 'BZ',
+  acc_phone: '010-0000-0000',
+  acc_email: 'sample@example.com',
+  acc_address: '서울시 강남구 테헤란로 1',
 };
 
 // ============================================================
@@ -350,7 +427,11 @@ export function elementCaption(el: LabelElement): string {
   if (el.name) return el.name;
   if (isBindable(el)) {
     if (el.field) {
-      return LABEL_FIELDS.find((f) => f.key === el.field)?.label ?? el.field;
+      return (
+        PRODUCT_FIELDS.find((f) => f.key === el.field)?.label ??
+        ACCOUNT_FIELDS.find((f) => f.key === el.field)?.label ??
+        el.field
+      );
     }
     if (el.text) return `"${el.text}"`;
   }
