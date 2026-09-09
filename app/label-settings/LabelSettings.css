@@ -289,22 +289,43 @@
 }
 
 /* 사용할 수 있는 사업자 — 공용 토글 + 체크리스트 */
-.ls-user-shared { margin-bottom: 6px; }
+.ls-user-shared {
+  padding: 7px 9px;
+  margin-bottom: 6px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.ls-user-shared span { font-weight: 600; }
 
 .ls-user-checklist {
   display: flex;
   flex-direction: column;
-  gap: 3px;
   max-height: 160px;
   overflow-y: auto;
-  padding: 6px 8px;
-  background: #f9fafb;
-  border: 1px solid #f0f0f0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 5px;
   margin-bottom: 4px;
 }
 
-.ls-user-checklist .ls-check { padding-bottom: 0; }
+.ls-user-checklist .ls-check {
+  /* .ls-check 의 align-self:end 는 그리드 셀 안에서 "아래 정렬"용이었는데,
+     여기 부모는 flex-direction:column 이라 그 값이 "오른쪽 정렬"로 뒤집혀
+     체크박스가 오른쪽으로 밀려나 보였다 — 이 안에서는 꽉 채워 왼쪽부터 채운다 */
+  align-self: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 6px 9px;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.ls-user-checklist .ls-check + .ls-check { border-top: 1px solid #f3f4f6; }
+.ls-user-checklist .ls-check:hover { background: #f9fafb; }
+.ls-user-checklist .ls-check:has(input:checked) { background: #eff6ff; }
 
 /* 다중 선택 — 우측 패널 요약 액션 */
 .ls-multi-actions {
@@ -436,11 +457,13 @@
 }
 
 .ls-check {
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 6px;
   align-self: end;
   padding-bottom: 4px;
+  cursor: pointer;
 }
 
 .ls-check input {

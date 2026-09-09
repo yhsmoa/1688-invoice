@@ -19,6 +19,7 @@ import {
   SAMPLE_LABEL_DATA,
   createElement,
   textLinesHeightMm,
+  accountFieldsToLabelData,
   DEFAULT_FONT,
   type LabelData,
   type LabelElement,
@@ -140,6 +141,23 @@ const LabelSettings: React.FC = () => {
     () => (selectedIds.length === 1 ? draft?.layout.find((el) => el.id === selectedIds[0]) ?? null : null),
     [draft, selectedIds]
   );
+
+  // ── 계정 정보 미리보기 값 — 템플릿에 실제 사업자가 지정돼 있으면 그 사업자의
+  //    진짜 값(거래처명·아이디 등)으로 채운다. 그냥 "sample_user" 같은 임의 문구를
+  //    보여주면 진짜 인쇄 결과와 다르게 보여서 혼란스럽다.
+  //    지정된 사업자 배열이 실제로 바뀔 때만 갱신 — 요소를 옮기는 등 다른 편집으로
+  //    draft 가 바뀔 때마다 사용자가 손으로 고친 계정 필드값을 덮어쓰지 않기 위해
+  //    "내용"(userIdsKey) 을 의존성으로 쓴다 (배열 참조가 아니라).
+  const assignedUserIds = draft?.user_ids;
+  const userIdsKey = assignedUserIds && assignedUserIds.length > 0 ? assignedUserIds.join(',') : '';
+  useEffect(() => {
+    if (!userIdsKey) return; // 공용 — 임의 샘플 유지
+    const firstId = userIdsKey.split(',')[0];
+    const user = data.users.find((u) => u.id === firstId);
+    if (!user) return;
+    setSampleData((prev) => ({ ...prev, ...accountFieldsToLabelData(user) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIdsKey, data.users]);
 
   // ── 토스트 자동 닫기 ──
   useEffect(() => {

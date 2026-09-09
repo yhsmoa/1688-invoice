@@ -69,8 +69,9 @@ const SampleDataPanel: React.FC<Props> = ({ data, onChange }) => {
 
       <div className="ls-sub-title">계정 정보 (미리보기용)</div>
       <div className="ls-hint ls-mb8">
-        실제 인쇄에서는 선택된 사업자의 실제 계정 정보로 자동 채워집니다. 여기 값은 편집 화면
-        미리보기에만 쓰입니다.
+        이 템플릿에 특정 사업자가 지정돼 있으면 그 사업자의 실제 값으로 자동 채워집니다.
+        공용 템플릿이거나 다른 값으로 테스트하고 싶으면 여기서 직접 고치세요. 실제 인쇄는
+        항상 그 자리에서 선택된 사업자의 진짜 값을 씁니다.
       </div>
       <div className="ls-sample-grid">
         {ACCOUNT_FIELDS.map((f) => renderField(f, f.key === 'acc_address'))}
