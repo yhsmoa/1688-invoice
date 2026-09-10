@@ -81,6 +81,20 @@
   white-space: nowrap;
 }
 
+/* 헤더 — QZ Tray 인증서 내려받기 (링크지만 버튼처럼) */
+.ls-cert-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.ls-cert-link:hover { color: #111; border-color: #9ca3af; }
+
 /* ============================================================ */
 /* 3분할 작업 영역                                                */
 /* ============================================================ */

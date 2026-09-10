@@ -554,6 +554,16 @@ const LabelSettings: React.FC = () => {
             <h1 className="ls-title">라벨 설정</h1>
 
             <div className="ls-header-right">
+              {/* 새 인쇄 PC 설정용 — QZ Tray 에 신뢰시킬 인증서(override.crt).
+                  qz-tray.exe 와 같은 폴더에 넣고 QZ Tray 를 재시작하면 허용 창이 안 뜬다 */}
+              <a
+                className="ls-btn-ghost ls-cert-link"
+                href="/api/qz/cert?download=1"
+                download="override.crt"
+                title="QZ Tray 인증서(override.crt) 내려받기 — qz-tray.exe 와 같은 폴더에 넣고 QZ Tray 재시작"
+              >
+                ⬇ 인증서 (override.crt)
+              </a>
               <span
                 className={`ls-qz-badge ${data.qzOk ? 'ok' : data.qzOk === false ? 'off' : ''}`}
               >
