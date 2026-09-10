@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelData, LabelTemplate, LabelType } from '../../../lib/labelTypes';
 import type { PrinterInfo } from '../../../lib/qzTray';
 import type { FtUser } from '../hooks/useLabelSettingsData';
@@ -19,12 +20,7 @@ import LocalPrinterPanel from './LocalPrinterPanel';
 
 type TabKey = 'list' | 'info' | 'sample' | 'printer';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'list', label: '템플릿' },
-  { key: 'info', label: '기본정보' },
-  { key: 'sample', label: '미리보기 데이터' },
-  { key: 'printer', label: '프린터' },
-];
+const TABS: TabKey[] = ['list', 'info', 'sample', 'printer'];
 
 interface Props {
   // 템플릿 탭
@@ -72,6 +68,7 @@ const TemplateBoard: React.FC<Props> = ({
   qzPrinters,
   onRefreshQz,
 }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('list');
 
   const handlePick = (tpl: LabelTemplate) => {
@@ -87,13 +84,13 @@ const TemplateBoard: React.FC<Props> = ({
   return (
     <section className="ls-panel ls-board">
       <div className="ls-tabs">
-        {TABS.map((t) => (
+        {TABS.map((key) => (
           <button
-            key={t.key}
-            className={`ls-tab ${tab === t.key ? 'active' : ''}`}
-            onClick={() => setTab(t.key)}
+            key={key}
+            className={`ls-tab ${tab === key ? 'active' : ''}`}
+            onClick={() => setTab(key)}
           >
-            {t.label}
+            {t(`labelSettings.tabs.${key}`)}
           </button>
         ))}
       </div>
@@ -118,14 +115,14 @@ const TemplateBoard: React.FC<Props> = ({
           (draft ? (
             <TemplateInfoPanel draft={draft} users={users} onPatch={onPatchTemplate} />
           ) : (
-            <div className="ls-empty">템플릿 탭에서 먼저 선택하거나 새로 만드세요.</div>
+            <div className="ls-empty">{t('labelSettings.board.needPick')}</div>
           ))}
 
         {tab === 'sample' &&
           (draft ? (
             <SampleDataPanel data={sampleData} onChange={onSampleDataChange} />
           ) : (
-            <div className="ls-empty">템플릿을 선택하면 미리보기 데이터를 편집할 수 있습니다.</div>
+            <div className="ls-empty">{t('labelSettings.board.needPickSample')}</div>
           ))}
 
         {tab === 'printer' && (

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
@@ -13,7 +14,7 @@ import ElementPropsPanel from './components/ElementPropsPanel';
 
 import { useLabelSettingsData } from './hooks/useLabelSettingsData';
 import { useTemplateDraft, type ElementPatch } from './hooks/useTemplateDraft';
-import { getLocalPrinter, LOCAL_PRINTER_HELP } from '../../lib/localPrinterMap';
+import { getLocalPrinter } from '../../lib/localPrinterMap';
 
 import {
   SAMPLE_LABEL_DATA,
@@ -35,7 +36,7 @@ import {
 } from '../../lib/labelRender';
 import { useRasterVersion } from './hooks/useRasterVersion';
 import { buildTsplJob } from '../../lib/tspl';
-import { printRaw, QZ_NOT_RUNNING } from '../../lib/qzTray';
+import { printRaw } from '../../lib/qzTray';
 import './LabelSettings.css';
 
 // ============================================================
@@ -49,17 +50,20 @@ import './LabelSettings.css';
 //   미리보기 래스터 = 인쇄 래스터 (lib/labelRender.ts 공용)
 //   프린터는 "템플릿마다 이 PC 에서 쓸 프린터" 를 브라우저에 로컬로 저장한다
 //   (lib/localPrinterMap.ts) — PC-NO 같은 자리 번호 개념은 새 인쇄 경로에 없다.
+//
+// 문구는 전부 i18n (locales/*.json 의 labelSettings.*) — 중국인 작업자도 이 화면을 쓴다.
+// lib 가 돌려주는 경고(elementWarning)는 키+치환값이라 여기서 t() 로 번역한다.
 // ============================================================
 
 const MIN_SCALE = 3;
 const MAX_SCALE = 20;
 const TOAST_MS = 2600;
 
-/** 새 템플릿 기본값 — 종류별로 실무에서 바로 쓸 만한 배치를 넣어 둔다 */
-const newTemplate = (labelType: LabelType): LabelTemplate => ({
+/** 새 템플릿 기본값 — 종류별로 실무에서 바로 쓸 만한 배치를 넣어 둔다 (name 은 현재 언어로) */
+const newTemplate = (labelType: LabelType, name: string): LabelTemplate => ({
   id: '',
   user_ids: null,
-  name: labelType === 'care' ? '새 케어라벨' : '새 바코드 라벨',
+  name,
   description: null,
   // 기본은 성인(권장연령 없음). 키즈용은 기본정보 탭에서 대상을 바꿔 쓴다
   audiences: ['adult'],
@@ -124,6 +128,7 @@ interface Toast {
 }
 
 const LabelSettings: React.FC = () => {
+  const { t } = useTranslation();
   const data = useLabelSettingsData();
   const draftApi = useTemplateDraft();
   const { draft, dirty } = draftApi;
@@ -216,8 +221,8 @@ const LabelSettings: React.FC = () => {
   // ============================================================
   const confirmDiscard = useCallback(() => {
     if (!dirty) return true;
-    return window.confirm('저장하지 않은 변경사항이 있습니다. 버리고 이동할까요?');
-  }, [dirty]);
+    return window.confirm(t('labelSettings.confirm.discard'));
+  }, [dirty, t]);
 
   const pickTemplate = useCallback(
     (tpl: LabelTemplate) => {
@@ -233,11 +238,11 @@ const LabelSettings: React.FC = () => {
   const createTemplate = useCallback(
     (type: LabelType) => {
       if (!confirmDiscard()) return;
-      draftApi.load(newTemplate(type));
+      draftApi.load(newTemplate(type, t(`labelSettings.newName.${type}`)));
       setSelectedIds([]);
       requestAnimationFrame(fitToView);
     },
-    [confirmDiscard, draftApi, fitToView]
+    [confirmDiscard, draftApi, fitToView, t]
   );
 
   // ============================================================
@@ -339,11 +344,11 @@ const LabelSettings: React.FC = () => {
   const handleSave = useCallback(async () => {
     if (!draft) return;
     if (!draft.name.trim()) {
-      setToast({ msg: '템플릿 이름을 입력해주세요.', kind: 'err' });
+      setToast({ msg: t('labelSettings.toast.nameRequired'), kind: 'err' });
       return;
     }
     if (!draft.audiences || draft.audiences.length === 0) {
-      setToast({ msg: '대상(성인/키즈)을 하나 이상 선택해주세요.', kind: 'err' });
+      setToast({ msg: t('labelSettings.toast.audienceRequired'), kind: 'err' });
       return;
     }
     setSaving(true);
@@ -373,25 +378,25 @@ const LabelSettings: React.FC = () => {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || '저장 실패');
+      if (!json.success) throw new Error(json.error || t('labelSettings.toast.saveFailed'));
 
       draftApi.markSaved(json.data);
       await data.reloadTemplates();
-      setToast({ msg: '저장되었습니다.', kind: 'ok' });
+      setToast({ msg: t('labelSettings.toast.saved'), kind: 'ok' });
     } catch (err) {
       console.error('템플릿 저장 오류:', err);
       setToast({
-        msg: err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.',
+        msg: err instanceof Error ? err.message : t('labelSettings.toast.saveError'),
         kind: 'err',
       });
     } finally {
       setSaving(false);
     }
-  }, [draft, draftApi, data]);
+  }, [draft, draftApi, data, t]);
 
   const handleDelete = useCallback(async () => {
     if (!draft?.id) return;
-    if (!window.confirm(`"${draft.name}" 템플릿을 삭제할까요?`)) return;
+    if (!window.confirm(t('labelSettings.confirm.delete', { name: draft.name }))) return;
     try {
       const res = await fetch(`/api/label-templates?id=${draft.id}`, { method: 'DELETE' });
       const json = await res.json();
@@ -399,23 +404,26 @@ const LabelSettings: React.FC = () => {
       draftApi.load(null);
       setSelectedIds([]);
       await data.reloadTemplates();
-      setToast({ msg: '삭제되었습니다.', kind: 'ok' });
+      setToast({ msg: t('labelSettings.toast.deleted'), kind: 'ok' });
     } catch (err) {
       console.error('템플릿 삭제 오류:', err);
-      setToast({ msg: '삭제 중 오류가 발생했습니다.', kind: 'err' });
+      setToast({ msg: t('labelSettings.toast.deleteError'), kind: 'err' });
     }
-  }, [draft, draftApi, data]);
+  }, [draft, draftApi, data, t]);
 
   const handleTestPrint = useCallback(async () => {
     if (!draft) return;
     if (!draft.id) {
-      setToast({ msg: '먼저 저장해야 이 PC 의 프린터를 지정할 수 있습니다.', kind: 'err' });
+      setToast({ msg: t('labelSettings.toast.saveBeforePrinter'), kind: 'err' });
       return;
     }
     const printer = getLocalPrinter(draft.id);
     if (!printer) {
       setToast({
-        msg: `"${draft.name}" 템플릿에 이 PC 의 프린터가 지정되지 않았습니다. ${LOCAL_PRINTER_HELP}`,
+        msg: t('labelSettings.toast.printerNotSet', {
+          name: draft.name,
+          help: t('labelSettings.printer.help'),
+        }),
         kind: 'err',
       });
       return;
@@ -424,8 +432,12 @@ const LabelSettings: React.FC = () => {
     const info = data.qzPrinters.find((p) => p.name === printer);
     if (info?.dpi && info.dpi !== draft.dpi) {
       const go = window.confirm(
-        `프린터 "${printer}" 는 ${info.dpi}dpi 인데 템플릿은 ${draft.dpi}dpi 입니다.\n` +
-          `라벨이 ${info.dpi > draft.dpi ? '작게' : '크게'} 찍힙니다. 그래도 출력할까요?`
+        t('labelSettings.confirm.dpiMismatch', {
+          printer,
+          printerDpi: info.dpi,
+          tplDpi: draft.dpi,
+          dir: t(info.dpi > draft.dpi ? 'labelSettings.confirm.dpiSmaller' : 'labelSettings.confirm.dpiLarger'),
+        })
       );
       if (!go) return;
     }
@@ -433,15 +445,16 @@ const LabelSettings: React.FC = () => {
       await preloadTemplateAssets(draft); // 이미지(세탁 기호)가 빠진 채 나가지 않게
       const bytes = buildTsplJob(draft, sampleData, 1);
       await printRaw(printer, bytes);
-      setToast({ msg: '테스트 라벨을 전송했습니다.', kind: 'ok' });
+      setToast({ msg: t('labelSettings.toast.testSent'), kind: 'ok' });
     } catch (err) {
       console.error('테스트 출력 오류:', err);
+      const notRunning = t('labelSettings.printer.notRunning');
       setToast({
-        msg: err instanceof Error ? `${QZ_NOT_RUNNING} (${err.message})` : QZ_NOT_RUNNING,
+        msg: err instanceof Error ? `${notRunning} (${err.message})` : notRunning,
         kind: 'err',
       });
     }
-  }, [draft, data, sampleData]);
+  }, [draft, data, sampleData, t]);
 
   // ============================================================
   // 단축키
@@ -528,17 +541,28 @@ const LabelSettings: React.FC = () => {
     handleRemoveSelected,
   ]);
 
-  // ── 요소별 경고 (규격 위반 · 글꼴 없음 · 라벨 밖) ──
+  // ── 요소별 경고 (규격 위반 · 글꼴 없음 · 라벨 밖) — 키를 현재 언어로 번역해 둔다 ──
   const warnings = useMemo(() => {
     const map = new Map<string, string | null>();
     if (!draft) return map;
     for (const el of draft.layout) {
-      map.set(el.id, elementWarning(el, draft, sampleData));
+      const w = elementWarning(el, draft, sampleData);
+      if (!w) {
+        map.set(el.id, null);
+        continue;
+      }
+      // clipped 는 "…pt 까지 줄였는데도" 를 먼저 번역해서 {{shrunk}} 로 끼운다
+      const params = { ...(w.params ?? {}) };
+      if (w.key.endsWith('.clipped')) {
+        params.shrunk =
+          params.shrunkPt != null ? t('labelSettings.warn.clippedShrunk', { pt: params.shrunkPt }) : '';
+      }
+      map.set(el.id, t(w.key, params));
     }
     return map;
     // rasterVersion: 웹폰트가 늦게 도착하면 "글꼴 없음" 경고를 다시 판정해야 한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, sampleData, rasterVersion]);
+  }, [draft, sampleData, rasterVersion, t]);
 
   // ============================================================
   // 렌더링
@@ -551,7 +575,7 @@ const LabelSettings: React.FC = () => {
         <main className="ls-content">
           {/* ── 헤더 ── */}
           <header className="ls-header">
-            <h1 className="ls-title">라벨 설정</h1>
+            <h1 className="ls-title">{t('labelSettings.title')}</h1>
 
             <div className="ls-header-right">
               {/* 새 인쇄 PC 설정용 — QZ Tray 에 신뢰시킬 인증서(override.crt).
@@ -560,33 +584,33 @@ const LabelSettings: React.FC = () => {
                 className="ls-btn-ghost ls-cert-link"
                 href="/api/qz/cert?download=1"
                 download="override.crt"
-                title="QZ Tray 인증서(override.crt) 내려받기 — qz-tray.exe 와 같은 폴더에 넣고 QZ Tray 재시작"
+                title={t('labelSettings.header.certTitle')}
               >
-                ⬇ 인증서 (override.crt)
+                {t('labelSettings.header.cert')}
               </a>
               <span
                 className={`ls-qz-badge ${data.qzOk ? 'ok' : data.qzOk === false ? 'off' : ''}`}
               >
                 {data.qzOk === null
-                  ? 'QZ 확인 중…'
+                  ? t('labelSettings.header.qzChecking')
                   : data.qzOk
-                    ? 'QZ Tray 연결됨'
-                    : 'QZ Tray 미실행'}
+                    ? t('labelSettings.header.qzOk')
+                    : t('labelSettings.header.qzOff')}
               </span>
 
               {draft && (
                 <>
-                  {dirty && <span className="ls-dirty">● 저장 안 됨</span>}
+                  {dirty && <span className="ls-dirty">{t('labelSettings.header.dirty')}</span>}
                   <button className="ls-btn" onClick={handleTestPrint} disabled={!data.qzOk}>
-                    테스트 출력
+                    {t('labelSettings.header.testPrint')}
                   </button>
                   {draft.id && (
                     <button className="ls-btn-danger" onClick={handleDelete}>
-                      삭제
+                      {t('labelSettings.header.delete')}
                     </button>
                   )}
                   <button className="ls-btn-primary" onClick={handleSave} disabled={saving}>
-                    {saving ? '저장 중…' : '저장 (Ctrl+S)'}
+                    {saving ? t('labelSettings.header.saving') : t('labelSettings.header.save')}
                   </button>
                 </>
               )}
@@ -634,9 +658,7 @@ const LabelSettings: React.FC = () => {
             {/* 가운데 — 캔버스 */}
             <div className="ls-col ls-col-center">
               {!draft ? (
-                <div className="ls-empty ls-empty-lg">
-                  왼쪽에서 템플릿을 선택하거나 새로 만드세요.
-                </div>
+                <div className="ls-empty ls-empty-lg">{t('labelSettings.empty.pickTemplate')}</div>
               ) : (
                 <>
                   <CanvasToolbar
@@ -670,8 +692,7 @@ const LabelSettings: React.FC = () => {
                   </div>
 
                   <div className="ls-canvas-foot">
-                    미리보기는 실제 인쇄와 같은 방식으로 그립니다 ({draft.dpi}dpi). 빈 곳을 끌면
-                    여러 개를 한 번에 선택하고, Shift/Ctrl+클릭으로 선택을 더하거나 뺍니다.
+                    {t('labelSettings.canvasFoot', { dpi: draft.dpi })}
                   </div>
                 </>
               )}
@@ -680,20 +701,19 @@ const LabelSettings: React.FC = () => {
             {/* 오른쪽 — 선택 요소 속성 */}
             <div className="ls-col ls-col-right">
               {!draft ? (
-                <div className="ls-panel ls-empty">템플릿을 먼저 선택하세요.</div>
+                <div className="ls-panel ls-empty">{t('labelSettings.empty.pickTemplateFirst')}</div>
               ) : selectedIds.length > 1 ? (
                 <div className="ls-panel">
-                  <div className="ls-panel-title">{selectedIds.length}개 선택됨</div>
-                  <div className="ls-hint">
-                    여러 요소를 함께 이동·삭제·복제할 수 있습니다. 속성을 편집하려면 하나만
-                    선택하세요.
+                  <div className="ls-panel-title">
+                    {t('labelSettings.multi.selected', { n: selectedIds.length })}
                   </div>
+                  <div className="ls-hint">{t('labelSettings.multi.hint')}</div>
                   <div className="ls-multi-actions">
                     <button className="ls-btn-sm" onClick={handleDuplicateSelected}>
-                      복제 (Ctrl+D)
+                      {t('labelSettings.multi.duplicate')}
                     </button>
                     <button className="ls-btn-sm ls-btn-danger-sm" onClick={handleRemoveSelected}>
-                      삭제 (Delete)
+                      {t('labelSettings.multi.delete')}
                     </button>
                   </div>
                 </div>
@@ -708,9 +728,7 @@ const LabelSettings: React.FC = () => {
                   }
                 />
               ) : (
-                <div className="ls-panel ls-empty">
-                  캔버스나 목록에서 요소를 선택하면 속성이 여기 표시됩니다.
-                </div>
+                <div className="ls-panel ls-empty">{t('labelSettings.empty.selectElement')}</div>
               )}
             </div>
           </div>

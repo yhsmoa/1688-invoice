@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { audiencesLabel, type LabelTemplate } from '../../../lib/labelTypes';
-import { QZ_NOT_RUNNING, type PrinterInfo } from '../../../lib/qzTray';
+import { useTranslation } from 'react-i18next';
+import type { LabelTemplate } from '../../../lib/labelTypes';
+import type { PrinterInfo } from '../../../lib/qzTray';
 import { getAllLocalPrinters, setLocalPrinter } from '../../../lib/localPrinterMap';
+import { useAudiencesLabel } from './TemplateListPanel';
 
 // ============================================================
 // 프린터 — 템플릿 보드(TemplateBoard)의 "프린터" 탭 내용.
@@ -28,6 +30,8 @@ interface Props {
 }
 
 const LocalPrinterPanel: React.FC<Props> = ({ templates, qzOk, qzPrinters, onRefreshQz }) => {
+  const { t } = useTranslation();
+  const audiencesLabel = useAudiencesLabel();
   const [map, setMap] = useState<Record<string, string>>({});
   const [flashId, setFlashId] = useState<string | null>(null);
 
@@ -38,8 +42,8 @@ const LocalPrinterPanel: React.FC<Props> = ({ templates, qzOk, qzPrinters, onRef
 
   useEffect(() => {
     if (!flashId) return;
-    const t = setTimeout(() => setFlashId(null), SAVED_FLASH_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setFlashId(null), SAVED_FLASH_MS);
+    return () => clearTimeout(timer);
   }, [flashId]);
 
   const handleChange = (templateId: string, printerName: string) => {
@@ -56,56 +60,60 @@ const LocalPrinterPanel: React.FC<Props> = ({ templates, qzOk, qzPrinters, onRef
   return (
     <>
       <div className="ls-panel-inline-title">
-        프린터 (이 PC 전용)
+        {t('labelSettings.printer.title')}
         <button className="ls-btn-ghost ls-btn-xs" onClick={onRefreshQz}>
-          프린터 다시 찾기
+          {t('labelSettings.printer.refresh')}
         </button>
       </div>
 
-      <div className="ls-hint ls-mb8">
-        여기서 고른 프린터는 <b>지금 이 PC</b>에만 저장됩니다. 같은 템플릿이라도 프린터가 설치된
-        PC 마다 여기서 한 번씩 지정해야 합니다. 자리 번호(PC-NO) 개념은 이제 안 씁니다.
-      </div>
+      <div className="ls-hint ls-mb8">{t('labelSettings.printer.hint')}</div>
 
       {templates.length === 0 ? (
-        <div className="ls-empty">템플릿이 없습니다. 템플릿 탭에서 먼저 만드세요.</div>
+        <div className="ls-empty">{t('labelSettings.printer.empty')}</div>
       ) : (
         <table className="ls-map-table">
           <thead>
             <tr>
-              <th>템플릿</th>
-              <th>이 PC 프린터</th>
+              <th>{t('labelSettings.printer.colTemplate')}</th>
+              <th>{t('labelSettings.printer.colPrinter')}</th>
             </tr>
           </thead>
           <tbody>
-            {templates.map((t) => {
-              const current = map[t.id] ?? '';
+            {templates.map((tpl) => {
+              const current = map[tpl.id] ?? '';
               const known = current ? qzPrinters.some((p) => p.name === current) : true;
               return (
-                <tr key={t.id}>
+                <tr key={tpl.id}>
                   <td>
-                    <div className="ls-map-tpl-name">{t.name}</div>
-                    {t.description && <div className="ls-map-tpl-desc">{t.description}</div>}
+                    <div className="ls-map-tpl-name">{tpl.name}</div>
+                    {tpl.description && <div className="ls-map-tpl-desc">{tpl.description}</div>}
                     <div className="ls-map-tpl-meta">
-                      {t.label_type === 'care' ? '케어' : '바코드'} · {audiencesLabel(t)} · {t.dpi}dpi
+                      {t(`labelSettings.typeShort.${tpl.label_type}`)} · {audiencesLabel(tpl)} ·{' '}
+                      {tpl.dpi}dpi
                     </div>
                   </td>
                   <td>
                     <select
                       value={current}
-                      onChange={(e) => handleChange(t.id, e.target.value)}
+                      onChange={(e) => handleChange(tpl.id, e.target.value)}
                       disabled={!qzOk}
                       className={!known ? 'is-missing' : ''}
                     >
-                      <option value="">(지정 안 함)</option>
+                      <option value="">{t('labelSettings.printer.none')}</option>
                       {qzPrinters.map((p) => (
                         <option key={p.name} value={p.name}>
                           {printerLabel(p)}
                         </option>
                       ))}
-                      {current && !known && <option value={current}>{current} (이 PC 에 없음)</option>}
+                      {current && !known && (
+                        <option value={current}>
+                          {t('labelSettings.printer.missingOnPc', { name: current })}
+                        </option>
+                      )}
                     </select>
-                    {flashId === t.id && <span className="ls-map-saved">저장됨(이 PC)</span>}
+                    {flashId === tpl.id && (
+                      <span className="ls-map-saved">{t('labelSettings.printer.savedFlash')}</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -115,28 +123,21 @@ const LocalPrinterPanel: React.FC<Props> = ({ templates, qzOk, qzPrinters, onRef
       )}
 
       <div className="ls-hint ls-mt8">
-        새 인쇄 PC 설정: QZ Tray 설치 →{' '}
+        {t('labelSettings.printer.setup1')}{' '}
         <a href="/api/qz/cert?download=1" download="override.crt">
-          override.crt 내려받기
+          {t('labelSettings.printer.setupLink')}
         </a>{' '}
-        → qz-tray.exe 와 같은 폴더에 넣고 QZ Tray 재시작 → 이 탭에서 템플릿마다 프린터 지정.
+        {t('labelSettings.printer.setup2')}
       </div>
 
       {qzOk === false && (
         <div className="ls-warn">
-          {QZ_NOT_RUNNING}
+          {t('labelSettings.printer.notRunning')}
           <br />
-          QZ Tray가 떠 있는데도 이 상태라면, 이전에 이 사이트를 <b>차단</b>했을 수 있습니다.
-          트레이 아이콘 → Advanced → Site Manager에서 localhost 항목을 지운 뒤 [프린터 다시 찾기]를
-          누르세요.
+          {t('labelSettings.printer.blockedHint')}
         </div>
       )}
-      {qzOk === null && (
-        <div className="ls-warn">
-          QZ Tray에 프린터 목록을 요청하는 중입니다. 오래 걸리면 QZ Tray의 <b>허용/차단 창</b>이
-          다른 창 뒤에 떠 있는지 확인하고 [허용]을 누르세요.
-        </div>
-      )}
+      {qzOk === null && <div className="ls-warn">{t('labelSettings.printer.waitingHint')}</div>}
     </>
   );
 };

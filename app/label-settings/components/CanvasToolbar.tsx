@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelElement } from '../../../lib/labelTypes';
 
 // ============================================================
@@ -8,33 +9,23 @@ import type { LabelElement } from '../../../lib/labelTypes';
 //
 // 저장/삭제/테스트출력 같은 "템플릿 전체" 동작은 페이지 상단 헤더에 있다.
 // 여기는 캔버스에서 손이 자주 가는 것만 둔다.
+// 문구는 전부 i18n (labelSettings.toolbar.*) — 중국인 작업자도 쓴다.
 // ============================================================
 
 export type AlignAction = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom';
 
-const ADD_BUTTONS: { type: LabelElement['type']; label: string }[] = [
-  { type: 'text', label: '텍스트' },
-  { type: 'barcode', label: '바코드' },
-  { type: 'qr', label: 'QR' },
-  { type: 'box', label: '박스' },
-  { type: 'line', label: '선' },
-  { type: 'image', label: '이미지·기호' },
+const ADD_TYPES: LabelElement['type'][] = ['text', 'barcode', 'qr', 'box', 'line', 'image'];
+
+const ALIGN_BUTTONS: { action: AlignAction; label: string }[] = [
+  { action: 'left', label: '⇤' },
+  { action: 'hcenter', label: '↔' },
+  { action: 'right', label: '⇥' },
+  { action: 'top', label: '⇑' },
+  { action: 'vcenter', label: '↕' },
+  { action: 'bottom', label: '⇓' },
 ];
 
-const ALIGN_BUTTONS: { action: AlignAction; label: string; title: string }[] = [
-  { action: 'left', label: '⇤', title: '라벨 왼쪽에 붙이기' },
-  { action: 'hcenter', label: '↔', title: '가로 가운데' },
-  { action: 'right', label: '⇥', title: '라벨 오른쪽에 붙이기' },
-  { action: 'top', label: '⇑', title: '라벨 위에 붙이기' },
-  { action: 'vcenter', label: '↕', title: '세로 가운데' },
-  { action: 'bottom', label: '⇓', title: '라벨 아래에 붙이기' },
-];
-
-const SNAP_OPTIONS = [
-  { value: 0, label: '자유' },
-  { value: 0.5, label: '0.5mm' },
-  { value: 1, label: '1mm' },
-];
+const SNAP_VALUES = [0, 0.5, 1];
 
 interface Props {
   onAdd: (type: LabelElement['type']) => void;
@@ -68,88 +59,102 @@ const CanvasToolbar: React.FC<Props> = ({
   onRedo,
   hasSelection,
   onAlign,
-}) => (
-  <div className="lc-toolbar">
-    {/* 요소 추가 */}
-    <div className="lc-tool-group">
-      {ADD_BUTTONS.map((b) => (
-        <button key={b.type} className="ls-btn-sm" onClick={() => onAdd(b.type)}>
-          + {b.label}
-        </button>
-      ))}
-    </div>
+}) => {
+  const { t } = useTranslation();
 
-    <span className="lc-sep" />
+  return (
+    <div className="lc-toolbar">
+      {/* 요소 추가 */}
+      <div className="lc-tool-group">
+        {ADD_TYPES.map((type) => (
+          <button key={type} className="ls-btn-sm" onClick={() => onAdd(type)}>
+            + {t(`labelSettings.toolbar.add.${type}`)}
+          </button>
+        ))}
+      </div>
 
-    {/* 정렬 */}
-    <div className="lc-tool-group">
-      {ALIGN_BUTTONS.map((b) => (
+      <span className="lc-sep" />
+
+      {/* 정렬 */}
+      <div className="lc-tool-group">
+        {ALIGN_BUTTONS.map((b) => (
+          <button
+            key={b.action}
+            className="ls-btn-icon"
+            title={t(`labelSettings.toolbar.align.${b.action}`)}
+            disabled={!hasSelection}
+            onClick={() => onAlign(b.action)}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="lc-sep" />
+
+      {/* 되돌리기 */}
+      <div className="lc-tool-group">
         <button
-          key={b.action}
           className="ls-btn-icon"
-          title={b.title}
-          disabled={!hasSelection}
-          onClick={() => onAlign(b.action)}
+          title={t('labelSettings.toolbar.undo')}
+          disabled={!canUndo}
+          onClick={onUndo}
         >
-          {b.label}
+          ↶
         </button>
-      ))}
+        <button
+          className="ls-btn-icon"
+          title={t('labelSettings.toolbar.redo')}
+          disabled={!canRedo}
+          onClick={onRedo}
+        >
+          ↷
+        </button>
+      </div>
+
+      <span className="lc-spacer" />
+
+      {/* 화면 배율 · 격자 · 스냅 */}
+      <div className="lc-tool-group">
+        <label className="lc-inline">
+          <input
+            type="checkbox"
+            checked={showGrid}
+            onChange={(e) => onShowGrid(e.target.checked)}
+          />
+          {t('labelSettings.toolbar.grid')}
+        </label>
+
+        <label className="lc-inline">
+          {t('labelSettings.toolbar.snap')}
+          <select value={snapMm} onChange={(e) => onSnapMm(Number(e.target.value))}>
+            {SNAP_VALUES.map((v) => (
+              <option key={v} value={v}>
+                {v === 0 ? t('labelSettings.toolbar.snapFree') : `${v}mm`}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="lc-inline lc-zoom">
+          {t('labelSettings.toolbar.zoom')}
+          <input
+            type="range"
+            min={3}
+            max={20}
+            step={0.5}
+            value={scale}
+            onChange={(e) => onScale(Number(e.target.value))}
+          />
+          <span className="lc-zoom-val">{scale.toFixed(1)}×</span>
+        </label>
+
+        <button className="ls-btn-sm" onClick={onFit}>
+          {t('labelSettings.toolbar.fit')}
+        </button>
+      </div>
     </div>
-
-    <span className="lc-sep" />
-
-    {/* 되돌리기 */}
-    <div className="lc-tool-group">
-      <button className="ls-btn-icon" title="되돌리기 (Ctrl+Z)" disabled={!canUndo} onClick={onUndo}>
-        ↶
-      </button>
-      <button className="ls-btn-icon" title="다시하기 (Ctrl+Y)" disabled={!canRedo} onClick={onRedo}>
-        ↷
-      </button>
-    </div>
-
-    <span className="lc-spacer" />
-
-    {/* 화면 배율 · 격자 · 스냅 */}
-    <div className="lc-tool-group">
-      <label className="lc-inline">
-        <input
-          type="checkbox"
-          checked={showGrid}
-          onChange={(e) => onShowGrid(e.target.checked)}
-        />
-        격자
-      </label>
-
-      <label className="lc-inline">
-        스냅
-        <select value={snapMm} onChange={(e) => onSnapMm(Number(e.target.value))}>
-          {SNAP_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="lc-inline lc-zoom">
-        확대
-        <input
-          type="range"
-          min={3}
-          max={20}
-          step={0.5}
-          value={scale}
-          onChange={(e) => onScale(Number(e.target.value))}
-        />
-        <span className="lc-zoom-val">{scale.toFixed(1)}×</span>
-      </label>
-
-      <button className="ls-btn-sm" onClick={onFit}>
-        화면 맞춤
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 export default CanvasToolbar;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelData, LabelTemplate } from '../../../lib/labelTypes';
 import { renderLabelCanvas } from '../../../lib/labelRender';
 import { useRasterVersion } from '../hooks/useRasterVersion';
@@ -30,6 +31,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
   scale,
   className,
 }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLCanvasElement>(null);
   // 이미지가 늦게 읽히면 다시 그린다
   const rasterVersion = useRasterVersion();
@@ -80,7 +82,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
       className={className}
       style={{ width: `${cssW}px`, height: `${cssH}px`, display: 'block' }}
       role="img"
-      aria-label={`라벨 미리보기 ${template.width_mm}×${template.height_mm}mm`}
+      aria-label={t('labelSettings.canvas.previewAria', { w: template.width_mm, h: template.height_mm })}
     />
   );
 };

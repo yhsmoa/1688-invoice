@@ -502,27 +502,34 @@ export const SYMBOLOGY_HINT: Record<Symbology, string> = {
   '93': '영문 대문자/숫자 — 미리보기는 Code128 로 근사',
 };
 
+/**
+ * 편집기 경고 — 문구가 아니라 i18n 키 + 치환값으로 돌려준다.
+ * 화면(LabelSettings)이 현재 언어로 t(key, params) 해서 보여준다.
+ */
+export interface LabelWarning {
+  key: string;
+  params?: Record<string, string | number>;
+}
+
+const WARN = 'labelSettings.warn.';
+
 /** 데이터가 이 심볼로지에 맞는지 검사 — 편집기 경고용 (맞으면 null) */
-export function validateBarcode(symbology: Symbology, text: string): string | null {
-  if (!text) return '내용이 비어 있습니다.';
+export function validateBarcode(symbology: Symbology, text: string): LabelWarning | null {
+  if (!text) return { key: `${WARN}emptyContent` };
   switch (symbology) {
     case 'EAN13':
-      return /^\d{12,13}$/.test(text) ? null : 'EAN13 은 숫자 12 또는 13자리여야 합니다.';
+      return /^\d{12,13}$/.test(text) ? null : { key: `${WARN}ean13` };
     case 'EAN8':
-      return /^\d{7,8}$/.test(text) ? null : 'EAN8 은 숫자 7 또는 8자리여야 합니다.';
+      return /^\d{7,8}$/.test(text) ? null : { key: `${WARN}ean8` };
     case 'UPCA':
-      return /^\d{11,12}$/.test(text) ? null : 'UPC-A 는 숫자 11 또는 12자리여야 합니다.';
+      return /^\d{11,12}$/.test(text) ? null : { key: `${WARN}upca` };
     case '39':
-      return /^[0-9A-Z\-. $/+%]*$/.test(text)
-        ? null
-        : 'Code39 는 대문자·숫자·일부 기호만 가능합니다.';
+      return /^[0-9A-Z\-. $/+%]*$/.test(text) ? null : { key: `${WARN}code39` };
     case '93':
-      return /^[0-9A-Z\-. $/+%]*$/.test(text)
-        ? null
-        : 'Code93 은 대문자·숫자·일부 기호만 가능합니다.';
+      return /^[0-9A-Z\-. $/+%]*$/.test(text) ? null : { key: `${WARN}code93` };
     default:
       // eslint-disable-next-line no-control-regex
-      return /^[\x00-\x7F]*$/.test(text) ? null : 'Code128 은 ASCII 문자만 가능합니다.';
+      return /^[\x00-\x7F]*$/.test(text) ? null : { key: `${WARN}code128` };
   }
 }
 
@@ -615,9 +622,10 @@ export function rasterBarcode(
         lineColor: '#000000',
       });
     } catch (err) {
+      // 규격 위반이면 i18n 키, 아니면 라이브러리 메시지 그대로 (elementWarning 이 구분한다)
       const msg =
-        validateBarcode(el.symbology, text) ??
-        (err instanceof Error ? err.message : '바코드를 생성할 수 없습니다.');
+        validateBarcode(el.symbology, text)?.key ??
+        (err instanceof Error ? err.message : `${WARN}barcodeFailed`);
       return placeholderRaster(mmToDots(20, dpi), hDots, msg);
     }
 
@@ -680,7 +688,7 @@ export function rasterQr(el: QrElement, tpl: LabelTemplate, data: LabelData): Ra
       return placeholderRaster(
         cell * 21,
         cell * 21,
-        err instanceof Error ? err.message : 'QR 을 생성할 수 없습니다.'
+        err instanceof Error ? err.message : `${WARN}qrFailed`
       );
     }
 
@@ -830,10 +838,11 @@ export function rasterImage(el: ImageElement, tpl: LabelTemplate): Raster | null
   const h = Math.max(1, mmToDots(el.h_mm, dpi));
   const threshold = Math.min(255, Math.max(0, el.threshold ?? 128));
 
-  if (!src) return placeholderRaster(w, h, '이미지가 지정되지 않았습니다.');
+  // 이미지 오류는 i18n 키로 남긴다 (elementWarning 이 키인지 보고 그대로 넘긴다)
+  if (!src) return placeholderRaster(w, h, `${WARN}imageMissing`);
 
   const entry = getImage(src);
-  if (entry.failed) return placeholderRaster(w, h, '이미지를 읽을 수 없습니다.');
+  if (entry.failed) return placeholderRaster(w, h, `${WARN}imageFailed`);
   if (!entry.ready) return null;
 
   const key = ['img', dpi, shortHash(src), w, h, threshold, el.rotate ?? 0].join('|');
@@ -942,34 +951,48 @@ export function measureElement(
   };
 }
 
-/** 요소의 렌더 경고 (바코드 규격 위반 등) — 없으면 null */
+/**
+ * 요소의 렌더 경고 (바코드 규격 위반 등) — 없으면 null.
+ * i18n 키로 돌려주므로 화면에서 t(key, params) 로 번역한다.
+ *   clipped 의 {{shrunk}} 는 중첩 문구라 호출 측이 먼저 clippedShrunk 를 번역해 넣어야 한다
+ *   → params.shrunkPt 를 같이 준다 (없으면 축소 없이 잘린 것).
+ */
 export function elementWarning(
   el: LabelElement,
   tpl: LabelTemplate,
   data: LabelData
-): string | null {
+): LabelWarning | null {
   if (el.type === 'barcode') {
     const text = resolveElementText(el, data);
     const invalid = validateBarcode(el.symbology, text);
     if (invalid) return invalid;
   }
   if (el.type === 'text' && el.font_family && !isFontAvailable(el.font_family)) {
-    return `이 PC 에 "${el.font_family}" 글꼴이 없어 다른 글꼴로 인쇄됩니다.`;
+    return { key: `${WARN}fontMissing`, params: { font: el.font_family } };
   }
   if (el.type === 'image') {
     const r = rasterImage(el, tpl);
-    if (r?.error) return r.error;
+    if (r?.error) {
+      return r.error.startsWith(WARN)
+        ? { key: r.error }
+        : { key: `${WARN}raw`, params: { msg: r.error } };
+    }
   }
   if (el.type === 'text' && isTextBox(el)) {
     const fit = rasterText(el, tpl, data)?.text;
     if (fit && fit.clippedLines > 0) {
-      const shrunk = fit.usedPt < el.size_pt ? ` (${fit.usedPt}pt 까지 줄였는데도)` : '';
-      return `이 샘플 기준으로 ${fit.clippedLines}줄이 잘립니다${shrunk}. 영역을 키우거나 글자 크기를 줄이세요.`;
+      return {
+        key: `${WARN}clipped`,
+        params: {
+          lines: fit.clippedLines,
+          ...(fit.usedPt < el.size_pt ? { shrunkPt: fit.usedPt } : {}),
+        },
+      };
     }
   }
   const box = measureElement(el, tpl, data);
   if (box.x_mm + box.w_mm > tpl.width_mm + 0.05 || box.y_mm + box.h_mm > tpl.height_mm + 0.05) {
-    return '요소가 라벨 밖으로 넘어갑니다. 이 부분은 인쇄되지 않습니다.';
+    return { key: `${WARN}outOfLabel` };
   }
   return null;
 }

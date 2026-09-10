@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import LabelPreview from './LabelPreview';
 import type { LabelData, LabelElement, LabelTemplate } from '../../../lib/labelTypes';
 import { isTextBox } from '../../../lib/labelTypes';
@@ -116,6 +117,7 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
   onSelect,
   onElementsChange,
 }) => {
+  const { t } = useTranslation();
   const W = template.width_mm;
   const H = template.height_mm;
   const cssW = Math.max(1, W * scale);
@@ -515,7 +517,7 @@ const LabelCanvas: React.FC<LabelCanvasProps> = ({
                     fill="#ef4444"
                     pointerEvents="none"
                   >
-                    <title>이 샘플로는 글이 잘립니다</title>
+                    <title>{t('labelSettings.canvas.clippedTitle')}</title>
                   </path>
                 )}
               </g>

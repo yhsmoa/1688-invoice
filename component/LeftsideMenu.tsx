@@ -376,7 +376,7 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <Link href="/label-settings" className="menu-link" onClick={(e) => handleNavigation(e, '/label-settings')}>
               <span className="menu-icon">🏷️</span>
-              <span className="menu-text">라벨 설정</span>
+              <span className="menu-text">{t('menu.labelSettings')}</span>
             </Link>
           </li>
         </ul>

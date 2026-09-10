@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  audiencesLabel,
+  LABEL_AUDIENCES,
   isSharedTemplate,
+  templateAudiences,
   type LabelTemplate,
   type LabelType,
 } from '../../../lib/labelTypes';
@@ -13,12 +15,22 @@ import { userLabel, type FtUser } from '../hooks/useLabelSettingsData';
 // 템플릿 목록 — 템플릿 보드(TemplateBoard)의 "템플릿" 탭 내용.
 //   종류/사용자로 걸러서 고르고, 여기서 새 템플릿을 만든다.
 //   카드 테두리·탭 전환은 TemplateBoard 가 담당하므로 여기는 내용만 그린다.
+//   종류·대상 이름은 i18n (labelSettings.types / audience) 로 그린다.
 // ============================================================
 
-export const LABEL_TYPES: { key: LabelType; label: string }[] = [
-  { key: 'barcode', label: '바코드 감열지' },
-  { key: 'care', label: '케어라벨' },
-];
+/** 라벨 종류 키 — 이름은 t(`labelSettings.types.${key}`) */
+export const LABEL_TYPE_KEYS: LabelType[] = ['barcode', 'care'];
+
+/** 대상 표기 "성인·키즈" 를 현재 언어로 */
+export function useAudiencesLabel() {
+  const { t } = useTranslation();
+  return (tpl: Pick<LabelTemplate, 'audiences'>) => {
+    const set = templateAudiences(tpl);
+    return LABEL_AUDIENCES.filter((a) => set.includes(a.key))
+      .map((a) => t(`labelSettings.audience.${a.key}`))
+      .join('·');
+  };
+}
 
 interface Props {
   templates: LabelTemplate[];
@@ -45,27 +57,40 @@ const TemplateListPanel: React.FC<Props> = ({
   onPick,
   onCreate,
 }) => {
-  const visible = templates.filter((t) => {
-    if (filterType && t.label_type !== filterType) return false;
-    if (filterUserId === '__common__') return isSharedTemplate(t);
-    if (filterUserId) return !!t.user_ids?.includes(filterUserId);
+  const { t } = useTranslation();
+  const audiencesLabel = useAudiencesLabel();
+
+  const visible = templates.filter((tpl) => {
+    if (filterType && tpl.label_type !== filterType) return false;
+    if (filterUserId === '__common__') return isSharedTemplate(tpl);
+    if (filterUserId) return !!tpl.user_ids?.includes(filterUserId);
     return true;
   });
+
+  /** 메타 줄의 사업자 표기: 공용 / 사용자명 / N명 전용 */
+  const ownerLabel = (tpl: LabelTemplate) => {
+    if (isSharedTemplate(tpl)) return t('labelSettings.list.shared');
+    if (tpl.user_ids!.length === 1) {
+      const u = users.find((x) => x.id === tpl.user_ids![0]);
+      return (u && userLabel(u)) || t('labelSettings.list.assignedUser');
+    }
+    return t('labelSettings.list.nUsers', { n: tpl.user_ids!.length });
+  };
 
   return (
     <>
       <div className="ls-row-2">
         <select value={filterType} onChange={(e) => onFilterType(e.target.value as LabelType | '')}>
-          <option value="">전체 종류</option>
-          {LABEL_TYPES.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.label}
+          <option value="">{t('labelSettings.list.allTypes')}</option>
+          {LABEL_TYPE_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {t(`labelSettings.types.${key}`)}
             </option>
           ))}
         </select>
         <select value={filterUserId} onChange={(e) => onFilterUser(e.target.value)}>
-          <option value="">전체 사용자</option>
-          <option value="__common__">공용</option>
+          <option value="">{t('labelSettings.list.allUsers')}</option>
+          <option value="__common__">{t('labelSettings.list.shared')}</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
               {userLabel(u)}
@@ -76,41 +101,38 @@ const TemplateListPanel: React.FC<Props> = ({
 
       <div className="ls-row-2 ls-mt8">
         <button className="ls-btn-sm" onClick={() => onCreate('barcode')}>
-          + 바코드
+          {t('labelSettings.list.newBarcode')}
         </button>
         <button className="ls-btn-sm" onClick={() => onCreate('care')}>
-          + 케어라벨
+          {t('labelSettings.list.newCare')}
         </button>
       </div>
 
       <div className="ls-list-items">
         {loading ? (
-          <div className="ls-empty">불러오는 중…</div>
+          <div className="ls-empty">{t('labelSettings.list.loading')}</div>
         ) : visible.length === 0 ? (
-          <div className="ls-empty">템플릿이 없습니다. 위 버튼으로 새로 만드세요.</div>
+          <div className="ls-empty">{t('labelSettings.list.empty')}</div>
         ) : (
-          visible.map((t) => (
+          visible.map((tpl) => (
             <button
-              key={t.id}
-              className={`ls-list-item ${activeId === t.id ? 'active' : ''}`}
-              onClick={() => onPick(t)}
+              key={tpl.id}
+              className={`ls-list-item ${activeId === tpl.id ? 'active' : ''}`}
+              onClick={() => onPick(tpl)}
             >
               <span className="ls-item-name">
-                {t.name}
-                {t.is_default && <span className="ls-default-badge">기본</span>}
+                {tpl.name}
+                {tpl.is_default && (
+                  <span className="ls-default-badge">{t('labelSettings.list.default')}</span>
+                )}
               </span>
               {/* 두 번째 줄 — 작업자용 설명(중국어). 없으면 비워 둔다 */}
-              <span className={`ls-item-desc ${t.description ? '' : 'is-empty'}`}>
-                {t.description || '설명 없음'}
+              <span className={`ls-item-desc ${tpl.description ? '' : 'is-empty'}`}>
+                {tpl.description || t('labelSettings.list.noDescription')}
               </span>
               <span className="ls-item-meta">
-                {t.label_type === 'care' ? '케어' : '바코드'} · {audiencesLabel(t)} ·{' '}
-                {t.width_mm}×{t.height_mm}mm · {t.dpi}dpi ·{' '}
-                {isSharedTemplate(t)
-                  ? '공용'
-                  : t.user_ids!.length === 1
-                    ? userLabel(users.find((u) => u.id === t.user_ids![0]) ?? ({} as FtUser)) || '지정 사용자'
-                    : `${t.user_ids!.length}명 전용`}
+                {t(`labelSettings.typeShort.${tpl.label_type}`)} · {audiencesLabel(tpl)} ·{' '}
+                {tpl.width_mm}×{tpl.height_mm}mm · {tpl.dpi}dpi · {ownerLabel(tpl)}
               </span>
             </button>
           ))

@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   PRODUCT_FIELDS,
   ACCOUNT_FIELDS,
   LABEL_FONTS,
   DEFAULT_FONT,
-  ELEMENT_TYPE_LABEL,
   DEFAULT_LINE_GAP,
   DEFAULT_MIN_PT,
   isBindable,
@@ -21,12 +21,7 @@ import {
   type TextVAlign,
   type TextOverflow,
 } from '../../../lib/labelTypes';
-import {
-  measureElement,
-  rasterElement,
-  SYMBOLOGY_HINT,
-  isFontAvailable,
-} from '../../../lib/labelRender';
+import { measureElement, rasterElement, isFontAvailable } from '../../../lib/labelRender';
 import { CARE_SYMBOLS } from '../../../lib/careSymbols';
 import type { ElementPatch } from '../hooks/useTemplateDraft';
 
@@ -40,20 +35,23 @@ import type { ElementPatch } from '../hooks/useTemplateDraft';
 //
 // 숫자 입력은 같은 항목을 연속으로 만지면 되돌리기 한 단계로 합쳐진다
 // (onPatch 의 key). 그래서 key 를 항목마다 구분해서 넘긴다.
+// 모든 문구는 i18n (labelSettings.props.*) — 필드·글꼴·기호 이름은 key 로 찾는다.
 // ============================================================
 
 const ROTATIONS: Rotation[] = [0, 90, 180, 270];
-const ALIGNS: { key: TextAlign; label: string }[] = [
-  { key: 'left', label: '왼쪽' },
-  { key: 'center', label: '가운데' },
-  { key: 'right', label: '오른쪽' },
+const ALIGN_KEYS: { key: TextAlign; i18n: string }[] = [
+  { key: 'left', i18n: 'alignLeft' },
+  { key: 'center', i18n: 'alignCenter' },
+  { key: 'right', i18n: 'alignRight' },
 ];
 const SYMBOLOGIES: Symbology[] = ['128', '128M', 'EAN13', 'EAN8', 'UPCA', '39', '93'];
+const ECC_LEVELS = ['L', 'M', 'Q', 'H'] as const;
 
 interface Props {
   el: LabelElement;
   template: LabelTemplate;
   data: LabelData;
+  /** 이미 번역된 경고 문구 */
   warning: string | null;
   onPatch: (id: string, patch: ElementPatch, opts?: { key?: string }) => void;
 }
@@ -117,6 +115,11 @@ const Check: React.FC<{
 
 // ============================================================
 const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPatch }) => {
+  const { t } = useTranslation();
+  const P = (key: string, params?: Record<string, unknown>) => t(`labelSettings.props.${key}`, params);
+  const fieldName = (key: string, fallback: string) =>
+    t(`labelSettings.fields.${key}`, { defaultValue: fallback });
+
   const textRef = useRef<HTMLTextAreaElement>(null);
   const patch = (p: ElementPatch, key?: string) => onPatch(el.id, p, { key });
 
@@ -147,10 +150,26 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
     });
   };
 
+  const alignSelect = (
+    <label className="ls-field">
+      <span>{P('align')}</span>
+      <select
+        value={(el as { align?: TextAlign }).align ?? 'left'}
+        onChange={(e) => patch({ align: e.target.value as TextAlign })}
+      >
+        {ALIGN_KEYS.map((a) => (
+          <option key={a.key} value={a.key}>
+            {P(a.i18n)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
     <section className="ls-panel ls-props-panel">
       <div className="ls-panel-title">
-        {ELEMENT_TYPE_LABEL[el.type]} 속성
+        {P('title', { type: t(`labelSettings.elType.${el.type}`) })}
         <span className="ls-size-readout">
           {box.w_mm.toFixed(1)} × {box.h_mm.toFixed(1)} mm
         </span>
@@ -159,10 +178,10 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {warning && <div className="ls-warn ls-warn-sm">{warning}</div>}
 
       <label className="ls-field">
-        <span>요소 이름 (목록 표시용)</span>
+        <span>{P('name')}</span>
         <input
           value={el.name ?? ''}
-          placeholder="비우면 내용으로 표시"
+          placeholder={P('namePh')}
           onChange={(e) => patch({ name: e.target.value || undefined }, `el:${el.id}:name`)}
         />
       </label>
@@ -172,41 +191,41 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ============================================ */}
       {bindable && (
         <>
-          <div className="ls-sub-title">내용</div>
+          <div className="ls-sub-title">{P('content')}</div>
 
           <div className="ls-seg">
             <button
               className={mode === 'field' ? 'active' : ''}
               onClick={() => patch({ field: 'item_name' })}
             >
-              데이터 필드
+              {P('fieldMode')}
             </button>
             <button
               className={mode === 'text' ? 'active' : ''}
               onClick={() => patch({ field: undefined, text: el.text ?? '' })}
             >
-              직접 입력
+              {P('textMode')}
             </button>
           </div>
 
           {mode === 'field' ? (
             <label className="ls-field">
-              <span>바인딩 필드</span>
+              <span>{P('bindField')}</span>
               <select
                 value={el.field ?? ''}
                 onChange={(e) => patch({ field: e.target.value })}
               >
-                <optgroup label="상품 데이터">
+                <optgroup label={P('groupProduct')}>
                   {PRODUCT_FIELDS.map((f) => (
                     <option key={f.key} value={f.key}>
-                      {f.label}
+                      {fieldName(f.key, f.label)}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="계정 정보 (선택된 사업자)">
+                <optgroup label={P('groupAccount')}>
                   {ACCOUNT_FIELDS.map((f) => (
                     <option key={f.key} value={f.key}>
-                      {f.label}
+                      {fieldName(f.key, f.label)}
                     </option>
                   ))}
                 </optgroup>
@@ -215,18 +234,18 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
           ) : (
             <>
               <label className="ls-field">
-                <span>문구 — {'{필드}'} 를 넣으면 실제 값으로 바뀝니다</span>
+                <span>{P('text')}</span>
                 <textarea
                   ref={textRef}
                   rows={el.type === 'text' ? 3 : 2}
                   value={el.text ?? ''}
-                  placeholder={'예) 수량 {qty}개 / MADE IN CHINA'}
+                  placeholder={P('textPh')}
                   onChange={(e) => patch({ text: e.target.value }, `el:${el.id}:text`)}
                 />
               </label>
 
               <label className="ls-field">
-                <span>필드 삽입</span>
+                <span>{P('insertField')}</span>
                 <select
                   value=""
                   onChange={(e) => {
@@ -234,18 +253,18 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                     e.target.value = '';
                   }}
                 >
-                  <option value="">＋ 필드 고르기…</option>
-                  <optgroup label="상품 데이터">
+                  <option value="">{P('pickField')}</option>
+                  <optgroup label={P('groupProduct')}>
                     {PRODUCT_FIELDS.map((f) => (
                       <option key={f.key} value={f.key}>
-                        {f.label} — {`{${f.key}}`}
+                        {fieldName(f.key, f.label)} — {`{${f.key}}`}
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="계정 정보">
+                  <optgroup label={P('groupAccountShort')}>
                     {ACCOUNT_FIELDS.map((f) => (
                       <option key={f.key} value={f.key}>
-                        {f.label} — {`{${f.key}}`}
+                        {fieldName(f.key, f.label)} — {`{${f.key}}`}
                       </option>
                     ))}
                   </optgroup>
@@ -253,8 +272,8 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               </label>
 
               <div className="ls-resolved">
-                <span>출력 결과</span>
-                <code>{resolveElementText(el, data) || '(비어 있음)'}</code>
+                <span>{P('resolved')}</span>
+                <code>{resolveElementText(el, data) || P('emptyValue')}</code>
               </div>
             </>
           )}
@@ -264,7 +283,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ============================================ */}
       {/* 2) 위치                                      */}
       {/* ============================================ */}
-      <div className="ls-sub-title">위치</div>
+      <div className="ls-sub-title">{P('position')}</div>
       <div className="ls-grid-2">
         <Num
           label="X (mm)"
@@ -279,7 +298,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
           onChange={(v) => patch({ y_mm: v ?? 0 }, `el:${el.id}:y`)}
         />
         <label className="ls-field">
-          <span>회전</span>
+          <span>{P('rotate')}</span>
           <select
             value={el.rotate ?? 0}
             onChange={(e) => patch({ rotate: Number(e.target.value) as Rotation })}
@@ -293,12 +312,12 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
         </label>
         <div className="ls-field ls-inline-checks">
           <Check
-            label="잠금"
+            label={P('locked')}
             checked={!!el.locked}
             onChange={(v) => patch({ locked: v || undefined })}
           />
           <Check
-            label="숨김"
+            label={P('hidden')}
             checked={!!el.hidden}
             onChange={(v) => patch({ hidden: v || undefined })}
           />
@@ -310,13 +329,13 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ============================================ */}
       {el.type === 'text' && (
         <>
-          <div className="ls-sub-title">글자</div>
+          <div className="ls-sub-title">{P('textTitle')}</div>
           <div className="ls-grid-2">
             <label className="ls-field ls-col-2">
               <span>
-                글꼴
+                {P('font')}
                 {el.font_family && !isFontAvailable(el.font_family) && (
-                  <em className="ls-font-missing"> · 이 PC 에 없음</em>
+                  <em className="ls-font-missing">{P('fontMissing')}</em>
                 )}
               </span>
               <select
@@ -325,55 +344,43 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               >
                 {LABEL_FONTS.map((f) => (
                   <option key={f.key} value={f.key}>
-                    {f.label}
-                    {isFontAvailable(f.key) ? '' : ' (미설치)'}
+                    {t(`labelSettings.fonts.${f.key}`, { defaultValue: f.label })}
+                    {isFontAvailable(f.key) ? '' : P('notInstalled')}
                   </option>
                 ))}
               </select>
             </label>
 
             <Num
-              label="크기 (pt)"
+              label={P('size')}
               value={el.size_pt}
               step={0.5}
               min={2}
               onChange={(v) => patch({ size_pt: v ?? 8 }, `el:${el.id}:size`)}
             />
 
-            <label className="ls-field">
-              <span>정렬</span>
-              <select
-                value={el.align ?? 'left'}
-                onChange={(e) => patch({ align: e.target.value as TextAlign })}
-              >
-                {ALIGNS.map((a) => (
-                  <option key={a.key} value={a.key}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {alignSelect}
 
             <div className="ls-field ls-inline-checks ls-col-2">
               <Check
-                label="굵게"
+                label={P('bold')}
                 checked={!!el.bold}
                 onChange={(v) => patch({ bold: v || undefined })}
               />
               <Check
-                label="기울임"
+                label={P('italic')}
                 checked={!!el.italic}
                 onChange={(v) => patch({ italic: v || undefined })}
               />
               <Check
-                label="반전"
+                label={P('invert')}
                 checked={!!el.invert}
                 onChange={(v) => patch({ invert: v || undefined })}
               />
             </div>
 
             <Num
-              label="자간 (mm)"
+              label={P('letterSpacing')}
               value={el.letter_spacing_mm}
               optional
               step={0.05}
@@ -381,7 +388,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               onChange={(v) => patch({ letter_spacing_mm: v }, `el:${el.id}:ls`)}
             />
             <Num
-              label="줄 간격 (배수)"
+              label={P('lineGap')}
               value={el.line_gap ?? DEFAULT_LINE_GAP}
               step={0.05}
               min={0.8}
@@ -390,25 +397,22 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
           </div>
 
           {/* ── 영역 (텍스트 상자) ── */}
-          <div className="ls-sub-title">영역</div>
-          <div className="ls-hint ls-mb8">
-            폭·높이를 정하면 글이 그 안에서 줄바꿈됩니다. 캔버스의 모서리 핸들로도 끌 수
-            있습니다. 높이를 비우면 한 줄 모드입니다.
-          </div>
+          <div className="ls-sub-title">{P('areaTitle')}</div>
+          <div className="ls-hint ls-mb8">{P('areaHint')}</div>
           <div className="ls-grid-2">
             <Num
-              label="폭 (mm)"
+              label={P('width')}
               value={el.max_w_mm}
               optional
-              placeholder="비우면 끝까지"
+              placeholder={P('widthPh')}
               min={1}
               onChange={(v) => patch({ max_w_mm: v }, `el:${el.id}:maxw`)}
             />
             <Num
-              label="높이 (mm)"
+              label={P('height')}
               value={el.h_mm}
               optional
-              placeholder="비우면 한 줄"
+              placeholder={P('heightPh')}
               min={0.5}
               onChange={(v) => patch({ h_mm: v }, `el:${el.id}:h`)}
             />
@@ -416,29 +420,29 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
             {isTextBox(el) ? (
               <>
                 <label className="ls-field">
-                  <span>세로 정렬</span>
+                  <span>{P('vAlign')}</span>
                   <select
                     value={el.v_align ?? 'top'}
                     onChange={(e) => patch({ v_align: e.target.value as TextVAlign })}
                   >
-                    <option value="top">위</option>
-                    <option value="middle">가운데</option>
-                    <option value="bottom">아래</option>
+                    <option value="top">{P('vTop')}</option>
+                    <option value="middle">{P('vMiddle')}</option>
+                    <option value="bottom">{P('vBottom')}</option>
                   </select>
                 </label>
                 <label className="ls-field">
-                  <span>넘칠 때</span>
+                  <span>{P('overflow')}</span>
                   <select
                     value={el.overflow ?? 'shrink'}
                     onChange={(e) => patch({ overflow: e.target.value as TextOverflow })}
                   >
-                    <option value="shrink">글자 자동 축소</option>
-                    <option value="clip">잘라냄</option>
+                    <option value="shrink">{P('shrink')}</option>
+                    <option value="clip">{P('clip')}</option>
                   </select>
                 </label>
                 {(el.overflow ?? 'shrink') === 'shrink' && (
                   <Num
-                    label="축소 하한 (pt)"
+                    label={P('minPt')}
                     value={el.min_pt ?? DEFAULT_MIN_PT}
                     step={0.5}
                     min={1}
@@ -446,18 +450,20 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                   />
                 )}
                 <div className="ls-field">
-                  <span>이 샘플로</span>
+                  <span>{P('fitLabel')}</span>
                   <div className="ls-fit-readout">
                     {fit ? (
                       <>
-                        {fit.fitLines}줄 자리에 {fit.totalLines}줄
+                        {P('fitLines', { fit: fit.fitLines, total: fit.totalLines })}
                         {fit.usedPt < el.size_pt && (
-                          <em> · {el.size_pt}pt → {fit.usedPt}pt 축소</em>
+                          <em>{P('fitShrunk', { from: el.size_pt, to: fit.usedPt })}</em>
                         )}
-                        {fit.clippedLines > 0 && <strong> · {fit.clippedLines}줄 잘림</strong>}
+                        {fit.clippedLines > 0 && (
+                          <strong>{P('fitClipped', { n: fit.clippedLines })}</strong>
+                        )}
                       </>
                     ) : (
-                      '내용 없음'
+                      P('noContent')
                     )}
                   </div>
                 </div>
@@ -465,18 +471,18 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
             ) : (
               <>
                 <Check
-                  label="자동 줄바꿈"
+                  label={P('wrap')}
                   checked={!!el.wrap}
                   onChange={(v) => patch({ wrap: v || undefined })}
                 />
                 {el.wrap && (
                   <Num
-                    label="최대 줄 수"
+                    label={P('maxLines')}
                     value={el.max_lines}
                     optional
                     step={1}
                     min={1}
-                    placeholder="제한 없음"
+                    placeholder={P('unlimited')}
                     onChange={(v) => patch({ max_lines: v }, `el:${el.id}:lines`)}
                   />
                 )}
@@ -489,10 +495,10 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ── 모양 — 바코드 ── */}
       {el.type === 'barcode' && (
         <>
-          <div className="ls-sub-title">바코드</div>
+          <div className="ls-sub-title">{P('barcodeTitle')}</div>
           <div className="ls-grid-2">
             <label className="ls-field ls-col-2">
-              <span>심볼로지</span>
+              <span>{P('symbology')}</span>
               <select
                 value={el.symbology}
                 onChange={(e) => patch({ symbology: e.target.value as Symbology })}
@@ -504,37 +510,25 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                 ))}
               </select>
             </label>
-            <div className="ls-hint ls-col-2">{SYMBOLOGY_HINT[el.symbology]}</div>
+            <div className="ls-hint ls-col-2">{t(`labelSettings.symbologyHint.${el.symbology}`)}</div>
 
-            <label className="ls-field">
-              <span>정렬</span>
-              <select
-                value={el.align ?? 'left'}
-                onChange={(e) => patch({ align: e.target.value as TextAlign })}
-              >
-                {ALIGNS.map((a) => (
-                  <option key={a.key} value={a.key}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {alignSelect}
             <Num
-              label="정렬 영역 폭 (mm)"
+              label={P('alignWidth')}
               value={el.max_w_mm}
               optional
-              placeholder="비우면 끝까지"
+              placeholder={P('widthPh')}
               min={1}
               onChange={(v) => patch({ max_w_mm: v }, `el:${el.id}:maxw`)}
             />
             <Num
-              label="높이 (mm)"
+              label={P('barHeight')}
               value={el.h_mm}
               min={2}
               onChange={(v) => patch({ h_mm: v ?? 10 }, `el:${el.id}:bh`)}
             />
             <Num
-              label="좁은 바 (dots)"
+              label={P('narrow')}
               value={el.narrow}
               step={1}
               min={1}
@@ -542,7 +536,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               onChange={(v) => patch({ narrow: v ?? 2 }, `el:${el.id}:narrow`)}
             />
             <Num
-              label="넓은 바 (dots)"
+              label={P('wide')}
               value={el.wide}
               step={1}
               min={1}
@@ -550,13 +544,13 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               onChange={(v) => patch({ wide: v ?? 2 }, `el:${el.id}:wide`)}
             />
             <Check
-              label="아래 숫자 표시"
+              label={P('humanReadable')}
               checked={!!el.human_readable}
               onChange={(v) => patch({ human_readable: v || undefined })}
             />
             {el.human_readable && (
               <Num
-                label="숫자 크기 (pt)"
+                label={P('textPt')}
                 value={el.text_pt ?? 7}
                 step={0.5}
                 min={4}
@@ -570,10 +564,10 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ── 모양 — QR ── */}
       {el.type === 'qr' && (
         <>
-          <div className="ls-sub-title">QR 코드</div>
+          <div className="ls-sub-title">{P('qrTitle')}</div>
           <div className="ls-grid-2">
             <Num
-              label="셀 크기 (dots)"
+              label={P('cell')}
               value={el.cell}
               step={1}
               min={1}
@@ -581,41 +575,28 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               onChange={(v) => patch({ cell: v ?? 4 }, `el:${el.id}:cell`)}
             />
             <label className="ls-field">
-              <span>오류정정</span>
+              <span>{P('ecc')}</span>
               <select
                 value={el.ecc}
                 onChange={(e) => patch({ ecc: e.target.value as 'L' | 'M' | 'Q' | 'H' })}
               >
-                <option value="L">L — 7% 복원</option>
-                <option value="M">M — 15% 복원</option>
-                <option value="Q">Q — 25% 복원</option>
-                <option value="H">H — 30% 복원</option>
-              </select>
-            </label>
-            <label className="ls-field">
-              <span>정렬</span>
-              <select
-                value={el.align ?? 'left'}
-                onChange={(e) => patch({ align: e.target.value as TextAlign })}
-              >
-                {ALIGNS.map((a) => (
-                  <option key={a.key} value={a.key}>
-                    {a.label}
+                {ECC_LEVELS.map((lv) => (
+                  <option key={lv} value={lv}>
+                    {P(`ecc${lv}`)}
                   </option>
                 ))}
               </select>
             </label>
+            {alignSelect}
             <Num
-              label="정렬 영역 폭 (mm)"
+              label={P('alignWidth')}
               value={el.max_w_mm}
               optional
-              placeholder="비우면 끝까지"
+              placeholder={P('widthPh')}
               min={1}
               onChange={(v) => patch({ max_w_mm: v }, `el:${el.id}:maxw`)}
             />
-            <div className="ls-hint ls-col-2">
-              셀 크기를 키우면 QR 전체가 커집니다. 스캐너가 잘 못 읽으면 셀을 1 올리세요.
-            </div>
+            <div className="ls-hint ls-col-2">{P('qrHint')}</div>
           </div>
         </>
       )}
@@ -623,10 +604,10 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ── 모양 — 이미지 / 세탁 기호 ── */}
       {el.type === 'image' && (
         <>
-          <div className="ls-sub-title">이미지</div>
+          <div className="ls-sub-title">{P('imageTitle')}</div>
           <div className="ls-grid-2">
             <label className="ls-field ls-col-2">
-              <span>세탁 기호 (내장)</span>
+              <span>{P('symbol')}</span>
               <select
                 value={el.symbol ?? ''}
                 onChange={(e) => {
@@ -635,17 +616,17 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                   patch(key ? { symbol: key, src: undefined, h_mm: el.w_mm } : { symbol: undefined });
                 }}
               >
-                <option value="">(업로드 이미지 사용)</option>
+                <option value="">{P('useUpload')}</option>
                 {CARE_SYMBOLS.map((s) => (
                   <option key={s.key} value={s.key}>
-                    {s.label}
+                    {t(`labelSettings.careSymbols.${s.key}`, { defaultValue: s.label })}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="ls-field ls-col-2">
-              <span>이미지 업로드 (PNG/SVG, 로고 등)</span>
+              <span>{P('upload')}</span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/svg+xml"
@@ -676,7 +657,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
             </label>
 
             <Num
-              label="가로 (mm)"
+              label={P('imgW')}
               value={el.w_mm}
               min={1}
               onChange={(v) => {
@@ -689,7 +670,7 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               }}
             />
             <Num
-              label="세로 (mm)"
+              label={P('imgH')}
               value={el.h_mm}
               min={1}
               onChange={(v) => {
@@ -702,21 +683,19 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
               }}
             />
             <Check
-              label="비율 유지"
+              label={P('keepRatio')}
               checked={el.keep_ratio !== false}
               onChange={(v) => patch({ keep_ratio: v ? undefined : false })}
             />
             <Num
-              label="흑백 임계값 (0~255)"
+              label={P('threshold')}
               value={el.threshold ?? 128}
               step={8}
               min={0}
               max={255}
               onChange={(v) => patch({ threshold: v ?? 128 }, `el:${el.id}:thr`)}
             />
-            <div className="ls-hint ls-col-2">
-              감열 인쇄는 흑백 1비트입니다. 회색이 섞인 이미지는 임계값으로 검정 범위를 조절하세요.
-            </div>
+            <div className="ls-hint ls-col-2">{P('thresholdHint')}</div>
           </div>
         </>
       )}
@@ -724,16 +703,16 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
       {/* ── 모양 — 박스 / 선 ── */}
       {(el.type === 'box' || el.type === 'line') && (
         <>
-          <div className="ls-sub-title">{el.type === 'box' ? '박스' : '선'}</div>
+          <div className="ls-sub-title">{el.type === 'box' ? P('boxTitle') : P('lineTitle')}</div>
           <div className="ls-grid-2">
             <Num
-              label="가로 (mm)"
+              label={P('imgW')}
               value={el.w_mm}
               min={0.1}
               onChange={(v) => patch({ w_mm: v ?? 1 }, `el:${el.id}:w`)}
             />
             <Num
-              label="세로 (mm)"
+              label={P('imgH')}
               value={el.h_mm}
               step={0.1}
               min={0.1}
@@ -742,14 +721,14 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
             {el.type === 'box' && (
               <>
                 <Num
-                  label="선 두께 (mm)"
+                  label={P('thickness')}
                   value={el.thickness_mm}
                   step={0.1}
                   min={0.1}
                   onChange={(v) => patch({ thickness_mm: v ?? 0.3 }, `el:${el.id}:th`)}
                 />
                 <Check
-                  label="안쪽 채우기"
+                  label={P('filled')}
                   checked={!!el.filled}
                   onChange={(v) => patch({ filled: v || undefined })}
                 />
