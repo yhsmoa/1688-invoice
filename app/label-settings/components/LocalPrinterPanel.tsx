@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import type { LabelTemplate } from '../../../lib/labelTypes';
+import { audiencesLabel, type LabelTemplate } from '../../../lib/labelTypes';
 import { QZ_NOT_RUNNING, type PrinterInfo } from '../../../lib/qzTray';
 import { getAllLocalPrinters, setLocalPrinter } from '../../../lib/localPrinterMap';
 
@@ -85,8 +85,9 @@ const LocalPrinterPanel: React.FC<Props> = ({ templates, qzOk, qzPrinters, onRef
                 <tr key={t.id}>
                   <td>
                     <div className="ls-map-tpl-name">{t.name}</div>
+                    {t.description && <div className="ls-map-tpl-desc">{t.description}</div>}
                     <div className="ls-map-tpl-meta">
-                      {t.label_type === 'care' ? '케어' : '바코드'} · {t.dpi}dpi
+                      {t.label_type === 'care' ? '케어' : '바코드'} · {audiencesLabel(t)} · {t.dpi}dpi
                     </div>
                   </td>
                   <td>

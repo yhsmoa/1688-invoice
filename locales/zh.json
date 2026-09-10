@@ -115,7 +115,15 @@
       "saving": "保存中...",
       "saved": "保存完成",
       "printing": "打印中...",
-      "printedCount": "已发送{{count}}张"
+      "printedCount": "已发送{{count}}张",
+      "templateAdult": "成人",
+      "templateKids": "儿童",
+      "templateDefault": "默认",
+      "templateLoading": "正在加载模板…",
+      "templateNone": "无模板 — 请先在[标签设置]中创建",
+      "templateMissing": "无{{audience}}模板 — 请在[标签设置]中创建对象为{{audience}}的模板，或选择其他模板",
+      "templateNoDescription": "(无说明)",
+      "templateHint": "有建议年龄的商品自动选用儿童模板，没有的选用成人模板。可在下拉框中更改。"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",

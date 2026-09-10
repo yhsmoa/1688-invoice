@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import type { LabelType } from '../../../lib/labelTypes';
-import type { PrintLabelResult } from '../utils/printLabels';
+import type { AudienceTemplates, PrintLabelResult } from '../utils/printLabels';
+import { useLabelTemplatePlan } from '../hooks/useLabelTemplatePlan';
+import LabelTemplatePicker from './LabelTemplatePicker';
 import './V2ReadyModal.css';
 
 // ============================================================
@@ -20,6 +22,11 @@ import './V2ReadyModal.css';
 //   케어 라벨      : 케어라벨 즉시 출력 (QZ Tray)
 //   모두          : 저장(안 됐으면) → 라벨 스티커 → 케어 라벨 순서로 진행.
 //                   중간 단계가 실패하면 알림만 띄우고 멈춘다 (다음 단계로 넘어가지 않음).
+//
+// 템플릿 선택 (LabelTemplatePicker + useLabelTemplatePlan)
+//   출력 버튼 위에 종류별로 "어떤 템플릿으로 찍는지" 를 보여주고 드롭다운으로 바꿀 수 있다.
+//   권장연령 있는 상품 → 키즈, 없는 상품 → 성인 템플릿이 자동 선택된다.
+//   필요한 대상에 템플릿이 없으면 그 종류의 출력 버튼은 잠기고 드롭다운에 "없음" 이 뜬다.
 // ============================================================
 
 /** 출력 성공 표시(플래시) 유지 시간 */
@@ -42,9 +49,12 @@ interface V2ReadyModalProps {
   onSavePostgre: () => Promise<boolean>;
   /**
    * 라벨 즉시 출력 핸들러 (ItemCheck에서 전달) — readyItems 를 QZ Tray 로 인쇄한다.
+   * templates 는 이 모달의 드롭다운에서 확정된 대상별 템플릿.
    * 실패해도 예외를 던지지 않고 result.success = false 로 알려준다.
    */
-  onPrintLabel: (labelType: LabelType) => Promise<PrintLabelResult>;
+  onPrintLabel: (labelType: LabelType, templates: AudienceTemplates) => Promise<PrintLabelResult>;
+  /** 템플릿 조회 범위 — 선택된 사업자 (공용 + 그 사업자 전용) */
+  selectedUserId: string | null;
   /** 송장 출력 핸들러 (P 상품 PDF 병합 인쇄). 미제공 시 버튼 숨김 */
   onPrintInvoices?: () => Promise<void> | void;
   /** 송장 출력 가능 여부 (체크된 P 상품 중 Storage 에 PDF 존재 ≥ 1) */
@@ -61,12 +71,24 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   readyItems,
   onSavePostgre,
   onPrintLabel,
+  selectedUserId,
   onPrintInvoices,
   invoicePrintable = false,
   isSaved = false,
   invoicePdfSet,
 }) => {
   const { t } = useTranslation();
+
+  // ============================================================
+  // 템플릿 선택 계획 — 바코드 있는 항목만 인쇄 대상이므로 그 기준으로 대상을 나눈다
+  // ============================================================
+  const printableItems = useMemo(
+    () => readyItems.filter(({ item }) => item.barcode).map(({ item }) => item),
+    [readyItems]
+  );
+  const plan = useLabelTemplatePlan({ active: isOpen, userId: selectedUserId, items: printableItems });
+  const barcodeMissing = plan.missingOf('barcode').length > 0;
+  const careMissing = plan.missingOf('care').length > 0;
 
   // ============================================================
   // 저장 / 인쇄 로딩 상태
@@ -138,7 +160,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
     setBusy(true);
     try {
-      const result = await onPrintLabel(labelType);
+      const result = await onPrintLabel(labelType, plan.selectedOf(labelType));
       if (result.success) {
         setFlash(`${typeLabel} ${t('importProduct.processReady.printedCount', { count: result.printed })}`);
         return true;
@@ -327,6 +349,25 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
           {/* 새 버튼 — 저장 / 종류별 즉시 출력 / 모두 순서대로 */}
           <div className="v2-pr-quick-actions-row">
+            {/* 어떤 템플릿으로 찍는지 — 종류별 · 대상(성인/키즈)별, 드롭다운으로 변경 가능 */}
+            {hasPrintableItems && (
+              <div className="v2-pr-template-plan">
+                <LabelTemplatePicker
+                  plan={plan}
+                  labelType="barcode"
+                  title={t('importProduct.processReady.labelSticker')}
+                  disabled={isBusy}
+                />
+                <LabelTemplatePicker
+                  plan={plan}
+                  labelType="care"
+                  title={t('importProduct.processReady.careLabel')}
+                  disabled={isBusy}
+                />
+                <div className="v2-pr-template-hint">{t('importProduct.processReady.templateHint')}</div>
+              </div>
+            )}
+
             {(barcodeFlash || careFlash) && (
               <div className="v2-pr-flash-row">
                 {barcodeFlash && <span className="v2-pr-flash">✓ {barcodeFlash}</span>}
@@ -353,7 +394,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
               <button
                 className="v2-pr-quick-button v2-pr-quick-print"
-                disabled={!hasPrintableItems || isBusy}
+                disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing}
                 onClick={() => printOne('barcode')}
               >
                 {isPrintingBarcode && !isRunningAll ? (
@@ -368,7 +409,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
               <button
                 className="v2-pr-quick-button v2-pr-quick-print"
-                disabled={!hasPrintableItems || isBusy}
+                disabled={!hasPrintableItems || isBusy || plan.loading || careMissing}
                 onClick={() => printOne('care')}
               >
                 {isPrintingCare && !isRunningAll ? (
@@ -383,7 +424,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
               <button
                 className="v2-pr-quick-button v2-pr-quick-all"
-                disabled={!hasPrintableItems || isBusy}
+                disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing || careMissing}
                 onClick={handleRunAll}
               >
                 {isRunningAll ? (

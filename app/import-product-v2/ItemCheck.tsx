@@ -39,7 +39,7 @@ import V2CustomerConfirmModal from './components/V2CustomerConfirmModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
-import { printLabels, type PrintLabelResult } from './utils/printLabels';
+import { printLabels, type AudienceTemplates, type PrintLabelResult } from './utils/printLabels';
 import { mergeAndPrint } from '../../lib/invoicePdfClient';
 import type { LabelType } from '../../lib/labelTypes';
 
@@ -1087,9 +1087,10 @@ const ItemCheck: React.FC = () => {
   //       QZ Tray 로 그 자리에서 인쇄한다. [라벨] 모달의 handlePrint 와
   //       같은 printLabels() 유틸을 쓰되, 데이터 출처만 readyItems 로 다르다.
   //       세트상품 병합은 printLabels() 내부에서 처리하므로 여기선 안 한다.
+  //       templates 는 모달의 드롭다운에서 확정된 대상(성인/키즈)별 템플릿.
   // ============================================================
   const handleReadyPrint = useCallback(
-    async (labelType: LabelType): Promise<PrintLabelResult> => {
+    async (labelType: LabelType, templates: AudienceTemplates): Promise<PrintLabelResult> => {
       if (!selectedPcNo) {
         return { success: false, printed: 0, error: 'PC-NO를 선택해주세요.' };
       }
@@ -1103,11 +1104,11 @@ const ItemCheck: React.FC = () => {
       const currentUser = users.find((u) => u.id === selectedUserId) || null;
       return printLabels({
         items: printItems,
-        userId: selectedUserId || null,
         selectedUser: currentUser,
         brand: currentUser?.brand || null,
         stationNo: selectedPcNo,
         labelType,
+        templates,
         printedBy: null,
       });
     },
@@ -1787,6 +1788,7 @@ const ItemCheck: React.FC = () => {
         readyItems={readyItems}
         onSavePostgre={handleReadySave}
         onPrintLabel={handleReadyPrint}
+        selectedUserId={selectedUserId || null}
         onPrintInvoices={handlePrintInvoices}
         invoicePrintable={invoicePrintable}
         isSaved={hasReadySaveCompleted}

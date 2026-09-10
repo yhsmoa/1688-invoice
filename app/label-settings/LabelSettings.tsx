@@ -23,10 +23,17 @@ import {
   DEFAULT_FONT,
   type LabelData,
   type LabelElement,
+  WEB_FONTS,
   type LabelTemplate,
   type LabelType,
 } from '../../lib/labelTypes';
-import { measureElement, elementWarning, preloadTemplateAssets } from '../../lib/labelRender';
+import {
+  measureElement,
+  elementWarning,
+  preloadTemplateAssets,
+  ensureFontsLoaded,
+} from '../../lib/labelRender';
+import { useRasterVersion } from './hooks/useRasterVersion';
 import { buildTsplJob } from '../../lib/tspl';
 import { printRaw, QZ_NOT_RUNNING } from '../../lib/qzTray';
 import './LabelSettings.css';
@@ -53,6 +60,9 @@ const newTemplate = (labelType: LabelType): LabelTemplate => ({
   id: '',
   user_ids: null,
   name: labelType === 'care' ? '새 케어라벨' : '새 바코드 라벨',
+  description: null,
+  // 기본은 성인(권장연령 없음). 키즈용은 기본정보 탭에서 대상을 바꿔 쓴다
+  audiences: ['adult'],
   label_type: labelType,
   printer_lang: 'TSPL2',
   width_mm: labelType === 'care' ? 30 : 40,
@@ -158,6 +168,13 @@ const LabelSettings: React.FC = () => {
     setSampleData((prev) => ({ ...prev, ...accountFieldsToLabelData(user) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userIdsKey, data.users]);
+
+  // ── 웹폰트 미리 받기 — 글꼴 드롭다운의 "(미설치)" 판정과 미리보기가 맞게 ──
+  //    받아오면 래스터 버전이 올라가 경고·캔버스가 다시 계산된다.
+  const rasterVersion = useRasterVersion();
+  useEffect(() => {
+    ensureFontsLoaded(WEB_FONTS);
+  }, []);
 
   // ── 토스트 자동 닫기 ──
   useEffect(() => {
@@ -325,6 +342,10 @@ const LabelSettings: React.FC = () => {
       setToast({ msg: '템플릿 이름을 입력해주세요.', kind: 'err' });
       return;
     }
+    if (!draft.audiences || draft.audiences.length === 0) {
+      setToast({ msg: '대상(성인/키즈)을 하나 이상 선택해주세요.', kind: 'err' });
+      return;
+    }
     setSaving(true);
     try {
       const isNew = !draft.id;
@@ -332,6 +353,8 @@ const LabelSettings: React.FC = () => {
         ...(isNew ? {} : { id: draft.id }),
         user_ids: draft.user_ids,
         name: draft.name,
+        description: draft.description ?? null,
+        audiences: draft.audiences,
         label_type: draft.label_type,
         width_mm: draft.width_mm,
         height_mm: draft.height_mm,
@@ -513,7 +536,9 @@ const LabelSettings: React.FC = () => {
       map.set(el.id, elementWarning(el, draft, sampleData));
     }
     return map;
-  }, [draft, sampleData]);
+    // rasterVersion: 웹폰트가 늦게 도착하면 "글꼴 없음" 경고를 다시 판정해야 한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, sampleData, rasterVersion]);
 
   // ============================================================
   // 렌더링

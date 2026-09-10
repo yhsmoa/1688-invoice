@@ -2,6 +2,7 @@
 // 세탁 기호 라이브러리 — 케어라벨용 내장 이미지
 //
 // KS K 0021 계열의 흔한 기호를 단순 선화 SVG 로 들고 있다.
+// 어린이제품 KC 마크(키즈 라벨 필수 표기)도 같은 방식으로 들고 있다.
 // 이미지 요소가 symbol 키로 참조하므로 템플릿(JSON)에는 키만 저장된다.
 // 100×100 viewBox, 검정 선. 인쇄 시 1비트로 변환되므로 회색·안티앨리어싱은 쓰지 않는다.
 // ============================================================
@@ -55,6 +56,16 @@ export const CARE_SYMBOLS: CareSymbol[] = [
   { key: 'dry_clean', label: '드라이클리닝', svg: wrap(`${CIRCLE}`) },
   { key: 'dry_clean_p', label: '드라이클리닝 P', svg: wrap(`${CIRCLE}${text('P', 62, 40)}`) },
   { key: 'no_dry_clean', label: '드라이클리닝 금지', svg: wrap(`${CIRCLE}${CROSS}`) },
+  // ── 인증 마크 ──
+  // KC 마크 — 굵은 C 안에 K. 감열 인쇄에서 뭉개지지 않게 선을 두껍게 잡는다
+  {
+    key: 'kc_mark',
+    label: 'KC 마크 (어린이제품)',
+    svg: wrap(
+      `<path fill="none" stroke="#000" stroke-width="13" stroke-linecap="round" d="M80 22 A40 40 0 1 0 80 78"/>` +
+        `<path fill="none" stroke="#000" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" d="M46 30 V70 M46 51 L70 30 M46 51 L70 70"/>`
+    ),
+  },
 ];
 
 const byKey = new Map(CARE_SYMBOLS.map((s) => [s.key, s]));

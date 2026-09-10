@@ -1,7 +1,12 @@
 'use client';
 
 import React from 'react';
-import { isSharedTemplate, type LabelTemplate, type LabelType } from '../../../lib/labelTypes';
+import {
+  audiencesLabel,
+  isSharedTemplate,
+  type LabelTemplate,
+  type LabelType,
+} from '../../../lib/labelTypes';
 import { userLabel, type FtUser } from '../hooks/useLabelSettingsData';
 
 // ============================================================
@@ -94,9 +99,13 @@ const TemplateListPanel: React.FC<Props> = ({
                 {t.name}
                 {t.is_default && <span className="ls-default-badge">기본</span>}
               </span>
+              {/* 두 번째 줄 — 작업자용 설명(중국어). 없으면 비워 둔다 */}
+              <span className={`ls-item-desc ${t.description ? '' : 'is-empty'}`}>
+                {t.description || '설명 없음'}
+              </span>
               <span className="ls-item-meta">
-                {t.label_type === 'care' ? '케어' : '바코드'} · {t.width_mm}×{t.height_mm}mm ·{' '}
-                {t.dpi}dpi ·{' '}
+                {t.label_type === 'care' ? '케어' : '바코드'} · {audiencesLabel(t)} ·{' '}
+                {t.width_mm}×{t.height_mm}mm · {t.dpi}dpi ·{' '}
                 {isSharedTemplate(t)
                   ? '공용'
                   : t.user_ids!.length === 1

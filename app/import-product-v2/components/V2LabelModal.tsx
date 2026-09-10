@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import type { FtOrderItem, FtUser } from '../hooks/useFtData';
 import { saveLabelData } from '../utils/saveLabelData';
 import { printLabels } from '../utils/printLabels';
+import { useLabelTemplatePlan } from '../hooks/useLabelTemplatePlan';
+import LabelTemplatePicker from './LabelTemplatePicker';
 import type { LabelType } from '../../../lib/labelTypes';
 import './V2LabelModal.css';
 
@@ -15,7 +17,12 @@ import './V2LabelModal.css';
 //   [라벨 스티커]        : QZ Tray 로 바코드 감열지 즉시 출력
 //   [케어 라벨]          : QZ Tray 로 케어라벨 즉시 출력
 //     → 종류 선택 드롭다운 없이, 종류별 버튼을 바로 눌러 그 자리에서 인쇄한다.
-//       템플릿·프린터는 [라벨 설정]에서 지정한 값을 자동 사용
+//       프린터는 [라벨 설정]에서 지정한 값을 자동 사용
+//
+// 템플릿 선택 (LabelTemplatePicker + useLabelTemplatePlan)
+//   버튼 위에 종류별로 "어떤 템플릿으로 찍는지" 를 보여주고 드롭다운으로 바꿀 수 있다.
+//   권장연령 있는 상품 → 키즈, 없는 상품 → 성인 템플릿이 자동 선택된다.
+//   필요한 대상에 템플릿이 없으면 그 종류의 출력 버튼은 잠긴다.
 // ============================================================
 
 /** 즉시 출력 성공 표시 유지 시간 */
@@ -61,6 +68,13 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
     const timer = setTimeout(() => setPrintedMsg(null), PRINTED_MSG_MS);
     return () => clearTimeout(timer);
   }, [printedMsg]);
+
+  // ============================================================
+  // 템플릿 선택 계획 — 항목의 권장연령 유무로 성인/키즈 자동, 드롭다운으로 변경
+  // ============================================================
+  const plan = useLabelTemplatePlan({ active: isOpen, userId: selectedUser?.id ?? null, items });
+  const barcodeMissing = plan.missingOf('barcode').length > 0;
+  const careMissing = plan.missingOf('care').length > 0;
 
   // ============================================================
   // 수량 값 조회: 사용자 입력 > modifiedImportQty > order_qty > 1
@@ -124,8 +138,8 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
 
   // ============================================================
   // 즉시 출력 핸들러 — QZ Tray 로 그 자리에서 인쇄
-  //   PC-NO(operatorId) = 작업 자리, 템플릿/프린터는 라벨 설정값 사용
-  //   종류(labelType)는 버튼별로 바로 넘어온다 (드롭다운 없음)
+  //   PC-NO(operatorId) = 작업 자리(기록용), 프린터는 라벨 설정값 사용
+  //   종류(labelType)는 버튼별로 바로 넘어오고, 템플릿은 위 드롭다운에서 확정된 값
   // ============================================================
   const handlePrint = useCallback(
     async (labelType: LabelType) => {
@@ -145,11 +159,11 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
       try {
         const result = await printLabels({
           items: items.map((item) => ({ item, qty: getQty(item) })),
-          userId: selectedUser?.id ?? null,
           selectedUser,
           brand: selectedUser?.brand || null,
           stationNo: operatorId,
           labelType,
+          templates: plan.selectedOf(labelType),
           printedBy: null,
         });
 
@@ -166,7 +180,7 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
         setBusy(false);
       }
     },
-    [items, selectedUser, operatorId, getQty, t]
+    [items, selectedUser, operatorId, getQty, t, plan]
   );
 
   // ============================================================
@@ -243,16 +257,35 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
           )}
         </div>
 
+        {/* 템플릿 선택 — 종류별 · 대상(성인/키즈)별, 드롭다운으로 변경 가능 */}
+        {items.length > 0 && (
+          <div className="v2-label-template-plan">
+            <LabelTemplatePicker
+              plan={plan}
+              labelType="barcode"
+              title={t('importProduct.processReady.labelSticker')}
+              disabled={isPrintingBarcode || isPrintingCare}
+            />
+            <LabelTemplatePicker
+              plan={plan}
+              labelType="care"
+              title={t('importProduct.processReady.careLabel')}
+              disabled={isPrintingBarcode || isPrintingCare}
+            />
+            <div className="v2-label-template-hint">{t('importProduct.processReady.templateHint')}</div>
+          </div>
+        )}
+
         {/* 하단 액션 */}
         <div className="v2-label-dialog-actions">
           {printedMsg && <span className="v2-label-print-status">✓ {printedMsg}</span>}
 
-          {/* 즉시 출력 — 종류별 버튼 (드롭다운 없이 바로 그 종류로 인쇄) */}
+          {/* 즉시 출력 — 종류별 버튼 (위 드롭다운의 템플릿으로 바로 인쇄) */}
           <button
             className="v2-label-print-btn"
             onClick={() => handlePrint('barcode')}
-            disabled={isPrintingBarcode || isPrintingCare || items.length === 0}
-            title="라벨 설정에서 지정한 템플릿·프린터로 그 자리에서 출력합니다"
+            disabled={isPrintingBarcode || isPrintingCare || items.length === 0 || plan.loading || barcodeMissing}
+            title="위에서 고른 템플릿과 라벨 설정의 프린터로 그 자리에서 출력합니다"
           >
             {isPrintingBarcode ? (
               <span className="v2-label-button-loading">
@@ -267,8 +300,8 @@ const V2LabelModal: React.FC<V2LabelModalProps> = ({
           <button
             className="v2-label-print-btn"
             onClick={() => handlePrint('care')}
-            disabled={isPrintingBarcode || isPrintingCare || items.length === 0}
-            title="라벨 설정에서 지정한 템플릿·프린터로 그 자리에서 출력합니다"
+            disabled={isPrintingBarcode || isPrintingCare || items.length === 0 || plan.loading || careMissing}
+            title="위에서 고른 템플릿과 라벨 설정의 프린터로 그 자리에서 출력합니다"
           >
             {isPrintingCare ? (
               <span className="v2-label-button-loading">

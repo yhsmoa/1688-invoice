@@ -11,6 +11,45 @@
 
 export type LabelType = 'care' | 'barcode';
 
+/**
+ * 라벨 대상 — 상품의 권장연령 유무로 갈린다.
+ *   adult : 권장연령 없음 (기본)
+ *   kids  : 권장연령 있음 (키즈 라벨 — 권장연령을 표기해야 함)
+ * 템플릿은 둘 중 하나 또는 둘 다에 쓰일 수 있다 (LabelTemplate.audiences).
+ */
+export type LabelAudience = 'adult' | 'kids';
+
+export const LABEL_AUDIENCES: { key: LabelAudience; label: string; hint: string }[] = [
+  { key: 'adult', label: '성인', hint: '권장연령 없음' },
+  { key: 'kids', label: '키즈', hint: '권장연령 있음' },
+];
+
+/** 상품 항목의 권장연령 값으로 대상 판정 — 값이 있으면 키즈 */
+export function audienceOfItem(recommandedAge: string | null | undefined): LabelAudience {
+  return recommandedAge && recommandedAge.trim() ? 'kids' : 'adult';
+}
+
+/** 템플릿의 대상 목록 — 옛 행(컬럼 없던 시절)은 성인으로 본다 */
+export function templateAudiences(tpl: Pick<LabelTemplate, 'audiences'>): LabelAudience[] {
+  return tpl.audiences && tpl.audiences.length > 0 ? tpl.audiences : ['adult'];
+}
+
+/** 템플릿이 그 대상에 쓰일 수 있는지 */
+export function templateHasAudience(
+  tpl: Pick<LabelTemplate, 'audiences'>,
+  audience: LabelAudience
+): boolean {
+  return templateAudiences(tpl).includes(audience);
+}
+
+/** 목록·메타 표기용: "성인" / "키즈" / "성인·키즈" */
+export function audiencesLabel(tpl: Pick<LabelTemplate, 'audiences'>): string {
+  const set = templateAudiences(tpl);
+  return LABEL_AUDIENCES.filter((a) => set.includes(a.key))
+    .map((a) => a.label)
+    .join('·');
+}
+
 /** 용지 종류 (LabelTemplate.media 참고) */
 export type LabelMedia = 'gap' | 'continuous' | 'blackmark';
 
@@ -220,6 +259,16 @@ export interface LabelTemplate {
    */
   user_ids: string[] | null;
   name: string;
+  /**
+   * 템플릿 설명 — 드롭다운·목록에서 이름 아래 두 번째 줄로 보인다.
+   * 작업자가 중국인이라 한글 이름을 못 읽으므로, 여기에 중국어 설명을 넣어 둔다.
+   */
+  description?: string | null;
+  /**
+   * 대상 — 권장연령 없는 상품(adult) / 있는 상품(kids). 둘 다 가능.
+   * 인쇄 시 상품마다 권장연령 유무로 대상을 정하고, 그 대상을 가진 템플릿만 자동 선택된다.
+   */
+  audiences: LabelAudience[];
   label_type: LabelType;
   printer_lang: string;
   width_mm: number;
@@ -382,12 +431,17 @@ export const SAMPLE_LABEL_DATA: LabelData = {
 // 글꼴
 //
 // ⚠️ 텍스트는 인쇄 PC 브라우저의 canvas 로 래스터해서 보내므로,
-//    "인쇄 PC 에 설치된 글꼴" 만 실제로 적용된다.
+//    "인쇄 PC 에 설치된 글꼴" 또는 "이 사이트가 내려주는 웹폰트(WEB_FONTS)" 만 실제로 적용된다.
 //    편집기에서 설치 여부를 확인해 경고를 띄운다 (isFontAvailable).
+//    웹폰트는 app/layout.tsx 의 <link> 로 받아오고, 래스터 직전에 ensureFontsLoaded 로 기다린다.
 // ============================================================
-export const DEFAULT_FONT = 'Malgun Gothic';
+export const DEFAULT_FONT = 'NanumSquare';
+
+/** 사이트가 직접 내려주는 웹폰트 — 인쇄 PC 에 설치돼 있지 않아도 쓸 수 있다 */
+export const WEB_FONTS: string[] = ['NanumSquare'];
 
 export const LABEL_FONTS: { key: string; label: string }[] = [
+  { key: 'NanumSquare', label: '나눔스퀘어 (네이버 · 웹폰트)' },
   { key: 'Malgun Gothic', label: '맑은 고딕' },
   { key: 'Noto Sans KR', label: 'Noto Sans KR' },
   { key: 'NanumGothic', label: '나눔고딕' },
@@ -401,7 +455,7 @@ export const LABEL_FONTS: { key: string; label: string }[] = [
 
 /** canvas/CSS 용 폰트 스택 — 지정 글꼴 실패 시 한글 가능한 순서로 폴백 */
 export function fontStack(family?: string): string {
-  const base = '"Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+  const base = '"NanumSquare", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
   return family ? `"${family}", ${base}` : base;
 }
 

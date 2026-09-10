@@ -773,10 +773,40 @@ function whenLoaded(src: string): Promise<void> {
   });
 }
 
-/** 템플릿의 이미지 요소를 전부 읽어 둔다 — 인쇄 직전에 반드시 호출 */
+// ============================================================
+// 글꼴 준비 — 웹폰트는 처음 쓰는 순간 받아오므로, 래스터 전에 기다려야
+// 폴백 글꼴로 찍히는 일이 없다. 굵게/기울임 변형도 같이 받아 둔다.
+// 받아온 뒤 notifyRaster 로 미리보기를 다시 그리게 한다.
+// ============================================================
+const fontsLoaded = new Set<string>();
+
+export async function ensureFontsLoaded(families: string[]): Promise<void> {
+  if (!canBrowser() || typeof document.fonts?.load !== 'function') return;
+  const todo = Array.from(new Set(families.filter((f) => f && !fontsLoaded.has(f))));
+  if (todo.length === 0) return;
+  const variants = ['', 'bold ', 'italic ', 'italic bold '];
+  await Promise.all(
+    todo.flatMap((family) =>
+      variants.map((v) => document.fonts.load(`${v}12px "${family}"`).catch(() => undefined))
+    )
+  );
+  todo.forEach((f) => fontsLoaded.add(f));
+  notifyRaster();
+}
+
+/** 템플릿의 텍스트 요소가 쓰는 글꼴 목록 */
+export function templateFonts(tpl: LabelTemplate): string[] {
+  const set = new Set<string>();
+  for (const el of tpl.layout || []) {
+    if (el.type === 'text' && !el.hidden) set.add(el.font_family || DEFAULT_FONT);
+  }
+  return Array.from(set);
+}
+
+/** 템플릿의 이미지·글꼴을 전부 읽어 둔다 — 인쇄 직전에 반드시 호출 */
 export async function preloadTemplateAssets(tpl: LabelTemplate): Promise<void> {
   if (!canBrowser()) return;
-  const jobs: Promise<void>[] = [];
+  const jobs: Promise<void>[] = [ensureFontsLoaded(templateFonts(tpl))];
   for (const el of tpl.layout || []) {
     if (el.type !== 'image' || el.hidden) continue;
     const src = imageSource(el);

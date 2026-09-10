@@ -4,7 +4,10 @@ import React from 'react';
 import {
   LABEL_MEDIA,
   LABEL_CUTTER,
+  LABEL_AUDIENCES,
   isSharedTemplate,
+  templateAudiences,
+  type LabelAudience,
   type LabelCutter,
   type LabelMedia,
   type LabelTemplate,
@@ -41,17 +44,40 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => {
     onPatch({ user_ids: next.length > 0 ? next : null });
   };
 
+  // 대상은 최소 1개 — 마지막 하나는 해제되지 않는다 (인쇄 시 어디에도 안 잡히는 템플릿 방지)
+  const audiences = templateAudiences(draft);
+  const toggleAudience = (key: LabelAudience) => {
+    const has = audiences.includes(key);
+    if (has && audiences.length === 1) return;
+    const next = has ? audiences.filter((a) => a !== key) : [...audiences, key];
+    onPatch({ audiences: next });
+  };
+
   return (
     <>
       <div className="ls-grid-2">
         <label className="ls-field ls-col-2">
-          <span>이름</span>
+          <span>템플릿 이름</span>
           <input
             value={draft.name}
             onChange={(e) => onPatch({ name: e.target.value }, 'tpl:name')}
             placeholder="예) 여성 상의 케어라벨"
           />
         </label>
+
+        <label className="ls-field ls-col-2">
+          <span>템플릿 설명 (작업자용 · 중국어 권장)</span>
+          <textarea
+            rows={2}
+            value={draft.description ?? ''}
+            onChange={(e) => onPatch({ description: e.target.value }, 'tpl:desc')}
+            placeholder="예) 女装上衣 洗唛 (成人)"
+          />
+        </label>
+        <div className="ls-hint ls-col-2">
+          입고·라벨 화면의 템플릿 드롭다운에 이름 아래 두 번째 줄로 보입니다. 작업자가 한글 이름을
+          못 읽어도 이 설명으로 고를 수 있게 중국어로 적어 두세요.
+        </div>
 
         <label className="ls-field">
           <span>종류</span>
@@ -124,6 +150,27 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => {
         ))}
       </div>
 
+      {/* ── 대상 — 권장연령 유무로 자동 선택된다 ── */}
+      <div className="ls-sub-title">대상 (성인 / 키즈)</div>
+      <div className="ls-hint ls-mb8">
+        입고·라벨 화면에서 권장연령이 <b>없는</b> 상품은 성인, <b>있는</b> 상품은 키즈 템플릿이
+        자동으로 선택됩니다. 둘 다 체크하면 두 경우 모두에 쓰입니다.
+      </div>
+      <div className="ls-audience-checks">
+        {LABEL_AUDIENCES.map((a) => (
+          <label className="ls-check" key={a.key}>
+            <input
+              type="checkbox"
+              checked={audiences.includes(a.key)}
+              onChange={() => toggleAudience(a.key)}
+            />
+            <span>
+              {a.label} <em>({a.hint})</em>
+            </span>
+          </label>
+        ))}
+      </div>
+
       {/* ── 용지 · 절단 ── */}
       <div className="ls-sub-title">용지</div>
       <div className="ls-grid-2">
@@ -163,7 +210,7 @@ const TemplateInfoPanel: React.FC<Props> = ({ draft, users, onPatch }) => {
             checked={draft.is_default}
             onChange={(e) => onPatch({ is_default: e.target.checked })}
           />
-          <span>이 사업자·종류의 기본 템플릿으로 사용</span>
+          <span>이 사업자·종류·대상의 기본 템플릿으로 사용</span>
         </label>
       </div>
 

@@ -327,6 +327,24 @@
 .ls-user-checklist .ls-check:hover { background: #f9fafb; }
 .ls-user-checklist .ls-check:has(input:checked) { background: #eff6ff; }
 
+/* 대상 (성인/키즈) — 가로 두 칸 체크 */
+.ls-audience-checks {
+  display: flex;
+  gap: 8px;
+}
+
+.ls-audience-checks .ls-check {
+  flex: 1;
+  align-self: stretch;
+  padding: 7px 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.ls-audience-checks .ls-check:has(input:checked) { background: #eff6ff; border-color: #bfdbfe; }
+.ls-audience-checks .ls-check em { font-style: normal; color: #9ca3af; font-size: 11px; }
+
 /* 다중 선택 — 우측 패널 요약 액션 */
 .ls-multi-actions {
   display: flex;
@@ -341,8 +359,9 @@
 }
 .ls-btn-danger-sm:hover:not(:disabled) { background: #fecaca; }
 
-/* 프린터 표 — 템플릿별 첫 칸 (이름 + 종류/dpi) */
+/* 프린터 표 — 템플릿별 첫 칸 (이름 + 설명 + 종류/대상/dpi) */
 .ls-map-tpl-name { font-weight: 600; color: #111; }
+.ls-map-tpl-desc { font-size: 11px; color: #4b5563; margin-top: 1px; }
 .ls-map-tpl-meta { font-size: 10.5px; color: #9ca3af; margin-top: 1px; }
 
 /* 프린터 매핑 표 — 자리 × 라벨 종류 */
@@ -583,6 +602,16 @@
   border-radius: 4px;
   padding: 1px 5px;
 }
+
+/* 두 번째 줄 — 작업자용 설명(중국어) */
+.ls-item-desc {
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.ls-item-desc.is-empty { color: #c4c4c4; font-style: italic; }
 
 .ls-item-meta { font-size: 11px; color: #6b7280; }
 

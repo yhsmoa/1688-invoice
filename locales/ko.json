@@ -116,7 +116,15 @@
       "saving": "저장 중...",
       "saved": "저장 완료",
       "printing": "출력 중...",
-      "printedCount": "{{count}}장 전송됨"
+      "printedCount": "{{count}}장 전송됨",
+      "templateAdult": "성인",
+      "templateKids": "키즈",
+      "templateDefault": "기본",
+      "templateLoading": "템플릿 불러오는 중…",
+      "templateNone": "템플릿 없음 — [라벨 설정]에서 먼저 만들어주세요",
+      "templateMissing": "{{audience}} 템플릿 없음 — [라벨 설정]에서 대상을 {{audience}}로 둔 템플릿을 만들거나 다른 템플릿을 고르세요",
+      "templateNoDescription": "(설명 없음)",
+      "templateHint": "권장연령이 있는 상품은 키즈, 없는 상품은 성인 템플릿이 자동 선택됩니다. 드롭다운에서 바꿀 수 있습니다."
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",
