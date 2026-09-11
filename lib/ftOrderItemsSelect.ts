@@ -43,4 +43,19 @@ export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   'note_notice',
   'note_cn',
   'personal_order_no',
+  // ── 라벨 바인딩 전용 (lib/labelTypes.ts PRODUCT_FIELDS) — 화면 표시엔 안 쓰지만
+  //    입고·라벨 모달에서 QR/텍스트에 넣을 수 있게 같이 내려준다 ──
+  'note_kr',
+  'kc',
+  'kc_type',
+  'vendor_option_id',
+  'price_krw',
+  'price_total_krw',
+  'price_delivery_cny',
+  'price_delivery_kr',
+  'item_seq',
+  'arrival_qty',
+  'shipped_qty',
+  'cancel_qty',
+  'requested_date',
 ].join(', ');

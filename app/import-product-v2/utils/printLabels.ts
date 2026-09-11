@@ -79,9 +79,14 @@ function mergeSets(items: { item: FtOrderItem; qty: number }[]) {
   return [...normal, ...Array.from(setGroups.values())];
 }
 
+/** ft_order_items 컬럼 중 바인딩에 안 쓰는 것 (내부 id·이미지·시간) */
+const RAW_COLUMN_SKIP = new Set(['id', 'order_id', 'user_id', 'product_id', 'img_url', 'check_img', 'created_at']);
+
 /**
- * 항목 → 라벨 바인딩 데이터 (saveLabelData 의 toLabelRow 와 같은 필드)
- * + 선택된 사업자 계정 정보(ACCOUNT_FIELDS, acc_ 접두사)도 같이 채운다.
+ * 항목 → 라벨 바인딩 데이터 (PRODUCT_FIELDS 의 키와 1:1)
+ *   1) ft_order_items 컬럼을 이름 그대로 전부 깐다 (boolean 은 Y/빈값, null 은 빈 문자열)
+ *   2) 가공 값(상품명+옵션 합침, 사이즈코드 변환, product_no/item_no 구분)으로 덮는다
+ *   3) 선택된 사업자 계정 정보(ACCOUNT_FIELDS, acc_ 접두사)를 붙인다
  */
 function toLabelData(
   item: FtOrderItem,
@@ -89,13 +94,21 @@ function toLabelData(
   brand: string | null,
   selectedUser: FtUser | null | undefined
 ): LabelData {
+  const raw: LabelData = {};
+  for (const [key, value] of Object.entries(item as unknown as Record<string, unknown>)) {
+    if (RAW_COLUMN_SKIP.has(key)) continue;
+    raw[key] = typeof value === 'boolean' ? (value ? 'Y' : '') : value == null ? '' : value;
+  }
   return {
+    ...raw,
     // selectedUser.brand 가 있으면 그게 더 최신 값이지만, brand 파라미터를 명시적으로
     // 넘긴 호출부(V2LabelModal 등)와의 하위 호환을 위해 brand 파라미터를 우선한다.
     brand: brand || selectedUser?.brand || null,
     item_name: [item.item_name, item.option_name].filter(Boolean).join(', '),
+    item_name_only: item.item_name || '',
     barcode: item.barcode || '',
-    product_no: item.item_no || '',
+    product_no: item.product_no || '',
+    item_no: item.item_no || '',
     shipment_size: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
     composition: item.composition || null,
     recommanded_age: item.recommanded_age || null,

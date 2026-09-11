@@ -340,16 +340,61 @@ export interface LabelData {
   [key: string]: unknown;
 }
 
-/** 편집기 필드 드롭다운 — 상품(주문 항목)마다 달라지는 값 */
+/**
+ * 편집기 필드 드롭다운 — 상품(주문 항목)마다 달라지는 값.
+ *
+ * 앞쪽 8개는 가공된 값(상품명+옵션 합침, 사이즈코드 변환 등)이고, 그 뒤는
+ * ft_order_items 컬럼을 이름 그대로 바인딩한다 (QR 에 product_no 를 넣는 등).
+ *   · item_name  = 상품명 + 옵션 (합친 값)      · item_name_only = item_name 컬럼 그대로
+ *   · product_no = product_no 컬럼 (상품번호)   · item_no        = item_no 컬럼 (아이템번호, 사이즈 접미 포함)
+ * ⚠️ 예전엔 product_no 키가 item_no 값을 냈다 — 기존 템플릿은 {item_no} 로 옮겨 놓았다.
+ * 이름은 i18n (labelSettings.fields.*) 로 번역되고 label 은 폴백이다.
+ */
 export const PRODUCT_FIELDS: { key: keyof LabelData & string; label: string }[] = [
+  // ── 가공된 값 ──
   { key: 'brand', label: '브랜드' },
   { key: 'item_name', label: '상품명 + 옵션' },
   { key: 'barcode', label: '바코드' },
-  { key: 'product_no', label: '아이템번호' },
+  { key: 'product_no', label: '상품번호 (product_no)' },
+  { key: 'item_no', label: '아이템번호 (item_no)' },
   { key: 'shipment_size', label: '배송 사이즈코드 (P/A/B/C/X)' },
   { key: 'composition', label: '소재' },
   { key: 'recommanded_age', label: '권장연령' },
   { key: 'qty', label: '수량' },
+  // ── ft_order_items 컬럼 그대로 ──
+  { key: 'item_name_only', label: '상품명 (옵션 제외)' },
+  { key: 'option_name', label: '옵션명' },
+  { key: 'order_no', label: '주문번호' },
+  { key: 'order_qty', label: '주문 수량' },
+  { key: 'china_option1', label: '중국 옵션1' },
+  { key: 'china_option2', label: '중국 옵션2' },
+  { key: 'coupang_shipment_size', label: '쿠팡 배송 사이즈 (원본)' },
+  { key: 'shipment_type', label: '배송 유형' },
+  { key: 'set_total', label: '세트 수량' },
+  { key: 'set_seq', label: '세트 순번' },
+  { key: 'customs_category', label: '통관 품목' },
+  { key: 'kc', label: 'KC 인증 여부' },
+  { key: 'kc_type', label: 'KC 인증 종류' },
+  { key: 'personal_order_no', label: '개인 주문번호' },
+  { key: '1688_order_id', label: '1688 주문번호' },
+  { key: '1688_offer_id', label: '1688 상품코드' },
+  { key: 'vendor_option_id', label: '벤더 옵션 ID' },
+  { key: 'price_cny', label: '단가 (CNY)' },
+  { key: 'price_total_cny', label: '합계 (CNY)' },
+  { key: 'price_krw', label: '단가 (KRW)' },
+  { key: 'price_total_krw', label: '합계 (KRW)' },
+  { key: 'price_delivery_cny', label: '배송비 (CNY)' },
+  { key: 'price_delivery_kr', label: '배송비 (KRW)' },
+  { key: 'note_notice', label: '비고 (알림)' },
+  { key: 'note_kr', label: '비고 (한국어)' },
+  { key: 'note_cn', label: '비고 (중국어)' },
+  { key: 'status', label: '상태' },
+  { key: 'item_seq', label: '항목 순번' },
+  { key: 'arrival_qty', label: '입고 수량' },
+  { key: 'shipped_qty', label: '출고 수량' },
+  { key: 'cancel_qty', label: '취소 수량' },
+  { key: 'requested_date', label: '요청일' },
+  { key: 'site_url', label: '사이트 URL' },
 ];
 
 /** 기존 이름 유지 (하위 호환) — 새 코드는 PRODUCT_FIELDS 를 직접 쓴다 */
@@ -412,10 +457,44 @@ export const SAMPLE_LABEL_DATA: LabelData = {
   item_name: '여성 블라우스 SM-BBTHDY5F207, 아이보리',
   barcode: '8809123456789',
   product_no: 'BZ-260618-0049',
+  item_no: 'BZ-260618-0049-A01',
   shipment_size: 'A',
   composition: '폴리에스터 100%',
-  recommanded_age: '성인',
+  recommanded_age: '5-7세 (권장)',
   qty: 3,
+  item_name_only: '여성 블라우스 SM-BBTHDY5F207',
+  option_name: '아이보리',
+  order_no: 'ORD-20260618-0001',
+  order_qty: 3,
+  china_option1: '米白色',
+  china_option2: 'M',
+  coupang_shipment_size: '소형',
+  shipment_type: 'NORMAL',
+  set_total: 1,
+  set_seq: 1,
+  customs_category: '의류',
+  kc: '',
+  kc_type: '',
+  personal_order_no: '',
+  '1688_order_id': '5127636636939007433',
+  '1688_offer_id': '712345678901',
+  vendor_option_id: '',
+  price_cny: 19.99,
+  price_total_cny: 59.97,
+  price_krw: 3800,
+  price_total_krw: 11400,
+  price_delivery_cny: 0,
+  price_delivery_kr: 0,
+  note_notice: '',
+  note_kr: '',
+  note_cn: '',
+  status: 'PROCESSING',
+  item_seq: 1,
+  arrival_qty: 0,
+  shipped_qty: 0,
+  cancel_qty: 0,
+  requested_date: '2026-06-18',
+  site_url: 'https://detail.1688.com/offer/712345678901.html',
   acc_vender_name: '(주)샘플상사',
   acc_full_name: '홍길동',
   acc_username: 'sample_user',

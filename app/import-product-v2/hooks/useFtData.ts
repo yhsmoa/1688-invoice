@@ -49,6 +49,20 @@ export interface FtOrderItem {
   note_notice?: string | null;
   note_cn?: string | null;
   personal_order_no?: string | null;
+  // 라벨 바인딩용으로 추가 조회하는 컬럼 (lib/ftOrderItemsSelect.ts) — 화면 표시엔 안 쓴다
+  note_kr?: string | null;
+  kc?: boolean | null;
+  kc_type?: string | null;
+  vendor_option_id?: string | null;
+  price_krw?: number | null;
+  price_total_krw?: number | null;
+  price_delivery_cny?: number | null;
+  price_delivery_kr?: number | null;
+  item_seq?: number | null;
+  arrival_qty?: number | null;
+  shipped_qty?: number | null;
+  cancel_qty?: number | null;
+  requested_date?: string | null;
 }
 
 // ============================================================
