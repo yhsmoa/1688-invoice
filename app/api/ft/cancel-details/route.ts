@@ -5,6 +5,9 @@ import { confirmDoneForUser } from '../../../../lib/confirmDone';
 // ============================================================
 // 허용된 업데이트 필드 (화이트리스트)
 // dot(.) 포함 컬럼(fulfillments.id, 1688_order_no)은 제외
+//
+// done_at 은 여기 없다 — 클라이언트가 직접 못 정하고, status 변경에 맞춰
+// 서버가 자동으로 채우거나 비운다 (아래 PATCH 참고).
 // ============================================================
 const ALLOWED_UPDATE_FIELDS = new Set([
   'status',
@@ -23,6 +26,12 @@ const VALID_STATUSES = new Set(['PENDING', 'PROCESSING', 'DONE']);
 // 단일 필드 업데이트 (상태 변경 / 요청자 변경 / 금액 수정 / 사유 수정)
 //
 // Body: { id: string, field: string, value: string | number | null }
+//
+// status 변경 시 done_at 도 같이 쓴다 (완료 시점 기록):
+//   · 'DONE'      → done_at = 지금
+//   · 그 외 상태   → done_at = NULL  (되돌리면 이전 완료 시각이 남아 있으면 안 된다)
+// 반품 화면의 [완료] 버튼도 이 경로를 타므로 여기 한 곳만 처리하면 된다
+// (상태 드롭다운으로 직접 DONE 으로 바꾸는 경우까지 같이 커버된다).
 // ============================================================
 export async function PATCH(request: NextRequest) {
   try {
@@ -50,10 +59,15 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // ── 업데이트
+    // ── 업데이트 (status 면 완료 시점 done_at 동시 기록)
+    const patch: Record<string, string | number | null> = { [field]: value };
+    if (field === 'status') {
+      patch.done_at = value === 'DONE' ? new Date().toISOString() : null;
+    }
+
     const { error: updateErr } = await supabase
       .from('ft_cancel_details')
-      .update({ [field]: value })
+      .update(patch)
       .eq('id', id);
 
     if (updateErr) {
@@ -84,7 +98,14 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, id, field, value, doneCount });
+    return NextResponse.json({
+      success: true,
+      id,
+      field,
+      value,
+      ...(field === 'status' ? { done_at: patch.done_at } : {}),
+      doneCount,
+    });
 
   } catch (error) {
     console.error('ft_cancel_details PATCH 처리 오류:', error);
@@ -159,6 +180,8 @@ export async function GET(request: NextRequest) {
       service_fee: row.service_fee,
       cancel_reason: row.cancel_reason,
       created_at: row.created_at,
+      // 완료(DONE) 시점. 컬럼 추가 이전에 완료된 행은 NULL 이다
+      done_at: row.done_at ?? null,
       user_id: row.user_id,
       '1688_order_no': row['1688_order_no'],
       requester: row.requester,

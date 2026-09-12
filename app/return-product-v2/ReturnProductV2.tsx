@@ -84,6 +84,8 @@ export interface CancelDetail {
   service_fee: number | null;
   cancel_reason: string | null;
   created_at: string;
+  /** status 가 DONE 으로 바뀐 시점. 컬럼 추가 이전에 완료된 행은 null */
+  done_at: string | null;
   user_id: string | null;
   '1688_order_no': string | null;
   requester: string | null;
