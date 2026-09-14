@@ -227,6 +227,21 @@
   opacity: 1;
 }
 
+/* ── 첨부 이미지 압축 중 표시 ── */
+.v2-cc-compressing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 업로드 용량 안내 (원본 → 압축본) ── */
+.v2-cc-size-info {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ============================================================ */
 /* 확인 속성 체크박스                                            */
 /* ============================================================ */
@@ -400,6 +415,12 @@
   border-top-color: #fff;
   border-radius: 50%;
   animation: v2-cc-spin 0.7s linear infinite;
+}
+
+/* 밝은 배경용 스피너 (드롭존 압축 중) */
+.v2-cc-spinner-dark {
+  border-color: rgba(100, 116, 139, 0.3);
+  border-top-color: #64748b;
 }
 
 @keyframes v2-cc-spin {

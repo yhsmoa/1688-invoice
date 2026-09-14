@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
+import { compressImage, formatBytes, ImageCompressError } from '../utils/compressImage';
 import './V2CustomerConfirmModal.css';
 
 // ============================================================
@@ -18,6 +19,8 @@ import './V2CustomerConfirmModal.css';
 //       헤더 : 아이템번호 - 중국옵션1, 중국옵션2
 //       좌측 : img_url 큰 미리보기 (image-proxy 경유)
 //       우측 : 첨부 이미지 드롭존 — 클릭 또는 드래그앤드롭으로 첨부/교체 (별도 버튼 없음)
+//              선택 즉시 브라우저에서 JPEG 로 압축(utils/compressImage, 목표 500KB 이하)해
+//              압축본만 업로드한다. 압축 중에는 저장 버튼을 막는다.
 //       하단 : 확인수량 입력 ([입력] / 입고개수) + 확인 항목 체크박스
 //              속성 라벨은 언어설정(ko/zh) 적용, 단 Notion 저장은 항상 한글
 //              기타 체크박스 + 입력폼 상시 노출, 입력 시 기타 자동 체크
@@ -54,8 +57,14 @@ interface V2CustomerConfirmModalProps {
 
 // ── 아이템별 폼 상태 (key = item.id) ──
 interface ItemFormState {
-  file: File | null;
-  previewUrl: string | null;   // 첨부 파일 object URL (미리보기용)
+  file: File | null;           // 업로드할 파일 (압축본 — 압축 완료 전에는 null)
+  previewUrl: string | null;   // 첨부 파일 data URL (미리보기용)
+  /** 사용자가 고른 원본 — 압축 중 다른 파일로 교체됐는지 판별하는 키 */
+  sourceFile: File | null;
+  /** 압축 진행 중 */
+  compressing: boolean;
+  /** 원본 → 업로드 용량 (완료 후 표시용) */
+  sizeInfo: { original: number; output: number; compressed: boolean } | null;
   attributes: Set<string>;     // 선택된 속성 key 집합
   etcText: string;             // 기타 입력값
   confirmQty: string;          // 확인수량
@@ -64,6 +73,9 @@ interface ItemFormState {
 const createEmptyForm = (): ItemFormState => ({
   file: null,
   previewUrl: null,
+  sourceFile: null,
+  compressing: false,
+  sizeInfo: null,
   attributes: new Set(),
   etcText: '',
   confirmQty: '',
@@ -89,6 +101,8 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
 
   // 첨부파일 input ref (item.id → input element)
   const fileInputRefs = useRef<Map<string, HTMLInputElement | null>>(new Map());
+  // 항목별 최신 원본 (item.id → File) — 압축이 끝났을 때 아직 유효한 결과인지 판정
+  const latestSourceRef = useRef<Map<string, File>>(new Map());
 
   // ── 모달 열릴 때 폼 초기화 (data URL 사용 → 해제 불필요) ──
   useEffect(() => {
@@ -97,6 +111,7 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
       items.forEach((item) => next.set(item.id, createEmptyForm()));
       setFormData(next);
       setAttemptedSave(false);
+      latestSourceRef.current = new Map();   // 이전 세션의 진행 중 압축 결과 무효화
     }
   }, [isOpen, items]);
 
@@ -112,33 +127,58 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
 
   // ============================================================
   // 첨부 이미지 설정 (클릭 선택 / 드래그앤드롭 공통)
+  //   1. 원본을 sourceFile 로 기록 + 압축 중 표시 (이전 첨부는 비움)
+  //   2. compressImage → 압축본을 file 로, 미리보기는 압축본 data URL
+  //      - blob: URL + revoke 경합으로 인한 ERR_FILE_NOT_FOUND 회피 (data URL 은 해제 불필요)
+  //   3. 압축 중 다른 파일로 교체됐으면 늦게 끝난 결과는 버린다 (sourceFile 비교)
+  //   4. 읽을 수 없는 형식이면 첨부를 비우고 알린다 — 원본을 대신 올리지 않는다
   // ============================================================
-  const setItemFile = useCallback((itemId: string, file: File | null) => {
-    // 파일은 즉시 반영 (저장용), 미리보기는 FileReader data URL 로 비동기 세팅.
-    //   - blob: URL + revoke 경합으로 인한 ERR_FILE_NOT_FOUND 회피
-    //   - data URL 은 자체 완결형이라 해제 불필요
+  const setItemFile = useCallback(async (itemId: string, source: File) => {
+    // 최신 원본은 ref 에 동기 기록 — setState 업데이터는 지연 실행될 수 있어 판정에 쓰지 않는다
+    latestSourceRef.current.set(itemId, source);
     setFormData((prev) => {
       const next = new Map(prev);
       const current = next.get(itemId) ?? createEmptyForm();
-      next.set(itemId, { ...current, file, previewUrl: null });
+      next.set(itemId, { ...current, file: null, previewUrl: null, sourceFile: source, compressing: true, sizeInfo: null });
       return next;
     });
 
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = reader.result as string;
+    /** 아직 이 원본이 현재 첨부 대상인지 (모달 재오픈·다른 파일 교체 시 false) */
+    const isCurrent = () => latestSourceRef.current.get(itemId) === source;
+    /** 상태 반영 — 교체된 원본의 늦은 결과는 버린다 */
+    const applyIfCurrent = (patch: Partial<ItemFormState>) => {
       setFormData((prev) => {
         const current = prev.get(itemId);
-        // 그 사이 다른 파일로 교체되었으면 stale 결과 무시
-        if (!current || current.file !== file) return prev;
+        if (!current || current.sourceFile !== source) return prev;
         const next = new Map(prev);
-        next.set(itemId, { ...current, previewUrl: url });
+        next.set(itemId, { ...current, ...patch });
         return next;
       });
     };
-    reader.readAsDataURL(file);
+
+    try {
+      const result = await compressImage(source);
+      const previewUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new ImageCompressError('미리보기를 만들 수 없습니다.'));
+        reader.readAsDataURL(result.file);
+      });
+
+      if (!isCurrent()) return;
+      applyIfCurrent({
+        file: result.file,
+        previewUrl,
+        compressing: false,
+        sizeInfo: { original: result.originalBytes, output: result.outputBytes, compressed: result.compressed },
+      });
+    } catch (err) {
+      console.error('첨부 이미지 압축 오류:', err);
+      if (!isCurrent()) return;
+      applyIfCurrent({ file: null, previewUrl: null, sourceFile: null, compressing: false, sizeInfo: null });
+      latestSourceRef.current.delete(itemId);
+      alert(err instanceof ImageCompressError ? err.message : '이미지를 처리하지 못했습니다. 다른 이미지로 다시 첨부해주세요.');
+    }
   }, []);
 
   // input change — 파일 선택 (취소 시 onChange 미발생 → 기존 첨부 유지)
@@ -207,6 +247,12 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
   // ============================================================
   const handleSubmit = useCallback(async () => {
     if (isSaving || items.length === 0) return;
+
+    // ── 압축이 끝나지 않은 첨부가 있으면 저장하지 않는다 (원본·누락 업로드 방지) ──
+    if (items.some((item) => formData.get(item.id)?.compressing)) {
+      alert('첨부 이미지를 줄이는 중입니다. 잠시 후 다시 저장해주세요.');
+      return;
+    }
 
     if (!sellerCode) {
       alert('선택된 사용자의 USER_CODE 가 없어 Notion 팀 정보를 저장할 수 없습니다.');
@@ -304,6 +350,9 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
 
   if (!isOpen) return null;
 
+  /** 압축 중인 첨부가 하나라도 있는지 — 저장 버튼 비활성화 */
+  const anyCompressing = items.some((item) => formData.get(item.id)?.compressing);
+
   return (
     // ── 배경 오버레이 ──
     <div className="v2-cc-overlay" onClick={() => !isSaving && onClose()}>
@@ -370,7 +419,12 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
                         onDrop={(e) => handleDrop(item.id, e)}
                         title="클릭 또는 드래그하여 이미지 첨부·교체"
                       >
-                        {form.previewUrl ? (
+                        {form.compressing ? (
+                          <div className="v2-cc-dropzone-empty v2-cc-compressing">
+                            <span className="v2-cc-spinner v2-cc-spinner-dark" />
+                            이미지 줄이는 중...
+                          </div>
+                        ) : form.previewUrl ? (
                           <>
                             <img src={form.previewUrl} alt="첨부 미리보기" className="v2-cc-image" />
                             <div className="v2-cc-dropzone-hint">클릭 또는 드래그하여 교체</div>
@@ -381,6 +435,14 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
                           </div>
                         )}
                       </div>
+                      {/* 업로드 용량 안내 — 원본 → 압축본 */}
+                      {form.sizeInfo && !form.compressing && (
+                        <div className="v2-cc-size-info">
+                          {form.sizeInfo.compressed
+                            ? `${formatBytes(form.sizeInfo.original)} → ${formatBytes(form.sizeInfo.output)}`
+                            : `${formatBytes(form.sizeInfo.output)} (원본)`}
+                        </div>
+                      )}
                       <input
                         ref={(el) => { fileInputRefs.current.set(item.id, el); }}
                         type="file"
@@ -450,13 +512,15 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
           <button
             className="v2-cc-btn-primary"
             onClick={handleSubmit}
-            disabled={isSaving || items.length === 0}
+            disabled={isSaving || anyCompressing || items.length === 0}
           >
             {isSaving ? (
               <span className="v2-cc-saving">
                 <span className="v2-cc-spinner" />
                 저장 중...
               </span>
+            ) : anyCompressing ? (
+              '이미지 처리 중...'
             ) : (
               '저장'
             )}
