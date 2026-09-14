@@ -215,6 +215,12 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">고객계좌</span>
                   </Link>
                 </li>
+                {/* 고객계좌 (신) — 새 원장 ft_user_transactions 읽기 전용 (구 고객계좌와 병행) */}
+                <li className="submenu-item">
+                  <Link href="/invoice/payment-history-v2" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history-v2')}>
+                    <span className="submenu-text">고객계좌 (신)</span>
+                  </Link>
+                </li>
                 <li className="submenu-item">
                   <Link href="/invoice/trade-account" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account')}>
                     <span className="submenu-text">무역계좌</span>

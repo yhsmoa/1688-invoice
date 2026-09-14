@@ -1090,6 +1090,25 @@
 }
 
 /* ============================================================ */
+/* 조회 전용 안내 — 기록은 고객계좌 (신)                          */
+/* ============================================================ */
+.payment-history-readonly-banner {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.payment-history-readonly-banner a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ============================================================ */
 /* 기간 (잔액 보드 위, 보드 밖 좌측) — 몇년몇월 ~ 몇년몇월        */
 /* ============================================================ */
 .payment-history-period-row {

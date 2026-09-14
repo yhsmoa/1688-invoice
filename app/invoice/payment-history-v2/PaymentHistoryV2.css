@@ -1,0 +1,695 @@
+/* ============================================================ */
+/* 고객계좌 (신) — 레이아웃 (구 고객계좌와 동일 골격)               */
+/* ============================================================ */
+.phv2-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.phv2-main-content {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.phv2-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0;
+  min-height: calc(100vh - 80px);
+}
+
+.phv2-container {
+  padding: 20px;
+  width: 100%;
+}
+
+/* ============================================================ */
+/* 타이틀 행 — 제목 + 배지 + 건수 / 사용자 선택 + 업데이트          */
+/* ============================================================ */
+.phv2-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 16px;
+}
+
+.phv2-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.phv2-title {
+  color: #333;
+  font-size: 2rem;
+  margin: 0;
+}
+
+/* "새 원장" 배지 */
+.phv2-badge-ledger {
+  padding: 2px 8px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.phv2-count {
+  font-size: 12px;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.phv2-title-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.phv2-user-dropdown {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  min-width: 180px;
+}
+
+.phv2-user-dropdown:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+}
+
+.phv2-update-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.phv2-update-btn:hover {
+  background-color: #45a049;
+}
+
+.phv2-update-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.phv2-add-btn {
+  background-color: #8b5cf6;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 90px;
+  min-height: 38px;
+  transition: background-color 0.2s;
+}
+
+.phv2-add-btn:hover {
+  background-color: #7c3aed;
+}
+
+.phv2-add-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.phv2-button-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.phv2-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: phv2-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.phv2-spinner-dark {
+  width: 18px;
+  height: 18px;
+  border-color: rgba(107, 114, 128, 0.3);
+  border-top-color: #6b7280;
+  margin-right: 8px;
+}
+
+@keyframes phv2-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================ */
+/* 조회 실패 경고 — 대체 데이터 없이 그대로 표시                     */
+/* ============================================================ */
+.phv2-alert-error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.phv2-alert-detail {
+  margin-left: 8px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.phv2-empty-error {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+/* ============================================================ */
+/* 잔액 + 원장 정합성 행                                            */
+/* ============================================================ */
+.phv2-compare-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.phv2-compare-item {
+  color: #6b7280;
+}
+
+.phv2-compare-value {
+  font-weight: 600;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.phv2-compare-muted {
+  color: #9ca3af;
+}
+
+.phv2-compare-dot {
+  color: #d1d5db;
+}
+
+/* 대조 결과 알약 */
+.phv2-pill {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+
+.phv2-pill.is-matched {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.phv2-pill.is-diff {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.phv2-pill.is-broken {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* ============================================================ */
+/* 월 + 사업자 필터                                                */
+/* ============================================================ */
+.phv2-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.phv2-select {
+  font-size: 12px;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: #fff;
+  min-width: 80px;
+  white-space: nowrap;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.phv2-select:focus {
+  border-color: #60a5fa;
+}
+
+.phv2-filter-hint {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* 환산금액 안내 (필터 행 우측) */
+.phv2-rate-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: #ef4444;
+  text-align: right;
+}
+
+/* ============================================================ */
+/* 테이블 — 참조(거래내역 (신)) 페이지 동일 디자인                   */
+/* ============================================================ */
+.phv2-table-board {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow-x: auto;            /* 15컬럼 — 가로 스크롤 허용 */
+}
+
+.phv2-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.phv2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+/* 헤더 */
+.phv2-th {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+.phv2-th-left { text-align: left; }
+.phv2-th-center { text-align: center; }
+.phv2-th-right { text-align: right; }
+
+/* 내용·참조 열 — 폭 확보 (나머지 열은 nowrap) */
+.phv2-th-desc,
+.phv2-th-ref {
+  width: 11%;
+  min-width: 120px;
+  white-space: normal;
+}
+
+/* 셀 */
+.phv2-td {
+  padding: 6px 12px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+.phv2-td-left { text-align: left; }
+.phv2-td-center { text-align: center; }
+.phv2-td-right { text-align: right; font-variant-numeric: tabular-nums; }
+.phv2-td-num { font-variant-numeric: tabular-nums; }
+.phv2-td-total { color: #1f2937; font-weight: 500; }
+.phv2-td-charge { color: #1d4ed8; }
+.phv2-td-refund { color: #15803d; }
+.phv2-td-balance { color: #111827; font-weight: 600; }
+
+/* 내용 — 줄바꿈 표시 (truncate 대신 whitespace-normal) */
+.phv2-td-desc {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 0;
+}
+
+/* 참조 — 넘치면 말줄임 */
+.phv2-td-ref {
+  color: #6b7280;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* hover 팝오버 대상 셀 */
+.phv2-td.is-help {
+  cursor: help;
+}
+
+.phv2-note-pin {
+  margin-left: 4px;
+}
+
+/* 타입별 행 배경 (입금=연블루 / 출금=연주황) — 구 화면과 동일 규칙 */
+.phv2-row-in { background: rgba(239, 246, 255, 0.6); }
+.phv2-row-out { background: rgba(255, 247, 237, 0.4); }
+.phv2-table tbody tr:hover { background: #f9fafb; }
+
+/* ============================================================ */
+/* 적용일 셀 — 클릭 수정                                            */
+/* ============================================================ */
+.phv2-date-text {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.phv2-date-text.is-editable {
+  cursor: pointer;
+}
+
+.phv2-date-text.is-editable:hover {
+  background-color: #e5e7eb;
+}
+
+.phv2-date-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.phv2-date-input {
+  padding: 2px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 130px;
+}
+
+.phv2-date-save-btn,
+.phv2-date-cancel-btn {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.phv2-date-save-btn { background-color: #4CAF50; }
+.phv2-date-cancel-btn { background-color: #f44336; }
+.phv2-date-save-btn:disabled,
+.phv2-date-cancel-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+/* ============================================================ */
+/* 추가 모달 — 충전 / 차감 / 1688 주문                              */
+/* ============================================================ */
+.phv2-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.phv2-modal {
+  background: white;
+  width: 800px;
+  max-width: 96vw;
+  height: 640px;
+  max-height: 92vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.phv2-modal-title {
+  padding: 20px 40px 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+}
+
+.phv2-modal-subtitle {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.phv2-modal-type-buttons {
+  display: flex;
+  gap: 12px;
+  padding: 20px 40px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.phv2-modal-type-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.phv2-modal-type-btn.charge { color: #10b981; border-color: #10b981; }
+.phv2-modal-type-btn.charge:hover,
+.phv2-modal-type-btn.charge.active { background-color: #10b981; color: white; }
+.phv2-modal-type-btn.deduct { color: #ef4444; border-color: #ef4444; }
+.phv2-modal-type-btn.deduct:hover,
+.phv2-modal-type-btn.deduct.active { background-color: #ef4444; color: white; }
+.phv2-modal-type-btn.order { color: #3b82f6; border-color: #3b82f6; }
+.phv2-modal-type-btn.order:hover,
+.phv2-modal-type-btn.order.active { background-color: #3b82f6; color: white; }
+.phv2-modal-type-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.phv2-modal-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* 폼 — 라벨 위 배치 */
+.phv2-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.phv2-form-row { display: flex; gap: 16px; }
+.phv2-form-row-half .phv2-form-item { flex: 1; }
+.phv2-form-row-third .phv2-form-item { flex: 1; }
+
+.phv2-form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.phv2-form-item label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.phv2-form-item input,
+.phv2-form-item textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.phv2-form-item input:focus,
+.phv2-form-item textarea:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.phv2-form-item textarea { resize: vertical; min-height: 70px; }
+
+.phv2-form-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.phv2-form-quick button {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.phv2-form-quick button:hover {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.phv2-form-hint {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* 1688 주문 — 엑셀 업로드 */
+.phv2-upload {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.phv2-upload-area {
+  width: 100%;
+  flex: 1;
+  min-height: 260px;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: #fafafa;
+  transition: all 0.2s;
+}
+
+.phv2-upload-area:hover {
+  border-color: #3b82f6;
+  background-color: #f0f7ff;
+}
+
+.phv2-upload-icon { font-size: 48px; margin-bottom: 16px; }
+.phv2-upload-text { font-size: 16px; font-weight: 500; color: #374151; margin-bottom: 8px; }
+.phv2-upload-hint { font-size: 13px; color: #9ca3af; }
+
+.phv2-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 40px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.phv2-modal-cancel-btn {
+  padding: 10px 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.phv2-modal-cancel-btn:hover { background-color: #f3f4f6; }
+
+.phv2-modal-save-btn {
+  padding: 10px 32px;
+  border: none;
+  border-radius: 4px;
+  background-color: #4CAF50;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.phv2-modal-save-btn:hover { background-color: #45a049; }
+.phv2-modal-save-btn:disabled,
+.phv2-modal-cancel-btn:disabled { background-color: #9ca3af; color: white; cursor: not-allowed; }
+
+/* ============================================================ */
+/* hover 팝오버 (비용 분해 / 관리자비고) — 마우스 우측 고정         */
+/* ============================================================ */
+.phv2-popover {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.phv2-popover-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #1f2937;
+}
+
+.phv2-popover-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.phv2-popover-label {
+  color: #6b7280;
+}
+
+.phv2-popover-note {
+  max-width: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.phv2-popover-title {
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
