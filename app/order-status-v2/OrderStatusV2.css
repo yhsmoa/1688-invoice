@@ -372,6 +372,9 @@
   white-space: nowrap;
   font-size: 12px;
 }
+.order-status-v2-table .os-v2-col-delivery[title] {
+  cursor: help;
+}
 
 /* ============================================================
    비고 열 (KR / CN) — 인라인 편집 (contentEditable)
@@ -562,6 +565,48 @@
   padding: 12px 16px;
   border-bottom: 1px solid #e2e8f0;
   background: #fafafa;
+}
+
+/* ── 배송 추적 (송장번호 + 최신 물류 위치) ── */
+.os-v2-log-tracking {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.os-v2-log-tracking-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.os-v2-log-tracking-label {
+  color: #888;
+}
+
+.os-v2-log-tracking-status {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.os-v2-log-tracking-no {
+  color: #333;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.os-v2-log-tracking-location {
+  margin-top: 6px;
+  color: #555;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 /* ── 상품 이미지 영역 (로그 테이블 위, 가로 중앙) ── */

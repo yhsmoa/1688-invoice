@@ -11,10 +11,15 @@ import {
   useOrderStatusPagination,
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
-import FulfillmentLogModal from './components/FulfillmentLogModal';
+import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
-import { formatDeliveryDisplay } from './utils/deliveryStatusMap';
+import {
+  DELIVERY_STATUS_KR,
+  formatDeliveryDisplay,
+  getDeliveryStatusMeaning,
+  mergeDeliveryCodes,
+} from './utils/deliveryStatusMap';
 import { resolveSizeBadge } from '../../lib/sizeCode';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './OrderStatusV2.css';
@@ -250,6 +255,21 @@ const OrderStatusV2: React.FC = () => {
   const [logModalItem, setLogModalItem] = useState<FtOrderItem | null>(null);
   const [logDeliveryCodes, setLogDeliveryCodes] = useState<string[]>([]);
   const [logDeliveryCodesLoading, setLogDeliveryCodesLoading] = useState(false);
+
+  // 처리 로그 — 배송 추적 (배송상황 CSV: 택배사·송장번호·최신 물류 위치)
+  const logTracking = useMemo<DeliveryTracking | null>(() => {
+    const oid = logModalItem?.['1688_order_id'];
+    const info = oid ? deliveryStatusMap.get(oid) : undefined;
+    if (!info) return null;
+    // 상세내용이 상태 원문과 같으면(예: 待揽收) 위치 정보가 아니므로 표시하지 않는다
+    const description = (info.description ?? '').trim();
+    return {
+      courier: info.courier ?? '',
+      trackingNo: info.tracking_no ?? '',
+      statusLabel: DELIVERY_STATUS_KR[info.delivery_status] ?? info.delivery_status,
+      location: description === info.delivery_status ? '' : description,
+    };
+  }, [logModalItem, deliveryStatusMap]);
 
   // 주문번호 셀 옆 팝업: { item, x, y } | null
   const [orderPopup, setOrderPopup] = useState<{
@@ -708,14 +728,18 @@ const OrderStatusV2: React.FC = () => {
                             ) : ''}
                           </td>
                           {/* 배송 (im_1688_orders_delivery_status 조인) */}
-                          <td className="os-v2-col-delivery">
-                            {(() => {
-                              const oid = item['1688_order_id'];
-                              if (!oid) return '';
-                              const info = deliveryStatusMap.get(oid);
-                              return info ? formatDeliveryDisplay(info, language) : '';
-                            })()}
-                          </td>
+                          {/*   · 마우스를 올리면 배송 상태의 뜻 (한국어 화면만 — 중국어 화면은 원문 자체가 뜻) */}
+                          {(() => {
+                            const oid = item['1688_order_id'];
+                            const info = oid ? deliveryStatusMap.get(oid) : undefined;
+                            if (!info) return <td className="os-v2-col-delivery" />;
+                            const meaning = language === 'zh' ? null : getDeliveryStatusMeaning(info.delivery_status);
+                            return (
+                              <td className="os-v2-col-delivery" title={meaning ?? undefined}>
+                                {formatDeliveryDisplay(info, language)}
+                              </td>
+                            );
+                          })()}
                           {/* ── 비고 KR (note_notice) — 인라인 편집 ── */}
                           {(() => {
                             const isEditing = editingCell?.id === item.id && editingCell?.field === 'note_notice';
@@ -845,8 +869,15 @@ const OrderStatusV2: React.FC = () => {
         rawFulfillments={rawFulfillments}
         onClose={handleLogModalClose}
         onDelete={handleFulfillmentDelete}
-        deliveryCodes={logDeliveryCodes}
+        /* delivery code = 1688_invoice_deliveryInfo_check + 배송상황 CSV 송장번호 (중복 제거) */
+        deliveryCodes={mergeDeliveryCodes(
+          logDeliveryCodes,
+          logModalItem?.['1688_order_id']
+            ? deliveryStatusMap.get(logModalItem['1688_order_id'])?.tracking_no
+            : null
+        )}
         deliveryCodesLoading={logDeliveryCodesLoading}
+        tracking={logTracking}
       />
 
       {/* ============================================================ */}

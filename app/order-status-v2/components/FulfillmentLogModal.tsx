@@ -20,6 +20,19 @@ interface FulfillmentLogModalProps {
   onDelete: (fulfillmentId: string) => Promise<void>;
   deliveryCodes?: string[];
   deliveryCodesLoading?: boolean;
+  /** 배송 추적 — im_1688_orders_delivery_status (배송상황 CSV) */
+  tracking?: DeliveryTracking | null;
+}
+
+export interface DeliveryTracking {
+  /** 택배사 (예: 中通快递(ZTO)) */
+  courier: string;
+  /** 송장번호 — 여러 개면 'A / B' */
+  trackingNo: string;
+  /** 배송 상태 한글 표시명 (예: 운송중) */
+  statusLabel: string;
+  /** 최신 물류 위치/이력 문구 (CSV 상세내용) */
+  location: string;
 }
 
 // ── type → 한글 라벨 ──
@@ -54,6 +67,7 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
   onDelete,
   deliveryCodes = [],
   deliveryCodesLoading = false,
+  tracking = null,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -130,6 +144,24 @@ const FulfillmentLogModal: React.FC<FulfillmentLogModalProps> = ({
           <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
             delivery code: {deliveryCodesLoading ? '조회 중...' : (deliveryCodes.length > 0 ? deliveryCodes.join(', ') : '-')}
           </div>
+
+          {/* ── 배송 추적 (배송상황 CSV) — 송장번호 + 최신 물류 위치 ── */}
+          {tracking && (tracking.trackingNo || tracking.location) && (
+            <div className="os-v2-log-tracking">
+              <div className="os-v2-log-tracking-head">
+                <span className="os-v2-log-tracking-label">tracking</span>
+                {tracking.statusLabel && (
+                  <span className="os-v2-log-tracking-status">{tracking.statusLabel}</span>
+                )}
+                <span className="os-v2-log-tracking-no">
+                  {[tracking.courier, tracking.trackingNo].filter(Boolean).join(' ') || '-'}
+                </span>
+              </div>
+              {tracking.location && (
+                <div className="os-v2-log-tracking-location">{tracking.location}</div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── 상품 이미지 (300x300, 가로 중앙) — image-proxy 경유로 CDN 처리 ── */}

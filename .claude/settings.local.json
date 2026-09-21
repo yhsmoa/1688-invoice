@@ -108,7 +108,11 @@
       "mcp__60811a32-bf94-4282-8e70-497440699b8b__set-variables",
       "mcp__60811a32-bf94-4282-8e70-497440699b8b__list-domains",
       "mcp__60811a32-bf94-4282-8e70-497440699b8b__list-deployments",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://1688-invoice.up.railway.app/api/qz/cert\" -UseBasicParsing -TimeoutSec 20 -ErrorAction Stop; \"status=\" + $r.StatusCode; $r.Content.Substring\\(0, [Math]::Min\\(80, $r.Content.Length\\)\\) } catch { $resp = $_.Exception.Response; \"status=\" + [int]$resp.StatusCode; try { $sr = New-Object IO.StreamReader\\($resp.GetResponseStream\\(\\)\\); $sr.ReadToEnd\\(\\).Substring\\(0,200\\) } catch { $_.Exception.Message } })"
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://1688-invoice.up.railway.app/api/qz/cert\" -UseBasicParsing -TimeoutSec 20 -ErrorAction Stop; \"status=\" + $r.StatusCode; $r.Content.Substring\\(0, [Math]::Min\\(80, $r.Content.Length\\)\\) } catch { $resp = $_.Exception.Response; \"status=\" + [int]$resp.StatusCode; try { $sr = New-Object IO.StreamReader\\($resp.GetResponseStream\\(\\)\\); $sr.ReadToEnd\\(\\).Substring\\(0,200\\) } catch { $_.Exception.Message } })",
+      "Bash(npm install *)",
+      "Read(//c/Users/USER/Downloads/**)",
+      "Bash(npx tsx *)",
+      "Bash(git checkout *)"
     ],
     "deny": []
   }
