@@ -112,7 +112,9 @@
       "Bash(npm install *)",
       "Read(//c/Users/USER/Downloads/**)",
       "Bash(npx tsx *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(cp \"C:/Users/USER/Downloads/배송 업데이트 V3.txt\" public/scripts/1688-delivery-crawler-v3.js)",
+      "Bash(node ./_p.mjs)"
     ],
     "deny": []
   }
