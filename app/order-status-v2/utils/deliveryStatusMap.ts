@@ -12,6 +12,11 @@ export const ORDER_STATUS_EMOJI: Record<string, string> = {
   '待收货': '📦',   // 수령 대기
 };
 
+// ── 배송 상태 이모지 — 있으면 주문 상태 이모지보다 우선 ──
+export const DELIVERY_STATUS_EMOJI: Record<string, string> = {
+  '已签收': '✅',   // 배송완료
+};
+
 // ── 배송 상태 정의 — 한글 표시명 + 뜻(마우스 hover 툴팁) ──
 interface DeliveryStatusDef {
   label: string;
@@ -130,13 +135,16 @@ export function summarizePendingDescription(desc: string): string | null {
 //
 // 규칙:
 //   "{이모지} {배송상태}"
+//   - 이모지: DELIVERY_STATUS_EMOJI(예: 배송완료 ✅) → 없으면 ORDER_STATUS_EMOJI(탭)
 //   - lang === 'zh' : 배송상태를 원본 중국어 그대로 표시 (한글 매핑 안 함)
 //   - 그 외(ko)     : 한글 매핑 적용
 //   order_status === '待发货' 이고 description 이 있으면 뒤에 붙인다
 //   - zh : 원문 그대로 / ko : summarizePendingDescription 요약
 // ============================================================
 export function formatDeliveryDisplay(info: DeliveryStatusInfo, lang: string = 'ko'): string {
-  const os = ORDER_STATUS_EMOJI[info.order_status] ?? info.order_status;
+  const os = DELIVERY_STATUS_EMOJI[info.delivery_status]
+    ?? ORDER_STATUS_EMOJI[info.order_status]
+    ?? info.order_status;
   const ds = lang === 'zh'
     ? info.delivery_status
     : (DELIVERY_STATUS_KR[info.delivery_status] ?? info.delivery_status);
