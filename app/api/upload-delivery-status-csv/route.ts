@@ -86,15 +86,30 @@ function resolveColumns(header: unknown[]): Record<Field, number> {
  * 따라 저장값이 달라지므로 오프셋을 명시한다.
  */
 const CN_UTC_OFFSET = '+08:00';
+/** 화면 크롤러(v2): '2026-09-19 11:10' / '2026-08-25 15:27:35' */
 const CSV_DATETIME_RE = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+/** API 크롤러(v3) gmtCreate 대비: '20260919111023000+0800' (밀리초·오프셋 생략 가능) */
+const CSV_COMPACT_RE = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\d{0,3}([+-]\d{2})(\d{2})?$|^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\d{0,3}$/;
 
-/** 'YYYY-MM-DD HH:mm[:ss]' (중국시간) → ISO. 형식이 다르면 null */
+/** 1688 주문일시 (중국시간) → ISO. 형식이 다르면 null */
 function parseTimestamp(raw: string | null): string | null {
   if (!raw) return null;
-  const m = raw.match(CSV_DATETIME_RE);
-  if (!m) return null;
   const pad = (v: string | undefined) => (v ?? '0').padStart(2, '0');
-  const d = new Date(`${m[1]}-${pad(m[2])}-${pad(m[3])}T${pad(m[4])}:${m[5]}:${pad(m[6])}${CN_UTC_OFFSET}`);
+  let iso: string | null = null;
+
+  const m = raw.match(CSV_DATETIME_RE);
+  if (m) {
+    iso = `${m[1]}-${pad(m[2])}-${pad(m[3])}T${pad(m[4])}:${m[5]}:${pad(m[6])}${CN_UTC_OFFSET}`;
+  } else {
+    const c = raw.match(CSV_COMPACT_RE);
+    if (c && c[1]) {
+      iso = `${c[1]}-${c[2]}-${c[3]}T${c[4]}:${c[5]}:${c[6]}${c[7]}:${c[8] ?? '00'}`;
+    } else if (c) {
+      iso = `${c[9]}-${c[10]}-${c[11]}T${c[12]}:${c[13]}:${c[14]}${CN_UTC_OFFSET}`;
+    }
+  }
+  if (!iso) return null;
+  const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 

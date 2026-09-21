@@ -67,6 +67,45 @@
 }
 
 /* ============================================================
+   배송상황 도구 — [배송상황 콘솔] [배송상황 csv] (사용자 선택 옆)
+   ============================================================ */
+.os-v2-delivery-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.os-v2-delivery-tool-btn {
+  padding: 8px 12px;
+  background: #ffffff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.os-v2-delivery-tool-btn:hover:not(:disabled) {
+  background: #f4f4f5;
+  border-color: #a1a1aa;
+}
+
+.os-v2-delivery-tool-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* 복사 완료 피드백 (2초) */
+.os-v2-delivery-tool-btn.is-copied {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+/* ============================================================
    검색 바
    ============================================================ */
 .order-status-v2-search-bar {

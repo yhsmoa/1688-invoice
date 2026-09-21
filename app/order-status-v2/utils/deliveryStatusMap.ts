@@ -40,6 +40,9 @@ const DELIVERY_STATUS_DEF: Record<string, DeliveryStatusDef> = {
   '已揽收':       { label: '집하완료',         meaning: '택배 기사가 물건을 가져감' },
   '物流异常':     { label: '물류이상',         meaning: '배송 중 문제 발생' },
   '物流停滞':     { label: '물류정체',         meaning: '배송 추적이 멈춤' },
+  // 크롤러 v3 (API 방식) 에서 나올 수 있는 값
+  '已揽件':       { label: '집하완료',         meaning: '택배 기사가 물건을 가져감' },
+  '物流异常提醒': { label: '물류이상',         meaning: '배송 중 문제 발생' },
 };
 
 /** 배송 상태 → 한글 표시명 (기존 import 호환) */

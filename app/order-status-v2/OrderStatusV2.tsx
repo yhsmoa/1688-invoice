@@ -12,6 +12,7 @@ import {
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
+import DeliveryStatusTools from './components/DeliveryStatusTools';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import {
@@ -66,7 +67,7 @@ const OrderStatusV2: React.FC = () => {
   } = useFtFulfillmentSummary(items, selectedUserId);
 
   // 배송 상태 (im_1688_orders_delivery_status)
-  const { statusMap: deliveryStatusMap } = use1688DeliveryStatus(items);
+  const { statusMap: deliveryStatusMap, reload: reloadDeliveryStatus } = use1688DeliveryStatus(items);
 
   // 상태 필터 (PROCESSING 기본 / ALL 전체)
   const [statusMode, setStatusMode] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
@@ -533,6 +534,8 @@ const OrderStatusV2: React.FC = () => {
                       : `총 ${items.length}건`}
                   </span>
                 )}
+                {/* 배송상황 갱신 — [배송상황 콘솔] 스크립트 복사 / [배송상황 csv] 업로드 */}
+                <DeliveryStatusTools onUploaded={reloadDeliveryStatus} />
                 <select
                   className="order-status-v2-user-dropdown"
                   value={selectedUserId}

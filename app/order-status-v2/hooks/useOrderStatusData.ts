@@ -309,6 +309,9 @@ export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100) {
 export function use1688DeliveryStatus(items: FtOrderItem[]) {
   const [statusMap, setStatusMap] = useState<Map<string, DeliveryStatusInfo>>(new Map());
   const [loading, setLoading] = useState(false);
+  // 배송상황 CSV 업로드 직후 같은 items 로 다시 조회하기 위한 트리거
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   // unique 1688_order_id 추출
   const idsKey = useMemo(() => {
@@ -350,7 +353,7 @@ export function use1688DeliveryStatus(items: FtOrderItem[]) {
       }
     })();
     return () => { cancelled = true; };
-  }, [idsKey]);
+  }, [idsKey, reloadKey]);
 
-  return { statusMap, loading };
+  return { statusMap, loading, reload };
 }
