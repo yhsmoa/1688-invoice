@@ -114,11 +114,12 @@ const OrderStatusV2: React.FC = () => {
         cancelQty: cancelMap.get(item.id) ?? 0,
         returnQty: returnMap.get(item.id) ?? 0,
         lastArrivalAt: lastArrivalMap.get(item.id) ?? null,
+        shipmentQty: exportMap.get(item.product_id ?? '') ?? 0,
       });
       if (alert) m.set(item.id, alert);
     }
     return m;
-  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap]);
+  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap, exportMap]);
 
   // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
   const [alertOnly, setAlertOnly] = useState(false);

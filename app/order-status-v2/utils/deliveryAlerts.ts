@@ -18,6 +18,7 @@ import { deliveryPhase } from '../../../lib/deliveryPhase';
 //                못 미침                              근거: status_since + 입고 집계
 //   입고 완료    입고가 목표 수량을 채운 뒤 OUTBOUND_DAYS 지나도 DONE 이 아님
 //                (DONE = 주문 − 취소·반품 완료 − 출고 확정 ≤ 0, lib/confirmDone)
+//                예외: 취소·반품 접수 + 출고 확정 ≥ 주문수량이면 통과 (DONE 전이라도)
 //                                                     근거: 마지막 입고 시각
 //                이 규칙은 배송 정보(CSV)가 없어도 판정한다.
 //
@@ -62,6 +63,8 @@ export interface DeliveryAlertInput {
   returnQty: number;
   /** 마지막 입고(ARRIVAL) 시각 (ISO) — 입고 완료 → 출고 지연 판정용 */
   lastArrivalAt: string | null;
+  /** 출고 확정 수량 (PACKED + shipment_id, product_id 기준 — confirmDone 과 동일) */
+  shipmentQty: number;
   /** 현재 시각 — 목록을 돌 때 한 번만 만들어 넘긴다 (없으면 호출 시점) */
   now?: Date;
 }
@@ -85,7 +88,7 @@ const label = (status: string) => DELIVERY_STATUS_KR[status] ?? status;
 // 판정
 // ============================================================
 export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert | null {
-  const { info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty, lastArrivalAt } = input;
+  const { info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty, lastArrivalAt, shipmentQty } = input;
   const now = input.now ?? new Date();
 
   // ── 공통 제외 ──
@@ -95,8 +98,10 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
 
   // ── 입고 완료: 출고(DONE)까지 OUTBOUND_DAYS 안에 끝나야 함 — 배송 정보 없어도 판정 ──
   //   입고 5 → 취소 2 + 출고 3 이면 DONE 이라 위에서 제외됨.
-  //   취소 접수만 되고 처리(DONE)가 안 된 경우는 여전히 PROCESSING 이라 경고 대상.
+  //   취소·반품은 접수만 돼도 수량으로 인정 (사용자 결정): 취소·반품 접수 + 출고 확정이
+  //   주문수량을 채우면 DONE 처리 전이라도 확인필요에서 뺀다. (DONE 판정 자체는 별개)
   if (arrivalQty >= target) {
+    if (target - shipmentQty <= 0) return null;
     const d = elapsedDays(lastArrivalAt ?? undefined, now);
     if (d !== null && d > ALERT_RULES.OUTBOUND_DAYS) {
       return {
