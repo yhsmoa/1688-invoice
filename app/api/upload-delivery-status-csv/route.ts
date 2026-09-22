@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
+import { samePhase } from '../../../lib/deliveryPhase';
 
 // ============================================================
 // POST /api/upload-delivery-status-csv
@@ -42,7 +43,8 @@ const REQUIRED_FIELDS: Field[] = ['order_no', 'delivery_status'];
  */
 const SCRAPE_ERROR_MARKER = '订单详情';
 
-const BATCH = 50;
+/** 삽입 배치 크기 — 1,400여 건이면 3회 요청 (50 이면 29회) */
+const BATCH = 500;
 
 interface DeliveryRow {
   order_status: string | null;
@@ -228,14 +230,16 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 7) 이전 상태 이어받기 — "언제부터 이 상태/위치인지" (경고 판정용) ──
-    //   상태·위치 문구가 이전 업로드와 같으면 시작 시점 유지, 다르거나 처음이면 지금.
+    //   상태는 글자가 아니라 단계(lib/deliveryPhase)가 같으면 유지
+    //   (已签收 → 已收货未到账 처럼 같은 단계 안의 전환에서 시계가 리셋되지 않도록).
+    //   위치 문구는 글자 그대로 비교. 다르거나 처음이면 지금.
     //   전체 삭제 직전에 읽어야 하므로 이 위치.
     const now = new Date().toISOString();
     const prev = await loadPrevStates();
     for (const r of rows) {
       const p = prev.get(r['1688_order_no']);
       r.status_since =
-        p && sameText(p.delivery_status, r.delivery_status) && p.status_since ? p.status_since : now;
+        p && samePhase(p.delivery_status, r.delivery_status) && p.status_since ? p.status_since : now;
       r.location_since =
         p && sameText(p.description, r.description) && p.location_since ? p.location_since : now;
     }

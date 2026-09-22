@@ -1,5 +1,6 @@
 import type { DeliveryStatusInfo } from './deliveryStatusMap';
 import { DELIVERY_STATUS_KR } from './deliveryStatusMap';
+import { deliveryPhase } from '../../../lib/deliveryPhase';
 
 // ============================================================
 // 배송 경고 판정 — "판매자/담당자 확인이 필요한 항목" 찾기
@@ -34,17 +35,7 @@ export const ALERT_RULES = {
   ARRIVAL_DAYS: 3,
 } as const;
 
-// ── 상태 분류 ──
-/** 기간과 상관없이 항상 경고 */
-const ALWAYS_ALERT = new Set(['发货超时', '揽收已超时', '揽收严重超时', '物流异常', '物流停滞', '物流异常提醒']);
-/** 배송전 — 판매자가 아직 출고 안 함 (일부배송도 나머지는 출고 전이므로 포함) */
-const PENDING = new Set(['待发货', '部分已发货']);
-/** 집하대기 — 송장은 나왔고 택배사가 아직 안 가져감 */
-const PICKUP = new Set(['待揽收']);
-/** 운송중 — 택배가 이동 중 (위치 문구로 정체 여부 판단) */
-const TRANSIT = new Set(['运输中', '派送中', '待收货', '已揽收', '已揽件', '已发货']);
-/** 배송완료 — 물건은 도착, 이제 입고가 돼야 함 */
-const DELIVERED = new Set(['已签收', '已收货未到账']);
+// ── 상태 분류는 lib/deliveryPhase (업로드 API 의 status_since 이어받기와 동일 기준) ──
 
 export type DeliveryAlertKind = 'abnormal' | 'pending' | 'pickup' | 'stalled' | 'arrival';
 
@@ -63,7 +54,7 @@ export interface DeliveryAlertInput {
   arrivalQty: number;
   cancelQty: number;
   returnQty: number;
-  /** 테스트용 — 기본 현재 시각 */
+  /** 현재 시각 — 목록을 돌 때 한 번만 만들어 넘긴다 (없으면 호출 시점) */
   now?: Date;
 }
 
@@ -97,16 +88,17 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
   if (arrivalQty >= target) return null;
 
   const status = info.delivery_status;
+  const phase = deliveryPhase(status);
 
   // ── 이상 상태: 항상 ──
-  if (ALWAYS_ALERT.has(status)) {
+  if (phase === 'abnormal') {
     const d = elapsedDays(info.status_since, now) ?? 0;
     return { kind: 'abnormal', days: Math.floor(d), message: `${label(status)} — 판매자 확인 필요` };
   }
 
-  // ── 배송전: 주문일 기준 ──
-  if (PENDING.has(status)) {
-    const d = elapsedDays(info.timestamp, now);
+  // ── 배송전: 주문일 기준 (주문일시를 못 읽은 행은 처음 본 날로 대신) ──
+  if (phase === 'pending') {
+    const d = elapsedDays(info.timestamp, now) ?? elapsedDays(info.status_since, now);
     if (d !== null && d > ALERT_RULES.PENDING_DAYS) {
       return {
         kind: 'pending',
@@ -118,7 +110,7 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
   }
 
   // ── 집하대기: 상태 시작일 기준 ──
-  if (PICKUP.has(status)) {
+  if (phase === 'pickup') {
     const d = elapsedDays(info.status_since, now);
     if (d !== null && d > ALERT_RULES.PICKUP_DAYS) {
       return {
@@ -131,7 +123,7 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
   }
 
   // ── 운송중: 위치 문구 시작일 기준 ──
-  if (TRANSIT.has(status)) {
+  if (phase === 'transit') {
     const d = elapsedDays(info.location_since, now);
     if (d !== null && d > ALERT_RULES.TRANSIT_STALL_DAYS) {
       return {
@@ -144,7 +136,7 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
   }
 
   // ── 배송완료: 입고가 목표 수량을 채워야 함 ──
-  if (DELIVERED.has(status)) {
+  if (phase === 'delivered') {
     const d = elapsedDays(info.status_since, now);
     if (d !== null && d > ALERT_RULES.ARRIVAL_DAYS) {
       return {

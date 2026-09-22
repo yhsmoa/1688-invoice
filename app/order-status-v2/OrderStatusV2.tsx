@@ -91,10 +91,12 @@ const OrderStatusV2: React.FC = () => {
   // ============================================================
   const deliveryAlertMap = useMemo(() => {
     const m = new Map<string, DeliveryAlert>();
+    const now = new Date();
     for (const item of items) {
       const oid = item['1688_order_id'];
       if (!oid) continue;
       const alert = evaluateDeliveryAlert({
+        now,
         info: deliveryStatusMap.get(oid),
         itemStatus: item.status,
         orderQty: item.order_qty,
