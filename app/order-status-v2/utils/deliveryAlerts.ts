@@ -16,8 +16,12 @@ import { deliveryPhase } from '../../../lib/deliveryPhase';
 //   이상 상태    항상 (처리지연·집하지연·물류이상·물류정체)
 //   배송완료     완료 후 ARRIVAL_DAYS 지나도 입고 수량이 목표(주문−취소−반품)에
 //                못 미침                              근거: status_since + 입고 집계
+//   입고 완료    입고가 목표 수량을 채운 뒤 OUTBOUND_DAYS 지나도 DONE 이 아님
+//                (DONE = 주문 − 취소·반품 완료 − 출고 확정 ≤ 0, lib/confirmDone)
+//                                                     근거: 마지막 입고 시각
+//                이 규칙은 배송 정보(CSV)가 없어도 판정한다.
 //
-// 공통 제외: 항목 DONE / 입고가 목표 수량을 채움 / 배송 정보 없음
+// 공통 제외: 항목 DONE / 목표 수량 0 (전량 취소)
 //
 // status_since·location_since 는 CSV 업로드 때 이전 업로드와 비교해
 // 이어받는 값이라, 정확도는 업로드 빈도(매일 1회 전제)에 달려 있다.
@@ -33,11 +37,13 @@ export const ALERT_RULES = {
   TRANSIT_STALL_DAYS: 3,
   /** 배송완료 후 며칠 안에 입고가 끝나야 정상 */
   ARRIVAL_DAYS: 3,
+  /** 입고가 다 된 뒤 며칠 안에 출고(DONE)가 돼야 정상 */
+  OUTBOUND_DAYS: 4,
 } as const;
 
 // ── 상태 분류는 lib/deliveryPhase (업로드 API 의 status_since 이어받기와 동일 기준) ──
 
-export type DeliveryAlertKind = 'abnormal' | 'pending' | 'pickup' | 'stalled' | 'arrival';
+export type DeliveryAlertKind = 'abnormal' | 'pending' | 'pickup' | 'stalled' | 'arrival' | 'outbound';
 
 export interface DeliveryAlert {
   kind: DeliveryAlertKind;
@@ -54,6 +60,8 @@ export interface DeliveryAlertInput {
   arrivalQty: number;
   cancelQty: number;
   returnQty: number;
+  /** 마지막 입고(ARRIVAL) 시각 (ISO) — 입고 완료 → 출고 지연 판정용 */
+  lastArrivalAt: string | null;
   /** 현재 시각 — 목록을 돌 때 한 번만 만들어 넘긴다 (없으면 호출 시점) */
   now?: Date;
 }
@@ -77,16 +85,31 @@ const label = (status: string) => DELIVERY_STATUS_KR[status] ?? status;
 // 판정
 // ============================================================
 export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert | null {
-  const { info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty } = input;
+  const { info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty, lastArrivalAt } = input;
   const now = input.now ?? new Date();
 
   // ── 공통 제외 ──
-  if (!info || !info.delivery_status) return null;
   if (itemStatus === 'DONE') return null;
   const target = (orderQty ?? 0) - cancelQty - returnQty;
   if (target <= 0) return null;
-  if (arrivalQty >= target) return null;
 
+  // ── 입고 완료: 출고(DONE)까지 OUTBOUND_DAYS 안에 끝나야 함 — 배송 정보 없어도 판정 ──
+  //   입고 5 → 취소 2 + 출고 3 이면 DONE 이라 위에서 제외됨.
+  //   취소 접수만 되고 처리(DONE)가 안 된 경우는 여전히 PROCESSING 이라 경고 대상.
+  if (arrivalQty >= target) {
+    const d = elapsedDays(lastArrivalAt ?? undefined, now);
+    if (d !== null && d > ALERT_RULES.OUTBOUND_DAYS) {
+      return {
+        kind: 'outbound',
+        days: Math.floor(d),
+        message: `입고 완료 후 ${Math.floor(d)}일 경과, 출고 미완료 (기준 ${ALERT_RULES.OUTBOUND_DAYS}일)`,
+      };
+    }
+    return null;
+  }
+
+  // ── 이하 배송 상태 기준 — CSV 정보 필요 ──
+  if (!info || !info.delivery_status) return null;
   const status = info.delivery_status;
   const phase = deliveryPhase(status);
 

@@ -89,25 +89,36 @@ const OrderStatusV2: React.FC = () => {
   // 배송 경고 — 판매자/담당자 확인이 필요한 항목 (규칙: utils/deliveryAlerts.ts)
   //   배송상태·입고 집계는 이미 불러와 있으므로 화면에서 계산
   // ============================================================
+  // 항목별 마지막 입고 시각 — "입고 완료 후 출고 지연" 판정용
+  const lastArrivalMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of rawFulfillments) {
+      if (f.type !== 'ARRIVAL' || !f.created_at) continue;
+      const cur = m.get(f.order_item_id);
+      if (!cur || f.created_at > cur) m.set(f.order_item_id, f.created_at);
+    }
+    return m;
+  }, [rawFulfillments]);
+
   const deliveryAlertMap = useMemo(() => {
     const m = new Map<string, DeliveryAlert>();
     const now = new Date();
     for (const item of items) {
       const oid = item['1688_order_id'];
-      if (!oid) continue;
       const alert = evaluateDeliveryAlert({
         now,
-        info: deliveryStatusMap.get(oid),
+        info: oid ? deliveryStatusMap.get(oid) : undefined,
         itemStatus: item.status,
         orderQty: item.order_qty,
         arrivalQty: arrivalMap.get(item.id) ?? 0,
         cancelQty: cancelMap.get(item.id) ?? 0,
         returnQty: returnMap.get(item.id) ?? 0,
+        lastArrivalAt: lastArrivalMap.get(item.id) ?? null,
       });
       if (alert) m.set(item.id, alert);
     }
     return m;
-  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap]);
+  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap]);
 
   // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
   const [alertOnly, setAlertOnly] = useState(false);
@@ -621,7 +632,7 @@ const OrderStatusV2: React.FC = () => {
                   className={`os-v2-alert-btn ${alertOnly ? 'active' : ''}`}
                   onClick={() => setAlertOnly((v) => !v)}
                   disabled={!selectedUserId || (deliveryAlertMap.size === 0 && !alertOnly)}
-                  title="배송전·집하대기·운송중 지연, 이상 상태, 배송완료 후 입고 미완료 항목"
+                  title="배송전·집하대기·운송중 지연, 이상 상태, 배송완료 후 입고 미완료, 입고 완료 후 출고 미완료 항목"
                 >
                   ⚠️ 확인필요 {deliveryAlertMap.size}
                 </button>
@@ -779,14 +790,15 @@ const OrderStatusV2: React.FC = () => {
                           {(() => {
                             const oid = item['1688_order_id'];
                             const info = oid ? deliveryStatusMap.get(oid) : undefined;
-                            if (!info) return <td className="os-v2-col-delivery" />;
                             const alert = deliveryAlertMap.get(item.id);
-                            const meaning = language === 'zh' ? null : getDeliveryStatusMeaning(info.delivery_status);
+                            // 배송 정보가 없어도 "입고 완료 후 출고 미완료" 경고는 있을 수 있다
+                            if (!info && !alert) return <td className="os-v2-col-delivery" />;
+                            const meaning = info && language !== 'zh' ? getDeliveryStatusMeaning(info.delivery_status) : null;
                             const title = alert ? alert.message : meaning ?? undefined;
                             return (
                               <td className={`os-v2-col-delivery ${alert ? 'is-alert' : ''}`} title={title}>
                                 {alert && <span className="os-v2-alert-mark">⚠️</span>}
-                                {formatDeliveryDisplay(info, language)}
+                                {info ? formatDeliveryDisplay(info, language) : alert?.kind === 'outbound' ? '출고 지연' : ''}
                               </td>
                             );
                           })()}
