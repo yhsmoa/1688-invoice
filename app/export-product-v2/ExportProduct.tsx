@@ -71,6 +71,49 @@ interface BoxInfo {
   user_code: string;
 }
 
+// ============================================================
+// 박스 타입 배지 — 사이트 공용 팔레트(globals.css .size-badge--*)와 동일
+//   A/B/C 파랑 · P 주황 · X 검정 (order-status-v2 타입 버튼과 같은 색)
+// ============================================================
+const BOX_TYPES = ['A', 'B', 'C', 'P', 'X'] as const;
+type BoxType = (typeof BOX_TYPES)[number];
+
+const BOX_TYPE_META: Record<BoxType, { label: string; badgeClass: string }> = {
+  A: { label: 'Small',    badgeClass: 'size-badge--blue' },
+  B: { label: 'Medium',   badgeClass: 'size-badge--blue' },
+  C: { label: 'Large',    badgeClass: 'size-badge--blue' },
+  P: { label: 'Personal', badgeClass: 'size-badge--orange' },
+  X: { label: 'Direct',   badgeClass: 'size-badge--black' },
+};
+
+const boxBadgeClass = (type: string): string =>
+  BOX_TYPE_META[type as BoxType]?.badgeClass ?? 'size-badge--gray';
+
+/** 박스 번호 2자리 표기 (기존 박스 1,204건 중 1,197건이 2자리) */
+const padBoxNo = (no: string): string => {
+  const digits = no.replace(/\D/g, '');
+  return digits.length === 1 ? `0${digits}` : digits;
+};
+
+/**
+ * 박스코드 표시 — 타입 글자만 배지색으로
+ *   "BO-A-02" → BO- [A] -02
+ */
+const BoxCodeLabel: React.FC<{ code: string; className?: string }> = ({ code, className }) => {
+  const parts = code.split('-');
+  if (parts.length !== 3) return <span className={className}>{code}</span>;
+  const [prefix, type, no] = parts;
+  return (
+    <span className={`v2-box-code ${className ?? ''}`}>
+      <span className="v2-box-code-prefix">{prefix}</span>
+      <span className="v2-box-code-dash">-</span>
+      <span className={`v2-box-code-type ${boxBadgeClass(type)}`}>{type}</span>
+      <span className="v2-box-code-dash">-</span>
+      <span className="v2-box-code-no">{no}</span>
+    </span>
+  );
+};
+
 interface Worker {
   id: string;
   name: string;
@@ -980,13 +1023,45 @@ const ExportProduct: React.FC = () => {
     }
   }, [selectedFtUserId]);
 
+  // ── 박스 생성 모달은 박스 선택 모달의 [+] 에서 연다 ──
+  //   타입을 미리 채우고, 번호는 그 타입의 다음 번호를 제안 (사용자가 바꿀 수 있음)
+  //   닫으면(취소) 박스 선택 모달로 돌아간다.
+  const nextBoxNo = useCallback((type: string): string => {
+    const nums = availableBoxes
+      .filter((b) => b.type === type)
+      .map((b) => parseInt(b.no, 10))
+      .filter((n) => !isNaN(n));
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    return padBoxNo(String(next));
+  }, [availableBoxes]);
+
+  const openBoxCreate = useCallback((type?: string) => {
+    setBoxCreateType(type ?? '');
+    setBoxCreateNo(type ? nextBoxNo(type) : '');
+    setBoxCreateSize('');
+    setShowBoxSelectModal(false);
+    setShowBoxCreateModal(true);
+  }, [nextBoxNo]);
+
+  const closeBoxCreate = useCallback(() => {
+    setShowBoxCreateModal(false);
+    setShowBoxSelectModal(true);
+  }, []);
+
+  /** 타입 바꾸면 번호도 그 타입의 다음 번호로 다시 제안 */
+  const handleBoxCreateTypeChange = useCallback((type: string) => {
+    setBoxCreateType(type);
+    setBoxCreateNo(nextBoxNo(type));
+  }, [nextBoxNo]);
+
   /** 박스 생성 → ft_box_info INSERT → 자동 선택 */
   const handleBoxCreate = useCallback(async () => {
     if (!boxPrefix || !boxCreateType || !boxCreateNo) {
       alert('사업자코드, 타입, 번호를 모두 입력해주세요.');
       return;
     }
-    const newBoxCode = `${boxPrefix}-${boxCreateType}-${boxCreateNo}`;
+    const boxNo = padBoxNo(boxCreateNo);
+    const newBoxCode = `${boxPrefix}-${boxCreateType}-${boxNo}`;
     try {
       const res = await fetch('/api/ft/box-info', {
         method: 'POST',
@@ -995,7 +1070,7 @@ const ExportProduct: React.FC = () => {
           user_code: boxPrefix,
           box_code: newBoxCode,
           type: boxCreateType,
-          no: boxCreateNo,
+          no: boxNo,
           size: boxCreateSize || null,
           user_id: selectedFtUserId,
         }),
@@ -1512,7 +1587,7 @@ const ExportProduct: React.FC = () => {
             {/* 박스 액션 버튼 (세로 배치) + 선택된 박스 표시              */}
             {/* ============================================================ */}
             <div className="v2-export-box-action-col">
-              <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => setShowBoxCreateModal(true)}>박스생성</button>
+              {/* 박스 생성은 박스선택 모달 안의 [+] 로 이동 */}
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => { fetchAvailableBoxes(); setShowBoxSelectModal(true); }}>박스선택</button>
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}>{t('exportProduct.record')}</button>
               <button
@@ -1534,7 +1609,11 @@ const ExportProduct: React.FC = () => {
             {/* 선택된 박스 표시 (보드 없이 텍스트만, 한줄) */}
             <div className="v2-export-active-box-text">
               {activeBoxInfo ? (
-                <span><strong>{activeBoxInfo.box_code}</strong> {activeBoxInfo.size || ''}</span>
+                <span className="v2-export-active-box">
+                  <span className="v2-export-active-box-emoji" aria-hidden>📦</span>
+                  <BoxCodeLabel code={activeBoxInfo.box_code} />
+                  {activeBoxInfo.size && <span className="v2-export-active-box-size">{activeBoxInfo.size}</span>}
+                </span>
               ) : (
                 <span className="v2-export-active-box-empty">박스를 생성하거나 선택하세요</span>
               )}
@@ -1788,151 +1867,185 @@ const ExportProduct: React.FC = () => {
       </div>
 
       {/* ============================================================ */}
-      {/* 박스 생성 모달                                              */}
+      {/* 박스 생성 모달 — 박스선택 모달의 [+] 에서 열림, 닫으면 선택으로 복귀 */}
+      {/*   태블릿 기준: 미리보기 카드 + 타입(배지색) + 번호(숫자패드) + 크기   */}
       {/* ============================================================ */}
-      {showBoxCreateModal && (
-        <div className="v2-export-box-modal-overlay" onClick={() => setShowBoxCreateModal(false)}>
-          <div className="v2-export-box-create-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>박스 생성</h3>
-
-            {/* Row 1: 사업자코드 */}
-            <div className="v2-export-box-modal-row">
-              <label>사업자코드</label>
-              <input type="text" value={boxPrefix} readOnly />
-            </div>
-
-            {/* Row 2: 타입 A/B/C/P/X — 테두리+폰트 색상만 (배경 없음) */}
-            <div className="v2-export-box-modal-row">
-              <label>타입</label>
-              <div className="v2-export-box-type-btns">
-                {['A', 'B', 'C', 'P', 'X'].map((t) => (
-                  <button
-                    key={t}
-                    className={`v2-export-box-type-btn ${boxCreateType === t ? `active-${t}` : ''}`}
-                    onClick={() => setBoxCreateType(t)}
-                  >
-                    {t}
-                  </button>
-                ))}
+      {showBoxCreateModal && (() => {
+        const previewCode = boxCreateType
+          ? `${boxPrefix}-${boxCreateType}-${boxCreateNo ? padBoxNo(boxCreateNo) : '__'}`
+          : '';
+        const canCreate = Boolean(boxPrefix && boxCreateType && boxCreateNo.replace(/\D/g, ''));
+        const sizeParts = boxCreateSize.split('x');
+        const setSizePart = (idx: number, v: string) => {
+          const parts = boxCreateSize.split('x');
+          while (parts.length < 3) parts.push('');
+          parts[idx] = v.replace(/\D/g, '');
+          setBoxCreateSize(parts.join('x'));
+        };
+        return (
+          <div className="v2-export-box-modal-overlay" onClick={closeBoxCreate}>
+            <div className="v2-box-modal v2-box-modal--create" onClick={(e) => e.stopPropagation()}>
+              <div className="v2-box-modal-head">
+                <h3>새 박스</h3>
+                <button type="button" className="v2-box-modal-close" onClick={closeBoxCreate} aria-label="닫기">✕</button>
               </div>
-            </div>
 
-            {/* Row 3: 번호 + 숫자 패드 (3열: 123 / 456 / 789 / C 0 초기화) */}
-            <div className="v2-export-box-modal-row">
-              <label>번호</label>
-              <input
-                type="text"
-                value={boxCreateNo}
-                onChange={(e) => setBoxCreateNo(e.target.value)}
-                placeholder="번호 입력"
-              />
-              <div className="v2-export-box-numpad">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
-                  <button key={n} onClick={() => setBoxCreateNo((prev) => prev + n)}>{n}</button>
-                ))}
-                <button onClick={() => setBoxCreateNo((prev) => prev.slice(0, -1))}>C</button>
-                <button onClick={() => setBoxCreateNo((prev) => prev + '0')}>0</button>
-                <button onClick={() => setBoxCreateNo('')}>초기화</button>
+              {/* 미리보기: 📦 / 박스명 / 박스 사이즈 */}
+              <div className={`v2-box-preview ${boxCreateType ? `is-${boxCreateType}` : ''}`}>
+                <span className="v2-box-preview-emoji" aria-hidden>📦</span>
+                <div className="v2-box-preview-body">
+                  {previewCode ? (
+                    <BoxCodeLabel code={previewCode} className="v2-box-preview-code" />
+                  ) : (
+                    <span className="v2-box-preview-placeholder">타입을 선택하세요</span>
+                  )}
+                  <span className="v2-box-preview-size">{boxCreateSize || '크기 미입력'}</span>
+                </div>
               </div>
-            </div>
 
-            {/* Row 4: 박스크기 (가로 x 세로 x 높이) + 프리셋 */}
-            <div className="v2-export-box-modal-row">
-              <label>박스크기 (가로 x 세로 x 높이)</label>
-              <div className="v2-export-box-size-inputs">
-                <input
-                  type="text"
-                  value={boxCreateSize.split('x')[0] || ''}
-                  onChange={(e) => {
-                    const parts = boxCreateSize.split('x');
-                    parts[0] = e.target.value;
-                    setBoxCreateSize(parts.join('x'));
-                  }}
-                  placeholder="가로"
-                />
-                <span className="v2-export-box-size-x">x</span>
-                <input
-                  type="text"
-                  value={boxCreateSize.split('x')[1] || ''}
-                  onChange={(e) => {
-                    const parts = boxCreateSize.split('x');
-                    while (parts.length < 2) parts.push('');
-                    parts[1] = e.target.value;
-                    setBoxCreateSize(parts.join('x'));
-                  }}
-                  placeholder="세로"
-                />
-                <span className="v2-export-box-size-x">x</span>
-                <input
-                  type="text"
-                  value={boxCreateSize.split('x')[2] || ''}
-                  onChange={(e) => {
-                    const parts = boxCreateSize.split('x');
-                    while (parts.length < 3) parts.push('');
-                    parts[2] = e.target.value;
-                    setBoxCreateSize(parts.join('x'));
-                  }}
-                  placeholder="높이"
-                />
-              </div>
-              <div className="v2-export-box-size-presets">
-                {[
-                  { label: '150 60x50x40', value: '60x50x40' },
-                  { label: '145 50x50x45', value: '50x50x45' },
-                  { label: '120 50x40x30', value: '50x40x30' },
-                ].map((s) => (
-                  <button
-                    key={s.label}
-                    className={`v2-export-box-size-btn ${boxCreateSize === s.value ? 'active' : ''}`}
-                    onClick={() => setBoxCreateSize(s.value)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 생성 버튼 */}
-            <button className="v2-export-box-create-confirm" onClick={handleBoxCreate}>
-              생성
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* 박스 선택 모달                                              */}
-      {/* ============================================================ */}
-      {showBoxSelectModal && (
-        <div className="v2-export-box-modal-overlay" onClick={() => setShowBoxSelectModal(false)}>
-          <div className="v2-export-box-select-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>박스 선택</h3>
-            {['A', 'B', 'C', 'P', 'X'].map((type) => {
-              const boxes = availableBoxes.filter((b) => b.type === type);
-              if (boxes.length === 0) return null;
-              return (
-                <div key={type} className="v2-export-box-select-type-section">
-                  <h4>{type} 타입</h4>
-                  <div className="v2-export-box-select-grid">
-                    {boxes.map((box) => (
+              <div className="v2-box-form">
+                {/* 타입 — 배지색 버튼 */}
+                <div className="v2-box-form-row">
+                  <label>타입</label>
+                  <div className="v2-box-type-btns">
+                    {BOX_TYPES.map((tp) => (
                       <button
-                        key={box.id}
-                        className="v2-export-box-select-item"
-                        onClick={() => handleBoxSelect(box)}
+                        key={tp}
+                        type="button"
+                        className={`v2-box-type-btn ${boxCreateType === tp ? `active ${BOX_TYPE_META[tp].badgeClass}` : ''}`}
+                        onClick={() => handleBoxCreateTypeChange(tp)}
                       >
-                        {box.box_code}
-                        <small>{box.size || '-'}</small>
+                        <span className="v2-box-type-btn-code">{tp}</span>
+                        <span className="v2-box-type-btn-label">{BOX_TYPE_META[tp].label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-              );
-            })}
-            {availableBoxes.length === 0 && (
-              <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
-                PACKING 상태의 박스가 없습니다.
-              </p>
-            )}
+
+                {/* 번호 — 다음 번호 자동 제안, 숫자패드로 수정 */}
+                <div className="v2-box-form-row">
+                  <label>번호</label>
+                  <div className="v2-box-no-field">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={boxCreateNo}
+                      onChange={(e) => setBoxCreateNo(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                      placeholder="번호"
+                    />
+                    <div className="v2-box-numpad">
+                      {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
+                        <button key={n} type="button" onClick={() => setBoxCreateNo((prev) => (prev + n).slice(0, 3))}>{n}</button>
+                      ))}
+                      <button type="button" className="v2-box-numpad-fn" onClick={() => setBoxCreateNo((prev) => prev.slice(0, -1))}>⌫</button>
+                      <button type="button" onClick={() => setBoxCreateNo((prev) => (prev + '0').slice(0, 3))}>0</button>
+                      <button type="button" className="v2-box-numpad-fn" onClick={() => setBoxCreateNo('')}>C</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 크기 — 가로 x 세로 x 높이 + 프리셋 */}
+                <div className="v2-box-form-row">
+                  <label>박스 크기 <span className="v2-box-form-hint">가로 × 세로 × 높이 (cm)</span></label>
+                  <div className="v2-box-size-inputs">
+                    {['가로', '세로', '높이'].map((ph, i) => (
+                      <React.Fragment key={ph}>
+                        {i > 0 && <span className="v2-box-size-x">×</span>}
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={sizeParts[i] || ''}
+                          onChange={(e) => setSizePart(i, e.target.value)}
+                          placeholder={ph}
+                        />
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <div className="v2-box-size-presets">
+                    {[
+                      { label: '150', value: '60x50x40' },
+                      { label: '145', value: '50x50x45' },
+                      { label: '120', value: '50x40x30' },
+                    ].map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        className={`v2-box-size-btn ${boxCreateSize === s.value ? 'active' : ''}`}
+                        onClick={() => setBoxCreateSize(s.value)}
+                      >
+                        <span className="v2-box-size-btn-label">{s.label}</span>
+                        <span className="v2-box-size-btn-dim">{s.value.replace(/x/g, '×')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="v2-box-modal-foot">
+                <button type="button" className="v2-box-btn-ghost" onClick={closeBoxCreate}>취소</button>
+                <button type="button" className="v2-box-btn-primary" onClick={handleBoxCreate} disabled={!canCreate}>
+                  {canCreate ? `${previewCode} 생성` : '생성'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============================================================ */}
+      {/* 박스 선택 모달 — 타입별 섹션(배지) + 박스 카드 + [+] 새 박스     */}
+      {/*   태블릿 기준으로 넓게, 카드는 📦 / 박스명 / 크기                 */}
+      {/* ============================================================ */}
+      {showBoxSelectModal && (
+        <div className="v2-export-box-modal-overlay" onClick={() => setShowBoxSelectModal(false)}>
+          <div className="v2-box-modal v2-box-modal--select" onClick={(e) => e.stopPropagation()}>
+            <div className="v2-box-modal-head">
+              <h3>박스 선택 <span className="v2-box-modal-sub">{boxPrefix} · 포장 중 {availableBoxes.length}개</span></h3>
+              <button type="button" className="v2-box-modal-close" onClick={() => setShowBoxSelectModal(false)} aria-label="닫기">✕</button>
+            </div>
+
+            <div className="v2-box-select-body">
+              {BOX_TYPES.map((type) => {
+                const boxes = availableBoxes.filter((b) => b.type === type);
+                const meta = BOX_TYPE_META[type];
+                return (
+                  <section key={type} className={`v2-box-section ${boxes.length === 0 ? 'is-empty' : ''}`}>
+                    <header className="v2-box-section-head">
+                      <span className={`size-badge v2-box-section-badge ${meta.badgeClass}`}>{type}</span>
+                      <span className="v2-box-section-label">{meta.label}</span>
+                      <span className="v2-box-section-count">{boxes.length}개</span>
+                    </header>
+                    <div className="v2-box-grid">
+                      {boxes.map((box) => {
+                        const isActive = activeBoxInfo?.id === box.id;
+                        return (
+                          <button
+                            key={box.id}
+                            type="button"
+                            className={`v2-box-card is-${type} ${isActive ? 'is-active' : ''}`}
+                            onClick={() => handleBoxSelect(box)}
+                          >
+                            <span className="v2-box-card-emoji" aria-hidden>📦</span>
+                            <BoxCodeLabel code={box.box_code} className="v2-box-card-code" />
+                            <span className="v2-box-card-size">{box.size || '크기 없음'}</span>
+                            {isActive && <span className="v2-box-card-check">사용 중</span>}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        className={`v2-box-card v2-box-card--add is-${type}`}
+                        onClick={() => openBoxCreate(type)}
+                        title={`${type} 타입 새 박스`}
+                      >
+                        <span className="v2-box-card-add-icon">+</span>
+                        <span className="v2-box-card-add-label">새 박스</span>
+                      </button>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
