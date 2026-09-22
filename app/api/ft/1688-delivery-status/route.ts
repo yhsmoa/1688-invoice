@@ -17,6 +17,8 @@ import { supabase } from '../../../../lib/supabase';
 //       timestamp: string,
 //       courier: string,       // 택배사 (2026-09 이후 CSV)
 //       tracking_no: string,   // 송장번호 (2026-09 이후 CSV)
+//       status_since: string,   // 현재 배송상태가 된 시점 (경고 판정용)
+//       location_since: string, // 현재 배송위치 문구가 된 시점 (경고 판정용)
 //     }
 //   }
 // }
@@ -66,6 +68,8 @@ interface DeliveryStatusRow {
   timestamp: string | null;
   courier: string | null;
   tracking_no: string | null;
+  status_since: string | null;
+  location_since: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -96,6 +100,8 @@ export async function POST(request: NextRequest) {
       timestamp: string;
       courier: string;
       tracking_no: string;
+      status_since: string;
+      location_since: string;
     }> = {};
     // 현재 채택된 행의 점수 (더 높은 점수가 오면 교체)
     const bestScore: Record<string, number> = {};
@@ -108,7 +114,7 @@ export async function POST(request: NextRequest) {
       while (true) {
         const { data, error } = await supabase
           .from('im_1688_orders_delivery_status')
-          .select('"1688_order_no", order_status, delivery_status, description, timestamp, courier, tracking_no')
+          .select('"1688_order_no", order_status, delivery_status, description, timestamp, courier, tracking_no, status_since, location_since')
           .in('1688_order_no', chunk)
           .order('timestamp', { ascending: false })
           .range(from, from + PAGE - 1);
@@ -130,6 +136,8 @@ export async function POST(request: NextRequest) {
             timestamp: row.timestamp ?? '',
             courier: row.courier ?? '',
             tracking_no: row.tracking_no ?? '',
+            status_since: row.status_since ?? '',
+            location_since: row.location_since ?? '',
           };
         }
 

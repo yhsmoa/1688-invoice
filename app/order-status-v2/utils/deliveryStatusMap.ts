@@ -85,6 +85,10 @@ export interface DeliveryStatusInfo {
   courier?: string;
   /** 송장번호 — 2026-09 이후 CSV 에만 있음 */
   tracking_no?: string;
+  /** 현재 delivery_status 가 된 시점 (ISO) — 업로드 간 비교로 이어받음 */
+  status_since?: string;
+  /** 현재 description(배송위치)이 된 시점 (ISO) */
+  location_since?: string;
 }
 
 // ============================================================

@@ -211,6 +211,48 @@
   cursor: not-allowed;
 }
 
+/* ============================================================
+   배송 경고 — [⚠️ 확인필요 N] 토글 + 배송 칸 강조
+   ============================================================ */
+.os-v2-alert-btn {
+  padding: 5px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.os-v2-alert-btn:hover:not(:disabled) {
+  background: #fef3c7;
+}
+
+.os-v2-alert-btn.active {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #fff;
+}
+
+.os-v2-alert-btn:disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.order-status-v2-table .os-v2-col-delivery.is-alert {
+  background: #fef3c7;
+  cursor: help;
+}
+
+.os-v2-alert-mark {
+  margin-right: 4px;
+}
+
 .order-status-v2-ship-btn {
   padding: 6px 18px;
   background-color: #dc2626;

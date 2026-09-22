@@ -53,6 +53,18 @@ interface DeliveryRow {
   description: string | null;
   courier: string | null;
   tracking_no: string | null;
+  /** 현재 delivery_status 가 된 시점 — 이전 업로드와 같으면 이어받음 */
+  status_since: string;
+  /** 현재 description(배송위치)이 된 시점 — 이전 업로드와 같으면 이어받음 */
+  location_since: string;
+}
+
+/** 이전 업로드에서 이어받을 값 */
+interface PrevState {
+  delivery_status: string | null;
+  description: string | null;
+  status_since: string | null;
+  location_since: string | null;
 }
 
 // ============================================================
@@ -116,6 +128,32 @@ function parseTimestamp(raw: string | null): string | null {
 const fail = (error: string, status = 400, extra: Record<string, unknown> = {}) =>
   NextResponse.json({ error, ...extra }, { status });
 
+/**
+ * 이전 업로드의 상태/위치와 그 시작 시점을 주문번호별로 읽는다.
+ * 전체 삭제 직전에 호출 — 1000행 limit 대응 페이지네이션.
+ */
+async function loadPrevStates(): Promise<Map<string, PrevState>> {
+  const map = new Map<string, PrevState>();
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('im_1688_orders_delivery_status')
+      .select('"1688_order_no", delivery_status, description, status_since, location_since')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data as Array<PrevState & { '1688_order_no': string }>) {
+      map.set(r['1688_order_no'], r);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return map;
+}
+
+const sameText = (a: string | null, b: string | null) => (a ?? '') === (b ?? '');
+
 // ============================================================
 // POST
 // ============================================================
@@ -154,13 +192,14 @@ export async function POST(request: NextRequest) {
     const pick = (row: unknown[], field: Field) => (col[field] === -1 ? null : clean(row[col[field]]));
 
     // ── 5) 행 변환 ──
-    const rows: DeliveryRow[] = [];
+    type ParsedRow = Omit<DeliveryRow, 'status_since' | 'location_since'>;
+    const parsed: ParsedRow[] = [];
     for (const row of jsonData.slice(1)) {
       if (!row || row.length === 0) continue;
       const orderNo = pick(row, 'order_no');
       if (!orderNo) continue;
 
-      rows.push({
+      parsed.push({
         order_status: pick(row, 'order_status'),
         '1688_order_no': orderNo,
         timestamp: parseTimestamp(pick(row, 'timestamp')),
@@ -171,6 +210,7 @@ export async function POST(request: NextRequest) {
         tracking_no: pick(row, 'tracking_no'),
       });
     }
+    const rows = parsed as DeliveryRow[];
 
     if (rows.length === 0) return fail('유효한 데이터가 없습니다. CSV 파일 내용을 확인해주세요.');
 
@@ -187,7 +227,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 7) 기존 데이터 전체 삭제 ──
+    // ── 7) 이전 상태 이어받기 — "언제부터 이 상태/위치인지" (경고 판정용) ──
+    //   상태·위치 문구가 이전 업로드와 같으면 시작 시점 유지, 다르거나 처음이면 지금.
+    //   전체 삭제 직전에 읽어야 하므로 이 위치.
+    const now = new Date().toISOString();
+    const prev = await loadPrevStates();
+    for (const r of rows) {
+      const p = prev.get(r['1688_order_no']);
+      r.status_since =
+        p && sameText(p.delivery_status, r.delivery_status) && p.status_since ? p.status_since : now;
+      r.location_since =
+        p && sameText(p.description, r.description) && p.location_since ? p.location_since : now;
+    }
+
+    // ── 8) 기존 데이터 전체 삭제 ──
     const { error: deleteError } = await supabase
       .from('im_1688_orders_delivery_status')
       .delete()
@@ -197,7 +250,7 @@ export async function POST(request: NextRequest) {
       return fail('기존 데이터 삭제 중 오류가 발생했습니다.', 500, { details: deleteError.message });
     }
 
-    // ── 8) 새 데이터 배치 삽입 ──
+    // ── 9) 새 데이터 배치 삽입 ──
     let savedCount = 0;
     let errorCount = 0;
     for (let i = 0; i < rows.length; i += BATCH) {
@@ -215,7 +268,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── 9) 결과 반환 ──
+    // ── 10) 결과 반환 ──
     return NextResponse.json({
       success: true,
       message: `배송상황 CSV 업로드 완료 (${savedCount}개 저장)`,

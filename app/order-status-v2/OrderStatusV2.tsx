@@ -13,6 +13,7 @@ import {
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import DeliveryStatusTools from './components/DeliveryStatusTools';
+import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import {
@@ -84,11 +85,41 @@ const OrderStatusV2: React.FC = () => {
     return items;
   }, [items, statusMode]);
 
-  // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) ──
+  // ============================================================
+  // 배송 경고 — 판매자/담당자 확인이 필요한 항목 (규칙: utils/deliveryAlerts.ts)
+  //   배송상태·입고 집계는 이미 불러와 있으므로 화면에서 계산
+  // ============================================================
+  const deliveryAlertMap = useMemo(() => {
+    const m = new Map<string, DeliveryAlert>();
+    for (const item of items) {
+      const oid = item['1688_order_id'];
+      if (!oid) continue;
+      const alert = evaluateDeliveryAlert({
+        info: deliveryStatusMap.get(oid),
+        itemStatus: item.status,
+        orderQty: item.order_qty,
+        arrivalQty: arrivalMap.get(item.id) ?? 0,
+        cancelQty: cancelMap.get(item.id) ?? 0,
+        returnQty: returnMap.get(item.id) ?? 0,
+      });
+      if (alert) m.set(item.id, alert);
+    }
+    return m;
+  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap]);
+
+  // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
+  const [alertOnly, setAlertOnly] = useState(false);
+
+  // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) → 경고 필터 ──
   const filteredItems = useMemo(() => {
-    if (searchFilteredIds === null) return sortedItems;
-    return sortedItems.filter((i) => searchFilteredIds.has(i.id));
-  }, [sortedItems, searchFilteredIds]);
+    const searched = searchFilteredIds === null
+      ? sortedItems
+      : sortedItems.filter((i) => searchFilteredIds.has(i.id));
+    if (!alertOnly) return searched;
+    return searched
+      .filter((i) => deliveryAlertMap.has(i.id))
+      .sort((a, b) => (deliveryAlertMap.get(b.id)?.days ?? 0) - (deliveryAlertMap.get(a.id)?.days ?? 0));
+  }, [sortedItems, searchFilteredIds, alertOnly, deliveryAlertMap]);
 
   // ── 페이지네이션 (100개/page) — filteredItems 기준 ──
   const {
@@ -529,7 +560,7 @@ const OrderStatusV2: React.FC = () => {
               <div className="order-status-v2-header-right">
                 {items.length > 0 && (
                   <span className="order-status-v2-count">
-                    {searchFilteredIds !== null
+                    {searchFilteredIds !== null || alertOnly
                       ? `${filteredItems.length} / ${items.length}건`
                       : `총 ${items.length}건`}
                   </span>
@@ -582,6 +613,16 @@ const OrderStatusV2: React.FC = () => {
                   <option value="PROCESSING">PROCESSING</option>
                   <option value="ALL">ALL</option>
                 </select>
+                {/* 배송 경고 모아보기 — 선택한 사용자 항목 중 확인 필요한 것만 */}
+                <button
+                  type="button"
+                  className={`os-v2-alert-btn ${alertOnly ? 'active' : ''}`}
+                  onClick={() => setAlertOnly((v) => !v)}
+                  disabled={!selectedUserId || (deliveryAlertMap.size === 0 && !alertOnly)}
+                  title="배송전·집하대기·운송중 지연, 이상 상태, 배송완료 후 입고 미완료 항목"
+                >
+                  ⚠️ 확인필요 {deliveryAlertMap.size}
+                </button>
               </div>
               <div className="order-status-v2-action-right">
                 <button
@@ -732,13 +773,17 @@ const OrderStatusV2: React.FC = () => {
                           </td>
                           {/* 배송 (im_1688_orders_delivery_status 조인) */}
                           {/*   · 마우스를 올리면 배송 상태의 뜻 (한국어 화면만 — 중국어 화면은 원문 자체가 뜻) */}
+                          {/*   · 경고 항목은 ⚠️ + 노란 배경, 툴팁에 경고 이유 */}
                           {(() => {
                             const oid = item['1688_order_id'];
                             const info = oid ? deliveryStatusMap.get(oid) : undefined;
                             if (!info) return <td className="os-v2-col-delivery" />;
+                            const alert = deliveryAlertMap.get(item.id);
                             const meaning = language === 'zh' ? null : getDeliveryStatusMeaning(info.delivery_status);
+                            const title = alert ? alert.message : meaning ?? undefined;
                             return (
-                              <td className="os-v2-col-delivery" title={meaning ?? undefined}>
+                              <td className={`os-v2-col-delivery ${alert ? 'is-alert' : ''}`} title={title}>
+                                {alert && <span className="os-v2-alert-mark">⚠️</span>}
                                 {formatDeliveryDisplay(info, language)}
                               </td>
                             );
