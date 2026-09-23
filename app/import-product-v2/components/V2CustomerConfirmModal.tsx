@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
-import { compressImage, formatBytes, ImageCompressError } from '../utils/compressImage';
+import { compressImage, formatBytes, ImageCompressError } from '../../../lib/compressImage';
 import './V2CustomerConfirmModal.css';
 
 // ============================================================

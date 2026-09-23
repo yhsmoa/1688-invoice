@@ -1,0 +1,111 @@
+/* ============================================================ */
+/* 직원 이미지 칸 (얼굴 사진 · 신분증 앞면 · 신분증 뒷면)          */
+/* ============================================================ */
+.em-img-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.em-img-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================ */
+/* 미리보기 프레임 — 얼굴 3:4, 신분증 카드 비율(85.6×54)          */
+/* ============================================================ */
+.em-img-frame {
+  position: relative;
+  width: 100%;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.em-img-slot-photo .em-img-frame {
+  aspect-ratio: 3 / 4;
+  max-height: 220px;
+}
+
+.em-img-slot-id_front .em-img-frame,
+.em-img-slot-id_back .em-img-frame {
+  aspect-ratio: 85.6 / 54;
+}
+
+.em-img-frame:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.em-img-frame.has-image {
+  border-style: solid;
+  border-color: #e2e8f0;
+  background: #fff;
+}
+
+/* 저장 전 새 이미지 — 파란 테두리로 구분 */
+.em-img-frame.pending {
+  border-color: #3b82f6;
+}
+
+.em-img-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.em-img-placeholder {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 8px;
+}
+
+/* ============================================================ */
+/* 버튼                                                         */
+/* ============================================================ */
+.em-img-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.em-img-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.em-img-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.em-img-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.em-img-btn-remove {
+  color: #dc2626;
+}
+
+.em-img-input {
+  display: none;
+}

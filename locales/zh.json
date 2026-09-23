@@ -784,5 +784,95 @@
       "clippedTitle": "按当前样本文字会被裁切",
       "previewAria": "标签预览 {{w}}×{{h}}mm"
     }
+  },
+  "hr": {
+    "employees": {
+      "title": "员工管理",
+      "addButton": "+ 添加",
+      "searchPlaceholder": "搜索姓名（中文/韩文）",
+      "loading": "加载中...",
+      "empty": "暂无数据。",
+      "detailTitle": "员工详情",
+      "select": "请选择",
+      "serverError": "服务器发生错误。",
+      "saveFailed": "保存时发生错误。",
+      "wage": "{{value}}韩元",
+      "lock": {
+        "desc": "请输入8位访问码",
+        "errLength": "请输入8位数字。",
+        "denied": "访问被拒绝。",
+        "verifying": "验证中...",
+        "confirm": "确认"
+      },
+      "table": {
+        "name": "姓名",
+        "role": "职位",
+        "status": "状态",
+        "birth": "出生日期",
+        "hire": "入职日期"
+      },
+      "fields": {
+        "name": "姓名",
+        "name_kr": "姓名（韩文）",
+        "identification": "身份证号",
+        "birth_date": "出生日期",
+        "phone": "联系电话",
+        "address": "地址",
+        "wechat": "微信号",
+        "hourly_wage": "时薪",
+        "status": "状态",
+        "hire_date": "入职日期",
+        "resigned_date": "离职日期",
+        "bank_name": "银行名称",
+        "bank_no": "银行账号",
+        "role": "职位",
+        "note": "备注",
+        "access_authorization": "访问权限",
+        "created_at": "登记日期"
+      },
+      "roles": {
+        "manager": "经理",
+        "inspection": "验货",
+        "packing": "包装",
+        "partTime": "短期兼职",
+        "company": "企业"
+      },
+      "statuses": {
+        "WORKING": "在职",
+        "RESIGNED": "离职"
+      },
+      "access": {
+        "yes": "✅ 有",
+        "no": "❌ 无",
+        "readonlySuffix": "（不可修改）",
+        "defaultReadonly": "❌ 无（默认值，不可修改）"
+      },
+      "buttons": {
+        "edit": "编辑",
+        "cancel": "取消",
+        "save": "保存",
+        "saving": "保存中..."
+      },
+      "add": {
+        "title": "添加员工",
+        "infoSection": "基本信息",
+        "failed": "添加时发生错误。"
+      },
+      "images": {
+        "section": "照片 · 身份证",
+        "photo": "本人照片",
+        "id_front": "身份证正面",
+        "id_back": "身份证背面",
+        "choose": "选择图片",
+        "replace": "更换",
+        "remove": "删除",
+        "processing": "处理中...",
+        "empty": "无图片",
+        "openOriginal": "查看大图",
+        "processFailed": "图片处理失败，请换一张图片重新上传。",
+        "uploadFailed": "以下图片保存失败：{{kinds}}",
+        "addedButFailed": "员工已添加，但以下图片保存失败：{{kinds}}\n请在详情页重新上传。"
+      }
+    }
   }
 }

@@ -790,5 +790,95 @@
       "clippedTitle": "이 샘플로는 글이 잘립니다",
       "previewAria": "라벨 미리보기 {{w}}×{{h}}mm"
     }
+  },
+  "hr": {
+    "employees": {
+      "title": "직원관리",
+      "addButton": "+ 추가",
+      "searchPlaceholder": "이름 검색 (영문/한국어)",
+      "loading": "불러오는 중...",
+      "empty": "데이터가 없습니다.",
+      "detailTitle": "직원 상세",
+      "select": "선택",
+      "serverError": "서버 오류가 발생했습니다.",
+      "saveFailed": "저장 중 오류가 발생했습니다.",
+      "wage": "{{value}}원",
+      "lock": {
+        "desc": "접근 코드 8자리를 입력해주세요",
+        "errLength": "8자리 숫자를 입력해주세요.",
+        "denied": "접근이 거부되었습니다.",
+        "verifying": "확인 중...",
+        "confirm": "확인"
+      },
+      "table": {
+        "name": "이름",
+        "role": "직책",
+        "status": "상태",
+        "birth": "생년월일",
+        "hire": "입사일"
+      },
+      "fields": {
+        "name": "이름",
+        "name_kr": "이름 (한국어)",
+        "identification": "주민번호 / 신분증",
+        "birth_date": "생년월일",
+        "phone": "연락처",
+        "address": "주소",
+        "wechat": "위챗 ID",
+        "hourly_wage": "시급",
+        "status": "상태",
+        "hire_date": "입사일",
+        "resigned_date": "퇴사일",
+        "bank_name": "은행명",
+        "bank_no": "계좌번호",
+        "role": "직책",
+        "note": "비고",
+        "access_authorization": "접근 권한",
+        "created_at": "등록일"
+      },
+      "roles": {
+        "manager": "매니저",
+        "inspection": "검수",
+        "packing": "포장",
+        "partTime": "단기 아르바이트",
+        "company": "기업"
+      },
+      "statuses": {
+        "WORKING": "WORKING",
+        "RESIGNED": "RESIGNED"
+      },
+      "access": {
+        "yes": "✅ 있음",
+        "no": "❌ 없음",
+        "readonlySuffix": "(수정 불가)",
+        "defaultReadonly": "❌ 없음 (기본값, 수정 불가)"
+      },
+      "buttons": {
+        "edit": "수정",
+        "cancel": "취소",
+        "save": "저장",
+        "saving": "저장 중..."
+      },
+      "add": {
+        "title": "직원 추가",
+        "infoSection": "기본 정보",
+        "failed": "추가 중 오류가 발생했습니다."
+      },
+      "images": {
+        "section": "사진 · 신분증",
+        "photo": "얼굴 사진",
+        "id_front": "신분증 앞면",
+        "id_back": "신분증 뒷면",
+        "choose": "사진 선택",
+        "replace": "변경",
+        "remove": "삭제",
+        "processing": "처리 중...",
+        "empty": "사진 없음",
+        "openOriginal": "크게 보기",
+        "processFailed": "이미지를 처리하지 못했습니다. 다른 이미지로 다시 첨부해주세요.",
+        "uploadFailed": "다음 이미지 저장에 실패했습니다: {{kinds}}",
+        "addedButFailed": "직원은 추가되었지만 다음 이미지 저장에 실패했습니다: {{kinds}}\n상세 화면에서 다시 첨부해주세요."
+      }
+    }
   }
 }

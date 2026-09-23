@@ -376,6 +376,32 @@
   gap: 14px;
 }
 
+/* 입력 필드 그리드 — 추가 모달은 2열, 상세 슬라이드(좁음)는 1열 */
+.em-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.em-form-row-wide {
+  grid-column: 1 / -1;
+}
+
+.em-slide-modal .em-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 상세 슬라이드 상단 사진·신분증 썸네일 */
+.em-slide-images {
+  display: grid;
+  grid-template-columns: 0.8fr 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .em-form-row {
   display: flex;
   flex-direction: column;
@@ -486,8 +512,9 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-  width: 480px;
-  max-height: 80vh;
+  width: 960px;
+  max-width: calc(100vw - 32px);
+  max-height: 85vh;
   margin-top: 60px;
   display: flex;
   flex-direction: column;
@@ -515,7 +542,37 @@
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+/* 섹션 — 사진·신분증 / 기본 정보 */
+.em-add-section {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+}
+
+.em-add-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* 사진 한 줄 — 얼굴(세로)은 좁게, 신분증(가로)은 넓게 */
+.em-img-row {
+  display: grid;
+  grid-template-columns: 0.7fr 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* 좁은 화면 — 사진·필드 모두 1열 */
+@media (max-width: 720px) {
+  .em-img-row,
+  .em-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .em-add-modal-footer {

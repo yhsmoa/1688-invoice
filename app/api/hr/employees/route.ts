@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { EMPLOYEE_IMAGE_COLUMN_NAMES } from '../../../../lib/hrEmployeeImages';
 
 // 요청 정보를 쓰지 않는 GET 은 Next.js 가 빌드 시점에 정적 캐시하므로,
 // 배포 이후 추가된 데이터가 재배포 전까지 반영되지 않는다 → 매 요청 조회로 고정.
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
 
     // access_authorization, id, created_at은 제거 (서버에서 관리)
     const { access_authorization, id, created_at, code, ...rest } = body;
+
+    // 이미지 경로 칼럼은 /api/hr/employees/[id]/images 에서만 쓴다
+    for (const col of EMPLOYEE_IMAGE_COLUMN_NAMES) delete rest[col];
 
     // 빈 문자열("")을 전부 null로 변환 (PostgreSQL date/number 등 타입 호환)
     for (const key of Object.keys(rest)) {

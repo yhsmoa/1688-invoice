@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { EMPLOYEE_IMAGE_COLUMN_NAMES } from '../../../../../lib/hrEmployeeImages';
 
 // ============================================================
 // PUT /api/hr/employees/[id]
@@ -24,6 +25,9 @@ export async function PUT(
 
     // 수정 불가 필드 제거
     const { access_authorization, id: bodyId, created_at, code, ...updateFields } = body;
+
+    // 이미지 경로 칼럼은 /api/hr/employees/[id]/images 에서만 쓴다
+    for (const col of EMPLOYEE_IMAGE_COLUMN_NAMES) delete updateFields[col];
 
     // 빈 문자열("")을 전부 null로 변환 (PostgreSQL date/number 등 타입 호환)
     for (const key of Object.keys(updateFields)) {
