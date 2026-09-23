@@ -1885,10 +1885,14 @@
   line-height: 1;
 }
 
+/* 박스명 왼쪽, 크기 오른쪽 — 한 줄 (📦 BO-P-04 ········ 60x50x40) */
 .v2-box-preview-body {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
 }
 
 .v2-box-preview-code {
@@ -1904,8 +1908,18 @@
 }
 
 .v2-box-preview-size {
+  flex-shrink: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 크기 미입력 안내는 작고 연하게 */
+.v2-box-preview-size.is-empty {
   font-size: 14px;
-  color: #64748b;
+  font-weight: 500;
+  color: #94a3b8;
 }
 
 .v2-box-form {

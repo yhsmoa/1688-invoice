@@ -1899,7 +1899,9 @@ const ExportProduct: React.FC = () => {
                   ) : (
                     <span className="v2-box-preview-placeholder">타입을 선택하세요</span>
                   )}
-                  <span className="v2-box-preview-size">{boxCreateSize || '크기 미입력'}</span>
+                  <span className={`v2-box-preview-size ${boxCreateSize ? '' : 'is-empty'}`}>
+                    {boxCreateSize || '크기 미입력'}
+                  </span>
                 </div>
               </div>
 
