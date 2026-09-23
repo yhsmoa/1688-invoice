@@ -92,17 +92,29 @@ export async function DELETE(request: NextRequest) {
       // order_items_id로 후보 행 조회 → JS에서 fulfillments.id 매칭
       const { data: cdAllRows, error: cdSelectErr } = await supabase
         .from('ft_cancel_details')
-        .select('*')
+        .select('*, ledger_settled')
         .eq('order_items_id', order_item_id);
 
+      // 조회 실패 시 정산 잠금 여부를 알 수 없으므로 진행하지 않는다
       if (cdSelectErr) {
-        console.warn('ft_cancel_details 조회 경고:', cdSelectErr);
+        console.error('ft_cancel_details 조회 오류:', cdSelectErr);
+        throw cdSelectErr;
       }
 
       // JS 필터: 'fulfillments.id' 컬럼 값이 삭제 대상 fulfillment id와 일치하는 행
       const cdRows = (cdAllRows ?? []).filter(
         (r: Record<string, unknown>) => r['fulfillments.id'] === id
       );
+
+      // ── 원장 정산 잠금: 신 원장에 반영된 건은 철회 불가 (아무것도 지우기 전에 거절) ──
+      //   DB 트리거(ft_cancel_details_settled_guard)도 삭제를 막지만,
+      //   여기서 먼저 걸러야 명확한 안내 문구로 응답할 수 있다.
+      if (cdRows.some((r: Record<string, unknown>) => r.ledger_settled === true)) {
+        return NextResponse.json(
+          { success: false, error: '원장에 정산된 반품 건은 철회할 수 없습니다.' },
+          { status: 409 }
+        );
+      }
 
       if (cdRows.length > 0) {
         const cdIds = cdRows.map((r: Record<string, unknown>) => r.id as string);

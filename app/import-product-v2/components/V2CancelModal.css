@@ -23,7 +23,7 @@
   background: white;
   border-radius: 8px;
   width: 90%;
-  max-width: 680px;
+  max-width: 820px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -142,10 +142,10 @@
   color: #6b7280;
 }
 
-/* ── 4열 입력 그리드 */
+/* ── 5열 입력 그리드 (수량 | 가격 | 배송비 | 서비스료 | 환불금) */
 .v2-cancel-item-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
 
@@ -207,6 +207,17 @@
 .v2-cancel-input-auto {
   background: #f9fafb;
   color: #374151;
+}
+
+/* 환불금 합계 — 읽기 전용, 굵게 강조 */
+.v2-cancel-input-total {
+  font-weight: 700;
+  color: #111;
+  cursor: default;
+}
+.v2-cancel-input-total:focus {
+  border-color: #d1d5db;
+  box-shadow: none;
 }
 
 /* 한도 초과 입력 — 붉은 테두리 강조 */

@@ -6,13 +6,16 @@ import { confirmDoneForUser } from '../../../../lib/confirmDone';
 // 허용된 업데이트 필드 (화이트리스트)
 // dot(.) 포함 컬럼(fulfillments.id, 1688_order_no)은 제외
 //
+// total_refund_cny 도 여기 없다 — price_cny·배송비·서비스가 바뀔 때마다
+// DB 트리거(ft_cancel_details_sync_amounts)가 다시 계산한다.
+//
 // done_at 은 여기 없다 — 클라이언트가 직접 못 정하고, status 변경에 맞춰
 // 서버가 자동으로 채우거나 비운다 (아래 PATCH 참고).
 // ============================================================
 const ALLOWED_UPDATE_FIELDS = new Set([
   'status',
   'requester',
-  'total_price_cny',
+  'price_cny',
   'delivery_price_cny',
   'service_fee',
   'cancel_reason',
@@ -20,6 +23,15 @@ const ALLOWED_UPDATE_FIELDS = new Set([
 
 // 유효한 status 값
 const VALID_STATUSES = new Set(['PENDING', 'PROCESSING', 'DONE']);
+
+// ============================================================
+// 원장 정산 잠금 대상 필드
+//   신 원장(ft_user_transactions)에 이미 반영된 건(ledger_settled)은
+//   상태·금액을 바꾸면 원장과 어긋난다 → 409 로 거절.
+//   요청자·반품사유는 금액과 무관하므로 허용.
+//   DB 트리거(ft_cancel_details_settled_guard)도 같은 규칙으로 막는다 — 여기는 안내용 선검사.
+// ============================================================
+const SETTLED_LOCKED_FIELDS = new Set(['status', 'price_cny', 'delivery_price_cny', 'service_fee']);
 
 // ============================================================
 // PATCH /api/ft/cancel-details
@@ -59,16 +71,34 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // ── 원장 정산건 잠금 선검사
+    if (SETTLED_LOCKED_FIELDS.has(field)) {
+      const { data: current, error: settledErr } = await supabase
+        .from('ft_cancel_details')
+        .select('ledger_settled')
+        .eq('id', id)
+        .single();
+      if (settledErr) throw settledErr;
+      if (current?.ledger_settled) {
+        return NextResponse.json(
+          { success: false, error: '원장에 정산된 반품 건은 상태·금액을 바꿀 수 없습니다.' },
+          { status: 409 }
+        );
+      }
+    }
+
     // ── 업데이트 (status 면 완료 시점 done_at 동시 기록)
     const patch: Record<string, string | number | null> = { [field]: value };
     if (field === 'status') {
       patch.done_at = value === 'DONE' ? new Date().toISOString() : null;
     }
 
-    const { error: updateErr } = await supabase
+    // 금액 칸이 바뀌면 트리거가 total_refund_cny 를 다시 계산하므로 그 값을 돌려받는다
+    const { data: updatedRows, error: updateErr } = await supabase
       .from('ft_cancel_details')
       .update(patch)
-      .eq('id', id);
+      .eq('id', id)
+      .select('total_refund_cny');
 
     if (updateErr) {
       console.error('ft_cancel_details PATCH 오류:', updateErr);
@@ -104,6 +134,7 @@ export async function PATCH(request: NextRequest) {
       field,
       value,
       ...(field === 'status' ? { done_at: patch.done_at } : {}),
+      total_refund_cny: updatedRows?.[0]?.total_refund_cny ?? null,
       doneCount,
     });
 
@@ -130,6 +161,7 @@ export async function PATCH(request: NextRequest) {
 //   - SELECT * 사용: "fulfillments.id" 컬럼은 PostgREST가 FK join으로
 //     오인식하므로 개별 select 불가 → * 로 전체 조회 후 JS에서 매핑
 //   - 응답에 fulfillments_id 필드 추가 (철회 기능용)
+//   - ledger_settled: DB 계산 필드 — 신 원장에 반영된 건 (화면에서 수정·철회 잠금)
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -151,9 +183,10 @@ export async function GET(request: NextRequest) {
     while (true) {
       const { data, error } = await supabase
         .from('ft_cancel_details')
-        .select('*')
+        .select('*, ledger_settled')
         .eq('user_id', user_id)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: true })   // 고유키 보조 정렬 (페이지 중복·누락 방지)
         .range(from, from + PAGE - 1);
 
       if (error) throw error;
@@ -175,9 +208,11 @@ export async function GET(request: NextRequest) {
       item_name: row.item_name,
       option_name: row.option_name,
       qty: row.qty,
-      total_price_cny: row.total_price_cny,
+      price_cny: row.price_cny,
       delivery_price_cny: row.delivery_price_cny,
       service_fee: row.service_fee,
+      // 환불 총액 = 상품가격 + 배송비 + 서비스 (트리거 계산값)
+      total_refund_cny: row.total_refund_cny ?? null,
       cancel_reason: row.cancel_reason,
       created_at: row.created_at,
       // 완료(DONE) 시점. 컬럼 추가 이전에 완료된 행은 NULL 이다
@@ -187,6 +222,7 @@ export async function GET(request: NextRequest) {
       requester: row.requester,
       fulfillments_id: row['fulfillments.id'] ?? null,
       cancel_type: (row.cancel_type as string | null) ?? 'CANCEL',
+      ledger_settled: row.ledger_settled === true,
     }));
 
     return NextResponse.json({ success: true, data: allData });

@@ -11,7 +11,9 @@ import { supabase } from '../../../lib/supabase';
 //   · 트랜잭션: invoiceManager_transactions WHERE master_account = X
 //   · 사업자(sub) = 그 트랜잭션들의 distinct user_id
 //   · 환불: ft_users.username(=user_id) → ft_users.id → ft_cancel_details.user_id
-//           AND status='DONE' 의 total_price_cny 합
+//           AND status='DONE' 의 refund_cny 합
+//     — refund_cny 는 DB 계산 필드 (supabase/ledger/002_refund_settlement.sql):
+//       원장 전환일(9/1) 이전 완료 → price_cny(상품가격), 이후 완료 → total_refund_cny
 //   · 1000행 limit 대응 — 모든 조회 페이지네이션 (CLAUDE.md §5)
 //
 // 검증(immong): tx_net(-31,494.53) + refund_done(76,218.46) = 44,723.93 (참조와 일치)
@@ -112,15 +114,17 @@ export async function GET(request: NextRequest) {
         for (const u of users ?? []) if (u.id) ids.push(u.id);
       }
 
-      // ── 3) ft_cancel_details (status='DONE') total_price_cny 합산 (페이지네이션) ──
+      // ── 3) ft_cancel_details (status='DONE') refund_cny 합산 (페이지네이션) ──
       if (ids.length > 0) {
         let rFrom = 0;
         while (true) {
           const { data, error } = await supabase
             .from('ft_cancel_details')
-            .select('total_price_cny')
+            .select('refund_cny')
             .in('user_id', ids)
             .eq('status', 'DONE')
+            // 정렬 없이 range() 만 쓰면 페이지가 겹쳐 같은 환불이 두 번 더해질 수 있다
+            .order('id', { ascending: true })
             .range(rFrom, rFrom + PAGE - 1);
           if (error) {
             return NextResponse.json(
@@ -129,7 +133,7 @@ export async function GET(request: NextRequest) {
             );
           }
           const chunk = data ?? [];
-          for (const cd of chunk) refundTotal += cd.total_price_cny ?? 0;
+          for (const cd of chunk) refundTotal += Number(cd.refund_cny ?? 0);
           if (chunk.length < PAGE) break;
           rFrom += PAGE;
         }

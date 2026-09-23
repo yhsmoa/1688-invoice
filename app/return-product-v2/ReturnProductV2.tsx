@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import ReturnProductV2StatusCard from './ReturnProductV2StatusCard';
+import { calcServiceFee, calcTotalRefund } from '../../lib/cancelAmounts';
 import './ReturnProductV2.css';
 
 // ============================================================
@@ -57,9 +58,6 @@ const REQUESTER_OPTIONS = ['유화무역', '고객'];
 /** 인라인 편집 가능한 status 집합 (접수·진행 단계만) */
 const EDITABLE_STATUSES = new Set(['PENDING', 'PROCESSING']);
 
-/** 서비스료 비율 (6%) */
-const SERVICE_FEE_RATE = 0.06;
-
 // ============================================================
 // 타입
 // ============================================================
@@ -79,9 +77,12 @@ export interface CancelDetail {
   item_name: string | null;
   option_name: string | null;
   qty: number | null;
-  total_price_cny: number | null;
+  /** 상품가격 */
+  price_cny: number | null;
   delivery_price_cny: number | null;
   service_fee: number | null;
+  /** 환불 총액 = 상품가격 + 배송비 + 서비스 (DB 트리거 계산, 읽기 전용) */
+  total_refund_cny: number | null;
   cancel_reason: string | null;
   created_at: string;
   /** status 가 DONE 으로 바뀐 시점. 컬럼 추가 이전에 완료된 행은 null */
@@ -92,9 +93,11 @@ export interface CancelDetail {
   fulfillments_id: string | null;
   /** 'CANCEL'(주문취소) | 'RETURN'(반품접수) — API GET에서 NULL → 'CANCEL' fallback 처리됨 */
   cancel_type: string | null;
+  /** 신 원장(ft_user_transactions)에 환불로 반영된 건 — 상태 변경·철회 잠금 */
+  ledger_settled: boolean;
 }
 
-type EditField = 'total_price_cny' | 'delivery_price_cny' | 'service_fee' | 'cancel_reason';
+type EditField = 'price_cny' | 'delivery_price_cny' | 'service_fee' | 'cancel_reason';
 
 // ============================================================
 // 헬퍼
@@ -109,6 +112,19 @@ const formatDate = (iso: string): { date: string; time: string } => {
 
 const canEdit = (status: string | null) =>
   status !== null && EDITABLE_STATUSES.has(status);
+
+/** 환불 총액에 영향을 주는 금액 칸 */
+const AMOUNT_FIELDS = new Set(['price_cny', 'delivery_price_cny', 'service_fee']);
+
+/** 금액 변경 직후 화면용 환불 총액 재계산 (저장 후엔 서버의 트리거 계산값으로 맞춘다) */
+const withRefund = (d: CancelDetail): CancelDetail => ({
+  ...d,
+  total_refund_cny: calcTotalRefund(d.price_cny, d.delivery_price_cny, d.service_fee),
+});
+
+/** 소수 2자리 고정 표시 (null → '-') */
+const formatAmount = (v: number | null): string =>
+  v != null ? Number(v).toFixed(2) : '-';
 
 // ============================================================
 // 메인 컴포넌트
@@ -241,9 +257,15 @@ const ReturnProductV2: React.FC = () => {
   // ============================================================
   const updateField = useCallback(
     async (id: string, field: string, value: string | number | null) => {
-      // 1) 로컬 상태 즉시 반영 (낙관적 업데이트)
+      const isAmount = AMOUNT_FIELDS.has(field);
+
+      // 1) 로컬 상태 즉시 반영 (낙관적 업데이트) — 금액 칸이면 환불 총액도 같이
       setDetails((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, [field]: value } : d))
+        prev.map((d) => {
+          if (d.id !== id) return d;
+          const next = { ...d, [field]: value };
+          return isAmount ? withRefund(next) : next;
+        })
       );
 
       // 2) API 저장
@@ -254,10 +276,21 @@ const ReturnProductV2: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
+        // 낙관적으로 바꾼 화면을 서버 값으로 되돌린다 (정산 잠금 409 등)
         console.error('ft_cancel_details 업데이트 실패:', json.error);
+        alert(json.error || '저장에 실패했습니다.');
+        if (selectedUserId) fetchDetails(selectedUserId);
+        return;
+      }
+
+      // 3) 환불 총액 — 서버(트리거) 계산값으로 확정
+      if (isAmount) {
+        setDetails((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, total_refund_cny: json.total_refund_cny } : d))
+        );
       }
     },
-    []
+    [selectedUserId, fetchDetails]
   );
 
   // ── 상태 드롭다운 선택
@@ -303,24 +336,30 @@ const ReturnProductV2: React.FC = () => {
     setEditValue('');
 
     // ── 가격 입력 시 서비스료 자동 계산 (6%) — 순차 처리
-    if (field === 'total_price_cny' && typeof value === 'number') {
-      const fee = Math.round(value * SERVICE_FEE_RATE * 100) / 100;
-      // 로컬 상태를 한번에 반영 (price + fee)
+    if (field === 'price_cny' && typeof value === 'number') {
+      const fee = calcServiceFee(value);
+      // 로컬 상태를 한번에 반영 (price + fee + 환불 총액)
       setDetails((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, total_price_cny: value, service_fee: fee } : d))
+        prev.map((d) => (d.id === id ? withRefund({ ...d, price_cny: value, service_fee: fee }) : d))
       );
-      // API 순차 저장
+      // API 순차 저장 — 마지막 응답의 환불 총액(트리거 계산값)으로 확정
       (async () => {
         await fetch('/api/ft/cancel-details', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, field: 'total_price_cny', value }),
+          body: JSON.stringify({ id, field: 'price_cny', value }),
         });
-        await fetch('/api/ft/cancel-details', {
+        const res = await fetch('/api/ft/cancel-details', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, field: 'service_fee', value: fee }),
         });
+        const json = await res.json();
+        if (json.success) {
+          setDetails((prev) =>
+            prev.map((d) => (d.id === id ? { ...d, total_refund_cny: json.total_refund_cny } : d))
+          );
+        }
       })();
     } else {
       updateField(id, field, value);
@@ -452,7 +491,7 @@ const ReturnProductV2: React.FC = () => {
     const missing: string[] = [];
     for (const t of targets) {
       const fields: string[] = [];
-      if (t.total_price_cny == null) fields.push('가격');
+      if (t.price_cny == null) fields.push('가격');
       if (t.delivery_price_cny == null) fields.push('배송비');
       if (t.service_fee == null) fields.push('서비스');
       if (!t.cancel_reason) fields.push('반품사유');
@@ -481,6 +520,14 @@ const ReturnProductV2: React.FC = () => {
     const targets = details.filter((d) => selectedRows.has(d.id));
     if (targets.length === 0) {
       alert('철회할 항목을 선택하세요.');
+      return;
+    }
+
+    // 원장 정산건 확인 — 신 원장에 환불로 반영된 건은 철회 불가 (서버·DB 에서도 차단)
+    const settled = targets.filter((t) => t.ledger_settled);
+    if (settled.length > 0) {
+      alert(`철회 불가: 원장에 정산된 항목이 ${settled.length}건 있습니다.
+정산된 건은 선택에서 빼주세요.`);
       return;
     }
 
@@ -692,6 +739,7 @@ const ReturnProductV2: React.FC = () => {
                       <th>가격</th>
                       <th>배송비</th>
                       <th>서비스</th>
+                      <th>환불</th>
                       <th>요청</th>
                       <th>반품사유</th>
                       <th>상태</th>
@@ -701,7 +749,7 @@ const ReturnProductV2: React.FC = () => {
                   <tbody>
                     {paginatedDetails.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="return-v2-empty-data">
+                        <td colSpan={13} className="return-v2-empty-data">
                           {selectedUserId ? t('importProduct.table.noData') : '사용자를 선택하세요.'}
                         </td>
                       </tr>
@@ -764,9 +812,9 @@ const ReturnProductV2: React.FC = () => {
                             <td
                               style={{ textAlign: 'center' }}
                               className={editable ? 'return-v2-editable-cell' : ''}
-                              onClick={() => editable && startEdit(detail.id, 'total_price_cny', detail.total_price_cny)}
+                              onClick={() => editable && startEdit(detail.id, 'price_cny', detail.price_cny)}
                             >
-                              {editingCell?.id === detail.id && editingCell.field === 'total_price_cny' ? (
+                              {editingCell?.id === detail.id && editingCell.field === 'price_cny' ? (
                                 <input
                                   className="return-v2-inline-input"
                                   type="number"
@@ -777,7 +825,7 @@ const ReturnProductV2: React.FC = () => {
                                   autoFocus
                                 />
                               ) : (
-                                detail.total_price_cny != null ? detail.total_price_cny : '-'
+                                detail.price_cny != null ? detail.price_cny : '-'
                               )}
                             </td>
 
@@ -821,6 +869,11 @@ const ReturnProductV2: React.FC = () => {
                               ) : (
                                 detail.service_fee != null ? detail.service_fee : '-'
                               )}
+                            </td>
+
+                            {/* 환불 — 가격 + 배송비 + 서비스 (읽기 전용, DB 트리거 계산값) */}
+                            <td className="return-v2-refund-cell">
+                              {formatAmount(detail.total_refund_cny)}
                             </td>
 
                             {/* col 8: 요청 (requester) — 클릭 시 드롭다운 */}
@@ -872,21 +925,28 @@ const ReturnProductV2: React.FC = () => {
                               )}
                             </td>
 
-                            {/* col 10: 상태 — 클릭 시 드롭다운 */}
+                            {/* col 10: 상태 — 클릭 시 드롭다운 (원장 정산건은 잠금) */}
                             <td style={{ textAlign: 'center', position: 'relative' }}>
-                              <span
-                                className={`${statusBadgeClass(detail.status)} return-v2-clickable-cell`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRequesterDropdownId(null);
-                                  setStatusDropdownId(
-                                    statusDropdownId === detail.id ? null : detail.id
-                                  );
-                                }}
-                              >
-                                {displayStatus}
-                              </span>
-                              {statusDropdownId === detail.id && (
+                              {detail.ledger_settled ? (
+                                <div className="return-v2-settled-cell" title="원장에 환불 정산된 건 — 상태 변경·철회 불가">
+                                  <span className={statusBadgeClass(detail.status)}>{displayStatus}</span>
+                                  <span className="return-v2-settled-tag">정산</span>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`${statusBadgeClass(detail.status)} return-v2-clickable-cell`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRequesterDropdownId(null);
+                                    setStatusDropdownId(
+                                      statusDropdownId === detail.id ? null : detail.id
+                                    );
+                                  }}
+                                >
+                                  {displayStatus}
+                                </span>
+                              )}
+                              {statusDropdownId === detail.id && !detail.ledger_settled && (
                                 <div className="return-v2-mini-dropdown" onClick={(e) => e.stopPropagation()}>
                                   {STATUS_OPTIONS.map((opt) => (
                                     <div

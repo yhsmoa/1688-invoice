@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
+import { calcServiceFee, calcTotalRefund } from '../../../lib/cancelAmounts';
 import './V2CancelModal.css';
 
 // ============================================================
@@ -76,7 +77,7 @@ interface V2CancelModalProps {
 /** 아이템별 입력 폼 데이터 */
 interface ItemFormData {
   qty: string;               // 필수
-  total_price_cny: string;
+  price_cny: string;         // 상품가격
   delivery_price_cny: string;
   service_fee: string;
   cancel_reason: string;     // 직접 입력 (드롭박스 미선택 시)
@@ -86,7 +87,7 @@ interface ItemFormData {
 
 const EMPTY_FORM: ItemFormData = {
   qty: '',
-  total_price_cny: '',
+  price_cny: '',
   delivery_price_cny: '',
   service_fee: '',
   cancel_reason: '',
@@ -184,11 +185,11 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         const current = next.get(itemId) ?? { ...EMPTY_FORM };
         const updated: ItemFormData = { ...current, [field]: value };
 
-        // total_price_cny 입력 시 service_fee 자동 계산 (6%)
-        if (field === 'total_price_cny') {
+        // 상품가격 입력 시 service_fee 자동 계산 (6%)
+        if (field === 'price_cny') {
           const price = parseFloat(value);
           updated.service_fee = !isNaN(price) && price > 0
-            ? String(Math.round(price * 0.06 * 100) / 100)
+            ? String(calcServiceFee(price))
             : '';
         }
 
@@ -261,7 +262,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           product_id: item.product_id,
           order_1688_id: item['1688_order_id'],
           qty,
-          total_price_cny: data.total_price_cny ? parseFloat(data.total_price_cny) : null,
+          price_cny: data.price_cny ? parseFloat(data.price_cny) : null,
           delivery_price_cny: data.delivery_price_cny ? parseFloat(data.delivery_price_cny) : null,
           service_fee: data.service_fee ? parseFloat(data.service_fee) : null,
           // 드롭박스 선택 시 한글 "카테고리 - 상세", 미선택 시 직접 입력값
@@ -370,6 +371,17 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                 const qtyNum = parseInt(data.qty, 10);
                 const isOverLimit = !isNaN(qtyNum) && qtyNum > limit && cancelType !== null;
 
+                // ── 환불금 — 상품가격 + 배송비 + 서비스 (표시 전용, 저장값은 DB 트리거가 계산)
+                const toNum = (v: string): number | null => {
+                  const n = parseFloat(v);
+                  return isNaN(n) ? null : n;
+                };
+                const totalRefund = calcTotalRefund(
+                  toNum(data.price_cny),
+                  toNum(data.delivery_price_cny),
+                  toNum(data.service_fee)
+                );
+
                 return (
                   <div key={item.id} className="v2-cancel-item-card">
                     {/* ── 카드 헤더: 배지 + 상품 정보 */}
@@ -384,7 +396,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                       </span>
                     </div>
 
-                    {/* ── 입력 필드 그리드: 수량 | 가격 | 배송비 | 서비스료 */}
+                    {/* ── 입력 필드 그리드: 수량 | 가격 | 배송비 | 서비스료 | 환불금 */}
                     <div className="v2-cancel-item-fields">
                       {/* 수량 (필수) — 한도 표시 + 초과 입력 시 강조 */}
                       <div className="v2-cancel-field-group">
@@ -411,10 +423,10 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                         <input
                           type="number"
                           className="v2-cancel-input"
-                          value={data.total_price_cny}
+                          value={data.price_cny}
                           placeholder="0.00"
                           step="0.01"
-                          onChange={(e) => updateField(item.id, 'total_price_cny', e.target.value)}
+                          onChange={(e) => updateField(item.id, 'price_cny', e.target.value)}
                         />
                       </div>
 
@@ -441,6 +453,20 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                           placeholder="자동"
                           step="0.01"
                           onChange={(e) => updateField(item.id, 'service_fee', e.target.value)}
+                        />
+                      </div>
+
+                      {/* 환불금 (자동 합계 — 읽기 전용) */}
+                      <div className="v2-cancel-field-group">
+                        <label className="v2-cancel-field-label">환불금 (합계)</label>
+                        <input
+                          type="text"
+                          className="v2-cancel-input v2-cancel-input-auto v2-cancel-input-total"
+                          value={totalRefund != null ? totalRefund.toFixed(2) : ''}
+                          placeholder="자동"
+                          readOnly
+                          tabIndex={-1}
+                          title="가격 + 배송비 + 서비스료"
                         />
                       </div>
                     </div>
