@@ -78,12 +78,13 @@ interface BoxInfo {
 const BOX_TYPES = ['A', 'B', 'C', 'P', 'X'] as const;
 type BoxType = (typeof BOX_TYPES)[number];
 
-const BOX_TYPE_META: Record<BoxType, { label: string; badgeClass: string }> = {
-  A: { label: 'Small',    badgeClass: 'size-badge--blue' },
-  B: { label: 'Medium',   badgeClass: 'size-badge--blue' },
-  C: { label: 'Large',    badgeClass: 'size-badge--blue' },
-  P: { label: 'Personal', badgeClass: 'size-badge--orange' },
-  X: { label: 'Direct',   badgeClass: 'size-badge--black' },
+// labelKey: i18n 키 (locales/*.json → exportProduct.box.type*)
+const BOX_TYPE_META: Record<BoxType, { labelKey: string; badgeClass: string }> = {
+  A: { labelKey: 'exportProduct.box.typeA', badgeClass: 'size-badge--blue' },
+  B: { labelKey: 'exportProduct.box.typeB', badgeClass: 'size-badge--blue' },
+  C: { labelKey: 'exportProduct.box.typeC', badgeClass: 'size-badge--blue' },
+  P: { labelKey: 'exportProduct.box.typeP', badgeClass: 'size-badge--orange' },
+  X: { labelKey: 'exportProduct.box.typeX', badgeClass: 'size-badge--black' },
 };
 
 const boxBadgeClass = (type: string): string =>
@@ -1057,7 +1058,7 @@ const ExportProduct: React.FC = () => {
   /** 박스 생성 → ft_box_info INSERT → 자동 선택 */
   const handleBoxCreate = useCallback(async () => {
     if (!boxPrefix || !boxCreateType || !boxCreateNo) {
-      alert('사업자코드, 타입, 번호를 모두 입력해주세요.');
+      alert(t('exportProduct.box.createMissingFields'));
       return;
     }
     const boxNo = padBoxNo(boxCreateNo);
@@ -1088,9 +1089,9 @@ const ExportProduct: React.FC = () => {
       setBoxCreateNo('');
       setBoxCreateSize('');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '박스 생성 오류');
+      alert(err instanceof Error ? err.message : t('exportProduct.box.createError'));
     }
-  }, [boxPrefix, boxCreateType, boxCreateNo, boxCreateSize, selectedFtUserId]);
+  }, [boxPrefix, boxCreateType, boxCreateNo, boxCreateSize, selectedFtUserId, t]);
 
   /** 박스 선택 → activeBoxInfo 설정 + 입력폼 반영 */
   const handleBoxSelect = useCallback((box: BoxInfo) => {
@@ -1103,7 +1104,7 @@ const ExportProduct: React.FC = () => {
   /** 박스 삭제 — 빈 박스만 삭제, 상품이 담겼으면 담당자 문의 안내 */
   const handleBoxDelete = useCallback(async () => {
     if (!activeBoxInfo) {
-      alert('삭제할 박스를 먼저 선택해주세요.');
+      alert(t('exportProduct.box.deleteSelectFirst'));
       return;
     }
 
@@ -1112,11 +1113,11 @@ const ExportProduct: React.FC = () => {
       (s) => s.box_number === activeBoxInfo.box_code && !s.is_error
     ).length;
     if (pendingCount > 0) {
-      alert(`이 박스에 저장되지 않은 스캔 ${pendingCount}건이 있습니다.\n저장 또는 기록에서 삭제 후 다시 시도해주세요.`);
+      alert(t('exportProduct.box.deletePendingScans', { count: pendingCount }));
       return;
     }
 
-    if (!window.confirm(`박스 [${activeBoxInfo.box_code}] 를 삭제하시겠습니까?`)) return;
+    if (!window.confirm(t('exportProduct.box.deleteConfirm', { code: activeBoxInfo.box_code }))) return;
 
     setIsDeletingBox(true);
     try {
@@ -1127,21 +1128,21 @@ const ExportProduct: React.FC = () => {
 
       if (!json.success) {
         // 상품이 담긴 박스 → 담당자 문의 안내
-        alert(json.error || '박스 삭제에 실패했습니다.');
+        alert(json.error || t('exportProduct.box.deleteFailed'));
         return;
       }
 
-      alert(`박스 [${json.box_code || activeBoxInfo.box_code}] 가 삭제되었습니다.`);
+      alert(t('exportProduct.box.deleted', { code: json.box_code || activeBoxInfo.box_code }));
       setActiveBoxInfo(null);
       setSelectedSize('');
       fetchAvailableBoxes();
     } catch (err) {
       console.error('박스 삭제 오류:', err);
-      alert('박스 삭제 중 오류가 발생했습니다.');
+      alert(t('exportProduct.box.deleteError'));
     } finally {
       setIsDeletingBox(false);
     }
-  }, [activeBoxInfo, scanHistory, fetchAvailableBoxes]);
+  }, [activeBoxInfo, scanHistory, fetchAvailableBoxes, t]);
 
   // 보드용 스캔 처리 함수 (개수 자동 1)
   const handleBoardScan = (orderNumber: string) => {
@@ -1588,14 +1589,14 @@ const ExportProduct: React.FC = () => {
             {/* ============================================================ */}
             <div className="v2-export-box-action-col">
               {/* 박스 생성은 박스선택 모달 안의 [+] 로 이동 */}
-              <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => { fetchAvailableBoxes(); setShowBoxSelectModal(true); }}>박스선택</button>
+              <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => { fetchAvailableBoxes(); setShowBoxSelectModal(true); }}>{t('exportProduct.box.selectBtn')}</button>
               <button className="v2-export-box-action-btn" disabled={!selectedOperator || !selectedFtUserId} onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}>{t('exportProduct.record')}</button>
               <button
                 className="v2-export-box-action-btn v2-export-box-action-btn--delete"
                 onClick={handleBoxDelete}
                 disabled={!selectedOperator || !selectedFtUserId || !activeBoxInfo || isDeletingBox}
               >
-                {isDeletingBox ? '삭제 중...' : '삭제'}
+                {isDeletingBox ? t('exportProduct.box.deleting') : t('exportProduct.box.delete')}
               </button>
               <button
                 className={`v2-export-box-action-btn v2-export-box-action-btn--save ${hasUnsavedChanges ? 'has-changes' : ''}`}
@@ -1615,7 +1616,7 @@ const ExportProduct: React.FC = () => {
                   {activeBoxInfo.size && <span className="v2-export-active-box-size">{activeBoxInfo.size}</span>}
                 </span>
               ) : (
-                <span className="v2-export-active-box-empty">박스를 생성하거나 선택하세요</span>
+                <span className="v2-export-active-box-empty">{t('exportProduct.box.activeEmpty')}</span>
               )}
             </div>
 
@@ -1886,8 +1887,8 @@ const ExportProduct: React.FC = () => {
           <div className="v2-export-box-modal-overlay" onClick={closeBoxCreate}>
             <div className="v2-box-modal v2-box-modal--create" onClick={(e) => e.stopPropagation()}>
               <div className="v2-box-modal-head">
-                <h3>새 박스</h3>
-                <button type="button" className="v2-box-modal-close" onClick={closeBoxCreate} aria-label="닫기">✕</button>
+                <h3>{t('exportProduct.box.newBox')}</h3>
+                <button type="button" className="v2-box-modal-close" onClick={closeBoxCreate} aria-label={t('exportProduct.box.close')}>✕</button>
               </div>
 
               {/* 미리보기: 📦 / 박스명 / 박스 사이즈 */}
@@ -1897,10 +1898,10 @@ const ExportProduct: React.FC = () => {
                   {previewCode ? (
                     <BoxCodeLabel code={previewCode} className="v2-box-preview-code" />
                   ) : (
-                    <span className="v2-box-preview-placeholder">타입을 선택하세요</span>
+                    <span className="v2-box-preview-placeholder">{t('exportProduct.box.selectTypePrompt')}</span>
                   )}
                   <span className={`v2-box-preview-size ${boxCreateSize ? '' : 'is-empty'}`}>
-                    {boxCreateSize || '크기 미입력'}
+                    {boxCreateSize || t('exportProduct.box.sizeEmpty')}
                   </span>
                 </div>
               </div>
@@ -1908,7 +1909,7 @@ const ExportProduct: React.FC = () => {
               <div className="v2-box-form">
                 {/* 타입 — 배지색 버튼 */}
                 <div className="v2-box-form-row">
-                  <label>타입</label>
+                  <label>{t('exportProduct.box.type')}</label>
                   <div className="v2-box-type-btns">
                     {BOX_TYPES.map((tp) => (
                       <button
@@ -1918,7 +1919,7 @@ const ExportProduct: React.FC = () => {
                         onClick={() => handleBoxCreateTypeChange(tp)}
                       >
                         <span className="v2-box-type-btn-code">{tp}</span>
-                        <span className="v2-box-type-btn-label">{BOX_TYPE_META[tp].label}</span>
+                        <span className="v2-box-type-btn-label">{t(BOX_TYPE_META[tp].labelKey)}</span>
                       </button>
                     ))}
                   </div>
@@ -1926,14 +1927,14 @@ const ExportProduct: React.FC = () => {
 
                 {/* 번호 — 다음 번호 자동 제안, 숫자패드로 수정 */}
                 <div className="v2-box-form-row">
-                  <label>번호</label>
+                  <label>{t('exportProduct.box.no')}</label>
                   <div className="v2-box-no-field">
                     <input
                       type="text"
                       inputMode="numeric"
                       value={boxCreateNo}
                       onChange={(e) => setBoxCreateNo(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                      placeholder="번호"
+                      placeholder={t('exportProduct.box.no')}
                     />
                     <div className="v2-box-numpad">
                       {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
@@ -1948,17 +1949,17 @@ const ExportProduct: React.FC = () => {
 
                 {/* 크기 — 가로 x 세로 x 높이 + 프리셋 */}
                 <div className="v2-box-form-row">
-                  <label>박스 크기 <span className="v2-box-form-hint">가로 × 세로 × 높이 (cm)</span></label>
+                  <label>{t('exportProduct.box.size')} <span className="v2-box-form-hint">{t('exportProduct.box.sizeHint')}</span></label>
                   <div className="v2-box-size-inputs">
-                    {['가로', '세로', '높이'].map((ph, i) => (
-                      <React.Fragment key={ph}>
+                    {['width', 'depth', 'height'].map((dim, i) => (
+                      <React.Fragment key={dim}>
                         {i > 0 && <span className="v2-box-size-x">×</span>}
                         <input
                           type="text"
                           inputMode="numeric"
                           value={sizeParts[i] || ''}
                           onChange={(e) => setSizePart(i, e.target.value)}
-                          placeholder={ph}
+                          placeholder={t(`exportProduct.box.${dim}`)}
                         />
                       </React.Fragment>
                     ))}
@@ -1984,9 +1985,9 @@ const ExportProduct: React.FC = () => {
               </div>
 
               <div className="v2-box-modal-foot">
-                <button type="button" className="v2-box-btn-ghost" onClick={closeBoxCreate}>취소</button>
+                <button type="button" className="v2-box-btn-ghost" onClick={closeBoxCreate}>{t('exportProduct.box.cancel')}</button>
                 <button type="button" className="v2-box-btn-primary" onClick={handleBoxCreate} disabled={!canCreate}>
-                  {canCreate ? `${previewCode} 생성` : '생성'}
+                  {canCreate ? t('exportProduct.box.createWithCode', { code: previewCode }) : t('exportProduct.box.create')}
                 </button>
               </div>
             </div>
@@ -2002,8 +2003,8 @@ const ExportProduct: React.FC = () => {
         <div className="v2-export-box-modal-overlay" onClick={() => setShowBoxSelectModal(false)}>
           <div className="v2-box-modal v2-box-modal--select" onClick={(e) => e.stopPropagation()}>
             <div className="v2-box-modal-head">
-              <h3>박스 선택 <span className="v2-box-modal-sub">{boxPrefix} · 포장 중 {availableBoxes.length}개</span></h3>
-              <button type="button" className="v2-box-modal-close" onClick={() => setShowBoxSelectModal(false)} aria-label="닫기">✕</button>
+              <h3>{t('exportProduct.box.selectTitle')} <span className="v2-box-modal-sub">{boxPrefix} · {t('exportProduct.box.packingCount', { count: availableBoxes.length })}</span></h3>
+              <button type="button" className="v2-box-modal-close" onClick={() => setShowBoxSelectModal(false)} aria-label={t('exportProduct.box.close')}>✕</button>
             </div>
 
             <div className="v2-box-select-body">
@@ -2014,8 +2015,8 @@ const ExportProduct: React.FC = () => {
                   <section key={type} className={`v2-box-section ${boxes.length === 0 ? 'is-empty' : ''}`}>
                     <header className="v2-box-section-head">
                       <span className={`size-badge v2-box-section-badge ${meta.badgeClass}`}>{type}</span>
-                      <span className="v2-box-section-label">{meta.label}</span>
-                      <span className="v2-box-section-count">{boxes.length}개</span>
+                      <span className="v2-box-section-label">{t(meta.labelKey)}</span>
+                      <span className="v2-box-section-count">{t('exportProduct.box.count', { count: boxes.length })}</span>
                     </header>
                     <div className="v2-box-grid">
                       {boxes.map((box) => {
@@ -2029,8 +2030,8 @@ const ExportProduct: React.FC = () => {
                           >
                             <span className="v2-box-card-emoji" aria-hidden>📦</span>
                             <BoxCodeLabel code={box.box_code} className="v2-box-card-code" />
-                            <span className="v2-box-card-size">{box.size || '크기 없음'}</span>
-                            {isActive && <span className="v2-box-card-check">사용 중</span>}
+                            <span className="v2-box-card-size">{box.size || t('exportProduct.box.noSize')}</span>
+                            {isActive && <span className="v2-box-card-check">{t('exportProduct.box.inUse')}</span>}
                           </button>
                         );
                       })}
@@ -2038,10 +2039,10 @@ const ExportProduct: React.FC = () => {
                         type="button"
                         className={`v2-box-card v2-box-card--add is-${type}`}
                         onClick={() => openBoxCreate(type)}
-                        title={`${type} 타입 새 박스`}
+                        title={t('exportProduct.box.newBoxOfType', { type })}
                       >
                         <span className="v2-box-card-add-icon">+</span>
-                        <span className="v2-box-card-add-label">새 박스</span>
+                        <span className="v2-box-card-add-label">{t('exportProduct.box.newBox')}</span>
                       </button>
                     </div>
                   </section>
