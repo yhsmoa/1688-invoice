@@ -244,6 +244,67 @@
   cursor: not-allowed;
 }
 
+/* ── [확인필요] hover 기준 팝업 (components/AlertCriteriaPopover) ── */
+.os-v2-alert-btn-wrap {
+  display: inline-flex;
+}
+
+.os-v2-alert-criteria {
+  position: fixed;
+  z-index: 1000;
+  width: 340px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+  font-size: 12px;
+  color: #374151;
+  pointer-events: none;
+}
+
+.os-v2-alert-criteria-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.os-v2-alert-criteria-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.os-v2-alert-criteria-list li {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  line-height: 1.5;
+}
+
+.os-v2-alert-criteria-name {
+  flex-shrink: 0;
+  width: 64px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.os-v2-alert-criteria-rule {
+  color: #4b5563;
+}
+
+.os-v2-alert-criteria-notes {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.os-v2-alert-criteria-notes p {
+  margin: 0;
+}
+
 .order-status-v2-table .os-v2-col-delivery.is-alert {
   background: #fef3c7;
   cursor: help;

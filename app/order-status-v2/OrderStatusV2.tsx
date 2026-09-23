@@ -13,6 +13,7 @@ import {
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import DeliveryStatusTools from './components/DeliveryStatusTools';
+import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
@@ -132,6 +133,8 @@ const OrderStatusV2: React.FC = () => {
 
   // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
   const [alertOnly, setAlertOnly] = useState(false);
+  // [⚠️ 확인필요] hover 중 커서 위치 — 판정 기준 팝업(AlertCriteriaPopover) 표시용
+  const [alertCriteriaCursor, setAlertCriteriaCursor] = useState<{ x: number; y: number } | null>(null);
 
   // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) → 경고 필터 ──
   const filteredItems = useMemo(() => {
@@ -637,15 +640,22 @@ const OrderStatusV2: React.FC = () => {
                   <option value="ALL">ALL</option>
                 </select>
                 {/* 배송 경고 모아보기 — 선택한 사용자 항목 중 확인 필요한 것만 */}
-                <button
-                  type="button"
-                  className={`os-v2-alert-btn ${alertOnly ? 'active' : ''}`}
-                  onClick={() => setAlertOnly((v) => !v)}
-                  disabled={!selectedUserId || (deliveryAlertMap.size === 0 && !alertOnly)}
-                  title="배송전·집하대기·운송중 지연, 이상 상태, 배송완료 후 입고 미완료, 입고 완료 후 출고 미완료 항목"
+                {/*   hover 는 감싼 span 에서 받는다 (disabled 버튼은 마우스 이벤트가 없음) */}
+                <span
+                  className="os-v2-alert-btn-wrap"
+                  onMouseMove={(e) => setAlertCriteriaCursor({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setAlertCriteriaCursor(null)}
                 >
-                  ⚠️ 확인필요 {deliveryAlertMap.size}
-                </button>
+                  <button
+                    type="button"
+                    className={`os-v2-alert-btn ${alertOnly ? 'active' : ''}`}
+                    onClick={() => setAlertOnly((v) => !v)}
+                    disabled={!selectedUserId || (deliveryAlertMap.size === 0 && !alertOnly)}
+                  >
+                    ⚠️ 확인필요 {deliveryAlertMap.size}
+                  </button>
+                </span>
+                {alertCriteriaCursor && <AlertCriteriaPopover x={alertCriteriaCursor.x} y={alertCriteriaCursor.y} />}
               </div>
               <div className="order-status-v2-action-right">
                 <button
