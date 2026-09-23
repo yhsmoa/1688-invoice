@@ -16,11 +16,13 @@ import { deliveryPhase } from '../../../lib/deliveryPhase';
 //   이상 상태    항상 (처리지연·집하지연·물류이상·물류정체)
 //   배송완료     완료 후 ARRIVAL_DAYS 지나도 입고 수량이 목표(주문−취소−반품)에
 //                못 미침                              근거: status_since + 입고 집계
-//   입고 완료    입고가 목표 수량을 채운 뒤 OUTBOUND_DAYS 지나도 DONE 이 아님
-//                (DONE = 주문 − 취소·반품 완료 − 출고 확정 ≤ 0, lib/confirmDone)
-//                예외: 취소·반품 접수 + 출고 확정 ≥ 주문수량이면 통과 (DONE 전이라도)
+//   입고 완료 후 (배송 정보(CSV)가 없어도 판정) — 두 단계로 나눠 각각 시계를 준다
+//     포장 지연  입고가 목표 수량을 채운 뒤 PACKING_DAYS 지나도 포장이 목표에 못 미침
 //                                                     근거: 마지막 입고 시각
-//                이 규칙은 배송 정보(CSV)가 없어도 판정한다.
+//     출고 지연  포장이 목표 수량을 채운 뒤 OUTBOUND_DAYS 지나도 출고 확정이 목표에 못 미침
+//                                                     근거: 마지막 포장 시각
+//     취소·반품은 접수만 돼도 수량으로 인정 (DONE 판정은 lib/confirmDone 로 별개)
+//     포장·출고 확정 수량은 product_id 기준 (세트 sibling 공유 — confirmDone 과 동일)
 //
 // 공통 제외: 항목 DONE / 목표 수량 0 (전량 취소)
 //
@@ -38,13 +40,15 @@ export const ALERT_RULES = {
   TRANSIT_STALL_DAYS: 3,
   /** 배송완료 후 며칠 안에 입고가 끝나야 정상 */
   ARRIVAL_DAYS: 3,
-  /** 입고가 다 된 뒤 며칠 안에 출고(DONE)가 돼야 정상 */
-  OUTBOUND_DAYS: 4,
+  /** 입고가 다 된 뒤 며칠 안에 포장이 끝나야 정상 */
+  PACKING_DAYS: 5,
+  /** 포장이 다 된 뒤 며칠 안에 출고 확정이 돼야 정상 */
+  OUTBOUND_DAYS: 5,
 } as const;
 
 // ── 상태 분류는 lib/deliveryPhase (업로드 API 의 status_since 이어받기와 동일 기준) ──
 
-export type DeliveryAlertKind = 'abnormal' | 'pending' | 'pickup' | 'stalled' | 'arrival' | 'outbound';
+export type DeliveryAlertKind = 'abnormal' | 'pending' | 'pickup' | 'stalled' | 'arrival' | 'packing' | 'outbound';
 
 export interface DeliveryAlert {
   kind: DeliveryAlertKind;
@@ -61,8 +65,12 @@ export interface DeliveryAlertInput {
   arrivalQty: number;
   cancelQty: number;
   returnQty: number;
-  /** 마지막 입고(ARRIVAL) 시각 (ISO) — 입고 완료 → 출고 지연 판정용 */
+  /** 마지막 입고(ARRIVAL) 시각 (ISO) — 입고 완료 → 포장 지연 판정용 */
   lastArrivalAt: string | null;
+  /** 포장 수량 (PACKED 전체, product_id 기준) */
+  packedQty: number;
+  /** 마지막 포장(PACKED) 시각 (ISO, product_id 기준) — 포장 완료 → 출고 지연 판정용 */
+  lastPackedAt: string | null;
   /** 출고 확정 수량 (PACKED + shipment_id, product_id 기준 — confirmDone 과 동일) */
   shipmentQty: number;
   /** 현재 시각 — 목록을 돌 때 한 번만 만들어 넘긴다 (없으면 호출 시점) */
@@ -88,7 +96,10 @@ const label = (status: string) => DELIVERY_STATUS_KR[status] ?? status;
 // 판정
 // ============================================================
 export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert | null {
-  const { info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty, lastArrivalAt, shipmentQty } = input;
+  const {
+    info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty,
+    lastArrivalAt, packedQty, lastPackedAt, shipmentQty,
+  } = input;
   const now = input.now ?? new Date();
 
   // ── 공통 제외 ──
@@ -96,18 +107,32 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
   const target = (orderQty ?? 0) - cancelQty - returnQty;
   if (target <= 0) return null;
 
-  // ── 입고 완료: 출고(DONE)까지 OUTBOUND_DAYS 안에 끝나야 함 — 배송 정보 없어도 판정 ──
-  //   입고 5 → 취소 2 + 출고 3 이면 DONE 이라 위에서 제외됨.
-  //   취소·반품은 접수만 돼도 수량으로 인정 (사용자 결정): 취소·반품 접수 + 출고 확정이
-  //   주문수량을 채우면 DONE 처리 전이라도 확인필요에서 뺀다. (DONE 판정 자체는 별개)
+  // ── 입고 완료 후: 포장 → 출고 두 단계 — 배송 정보 없어도 판정 ──
+  //   target 은 취소·반품 '접수' 까지 뺀 수량 (사용자 결정: 접수만 돼도 인정)
+  //   예) 주문 20, 반품접수 2, 포장 18, 출고 18 → 통과 (반품 처리완료 전이라 DONE 은 아니어도)
   if (arrivalQty >= target) {
-    if (target - shipmentQty <= 0) return null;
+    if (shipmentQty >= target) return null;
+
+    // ── 포장 완료 → 출고 대기: 마지막 포장 시각부터 OUTBOUND_DAYS ──
+    if (packedQty >= target) {
+      const d = elapsedDays(lastPackedAt ?? undefined, now);
+      if (d !== null && d > ALERT_RULES.OUTBOUND_DAYS) {
+        return {
+          kind: 'outbound',
+          days: Math.floor(d),
+          message: `포장 완료 후 ${Math.floor(d)}일 경과, 출고 ${shipmentQty}/${target} (기준 ${ALERT_RULES.OUTBOUND_DAYS}일)`,
+        };
+      }
+      return null;
+    }
+
+    // ── 입고 완료 → 포장 대기: 마지막 입고 시각부터 PACKING_DAYS ──
     const d = elapsedDays(lastArrivalAt ?? undefined, now);
-    if (d !== null && d > ALERT_RULES.OUTBOUND_DAYS) {
+    if (d !== null && d > ALERT_RULES.PACKING_DAYS) {
       return {
-        kind: 'outbound',
+        kind: 'packing',
         days: Math.floor(d),
-        message: `입고 완료 후 ${Math.floor(d)}일 경과, 출고 미완료 (기준 ${ALERT_RULES.OUTBOUND_DAYS}일)`,
+        message: `입고 완료 후 ${Math.floor(d)}일 경과, 포장 ${packedQty}/${target} (기준 ${ALERT_RULES.PACKING_DAYS}일)`,
       };
     }
     return null;

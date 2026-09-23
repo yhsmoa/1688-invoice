@@ -89,15 +89,22 @@ const OrderStatusV2: React.FC = () => {
   // 배송 경고 — 판매자/담당자 확인이 필요한 항목 (규칙: utils/deliveryAlerts.ts)
   //   배송상태·입고 집계는 이미 불러와 있으므로 화면에서 계산
   // ============================================================
-  // 항목별 마지막 입고 시각 — "입고 완료 후 출고 지연" 판정용
-  const lastArrivalMap = useMemo(() => {
-    const m = new Map<string, string>();
+  // ── 마지막 입고 시각 (order_item_id 기준) — "입고 완료 후 포장 지연" 판정용 ──
+  // ── 마지막 포장 시각 (product_id 기준, 세트 sibling 공유) — "포장 완료 후 출고 지연" 판정용 ──
+  const { lastArrivalMap, lastPackedMap } = useMemo(() => {
+    const arrival = new Map<string, string>();
+    const packed = new Map<string, string>();
     for (const f of rawFulfillments) {
-      if (f.type !== 'ARRIVAL' || !f.created_at) continue;
-      const cur = m.get(f.order_item_id);
-      if (!cur || f.created_at > cur) m.set(f.order_item_id, f.created_at);
+      if (!f.created_at) continue;
+      if (f.type === 'ARRIVAL') {
+        const cur = arrival.get(f.order_item_id);
+        if (!cur || f.created_at > cur) arrival.set(f.order_item_id, f.created_at);
+      } else if (f.type === 'PACKED' && f.product_id) {
+        const cur = packed.get(f.product_id);
+        if (!cur || f.created_at > cur) packed.set(f.product_id, f.created_at);
+      }
     }
-    return m;
+    return { lastArrivalMap: arrival, lastPackedMap: packed };
   }, [rawFulfillments]);
 
   const deliveryAlertMap = useMemo(() => {
@@ -114,12 +121,14 @@ const OrderStatusV2: React.FC = () => {
         cancelQty: cancelMap.get(item.id) ?? 0,
         returnQty: returnMap.get(item.id) ?? 0,
         lastArrivalAt: lastArrivalMap.get(item.id) ?? null,
+        packedQty: packedMap.get(item.product_id ?? '') ?? 0,
+        lastPackedAt: lastPackedMap.get(item.product_id ?? '') ?? null,
         shipmentQty: exportMap.get(item.product_id ?? '') ?? 0,
       });
       if (alert) m.set(item.id, alert);
     }
     return m;
-  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap, exportMap]);
+  }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap, packedMap, lastPackedMap, exportMap]);
 
   // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
   const [alertOnly, setAlertOnly] = useState(false);
@@ -792,14 +801,15 @@ const OrderStatusV2: React.FC = () => {
                             const oid = item['1688_order_id'];
                             const info = oid ? deliveryStatusMap.get(oid) : undefined;
                             const alert = deliveryAlertMap.get(item.id);
-                            // 배송 정보가 없어도 "입고 완료 후 출고 미완료" 경고는 있을 수 있다
+                            // 배송 정보가 없어도 "포장 지연 / 출고 지연" 경고는 있을 수 있다
                             if (!info && !alert) return <td className="os-v2-col-delivery" />;
                             const meaning = info && language !== 'zh' ? getDeliveryStatusMeaning(info.delivery_status) : null;
                             const title = alert ? alert.message : meaning ?? undefined;
+                            const fallbackText = alert?.kind === 'packing' ? '포장 지연' : alert?.kind === 'outbound' ? '출고 지연' : '';
                             return (
                               <td className={`os-v2-col-delivery ${alert ? 'is-alert' : ''}`} title={title}>
                                 {alert && <span className="os-v2-alert-mark">⚠️</span>}
-                                {info ? formatDeliveryDisplay(info, language) : alert?.kind === 'outbound' ? '출고 지연' : ''}
+                                {info ? formatDeliveryDisplay(info, language) : fallbackText}
                               </td>
                             );
                           })()}
