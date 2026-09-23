@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import {
+  CUSTOMER_CONFIRM_MAX_ATTACHMENTS,
+  customerConfirmFileField,
+} from '../../../../lib/customerConfirm';
 
 // ============================================================
 // POST /api/notion/customer-confirm
@@ -10,14 +14,16 @@ import { supabase } from '../../../../lib/supabase';
 // 요청: multipart/form-data
 //   - seller_code : string            → Notion '팀' select
 //   - payload     : JSON string       → 항목 메타 배열 (아래 ItemPayload)
-//   - file_<id>   : File (optional)   → 항목별 첨부 이미지
+//   - file_<id>   : File × 0~N        → 항목별 첨부 이미지 (같은 필드명으로 여러 개, 순서 유지)
+//                                       최대 CUSTOMER_CONFIRM_MAX_ATTACHMENTS 장
 //
 // 처리:
-//   1. 첨부 이미지 → Supabase Storage 공개 버킷 업로드 → public URL
+//   1. 첨부 이미지 → Supabase Storage 공개 버킷 업로드 → public URL (첨부 순서 유지)
 //   2. 항목당 Notion 페이지 1개 생성
 //      - properties : 상품명/주문번호/팀/상태/수량/입고/생성일시/type(A·B·C·P·X)
-//      - children   : 옵션 정보 + 이미지(좌 img_url / 우 첨부) + 확인 항목 + 사이트 링크
-//   3. 항목별 성공/실패 집계 반환
+//      - children   : 옵션 정보 + 이미지 + 확인 항목 + 사이트 링크
+//                     이미지: [상품 img_url | 첨부1] 한 줄, 나머지 첨부는 2장씩 한 줄
+//   3. 항목별 성공/실패 집계 반환 (이미지 한 장이라도 업로드 실패하면 그 항목은 실패)
 //
 // env: NOTION_API_KEY, NOTION_DATABASE_ID (서버 환경변수)
 // ============================================================
@@ -86,7 +92,8 @@ interface ItemPayload {
   site_url: string | null;
   size_code: string | null;     // 배송 사이즈 코드 A/B/C/P/X (Notion 'type')
   attributes: string[];   // 한글 라벨 (기타는 "기타: ..." 형태)
-  has_file: boolean;
+  /** 첨부 이미지 장수 — 수신한 파일 수와 대조해 전송 누락을 잡는다 (구버전 화면은 없음) */
+  file_count?: number;
 }
 
 // ── Storage 버킷 보장 (최초 1회) ──
@@ -106,10 +113,12 @@ async function ensureBucket(): Promise<void> {
 }
 
 // ── 첨부 이미지 업로드 → public URL ──
-async function uploadImage(itemId: string, file: File): Promise<string> {
+//   path 에 batchTs + 순번을 넣는다: 같은 요청의 여러 장이 같은 밀리초에 올라가도
+//   경로가 겹치지 않게 (upsert: true 라 겹치면 앞 장이 조용히 덮어써진다).
+async function uploadImage(itemId: string, file: File, batchTs: number, index: number): Promise<string> {
   await ensureBucket();
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-  const path = `${itemId}/${Date.now()}.${ext}`;
+  const path = `${itemId}/${batchTs}-${index + 1}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage
@@ -130,8 +139,47 @@ function imageBlock(url: string) {
   };
 }
 
+// ── 이미지 2장 한 줄 (Notion column_list 는 열이 2개 이상이어야 한다) ──
+function imagePairBlock(leftUrl: string, rightUrl: string) {
+  return {
+    object: 'block',
+    type: 'column_list',
+    column_list: {
+      children: [
+        { object: 'block', type: 'column', column: { children: [imageBlock(leftUrl)] } },
+        { object: 'block', type: 'column', column: { children: [imageBlock(rightUrl)] } },
+      ],
+    },
+  };
+}
+
+// ============================================================
+// 이미지 블록 배치
+//   · 첫 줄  : [상품 img_url | 첨부 1]  (기존 1장 첨부 때와 같은 모양)
+//   · 다음 줄: 남은 첨부를 2장씩 한 줄, 마지막 홀수 1장은 단독 블록
+//   · 상품 이미지가 없으면 첨부만 2장씩
+//   블록 수: 첨부 최대 10장 → 최대 6블록 (페이지 children 100개 제한과 무관)
+// ============================================================
+function buildImageBlocks(productUrl: string | null, attachedUrls: string[]) {
+  const blocks: Record<string, unknown>[] = [];
+  const queue = [...attachedUrls];
+
+  if (productUrl) {
+    const first = queue.shift();
+    blocks.push(first ? imagePairBlock(productUrl, first) : imageBlock(productUrl));
+  }
+
+  while (queue.length > 0) {
+    const left = queue.shift()!;
+    const right = queue.shift();
+    blocks.push(right ? imagePairBlock(left, right) : imageBlock(left));
+  }
+
+  return blocks;
+}
+
 // ── 페이지 본문(children) 구성 ──
-function buildChildren(item: ItemPayload, attachedUrl: string | null) {
+function buildChildren(item: ItemPayload, attachedUrls: string[]) {
   const children: Record<string, unknown>[] = [];
 
   // 1) 옵션/식별 정보 (아이템번호 - 중국옵션1, 중국옵션2)
@@ -143,26 +191,8 @@ function buildChildren(item: ItemPayload, attachedUrl: string | null) {
     paragraph: { rich_text: [{ type: 'text', text: { content: infoText } }] },
   });
 
-  // 2) 이미지 — 둘 다 있으면 2단(좌 img_url / 우 첨부), 하나면 단독 블록
-  const left = item.img_url ? [imageBlock(item.img_url)] : [];
-  const right = attachedUrl ? [imageBlock(attachedUrl)] : [];
-
-  if (left.length > 0 && right.length > 0) {
-    children.push({
-      object: 'block',
-      type: 'column_list',
-      column_list: {
-        children: [
-          { object: 'block', type: 'column', column: { children: left } },
-          { object: 'block', type: 'column', column: { children: right } },
-        ],
-      },
-    });
-  } else if (left.length > 0) {
-    children.push(left[0]);
-  } else if (right.length > 0) {
-    children.push(right[0]);
-  }
+  // 2) 이미지 — [상품 | 첨부1] + 남은 첨부 2장씩 (buildImageBlocks)
+  children.push(...buildImageBlocks(item.img_url, attachedUrls));
 
   // 3) 확인 항목 — 확인수량 + to_do 체크리스트
   const hasConfirmQty = item.confirm_qty != null && String(item.confirm_qty).trim() !== '';
@@ -210,7 +240,7 @@ function buildChildren(item: ItemPayload, attachedUrl: string | null) {
 async function createNotionPage(
   item: ItemPayload,
   sellerCode: string,
-  attachedUrl: string | null,
+  attachedUrls: string[],
   apiKey: string,
   databaseId: string,
   dateOnly: string,
@@ -247,7 +277,7 @@ async function createNotionPage(
       '생성일시': { date: { start: dateOnly } },
       ...typeProperty,
     },
-    children: buildChildren(item, attachedUrl),
+    children: buildChildren(item, attachedUrls),
   };
 
   const res = await fetch(NOTION_API_URL, {
@@ -319,14 +349,28 @@ export async function POST(request: NextRequest) {
 
     for (const item of items) {
       try {
-        // 첨부 이미지 업로드 (있을 때만)
-        let attachedUrl: string | null = null;
-        const file = formData.get(`file_${item.id}`);
-        if (file && file instanceof File && file.size > 0) {
-          attachedUrl = await uploadImage(item.id, file);
+        // ── 첨부 이미지 수집 (같은 필드명 여러 개, 첨부 순서 유지) ──
+        const files = formData
+          .getAll(customerConfirmFileField(item.id))
+          .filter((f): f is File => f instanceof File && f.size > 0);
+
+        if (files.length > CUSTOMER_CONFIRM_MAX_ATTACHMENTS) {
+          throw new Error(`첨부 이미지는 항목당 최대 ${CUSTOMER_CONFIRM_MAX_ATTACHMENTS}장입니다 (${files.length}장 수신)`);
+        }
+        // 화면에서 보낸 장수와 받은 장수가 다르면 일부 누락 — 불완전한 페이지를 만들지 않는다
+        //   file_count 가 없는 요청 = 배포 전 화면을 열어둔 채 저장 (1장 첨부 구버전) → 대조 생략
+        const expected = typeof item.file_count === 'number' ? item.file_count : files.length;
+        if (files.length !== expected) {
+          throw new Error(`첨부 이미지 장수 불일치 (보냄 ${expected}장 / 받음 ${files.length}장) — 다시 저장해주세요`);
         }
 
-        await createNotionPage(item, sellerCode, attachedUrl, apiKey, databaseId, dateOnly, typeProp);
+        // ── 업로드 (병렬, 결과 순서 = 첨부 순서). 한 장이라도 실패하면 이 항목은 실패 ──
+        const batchTs = Date.now();
+        const attachedUrls = await Promise.all(
+          files.map((file, index) => uploadImage(item.id, file, batchTs, index))
+        );
+
+        await createNotionPage(item, sellerCode, attachedUrls, apiKey, databaseId, dateOnly, typeProp);
         created += 1;
       } catch (err) {
         console.error(`Notion 페이지 생성 실패 (${item.item_no}):`, err);
