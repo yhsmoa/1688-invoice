@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
-import { samePhase } from '../../../lib/deliveryPhase';
+import { deliveryPhase, samePhase } from '../../../lib/deliveryPhase';
+import { pickRepresentativeRows } from '../../../lib/deliveryRowPick';
 
 // ============================================================
 // POST /api/upload-delivery-status-csv
 // 배송상황 CSV 업로드 → im_1688_orders_delivery_status 테이블 저장
 // 업로드 시 기존 데이터 전체 삭제 후 새 데이터 삽입
+// + 삭제 전에 im_1688_delivery_history 에 발송/배송완료 전환 이력 누적 (7-b)
 //
 // ── 검증을 삭제보다 먼저 하는 이유 ─────────────────────────
 // 전체 삭제 → 삽입 구조라, 깨진 파일을 올리면 정상 데이터가 통째로
@@ -59,6 +61,14 @@ interface DeliveryRow {
   status_since: string;
   /** 현재 description(배송위치)이 된 시점 — 이전 업로드와 같으면 이어받음 */
   location_since: string;
+}
+
+/** im_1688_delivery_history_apply 반환 행 */
+interface HistoryApplyResult {
+  upload_at: string;
+  applied: number;
+  newly_shipped: number;
+  newly_delivered: number;
 }
 
 /** 이전 업로드에서 이어받을 값 */
@@ -244,6 +254,34 @@ export async function POST(request: NextRequest) {
         p && sameText(p.description, r.description) && p.location_since ? p.location_since : now;
     }
 
+    // ── 7-b) 배송 이력 반영 (삭제 전) — im_1688_delivery_history ──
+    //   스냅샷은 매번 지워지므로 "언제 발송/배송완료 됐는지" 를 별도 테이블에 누적한다.
+    //   · 주문당 대표 1행 (읽기 API 와 같은 기준 — lib/deliveryRowPick)
+    //   · 단계는 lib/deliveryPhase (status_since 이어받기와 같은 기준)
+    //   · 단일 rpc 호출 = 1 트랜잭션 → 한 업로드가 부분 반영되는 일이 없다
+    //   · 실패 시 여기서 중단 → 스냅샷은 삭제 전이라 그대로 유지
+    const representatives = pickRepresentativeRows(rows, (r) => r['1688_order_no']);
+    const historyRows = Array.from(representatives.values()).map((r) => ({
+      order_no: r['1688_order_no'],
+      ordered_at: r.timestamp,
+      phase: deliveryPhase(r.delivery_status),
+      status: r.delivery_status,
+      courier: r.courier,
+      tracking_no: r.tracking_no,
+    }));
+
+    const { data: historyData, error: historyError } = await supabase.rpc(
+      'im_1688_delivery_history_apply',
+      { p_rows: historyRows }
+    );
+    if (historyError) {
+      console.error('배송 이력 반영 오류:', historyError);
+      return fail('배송 이력 기록 중 오류가 발생했습니다. 기존 데이터는 그대로 유지했습니다.', 500, {
+        details: historyError.message,
+      });
+    }
+    const historyResult = (historyData as HistoryApplyResult[] | null)?.[0] ?? null;
+
     // ── 8) 기존 데이터 전체 삭제 ──
     const { error: deleteError } = await supabase
       .from('im_1688_orders_delivery_status')
@@ -279,6 +317,11 @@ export async function POST(request: NextRequest) {
       count: rows.length,
       savedCount,
       errorCount,
+      history: {
+        applied: historyResult?.applied ?? 0,
+        newlyShipped: historyResult?.newly_shipped ?? 0,
+        newlyDelivered: historyResult?.newly_delivered ?? 0,
+      },
     });
   } catch (error) {
     console.error('배송상황 CSV 업로드 오류:', error);
