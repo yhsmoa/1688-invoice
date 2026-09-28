@@ -94,7 +94,12 @@ const StageCell: React.FC<{ stat: StageStat; stage: Stage }> = ({ stat, stage })
   );
 };
 
-const ProcessSpeedTab: React.FC = () => {
+interface ProcessSpeedTabProps {
+  /** 탭 선택 버튼 — 컨트롤 줄 왼쪽에 배치 (VolumeManage 가 전달) */
+  tabSwitcher: React.ReactNode;
+}
+
+const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
   const [period, setPeriod] = useState<Period>('week');
   const [basis, setBasis] = useState<SpeedBasis>('shipment');
   const [setKind, setSetKind] = useState<SetKind>('ALL');
@@ -123,8 +128,9 @@ const ProcessSpeedTab: React.FC = () => {
 
   return (
     <>
-      {/* ── 컨트롤 ── */}
+      {/* ── 컨트롤 줄: 왼쪽 탭 선택 / 오른쪽 컨트롤 ── */}
       <div className="vm-toolbar">
+        {tabSwitcher}
         <div className="vm-controls">
           <div className="vm-basis">
             <span className="vm-basis-label">단위</span>

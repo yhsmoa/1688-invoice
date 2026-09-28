@@ -42,31 +42,39 @@ const VolumeManage: React.FC = () => {
     window.history.replaceState(null, '', url.toString());
   };
 
+  // ── 탭 선택 — 각 탭의 컨트롤 줄 왼쪽에 렌더된다 (컨트롤은 오른쪽) ──
+  const tabSwitcher = (
+    <div className="vm-tabs" role="tablist">
+      {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
+        <button
+          key={t}
+          role="tab"
+          aria-selected={tab === t}
+          className={`vm-tab ${tab === t ? 'active' : ''}`}
+          onClick={() => changeTab(t)}
+        >
+          {TAB_LABEL[t]}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="app-layout">
       <TopsideMenu />
       <div className="main-content">
         <LeftsideMenu />
         <main className="vm-main">
-          {/* ── 페이지 헤더 + 탭 ── */}
+          {/* ── 페이지 헤더 ── */}
           <div className="vm-page-header">
             <h1 className="vm-page-title">물량관리</h1>
-            <div className="vm-tabs" role="tablist">
-              {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  role="tab"
-                  aria-selected={tab === t}
-                  className={`vm-tab ${tab === t ? 'active' : ''}`}
-                  onClick={() => changeTab(t)}
-                >
-                  {TAB_LABEL[t]}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {tab === 'throughput' ? <ThroughputTab /> : <ProcessSpeedTab />}
+          {tab === 'throughput' ? (
+            <ThroughputTab tabSwitcher={tabSwitcher} />
+          ) : (
+            <ProcessSpeedTab tabSwitcher={tabSwitcher} />
+          )}
         </main>
       </div>
     </div>

@@ -60,10 +60,13 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* ── 탭별 컨트롤 줄 ── */
+/* ── 컨트롤 줄: 왼쪽 탭 선택 / 오른쪽 컨트롤 (좁으면 줄바꿈) ── */
 .vm-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
