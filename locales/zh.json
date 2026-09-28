@@ -370,6 +370,26 @@
       "loading": "加载中...",
       "selectUser": "请选择用户。",
       "noData": "无数据"
+    },
+    "move": {
+      "title": "箱子移动",
+      "orderNo": "要移动的订单号",
+      "orderNoMulti": "{{first}} 等 {{count}} 项",
+      "box": "目标箱子",
+      "selectBox": "选择箱子",
+      "loadingBoxes": "正在加载箱子...",
+      "noBoxes": "没有可移动的箱子。请先在商品出库页面创建箱子。",
+      "boxLoadError": "无法加载箱子列表。",
+      "quantity": "移动数量",
+      "quantityHint": "当前 {{current}} 个 · 全部 {{current}} 个即整体移动",
+      "quantityMultiHint": "选择多项时只能整体移动，不能拆分数量。",
+      "invalidQuantity": "请输入 1 ~ {{max}} 之间的数量。",
+      "sizeMismatch": "箱子尺寸({{box}})与商品尺寸({{items}})不一致。\n仍要移动吗？",
+      "cancel": "取消",
+      "confirm": "移动",
+      "moving": "移动中...",
+      "partialFailed": "有 {{count}} 项未能移动。\n\n{{details}}",
+      "error": "移动时发生错误。"
     }
   },
   "shipmentCompleteV2": {

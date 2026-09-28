@@ -376,6 +376,26 @@
       "loading": "로딩 중...",
       "selectUser": "사용자를 선택해주세요.",
       "noData": "데이터 없음"
+    },
+    "move": {
+      "title": "박스 이동",
+      "orderNo": "이동할 주문번호",
+      "orderNoMulti": "{{first}} 외 {{count}}건",
+      "box": "이동할 박스",
+      "selectBox": "박스 선택",
+      "loadingBoxes": "박스 불러오는 중...",
+      "noBoxes": "이동 가능한 박스가 없습니다. 상품출고 화면에서 박스를 먼저 만들어주세요.",
+      "boxLoadError": "박스 목록을 불러오지 못했습니다.",
+      "quantity": "이동할 수량",
+      "quantityHint": "현재 {{current}}개 · {{current}}개 모두 옮기면 전체 이동",
+      "quantityMultiHint": "여러 건을 선택하면 수량 나누기 없이 전체 이동만 됩니다.",
+      "invalidQuantity": "1 ~ {{max}} 사이의 수량을 입력해주세요.",
+      "sizeMismatch": "박스 사이즈({{box}})와 상품 사이즈({{items}})가 다릅니다.\n그래도 이동할까요?",
+      "cancel": "취소",
+      "confirm": "이동",
+      "moving": "이동 중...",
+      "partialFailed": "{{count}}건은 이동하지 못했습니다.\n\n{{details}}",
+      "error": "이동 중 오류가 발생했습니다."
     }
   },
   "shipmentCompleteV2": {

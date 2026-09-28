@@ -410,6 +410,65 @@
   background: #1d4ed8;
 }
 
+.shipment-v2-modal-confirm:disabled,
+.shipment-v2-modal-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================ */
+/* 이동 모달 (components/MoveModal) — 주문번호 / 박스 / 수량      */
+/* ============================================================ */
+
+/* ── 이동할 주문번호 (읽기 전용) ── */
+.shipment-v2-move-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+}
+
+.shipment-v2-move-order {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.shipment-v2-move-sub {
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 이동할 수량 ── */
+.shipment-v2-move-qty {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.shipment-v2-move-qty:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* ── 안내 문구 ── */
+.shipment-v2-move-hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.shipment-v2-move-hint--error {
+  color: #dc2626;
+}
+
 /* ── 출고 모달: 쉽먼트 번호 미리보기 ── */
 .shipment-v2-ship-preview {
   font-size: 18px;

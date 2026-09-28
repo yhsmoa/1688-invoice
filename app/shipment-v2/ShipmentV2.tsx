@@ -6,73 +6,10 @@ import ExcelJS from 'exceljs';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useFtUsers } from '../import-product-v2/hooks/useFtData';
+import MoveModal from './components/MoveModal';
+import type { BoxInfoItem, ShipmentV2Row } from './types';
+import { getBadgeClass, getBoxType, normalizeSizeDisplay } from './utils/shipmentCodes';
 import './ShipmentV2.css';
-
-// ============================================================
-// 인터페이스
-// ============================================================
-interface ShipmentV2Row {
-  id: string;
-  box_code: string;
-  master_box_id: string | null;
-  master_box_code: string | null;
-  order_item_id: string;
-  quantity: number;
-  total_qty: number;
-  available_qty: number;
-  shipment_size: string | null;
-  product_no: string | null;
-  barcode: string | null;
-  item_name: string | null;
-  option_name: string | null;
-  china_option1: string | null;
-  china_option2: string | null;
-  price_cny: number | null;
-  img_url: string | null;
-  composition: string | null;
-  customs_category: string | null;
-}
-
-interface BoxInfoItem {
-  id: string;
-  box_code: string;
-}
-
-// ============================================================
-// 유틸: 박스 타입 추출 (BZ-A-01 → A)
-// ============================================================
-const getBoxType = (code: string): string => {
-  const parts = code.split('-');
-  return parts.length >= 2 ? parts[1].toUpperCase() : '';
-};
-
-// ============================================================
-// 유틸: 배지 색상 클래스 (박스타입 & 사이즈코드 공용)
-// ============================================================
-const getBadgeClass = (code: string): string => {
-  switch (code) {
-    case 'A': case 'B': case 'C': return 'shipment-v2-badge--blue';
-    case 'P': return 'shipment-v2-badge--orange';
-    case 'X': return 'shipment-v2-badge--black';
-    default:  return 'shipment-v2-badge--gray';
-  }
-};
-
-// ============================================================
-// 유틸: 쉽먼트사이즈 정규화 (프론트용)
-// Small → A, Medium → B, Large → C, P-xxx → P, Direct → X
-// ============================================================
-const normalizeSizeDisplay = (raw: string | null): string | null => {
-  if (!raw) return null;
-  const lower = raw.trim().toLowerCase();
-  if (lower === 'small') return 'A';
-  if (lower === 'medium') return 'B';
-  if (lower === 'large') return 'C';
-  if (lower.startsWith('p-')) return 'P';
-  if (lower === 'direct') return 'X';
-  if (['a', 'b', 'c', 'p', 'x'].includes(lower)) return lower.toUpperCase();
-  return raw;
-};
 
 // ============================================================
 // 메인 컴포넌트
@@ -91,7 +28,6 @@ const ShipmentV2: React.FC = () => {
 
   // ── 이동 모달 ──
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [moveTarget, setMoveTarget] = useState('');
 
   // ── 품목 분류 ──
   const [isClassifying, setIsClassifying] = useState(false);
@@ -370,47 +306,25 @@ const ShipmentV2: React.FC = () => {
   }, [rows]);
 
   // ============================================================
-  // 이동 모달
+  // 이동 모달 — 입력·저장은 components/MoveModal (단건 수량 분할 / 다건 전체 이동)
   // ============================================================
+
+  /** 선택된 행 (화면 순서) — 모달의 "첫 주문번호 외 N건" 기준 */
+  const selectedRows = useMemo(
+    () => rows.filter((_, idx) => checkedIds.has(String(idx))),
+    [rows, checkedIds]
+  );
+
   const handleMoveOpen = () => {
-    if (checkedIds.size === 0) { alert('이동할 항목을 선택해주세요.'); return; }
-    setMoveTarget('');
+    if (checkedIds.size === 0) { alert(t('shipmentV2.alerts.selectMove')); return; }
     setShowMoveModal(true);
   };
 
-  const handleMoveConfirm = async () => {
-    if (!moveTarget.trim()) { alert('이동할 박스번호를 입력해주세요.'); return; }
-
-    const updates = Array.from(checkedIds).flatMap((idxStr) => {
-      const row = rows[parseInt(idxStr, 10)];
-      return [{ id: row.id, fields: { box_code: moveTarget.trim() } }];
-    });
-
-    try {
-      const res = await fetch('/api/ft/shipment-v2', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setRows((prev) => {
-          const next = [...prev];
-          for (const idxStr of checkedIds) {
-            const i = parseInt(idxStr, 10);
-            next[i] = { ...next[i], box_code: moveTarget.trim() };
-          }
-          next.sort((a, b) => (a.box_code || '').localeCompare(b.box_code || ''));
-          return next;
-        });
-        setCheckedIds(new Set());
-        setShowMoveModal(false);
-      } else {
-        alert('이동 실패: ' + (json.error || ''));
-      }
-    } catch {
-      alert('이동 중 오류가 발생했습니다.');
-    }
+  /** 이동 완료 (일부 실패 포함) — 분할로 새 행 id 가 생기므로 로컬 패치 대신 재조회 */
+  const handleMoved = () => {
+    setShowMoveModal(false);
+    setCheckedIds(new Set());
+    fetchData(selectedUserId);
   };
 
   // ============================================================
@@ -596,9 +510,6 @@ const ShipmentV2: React.FC = () => {
   }
   const rowSpanMap = new Map<number, number>();
   for (const g of packageGroups) rowSpanMap.set(g.startIdx, g.count);
-
-  // ── 고유 box_code 목록 (이동 모달 드롭다운용) ──
-  const uniquePackages = [...new Set(rows.map((r) => r.box_code).filter(Boolean))].sort();
 
   // ── 총 colSpan (12열) ──
   const TOTAL_COLS = 12;
@@ -844,39 +755,13 @@ const ShipmentV2: React.FC = () => {
       {/* ============================================================ */}
       {/* 이동 모달                                                      */}
       {/* ============================================================ */}
-      {showMoveModal && (
-        <div className="shipment-v2-modal-overlay" onClick={() => setShowMoveModal(false)}>
-          <div className="shipment-v2-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="shipment-v2-modal-title">박스 이동</h3>
-            <p className="shipment-v2-modal-desc">
-              선택된 {checkedIds.size}개 항목을 이동합니다.
-            </p>
-            <div className="shipment-v2-modal-field">
-              <label>이동할 박스번호</label>
-              <select
-                className="shipment-v2-modal-select"
-                value={moveTarget}
-                onChange={(e) => setMoveTarget(e.target.value)}
-              >
-                <option value="">선택 또는 직접 입력</option>
-                {uniquePackages.map((pkg) => (
-                  <option key={pkg} value={pkg}>{pkg}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                className="shipment-v2-modal-input"
-                placeholder="직접 입력 (예: BZ-A-03)"
-                value={moveTarget}
-                onChange={(e) => setMoveTarget(e.target.value.toUpperCase())}
-              />
-            </div>
-            <div className="shipment-v2-modal-actions">
-              <button className="shipment-v2-modal-cancel" onClick={() => setShowMoveModal(false)}>취소</button>
-              <button className="shipment-v2-modal-confirm" onClick={handleMoveConfirm}>이동</button>
-            </div>
-          </div>
-        </div>
+      {showMoveModal && selectedRows.length > 0 && (
+        <MoveModal
+          userId={selectedUserId}
+          rows={selectedRows}
+          onClose={() => setShowMoveModal(false)}
+          onMoved={handleMoved}
+        />
       )}
 
       {/* ============================================================ */}
