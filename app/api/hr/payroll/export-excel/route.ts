@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { supabase } from '../../../../../lib/supabase';
+import { calcSalary, fetchPayrollMonth, parseYearMonth } from '../../../../../lib/payrollCalc';
 
 // ============================================================
 // GET /api/hr/payroll/export-excel?year=YYYY&month=MM
 //
 // 급여장부 엑셀 다운로드 — [정리] 패널과 동일한 데이터
+//   조회·급여 계산은 lib/payrollCalc (급여장부·무역계좌와 공용)
 // 컬럼(헤더 영문): Name | Korean Name | Position | Hourly Wage | Total Hours (h)
 //                | Estimated Salary | Expense | Total Amount | Bank | Account No | TAX
 //   - 조회 열      : 연한 회색 배경
@@ -20,47 +21,17 @@ export async function GET(request: NextRequest) {
     const monthParam = searchParams.get('month');
 
     // ── 1. 파라미터 검증 ───────────────────────────────────────
-    if (!yearParam || !monthParam) {
+    const ym = parseYearMonth(yearParam, monthParam);
+    if (!ym) {
       return NextResponse.json(
-        { success: false, error: 'year, month 파라미터가 필요합니다.' },
+        { success: false, error: 'year, month 파라미터가 필요합니다. (유효한 년도/월)' },
         { status: 400 }
       );
     }
+    const { year, month } = ym;
 
-    const year  = parseInt(yearParam,  10);
-    const month = parseInt(monthParam, 10);
-
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-      return NextResponse.json(
-        { success: false, error: '유효하지 않은 년도/월입니다.' },
-        { status: 400 }
-      );
-    }
-
-    // ── 2. 해당 월 출퇴근 기록 조회 ────────────────────────────
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const startDate   = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate     = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-
-    // ── Supabase 1000행 우회: range 루프 ──
-    type RecordRow = { employee_id: string; total_minutes: number | null };
-    const PAGE = 1000;
-    const records: RecordRow[] = [];
-    let from = 0;
-    while (true) {
-      const { data, error } = await supabase
-        .from('invoiceManager_emplyee_records')
-        .select('employee_id, total_minutes')
-        .gte('work_date', startDate)
-        .lte('work_date', endDate)
-        .not('clock_in', 'is', null)
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      records.push(...(data as RecordRow[]));
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
+    // ── 2~4. 출근기록 · 직원별 총 근무 분 · 직원 정보 (lib/payrollCalc) ──
+    const { records, employees, minutesByEmployee: minutesMap } = await fetchPayrollMonth(year, month);
 
     if (records.length === 0) {
       return NextResponse.json(
@@ -68,24 +39,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    // ── 3. 직원별 총 근무 분 집계 ──────────────────────────────
-    const minutesMap = new Map<string, number>();
-    for (const rec of records) {
-      const prev = minutesMap.get(rec.employee_id) ?? 0;
-      minutesMap.set(rec.employee_id, prev + (rec.total_minutes ?? 0));
-    }
-
-    // ── 4. 직원 정보 조회 (은행, 계좌 포함) ────────────────────
-    const employeeIds = [...minutesMap.keys()];
-
-    const { data: employees, error: empErr } = await supabase
-      .from('invoiceManager_employees')
-      .select('id, name, name_kr, role, hourly_wage, bank_name, bank_no')
-      .in('id', employeeIds)
-      .order('name');
-
-    if (empErr) throw empErr;
 
     // ── 5. 유틸: 분 → 시간(숫자, 소수 1자리) ───────────────────
     //    'h' 접미사 없이 숫자로 반환 → 엑셀에서 집계 가능
@@ -161,12 +114,10 @@ export async function GET(request: NextRequest) {
     }
 
     // ── 10. 데이터 행 추가 ──────────────────────────────────────
-    for (const emp of employees ?? []) {
+    for (const emp of employees) {
       const totalMinutes = minutesMap.get(emp.id) ?? 0;
       const hourlyWage   = emp.hourly_wage ?? 0;
-      const salary       = hourlyWage > 0 && totalMinutes > 0
-        ? Math.floor((hourlyWage * totalMinutes) / 60)
-        : 0;
+      const salary       = calcSalary(hourlyWage, totalMinutes);
 
       const dataRow = ws.addRow([
         emp.name || '-',

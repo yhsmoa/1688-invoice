@@ -1,10 +1,15 @@
-import PaymentHistory from '../payment-history/PaymentHistory';
+import DbAccessGate from '../../../component/DbAccessGate';
+import TradeAccount from './TradeAccount';
 
 // ============================================================
-// 무역계좌 — 고객계좌(payment-history)와 동일 구조/기능 재사용.
-//   · 현재는 동일 데이터 소스. 무역계좌 전용 데이터 분기가 필요하면
-//     PaymentHistory 에 mode prop 추가로 확장.
+// 무역계좌 — 회사 통장 원장 (통장잔고 = 회사자산 + 고객 충전금)
+//   회사 재무 화면이므로 DB 관리와 같은 접근 코드(역할 '기업')로 잠근다.
+//   API 도 /api/trade-account/* 에서 같은 코드를 검증한다.
 // ============================================================
 export default function TradeAccountPage() {
-  return <PaymentHistory title="무역계좌" />;
+  return (
+    <DbAccessGate title="무역계좌">
+      <TradeAccount />
+    </DbAccessGate>
+  );
 }

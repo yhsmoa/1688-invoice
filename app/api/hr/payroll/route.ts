@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { fetchPayrollMonth, parseYearMonth } from '../../../../lib/payrollCalc';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,9 +7,8 @@ export const dynamic = 'force-dynamic';
 // GET /api/hr/payroll?year=YYYY&month=MM
 //
 // 특정 월의 급여장부 데이터 반환
-//   1. 해당 월 출퇴근 기록 조회 (invoiceManager_emplyee_records)
-//   2. 해당 월 기록이 있는 직원 정보 조회 (invoiceManager_employees)
-//   3. 두 데이터셋 반환 → 프론트에서 날짜 × 직원 매트릭스로 처리
+//   조회·집계는 lib/payrollCalc (급여 엑셀·무역계좌 급여 반영과 공용)
+//   → 프론트에서 날짜 × 직원 매트릭스로 처리
 //
 // Response:
 //   { success, year, month, daysInMonth, employees, records }
@@ -17,91 +16,23 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const yearParam = searchParams.get('year');
-    const monthParam = searchParams.get('month');
-
-    // ── 파라미터 검증 ─────────────────────────────────────────
-    if (!yearParam || !monthParam) {
+    const ym = parseYearMonth(searchParams.get('year'), searchParams.get('month'));
+    if (!ym) {
       return NextResponse.json(
-        { success: false, error: 'year, month 파라미터가 필요합니다.' },
+        { success: false, error: 'year, month 파라미터가 필요합니다. (유효한 년도/월)' },
         { status: 400 }
       );
     }
 
-    const year = parseInt(yearParam, 10);
-    const month = parseInt(monthParam, 10);
+    const payroll = await fetchPayrollMonth(ym.year, ym.month);
 
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-      return NextResponse.json(
-        { success: false, error: '유효하지 않은 년도/월입니다.' },
-        { status: 400 }
-      );
-    }
-
-    // ── 월의 시작일 / 종료일 계산 ─────────────────────────────
-    // new Date(year, month, 0).getDate() → 해당 월의 마지막 날
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-
-    // ── 1. 해당 월 출퇴근 기록 조회 (Supabase 1000행 우회: range 루프) ──
-    type RecordRow = {
-      id: string;
-      employee_id: string;
-      work_date: string;
-      clock_in: string | null;
-      clock_out: string | null;
-      total_minutes: number | null;
-    };
-    const PAGE = 1000;
-    const records: RecordRow[] = [];
-    let from = 0;
-    while (true) {
-      const { data, error } = await supabase
-        .from('invoiceManager_emplyee_records')
-        .select('id, employee_id, work_date, clock_in, clock_out, total_minutes')
-        .gte('work_date', startDate)
-        .lte('work_date', endDate)
-        .not('clock_in', 'is', null)
-        .order('work_date', { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      records.push(...(data as RecordRow[]));
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
-
-    if (records.length === 0) {
-      return NextResponse.json({
-        success: true,
-        year,
-        month,
-        daysInMonth,
-        employees: [],
-        records: [],
-      });
-    }
-
-    // ── 2. 해당 월 기록이 있는 직원 정보 조회 ─────────────────
-    const employeeIds = [...new Set(records.map((r) => r.employee_id))];
-
-    const { data: employees, error: employeesError } = await supabase
-      .from('invoiceManager_employees')
-      .select('id, name, name_kr, role, hourly_wage, bank_name, bank_no')
-      .in('id', employeeIds)
-      .order('name');
-
-    if (employeesError) throw employeesError;
-
-    // ── 3. 응답 반환 ──────────────────────────────────────────
     return NextResponse.json({
       success: true,
-      year,
-      month,
-      daysInMonth,
-      employees: employees || [],
-      records,
+      year: payroll.year,
+      month: payroll.month,
+      daysInMonth: payroll.daysInMonth,
+      employees: payroll.employees,
+      records: payroll.records,
     });
 
   } catch (error) {

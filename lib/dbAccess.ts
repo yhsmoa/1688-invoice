@@ -27,6 +27,8 @@ export interface DbAccessResult {
   ok: boolean;
   status: number;
   error?: string;
+  /** 통과한 직원 id — 기록 주체(created_by) 표시용 */
+  employeeId?: string;
 }
 
 /**
@@ -59,7 +61,26 @@ export async function verifyDbAccessCode(code: string | null | undefined): Promi
     return { ok: false, status: 403, error: 'DB 관리 메뉴 접근 권한이 없습니다.' };
   }
 
-  return { ok: true, status: 200 };
+  return { ok: true, status: 200, employeeId: data.id as string };
+}
+
+/**
+ * guardDbRoute 와 같은 검증이지만 통과 시 직원 id 를 돌려준다.
+ * 기록을 남기는 라우트(무역계좌 등)가 created_by 에 쓴다.
+ *
+ *   const access = await requireDbAccess(request);
+ *   if (!access.ok) return access.response;
+ *   … access.employeeId …
+ */
+export async function requireDbAccess(
+  request: NextRequest,
+): Promise<{ ok: true; employeeId: string } | { ok: false; response: NextResponse }> {
+  const result = await verifyDbAccessCode(request.headers.get(DB_ACCESS_HEADER));
+  if (result.ok && result.employeeId) return { ok: true, employeeId: result.employeeId };
+  return {
+    ok: false,
+    response: NextResponse.json({ success: false, error: result.error ?? '접근 권한이 없습니다.' }, { status: result.status }),
+  };
 }
 
 /**

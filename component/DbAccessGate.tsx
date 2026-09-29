@@ -38,9 +38,11 @@ type GateState = 'checking' | 'locked' | 'unlocked';
 
 interface DbAccessGateProps {
   children: React.ReactNode;
+  /** 잠금 화면 제목 (기본 'DB 관리') — 같은 코드·권한을 쓰는 다른 메뉴가 재사용 */
+  title?: string;
 }
 
-const DbAccessGate: React.FC<DbAccessGateProps> = ({ children }) => {
+const DbAccessGate: React.FC<DbAccessGateProps> = ({ children, title = 'DB 관리' }) => {
   const [state, setState] = useState<GateState>('checking');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,7 @@ const DbAccessGate: React.FC<DbAccessGateProps> = ({ children }) => {
           ) : (
             <div className="dbg-lock-card">
               <div className="dbg-lock-icon">🔒</div>
-              <h2 className="dbg-lock-title">DB 관리</h2>
+              <h2 className="dbg-lock-title">{title}</h2>
               <p className="dbg-lock-desc">접근 코드 8자리를 입력해주세요</p>
               <input
                 className="dbg-lock-input"
