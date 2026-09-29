@@ -197,7 +197,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         file: 'app/invoice/trade-account/TradeAccount.tsx',
         apis: [
           { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
-          { route: '/api/trade-account/status', tables: ['ft_trade_settings', 'ft_trade_groups', 'ft_trade_transactions', 'ft_balances'] },
+          { route: '/api/trade-account/status', tables: ['ft_trade_settings', 'ft_trade_groups', 'ft_trade_transactions', 'ft_balances', 'ft_cancel_details', 'ft_trade_bank_checks'] },
           { route: '/api/trade-account/ledger', tables: ['ft_trade_transactions'] },
           { route: '/api/trade-account/pnl', tables: ['ft_trade_transactions'] },
           { route: '/api/trade-account/open', tables: ['ft_trade_settings', 'ft_trade_groups', 'ft_trade_transactions', 'ft_user_transactions'] },
@@ -205,6 +205,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/trade-account/reverse', tables: ['ft_trade_transactions'] },
           { route: '/api/trade-account/payroll/preview', tables: ['invoiceManager_emplyee_records', 'invoiceManager_employees', 'ft_trade_transactions'] },
           { route: '/api/trade-account/payroll/commit', tables: ['ft_trade_transactions'] },
+          { route: '/api/trade-account/bank-check', tables: ['ft_trade_bank_checks', 'ft_trade_transactions'] },
           { route: '/api/ft/users', tables: ['ft_users'] },
           { route: '/api/exchange-rate', tables: [] },
         ],

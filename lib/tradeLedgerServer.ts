@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { TradeRow, TradeStatus } from './tradeLedger';
+import type { BankCheck, PendingRefunds, TradeRow, TradeStatus } from './tradeLedger';
 
 // ============================================================
 // tradeLedgerServer — 무역계좌 조회·기록 (서버 전용)
@@ -53,17 +53,38 @@ const num = (v: unknown): number => Number(v ?? 0);
 // 상태 — 이월·그룹·마지막 스냅샷·정합 근거
 // ============================================================
 export async function fetchTradeStatus(): Promise<TradeStatus> {
-  const [settingsRes, groupsRes, lastRes] = await Promise.all([
+  const [settingsRes, groupsRes, lastRes, pendingRes, checkRes] = await Promise.all([
     supabase.from('ft_trade_settings').select('started_at, opening_bank').eq('id', 1).maybeSingle(),
     supabase.from('ft_trade_groups').select('balance_id, included_from'),
     supabase.from('ft_trade_transactions')
       .select('bank_balance, customer_balance, asset_balance, created_at')
       .order('created_at', { ascending: false }).order('id', { ascending: false })
       .limit(1).maybeSingle(),
+    supabase.rpc('trade_pending_refunds'),
+    supabase.from('ft_trade_bank_checks')
+      .select('id, checked_at, applied_date, actual_bank, ledger_bank, diff, adjustment_id, note, created_by')
+      .order('checked_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
   if (settingsRes.error) throw settingsRes.error;
   if (groupsRes.error) throw groupsRes.error;
   if (lastRes.error) throw lastRes.error;
+  if (pendingRes.error) throw pendingRes.error;
+  if (checkRes.error) throw checkRes.error;
+
+  const pendingRaw = pendingRes.data as Record<string, unknown> | null;
+  const pendingRefunds: PendingRefunds | null = pendingRaw ? {
+    done_count: num(pendingRaw.done_count), done_seller: num(pendingRaw.done_seller), done_service: num(pendingRaw.done_service),
+    processing_count: num(pendingRaw.processing_count), processing_seller: num(pendingRaw.processing_seller), processing_service: num(pendingRaw.processing_service),
+    pending_count: num(pendingRaw.pending_count), other_count: num(pendingRaw.other_count),
+  } : null;
+
+  const checkRaw = checkRes.data as Record<string, unknown> | null;
+  const lastBankCheck: BankCheck | null = checkRaw ? {
+    id: String(checkRaw.id), checked_at: String(checkRaw.checked_at), applied_date: String(checkRaw.applied_date),
+    actual_bank: num(checkRaw.actual_bank), ledger_bank: num(checkRaw.ledger_bank), diff: num(checkRaw.diff),
+    adjustment_id: checkRaw.adjustment_id ? String(checkRaw.adjustment_id) : null,
+    note: checkRaw.note ? String(checkRaw.note) : null, created_by: checkRaw.created_by ? String(checkRaw.created_by) : null,
+  } : null;
 
   const settings = settingsRes.data as { started_at: string; opening_bank: number } | null;
   const groupRows = (groupsRes.data ?? []) as { balance_id: string; included_from: string }[];
@@ -121,7 +142,41 @@ export async function fetchTradeStatus(): Promise<TradeStatus> {
     ledgerCustomerBalance,
     sumBank,
     rowCount,
+    pendingRefunds,
+    lastBankCheck,
   };
+}
+
+// ============================================================
+// 통장 대조 — 실제 통장잔고 입력 → 차이 기록 (+ 선택 보정)
+// ============================================================
+export interface BankCheckResult {
+  check_id: string;
+  checked_at: string;
+  actual_bank: number;
+  ledger_bank: number;
+  diff: number;
+  adjustment_id: string | null;
+}
+
+export function bankCheck(actualBank: number, adjust: boolean, note: string | null, createdBy: string): Promise<BankCheckResult> {
+  return rpc<BankCheckResult>('trade_bank_check', { p_actual_bank: actualBank, p_adjust: adjust, p_note: note, p_created_by: createdBy });
+}
+
+/** 최근 통장 대조 이력 */
+export async function fetchBankChecks(limit = 12): Promise<BankCheck[]> {
+  const { data, error } = await supabase
+    .from('ft_trade_bank_checks')
+    .select('id, checked_at, applied_date, actual_bank, ledger_bank, diff, adjustment_id, note, created_by')
+    .order('checked_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id), checked_at: String(r.checked_at), applied_date: String(r.applied_date),
+    actual_bank: num(r.actual_bank), ledger_bank: num(r.ledger_bank), diff: num(r.diff),
+    adjustment_id: r.adjustment_id ? String(r.adjustment_id) : null,
+    note: r.note ? String(r.note) : null, created_by: r.created_by ? String(r.created_by) : null,
+  }));
 }
 
 // ============================================================

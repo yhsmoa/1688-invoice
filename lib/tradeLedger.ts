@@ -92,6 +92,31 @@ export interface TradeRow {
   reversed_by: string | null;
 }
 
+// ── 환불예정 (아직 정산되지 않은 반품·취소) ──
+export interface PendingRefunds {
+  done_count: number;
+  done_seller: number;
+  done_service: number;
+  processing_count: number;
+  processing_seller: number;
+  processing_service: number;
+  pending_count: number;
+  other_count: number;
+}
+
+// ── 통장 대조 ──
+export interface BankCheck {
+  id: string;
+  checked_at: string;
+  applied_date: string;
+  actual_bank: number;
+  ledger_bank: number;
+  diff: number;
+  adjustment_id: string | null;
+  note: string | null;
+  created_by: string | null;
+}
+
 // ── 상태 ──
 export interface TradeStatus {
   opened: boolean;
@@ -109,7 +134,15 @@ export interface TradeStatus {
   /** Σ bank_delta (이월 포함) — bankBalance 와 같아야 정합 */
   sumBank: number | null;
   rowCount: number;
+  /** 환불예정 — 정산 전 반품·취소 (판매자분은 자산 무관, 서비스비는 자산 차감 예정) */
+  pendingRefunds: PendingRefunds | null;
+  /** 마지막 통장 대조 */
+  lastBankCheck: BankCheck | null;
 }
+
+/** 조정 자산 = 회사자산 − 환불예정 서비스비(완료 + 처리중) */
+export const adjustedAsset = (asset: number | null, pending: PendingRefunds | null): number | null =>
+  asset == null ? null : Math.round((asset - (pending ? pending.done_service + pending.processing_service : 0)) * 100) / 100;
 
 // ── 손익 (trade_pnl) ──
 export interface TradePnlRow {

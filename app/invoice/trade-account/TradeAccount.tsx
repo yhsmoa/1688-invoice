@@ -4,13 +4,14 @@ import React, { useEffect, useState } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import { fetchTodayRate } from '../../../lib/exchangeRate';
-import { fmtYuan } from '../../../lib/tradeLedger';
+import { adjustedAsset, fmtSigned, fmtYuan } from '../../../lib/tradeLedger';
 import { useTradeStatus } from './hooks/useTradeApi';
 import LedgerTab from './components/LedgerTab';
 import PnlTab from './components/PnlTab';
 import OpeningModal from './components/OpeningModal';
 import ExpenseModal from './components/ExpenseModal';
 import PayrollModal from './components/PayrollModal';
+import BankCheckModal from './components/BankCheckModal';
 import './TradeAccount.css';
 
 // ============================================================
@@ -26,11 +27,17 @@ const TAB_LABEL: Record<Tab, string> = { ledger: '계좌내역', pnl: '손익' }
 
 const nearlyEqual = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.005;
 
+/** 통장 대조가 이 일수보다 오래되면 경고 (운영 규칙: 매주) */
+const BANK_CHECK_STALE_DAYS = 7;
+const DAY_MS = 86_400_000;
+
+const fmtKstDate = (iso: string) => new Date(iso).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit' });
+
 const TradeAccount: React.FC = () => {
   const [tab, setTab] = useState<Tab>('ledger');
   const { status, loading, error, reload } = useTradeStatus();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [modal, setModal] = useState<'opening' | 'expense' | 'payroll' | null>(null);
+  const [modal, setModal] = useState<'opening' | 'expense' | 'payroll' | 'bankcheck' | null>(null);
   const [todayRate, setTodayRate] = useState<number | null>(null);
 
   useEffect(() => {
@@ -56,6 +63,16 @@ const TradeAccount: React.FC = () => {
 
   const groupNames = status?.groups.map((g) => g.name).join(', ') || '고객';
 
+  // ── 환불예정: 서비스비만 자산에서 빠질 예정 (판매자분은 통장 → 고객으로 그대로 통과) ──
+  const pending = status?.pendingRefunds ?? null;
+  const pendingService = pending ? pending.done_service + pending.processing_service : 0;
+  const pendingSeller = pending ? pending.done_seller + pending.processing_seller : 0;
+  const adjAsset = adjustedAsset(status?.assetBalance ?? null, pending);
+
+  // ── 통장 대조: 마지막 대조가 7일 넘었거나 없으면 경고 ──
+  const lastCheck = status?.lastBankCheck ?? null;
+  const checkStale = !lastCheck || Date.now() - new Date(lastCheck.checked_at).getTime() > BANK_CHECK_STALE_DAYS * DAY_MS;
+
   return (
     <div className="app-layout">
       <TopsideMenu />
@@ -71,6 +88,7 @@ const TradeAccount: React.FC = () => {
             <div className="ta-actions">
               {status?.opened ? (
                 <>
+                  <button className={`ta-btn ${checkStale ? 'ta-btn--attention' : ''}`} onClick={() => setModal('bankcheck')}>통장 대조</button>
                   <button className="ta-btn" onClick={() => setModal('payroll')}>급여 반영</button>
                   <button className="ta-btn ta-btn--primary" onClick={() => setModal('expense')}>회사 거래 추가</button>
                 </>
@@ -109,6 +127,29 @@ const TradeAccount: React.FC = () => {
                 <span className="ta-card-value">{fmtYuan(status.assetBalance)}</span>
                 <span className="ta-card-unit">통장 − 충전금</span>
               </div>
+              <div className="ta-card ta-card--pending">
+                <span className="ta-card-label">환불예정 (정산 전)</span>
+                <span className="ta-card-value">{pendingService > 0 ? `−${fmtYuan(pendingService)}` : fmtYuan(0)}</span>
+                <span className="ta-card-unit" title={pending ? `완료 ${pending.done_count}건 서비스비 ${fmtSigned(pending.done_service)} · 처리중 ${pending.processing_count}건 서비스비 ${fmtSigned(pending.processing_service)} · 접수(금액 미정) ${pending.pending_count}건\n판매자 환불분 ${fmtSigned(pendingSeller)} 은 통장으로 들어와 고객에게 그대로 넘어가므로 자산과 무관` : ''}>
+                  {pending
+                    ? `서비스비 · 완료 ${pending.done_count} / 처리중 ${pending.processing_count} / 접수 ${pending.pending_count}건 · 판매자분 ${fmtYuan(pendingSeller, 0)}`
+                    : '집계 없음'}
+                </span>
+              </div>
+              <div className="ta-card ta-card--accent">
+                <span className="ta-card-label">예정 결과 (조정 자산)</span>
+                <span className="ta-card-value">{fmtYuan(adjAsset)}</span>
+                <span className="ta-card-unit">회사자산 − 환불예정 서비스비</span>
+              </div>
+              <div className={`ta-card ${checkStale ? 'ta-card--warn' : 'ta-card--ok'}`}>
+                <span className="ta-card-label">통장 대조</span>
+                <span className="ta-card-value">{lastCheck ? fmtSigned(lastCheck.diff) : '—'}</span>
+                <span className="ta-card-unit">
+                  {lastCheck
+                    ? `마지막 ${fmtKstDate(lastCheck.checked_at)} · 실제 ${fmtYuan(lastCheck.actual_bank, 0)}${lastCheck.adjustment_id ? ' · 보정됨' : ''}${checkStale ? ' · 7일 경과' : ''}`
+                    : '아직 대조 기록 없음 — 매주 실제 통장잔고를 입력하세요'}
+                </span>
+              </div>
               <div className={`ta-card ${consistent ? 'ta-card--ok' : 'ta-card--warn'}`}>
                 <span className="ta-card-label">정합</span>
                 <span className="ta-card-value">{consistent ? '✓' : '⚠'}</span>
@@ -142,6 +183,7 @@ const TradeAccount: React.FC = () => {
       {modal === 'opening' && <OpeningModal onClose={() => setModal(null)} onOpened={afterChange} />}
       {modal === 'expense' && <ExpenseModal onClose={() => setModal(null)} onSaved={afterChange} />}
       {modal === 'payroll' && <PayrollModal onClose={() => setModal(null)} onSaved={afterChange} />}
+      {modal === 'bankcheck' && status && <BankCheckModal status={status} onClose={() => setModal(null)} onSaved={afterChange} />}
     </div>
   );
 };
