@@ -315,6 +315,12 @@ const ShipmentV2: React.FC = () => {
     [rows, checkedIds]
   );
 
+  /** 선택 사용자의 user_code — 새 박스 코드 접두어 (상품출고 V2 와 동일하게 대문자) */
+  const selectedUserCode = useMemo(
+    () => (ftUsers.find((u) => u.id === selectedUserId)?.user_code || '').toUpperCase(),
+    [ftUsers, selectedUserId]
+  );
+
   const handleMoveOpen = () => {
     if (checkedIds.size === 0) { alert(t('shipmentV2.alerts.selectMove')); return; }
     setShowMoveModal(true);
@@ -758,6 +764,7 @@ const ShipmentV2: React.FC = () => {
       {showMoveModal && selectedRows.length > 0 && (
         <MoveModal
           userId={selectedUserId}
+          userCode={selectedUserCode}
           rows={selectedRows}
           onClose={() => setShowMoveModal(false)}
           onMoved={handleMoved}

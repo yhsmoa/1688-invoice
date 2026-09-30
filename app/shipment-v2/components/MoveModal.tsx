@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import BoxCreateModal, { type CreatedBox } from '../../../component/BoxCreateModal';
 import type { BoxInfoItem, ShipmentV2Row } from '../types';
 import { getBoxType, normalizeSizeDisplay } from '../utils/shipmentCodes';
 
@@ -10,6 +11,8 @@ import { getBoxType, normalizeSizeDisplay } from '../utils/shipmentCodes';
 //
 //   [이동할 주문번호]  단건: 주문번호 + 상품명 / 다건: "{첫 주문번호} 외 N건"
 //   [이동할 박스]      해당 사용자의 열린 박스 (PACKING & 미출고) 드롭다운만 — 자유 입력 없음
+//                      [+ 새 박스] → BoxCreateModal (상품출고 V2 와 같은 생성 모달)
+//                      생성된 박스는 목록에 추가되고 바로 이동 대상으로 선택된다
 //   [이동할 수량]      단건만 입력 (1 ~ 현재 수량). 다건은 비활성 → 전체 이동
 //
 //   저장: POST /api/ft/shipment-v2/move
@@ -20,6 +23,8 @@ import { getBoxType, normalizeSizeDisplay } from '../utils/shipmentCodes';
 
 interface MoveModalProps {
   userId: string;
+  /** ft_users.user_code — 새 박스 코드 접두어 (비어 있으면 박스 생성 불가) */
+  userCode: string;
   /** 선택된 행 (화면 순서) — 1건 이상 */
   rows: ShipmentV2Row[];
   onClose: () => void;
@@ -36,7 +41,7 @@ interface MoveResponse {
   failed?: { id: string; error: string }[];
 }
 
-const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved }) => {
+const MoveModal: React.FC<MoveModalProps> = ({ userId, userCode, rows, onClose, onMoved }) => {
   const { t } = useTranslation();
   const isSingle = rows.length === 1;
   const single = isSingle ? rows[0] : null;
@@ -50,6 +55,7 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
   const [targetBoxId, setTargetBoxId] = useState('');
   const [quantityText, setQuantityText] = useState(single ? String(single.quantity) : '');
   const [submitting, setSubmitting] = useState(false);
+  const [showBoxCreate, setShowBoxCreate] = useState(false);
 
   // ============================================================
   // 열린 박스 목록 조회 (PACKING & shipment_id IS NULL)
@@ -89,6 +95,35 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
     return onlyCode ? boxes.filter((b) => b.box_code !== onlyCode) : boxes;
   }, [boxes, rows]);
 
+  /** 현재 선택된 대상 박스 — 목록에 없는 id 면 undefined (버튼 비활성 기준) */
+  const targetBox = useMemo(
+    () => selectableBoxes.find((b) => b.id === targetBoxId),
+    [selectableBoxes, targetBoxId]
+  );
+
+  // ============================================================
+  // 새 박스 생성 → 목록에 추가(코드순 유지) + 바로 대상으로 선택
+  // ============================================================
+  const handleBoxCreated = (created: CreatedBox) => {
+    const item: BoxInfoItem = {
+      id: created.id,
+      box_code: created.box_code,
+      size: created.size,
+      type: created.type,
+      no: created.no,
+    };
+    setBoxes((prev) =>
+      [...prev.filter((b) => b.id !== item.id), item]
+        .sort((a, b) => (a.box_code || '').localeCompare(b.box_code || ''))
+    );
+    // 목록 조회가 실패했더라도 방금 만든 박스는 확실히 존재하므로 드롭다운을 다시 보여준다
+    setBoxesError(false);
+    // 선택 행이 모두 담긴 박스와 같은 코드로 만들었다면 selectableBoxes 에 없어
+    // targetBox 가 undefined → [이동] 버튼이 비활성으로 유지된다
+    setTargetBoxId(created.id);
+    setShowBoxCreate(false);
+  };
+
   // ============================================================
   // 표시값
   // ============================================================
@@ -112,8 +147,8 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
   // 이동 실행
   // ============================================================
   const handleConfirm = async () => {
-    if (!targetBoxId || submitting) return;
-    const target = selectableBoxes.find((b) => b.id === targetBoxId);
+    if (submitting) return;
+    const target = targetBox;
     if (!target) return;
 
     if (!qtyValid) {
@@ -145,7 +180,7 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
       const res = await fetch('/api/ft/shipment-v2/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, target_box_info_id: targetBoxId, moves }),
+        body: JSON.stringify({ user_id: userId, target_box_info_id: target.id, moves }),
       });
       const json: MoveResponse = await res.json();
 
@@ -190,9 +225,20 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
           </div>
         </div>
 
-        {/* ── 이동할 박스 ── */}
+        {/* ── 이동할 박스 (+ 새 박스 생성) ── */}
         <div className="shipment-v2-modal-field">
-          <label>{t('shipmentV2.move.box')}</label>
+          <div className="shipment-v2-move-box-head">
+            <label>{t('shipmentV2.move.box')}</label>
+            <button
+              type="button"
+              className="shipment-v2-move-new-box"
+              onClick={() => setShowBoxCreate(true)}
+              disabled={boxesLoading || submitting || !userCode}
+              title={!userCode ? t('shipmentV2.move.noUserCode') : undefined}
+            >
+              {t('shipmentV2.move.newBox')}
+            </button>
+          </div>
           {boxesLoading ? (
             <div className="shipment-v2-move-hint">{t('shipmentV2.move.loadingBoxes')}</div>
           ) : boxesError ? (
@@ -206,7 +252,7 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
           ) : (
             <select
               className="shipment-v2-modal-select"
-              value={targetBoxId}
+              value={targetBox ? targetBoxId : ''}
               onChange={(e) => setTargetBoxId(e.target.value)}
               disabled={submitting}
             >
@@ -252,11 +298,22 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, rows, onClose, onMoved })
           <button
             className="shipment-v2-modal-confirm"
             onClick={handleConfirm}
-            disabled={!targetBoxId || !qtyValid || submitting}
+            disabled={!targetBox || !qtyValid || submitting}
           >
             {submitting ? t('shipmentV2.move.moving') : t('shipmentV2.move.confirm')}
           </button>
         </div>
+
+        {/* ── 새 박스 생성 모달 (이동 모달 위에 겹침) ── */}
+        {showBoxCreate && (
+          <BoxCreateModal
+            userId={userId}
+            userCode={userCode}
+            existingBoxes={boxes}
+            onClose={() => setShowBoxCreate(false)}
+            onCreated={handleBoxCreated}
+          />
+        )}
       </div>
     </div>
   );

@@ -445,6 +445,35 @@
   white-space: nowrap;
 }
 
+/* ── 이동할 박스: 라벨 + [+ 새 박스] ── */
+.shipment-v2-move-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shipment-v2-move-new-box {
+  padding: 4px 10px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.shipment-v2-move-new-box:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.shipment-v2-move-new-box:disabled {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 /* ── 이동할 수량 ── */
 .shipment-v2-move-qty {
   padding: 8px 12px;

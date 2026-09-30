@@ -25,9 +25,11 @@ export interface ShipmentV2Row {
   customs_category: string | null;
 }
 
-/** GET /api/ft/box-info 응답 행 (필요 필드만) */
+/** GET /api/ft/box-info 응답 행 (필요 필드만) — type/no 는 새 박스 번호 제안에 사용 */
 export interface BoxInfoItem {
   id: string;
   box_code: string;
   size?: string | null;
+  type?: string | null;
+  no?: string | null;
 }
