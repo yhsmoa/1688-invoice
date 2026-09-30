@@ -13,6 +13,8 @@ export interface ShipmentV2Row {
   total_qty: number;
   available_qty: number;
   shipment_size: string | null;
+  /** 박스 적합 판정용 A/B/C/P/X — resolveScanSizeCode(shipment_type, coupang_shipment_size) */
+  size_code: string | null;
   product_no: string | null;
   barcode: string | null;
   item_name: string | null;

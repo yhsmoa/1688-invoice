@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import BoxCreateModal, { type CreatedBox } from '../../../component/BoxCreateModal';
 import type { BoxInfoItem, ShipmentV2Row } from '../types';
-import { getBoxType, normalizeSizeDisplay } from '../utils/shipmentCodes';
+import { getBoxType, getShipmentError } from '../utils/shipmentCodes';
 
 // ============================================================
 // MoveModal — 박스 이동 (단건: 수량 분할 가능 / 다건: 전체 이동만)
@@ -156,12 +156,12 @@ const MoveModal: React.FC<MoveModalProps> = ({ userId, userCode, rows, onClose, 
       return;
     }
 
-    // ── 박스 타입 ≠ 상품 사이즈 → 확인 (차단하지 않음) ──
+    // ── 박스 타입 ≠ 상품 사이즈 (주문 기준 size_code, 테이블 쉽먼트에러와 같은 판정) → 확인 (차단하지 않음) ──
     const boxType = getBoxType(target.box_code);
     const mismatched = Array.from(new Set(
       rows
-        .map((r) => normalizeSizeDisplay(r.shipment_size))
-        .filter((code): code is string => !!code && !!boxType && code !== boxType)
+        .map((r) => getShipmentError({ box_code: target.box_code, size_code: r.size_code }))
+        .filter((code): code is NonNullable<typeof code> => code !== null)
     ));
     if (mismatched.length > 0) {
       const ok = window.confirm(

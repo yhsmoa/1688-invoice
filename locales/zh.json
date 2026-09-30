@@ -344,6 +344,12 @@
       "scan": "扫描",
       "total": "全部"
     },
+    "summary": {
+      "all": "全部",
+      "uncategorized": "未分类",
+      "shipmentError": "发货尺寸错误",
+      "shipmentErrorHint": "商品尺寸与箱子不一致的行 (A-A、B-B、C-C、P-P、X-X 箱为正常)"
+    },
     "modal": {
       "boxMove": "箱子移动",
       "merge": "合并发货设置",
@@ -369,7 +375,8 @@
     "empty": {
       "loading": "加载中...",
       "selectUser": "请选择用户。",
-      "noData": "无数据"
+      "noData": "无数据",
+      "noFilterMatch": "没有符合所选条件的数据。"
     },
     "move": {
       "title": "箱子移动",

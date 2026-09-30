@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { normalizeSizeCode } from '../../../../lib/sizeCode';
+import { normalizeSizeCode, resolveScanSizeCode } from '../../../../lib/sizeCode';
 
 // ============================================================
 // Supabase 기본 limit(1000) 우회 — 전체 데이터 조회 헬퍼
@@ -116,9 +116,10 @@ export async function GET(request: NextRequest) {
       customs_category: string | null;
       set_total: number | null; product_id: string | null;
       vendor_option_id: string | null;
+      shipment_type: string | null; coupang_shipment_size: string | null;
     }>(
       'ft_order_items',
-      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, order_qty, img_url, composition, customs_category, set_total, product_id, vendor_option_id',
+      'id, barcode, item_name, option_name, china_option1, china_option2, product_no, price_cny, price_delivery_cny, order_qty, img_url, composition, customs_category, set_total, product_id, vendor_option_id, shipment_type, coupang_shipment_size',
       'id',
       orderItemIds
     );
@@ -263,6 +264,8 @@ export async function GET(request: NextRequest) {
         total_qty: totalPackedMap.get(ff.order_item_id) ?? 0,
         available_qty: availableMap.get(ff.order_item_id) ?? 0,
         shipment_size: barcode ? (sizeMap[barcode] ?? null) : null,
+        // 박스 적합 판정용 사이즈 코드 — 상품출고 V2 스캔 검증과 같은 기준(주문의 shipment_type)
+        size_code: oi ? resolveScanSizeCode(oi.shipment_type, oi.coupang_shipment_size) : null,
         product_no: ff.product_no || oi?.product_no || null,
         barcode,
         item_name: oi?.item_name || null,

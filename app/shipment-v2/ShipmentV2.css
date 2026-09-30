@@ -173,6 +173,7 @@
 }
 
 .shipment-v2-category-tag {
+  font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   color: #374151;
@@ -180,12 +181,85 @@
   background: #fff;
   border: 1px solid #d1d5db;
   border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.shipment-v2-category-tag:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
 }
 
 .shipment-v2-category-count {
   font-weight: 700;
   color: #2563eb;
   margin-left: 2px;
+}
+
+/* ── 품목 | 쉽먼트에러 구분선 ── */
+.shipment-v2-summary-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 6px;
+  background: #d1d5db;
+}
+
+/* ============================================================ */
+/* 쉽먼트에러 태그 (상품 사이즈 ≠ 박스 타입)                      */
+/* ============================================================ */
+.shipment-v2-error-count {
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.shipment-v2-error-tag--has {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.shipment-v2-error-tag--has:hover {
+  border-color: #ea580c;
+  background: #ffedd5;
+}
+
+.shipment-v2-error-tag--none {
+  color: #9ca3af;
+}
+
+.shipment-v2-error-tag--none .shipment-v2-error-count {
+  color: #9ca3af;
+}
+
+/* ── 선택된 태그 (필터 적용 중) — 품목·에러 태그 공통, 에러 태그 색보다 뒤에 둔다 ── */
+.shipment-v2-category-tag--active,
+.shipment-v2-category-tag--active:hover {
+  background: #18181b;
+  border-color: #18181b;
+  color: #fff;
+}
+
+.shipment-v2-category-tag--active .shipment-v2-category-count,
+.shipment-v2-category-tag--active .shipment-v2-error-count {
+  color: #fff;
+}
+
+/* ── 쉽먼트사이즈 배지: 상품이 다른 박스에 들어간 경우 빨간 깜빡임 ── */
+@keyframes shipment-v2-badge-error-blink {
+  0%, 100% { background-color: #dc2626; color: #fff; }
+  50%      { background-color: #fee2e2; color: #dc2626; }
+}
+
+.shipment-v2-badge--error-blink {
+  box-shadow: inset 0 0 0 1px #dc2626;
+  animation: shipment-v2-badge-error-blink 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shipment-v2-badge--error-blink {
+    animation: none;
+    background-color: #dc2626;
+  }
 }
 
 /* ── 테이블 영역 ── */

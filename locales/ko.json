@@ -350,6 +350,12 @@
       "scan": "스캔",
       "total": "전체"
     },
+    "summary": {
+      "all": "전체",
+      "uncategorized": "미분류",
+      "shipmentError": "쉽먼트에러",
+      "shipmentErrorHint": "상품 사이즈와 박스가 다른 행 (A-A, B-B, C-C, P-P, X-X 박스가 정상)"
+    },
     "modal": {
       "boxMove": "박스 이동",
       "merge": "합배송 설정",
@@ -375,7 +381,8 @@
     "empty": {
       "loading": "로딩 중...",
       "selectUser": "사용자를 선택해주세요.",
-      "noData": "데이터 없음"
+      "noData": "데이터 없음",
+      "noFilterMatch": "선택한 조건에 맞는 데이터가 없습니다."
     },
     "move": {
       "title": "박스 이동",

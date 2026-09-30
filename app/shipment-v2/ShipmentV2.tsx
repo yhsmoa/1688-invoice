@@ -1,14 +1,20 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ExcelJS from 'exceljs';
 import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useFtUsers } from '../import-product-v2/hooks/useFtData';
 import MoveModal from './components/MoveModal';
+import SummaryFilterBar from './components/SummaryFilterBar';
 import type { BoxInfoItem, ShipmentV2Row } from './types';
-import { getBadgeClass, getBoxType, normalizeSizeDisplay } from './utils/shipmentCodes';
+import {
+  getBadgeClass,
+  getBoxType,
+  getShipmentError,
+} from './utils/shipmentCodes';
+import { FILTER_ALL, matchesFilter, type RowFilter } from './utils/rowFilter';
 import './ShipmentV2.css';
 
 // ============================================================
@@ -21,6 +27,9 @@ const ShipmentV2: React.FC = () => {
   const [rows, setRows] = useState<ShipmentV2Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+
+  // ── 요약 보드 필터 (품목 / 쉽먼트에러) ──
+  const [filter, setFilter] = useState<RowFilter>(FILTER_ALL);
 
   // ── 입고 인라인 편집 ──
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -75,8 +84,31 @@ const ShipmentV2: React.FC = () => {
     const userId = e.target.value;
     setSelectedUserId(userId);
     setCheckedIds(new Set());
+    setFilter(FILTER_ALL);
     fetchData(userId);
   };
+
+  // ============================================================
+  // 쉽먼트 에러 + 필터링된 행 (원본 idx 유지 — 체크·편집은 원본 idx 기준)
+  // ============================================================
+  const rowErrors = useMemo(() => rows.map(getShipmentError), [rows]);
+
+  const visibleIndices = useMemo(
+    () => rows.reduce<number[]>((acc, row, idx) => {
+      if (matchesFilter(row, rowErrors[idx], filter)) acc.push(idx);
+      return acc;
+    }, []),
+    [rows, rowErrors, filter]
+  );
+
+  // ── 화면에서 사라진 행은 체크 해제 (숨은 행이 이동·출고되지 않도록) ──
+  useEffect(() => {
+    const visible = new Set(visibleIndices.map(String));
+    setCheckedIds((prev) => {
+      const next = new Set(Array.from(prev).filter((key) => visible.has(key)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleIndices]);
 
   // ============================================================
   // 체크박스
@@ -89,22 +121,22 @@ const ShipmentV2: React.FC = () => {
     });
   };
 
+  // ── 전체 선택: 현재 보이는 행 기준 ──
+  const allVisibleChecked =
+    visibleIndices.length > 0 && visibleIndices.every((i) => checkedIds.has(String(i)));
+
   const toggleAll = () => {
-    setCheckedIds(
-      checkedIds.size === rows.length
-        ? new Set()
-        : new Set(rows.map((_, idx) => String(idx)))
-    );
+    setCheckedIds(allVisibleChecked ? new Set() : new Set(visibleIndices.map(String)));
   };
 
   // ── 주문번호 클릭 → 체크박스 토글 ──
   const handleProductNoClick = (idx: number) => toggleCheck(String(idx));
 
-  // ── 박스번호 배지 클릭 → 해당 box_code 전체 토글 ──
+  // ── 박스번호 배지 클릭 → 해당 box_code 중 보이는 행 전체 토글 ──
   const handlePackageClick = (packageNo: string) => {
-    const indices = rows
-      .map((r, i) => (r.box_code === packageNo ? String(i) : null))
-      .filter(Boolean) as string[];
+    const indices = visibleIndices
+      .filter((i) => rows[i].box_code === packageNo)
+      .map(String);
     const allChecked = indices.every((i) => checkedIds.has(i));
     setCheckedIds((prev) => {
       const next = new Set(prev);
@@ -227,18 +259,6 @@ const ShipmentV2: React.FC = () => {
       alert('저장 중 오류가 발생했습니다.');
     }
   }, [dirtyCategories]);
-
-  // ============================================================
-  // 품목별 개수 요약
-  // ============================================================
-  const categorySummary = useMemo(() => {
-    const map = new Map<string, number>();
-    rows.forEach((r) => {
-      const cat = r.customs_category || '미분류';
-      map.set(cat, (map.get(cat) ?? 0) + 1);
-    });
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [rows]);
 
   // ============================================================
   // 엑셀 다운로드
@@ -501,11 +521,11 @@ const ShipmentV2: React.FC = () => {
 
 
   // ============================================================
-  // box_code 기준 그룹핑 (rowSpan 계산)
+  // box_code 기준 그룹핑 (rowSpan 계산 — 보이는 행 기준, key 는 원본 idx)
   // ============================================================
   const packageGroups: { packageNo: string; startIdx: number; count: number }[] = [];
-  let prevPkg = '';
-  for (let i = 0; i < rows.length; i++) {
+  let prevPkg: string | null = null;
+  for (const i of visibleIndices) {
     const pkg = rows[i].box_code || '';
     if (pkg !== prevPkg) {
       packageGroups.push({ packageNo: pkg, startIdx: i, count: 1 });
@@ -600,15 +620,14 @@ const ShipmentV2: React.FC = () => {
               </div>
             </div>
 
-            {/* ── 품목별 개수 요약 보드 ── */}
+            {/* ── 요약 보드: 품목별 개수 | 쉽먼트에러 (클릭 → 필터) ── */}
             {rows.length > 0 && (
-              <div className="shipment-v2-category-summary">
-                {categorySummary.map(([cat, count]) => (
-                  <span key={cat} className="shipment-v2-category-tag">
-                    {cat}<span className="shipment-v2-category-count">({count})</span>
-                  </span>
-                ))}
-              </div>
+              <SummaryFilterBar
+                rows={rows}
+                rowErrors={rowErrors}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
             )}
 
             {/* ── 테이블 ── */}
@@ -620,7 +639,7 @@ const ShipmentV2: React.FC = () => {
                     <th style={{ textAlign: 'center', width: '30px' }}>
                       <input
                         type="checkbox"
-                        checked={rows.length > 0 && checkedIds.size === rows.length}
+                        checked={allVisibleChecked}
                         onChange={toggleAll}
                       />
                     </th>
@@ -643,8 +662,11 @@ const ShipmentV2: React.FC = () => {
                     <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentV2.empty.selectUser')}</td></tr>
                   ) : rows.length === 0 ? (
                     <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentV2.empty.noData')}</td></tr>
+                  ) : visibleIndices.length === 0 ? (
+                    <tr><td colSpan={TOTAL_COLS} className="shipment-v2-empty">{t('shipmentV2.empty.noFilterMatch')}</td></tr>
                   ) : (
-                    rows.map((row, idx) => {
+                    visibleIndices.map((idx) => {
+                      const row         = rows[idx];
                       const span        = rowSpanMap.get(idx);
                       const boxType     = getBoxType(row.box_code || '');
                       const badgeClass  = getBadgeClass(boxType);
@@ -654,6 +676,7 @@ const ShipmentV2: React.FC = () => {
                       const isMismatch  = row.total_qty !== row.available_qty;
                       const isEditing   = editingCell === String(idx);
                       const isCategoryEditing = editingCategory === String(idx);
+                      const sizeError   = rowErrors[idx];
 
                       return (
                         <tr
@@ -718,13 +741,20 @@ const ShipmentV2: React.FC = () => {
                             {row.customs_category || '-'}
                           </td>
 
-                          {/* ── 쉽먼트사이즈 (배지) ── */}
+                          {/* ── 쉽먼트사이즈 (배지) — 주문 기준 size_code, 박스와 안 맞으면 빨간 깜빡임 ── */}
                           <td className="shipment-v2-qty">
                             {(() => {
-                              const code = normalizeSizeDisplay(row.shipment_size);
-                              return code
-                                ? <span className={`shipment-v2-badge ${getBadgeClass(code)}`}>{code}</span>
-                                : '-';
+                              const code = row.size_code;
+                              if (!code) return '-';
+                              const errorClass = sizeError ? 'shipment-v2-badge--error-blink' : '';
+                              return (
+                                <span
+                                  className={`shipment-v2-badge ${getBadgeClass(code)} ${errorClass}`}
+                                  title={sizeError ? t('shipmentV2.summary.shipmentErrorHint') : undefined}
+                                >
+                                  {code}
+                                </span>
+                              );
                             })()}
                           </td>
 
