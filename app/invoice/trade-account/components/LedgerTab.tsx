@@ -18,6 +18,8 @@ import { monthRange, tradeFetch, useTradeLedger } from '../hooks/useTradeApi';
 // ============================================================
 
 interface Props {
+  /** 탭 선택 버튼 — 컨트롤 줄 왼쪽 (TradeAccount 가 전달) */
+  tabSwitcher: React.ReactNode;
   refreshKey: number;
   onChanged: () => void;
   todayRate: number | null;
@@ -25,7 +27,7 @@ interface Props {
 
 const fmtBal = (n: number) => n.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
 
-const LedgerTab: React.FC<Props> = ({ refreshKey, onChanged, todayRate }) => {
+const LedgerTab: React.FC<Props> = ({ tabSwitcher, refreshKey, onChanged, todayRate }) => {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -65,14 +67,9 @@ const LedgerTab: React.FC<Props> = ({ refreshKey, onChanged, todayRate }) => {
 
   return (
     <>
-      <div className="ta-toolbar">
-        <div className="ta-filters">
-          {(Object.keys(LEDGER_FILTER_LABEL) as LedgerFilter[]).map((f) => (
-            <button key={f} className={`ta-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-              {LEDGER_FILTER_LABEL[f]}
-            </button>
-          ))}
-        </div>
+      {/* ── 탭행: 왼쪽 탭 / 오른쪽 조회 월 ── */}
+      <div className="ta-tabbar">
+        {tabSwitcher}
         <div className="ta-inline">
           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="ta-select">
             {yearOptions.map((y) => <option key={y} value={y}>{y}년</option>)}
@@ -81,6 +78,15 @@ const LedgerTab: React.FC<Props> = ({ refreshKey, onChanged, todayRate }) => {
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
           </select>
         </div>
+      </div>
+
+      {/* ── 구분 필터 ── */}
+      <div className="ta-filters ta-metric-row">
+        {(Object.keys(LEDGER_FILTER_LABEL) as LedgerFilter[]).map((f) => (
+          <button key={f} className={`ta-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+            {LEDGER_FILTER_LABEL[f]}
+          </button>
+        ))}
       </div>
 
       <div className="ta-content">

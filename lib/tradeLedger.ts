@@ -145,6 +145,10 @@ export const adjustedAsset = (asset: number | null, pending: PendingRefunds | nu
   asset == null ? null : Math.round((asset - (pending ? pending.done_service + pending.processing_service : 0)) * 100) / 100;
 
 // ── 손익 (trade_pnl) ──
+export type PnlUnit = 'day' | 'week' | 'month';
+
+export const PNL_UNIT_LABEL: Record<PnlUnit, string> = { month: '월별', week: '주간', day: '일별' };
+
 export interface TradePnlRow {
   period_start: string;
   n: number;

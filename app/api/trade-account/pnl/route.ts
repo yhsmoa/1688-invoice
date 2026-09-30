@@ -7,15 +7,16 @@ export const dynamic = 'force-dynamic';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // ============================================================
-// GET /api/trade-account/pnl?unit=day|month&from&to
-//   일/월별 손익 (rpc trade_pnl) — 최신 구간 먼저
+// GET /api/trade-account/pnl?unit=day|week|month&from&to
+//   일/주/월별 손익 (rpc trade_pnl) — 최신 구간 먼저. 주는 월요일 시작
 // ============================================================
 export async function GET(request: NextRequest) {
   const denied = await guardDbRoute(request);
   if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
-    const unit = searchParams.get('unit') === 'day' ? 'day' : 'month';
+    const raw = searchParams.get('unit');
+    const unit = raw === 'day' || raw === 'week' ? raw : 'month';
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     if ((from && !DATE_RE.test(from)) || (to && !DATE_RE.test(to))) {

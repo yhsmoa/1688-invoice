@@ -588,7 +588,7 @@ REVOKE ALL ON FUNCTION public.trade_reverse(uuid, text, text) FROM PUBLIC, anon,
 -- 7) 손익 집계 — 일/월. 기말 스냅샷은 그 기간 마지막 행(체인 순서)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.trade_pnl(
-  p_unit text DEFAULT 'month',   -- 'day' | 'month'
+  p_unit text DEFAULT 'month',   -- 'day' | 'week'(월요일 시작) | 'month'
   p_from date DEFAULT NULL,
   p_to   date DEFAULT NULL
 )
@@ -599,7 +599,8 @@ SET search_path = public
 AS $$
 WITH rows AS (
   SELECT t.*,
-         CASE WHEN p_unit = 'day' THEN t.applied_date
+         CASE WHEN p_unit = 'day'  THEN t.applied_date
+              WHEN p_unit = 'week' THEN date_trunc('week', t.applied_date)::date
               ELSE date_trunc('month', t.applied_date)::date END AS period_start
   FROM ft_trade_transactions t
   WHERE t.kind <> 'opening'

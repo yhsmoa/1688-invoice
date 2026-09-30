@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { dbAccessHeaders } from '../../../../component/DbAccessGate';
-import type { TradePnlRow, TradeRow, TradeStatus } from '../../../../lib/tradeLedger';
+import type { PnlUnit, TradePnlRow, TradeRow, TradeStatus } from '../../../../lib/tradeLedger';
 
 // ============================================================
 // 무역계좌 API 훅 — 상태 / 원장 / 손익 조회 + 기록 호출 helper
@@ -75,7 +75,7 @@ export function useTradeLedger(from: string, to: string, refreshKey: number) {
 }
 
 // ── 손익 ──
-export function useTradePnl(unit: 'day' | 'month', from: string, to: string, refreshKey: number) {
+export function useTradePnl(unit: PnlUnit, from: string, to: string, refreshKey: number) {
   const [periods, setPeriods] = useState<TradePnlRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,4 +105,27 @@ export const monthRange = (year: number, month: number): { from: string; to: str
   const mm = String(month).padStart(2, '0');
   const last = new Date(year, month, 0).getDate();
   return { from: `${year}-${mm}-01`, to: `${year}-${mm}-${String(last).padStart(2, '0')}` };
+};
+
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * 단위별 기본 조회 구간 (오늘 기준)
+ *   month → 최근 12개월 / week → 최근 16주 (월요일 시작) / day → 최근 30일
+ */
+export const defaultRangeFor = (unit: PnlUnit, now = new Date()): { from: string; to: string } => {
+  const to = ymd(now);
+  if (unit === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    return { from: ymd(start), to };
+  }
+  if (unit === 'week') {
+    const dow = now.getDay();                       // 0=일
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) - 7 * 15);
+    return { from: ymd(monday), to };
+  }
+  const start = new Date(now);
+  start.setDate(now.getDate() - 29);
+  return { from: ymd(start), to };
 };

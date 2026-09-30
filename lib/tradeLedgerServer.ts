@@ -275,7 +275,7 @@ export function reverseTradeRow(id: string, reason: string, createdBy: string): 
   return rpc<string>('trade_reverse', { p_id: id, p_reason: reason, p_created_by: createdBy });
 }
 
-export async function fetchTradePnl(unit: 'day' | 'month', from: string | null, to: string | null) {
+export async function fetchTradePnl(unit: 'day' | 'week' | 'month', from: string | null, to: string | null) {
   return rpc<unknown[]>('trade_pnl', { p_unit: unit, p_from: from, p_to: to });
 }
 

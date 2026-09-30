@@ -8,6 +8,7 @@ import { adjustedAsset, fmtSigned, fmtYuan } from '../../../lib/tradeLedger';
 import { useTradeStatus } from './hooks/useTradeApi';
 import LedgerTab from './components/LedgerTab';
 import PnlTab from './components/PnlTab';
+import ChartTab from './components/ChartTab';
 import OpeningModal from './components/OpeningModal';
 import ExpenseModal from './components/ExpenseModal';
 import PayrollModal from './components/PayrollModal';
@@ -18,12 +19,14 @@ import './TradeAccount.css';
 // 무역계좌 — 회사 통장 원장
 //   통장잔고 = 회사자산 + 고객 충전금(immong)
 //   [계좌내역] 고객 원장 미러 + 회사 지출, 세 잔고 스냅샷
-//   [손익]     월별/일별 순이익·이익률
+//   [손익]     월별/주간/일별 순이익·이익률 표
+//   [그래프]   기간별 지표 그래프
+//   탭 선택은 각 탭의 컨트롤 줄 왼쪽에, 단위·기간 컨트롤은 오른쪽에 놓인다.
 //   데이터: /api/trade-account/* (DB 관리 접근 코드 필요)
 // ============================================================
 
-type Tab = 'ledger' | 'pnl';
-const TAB_LABEL: Record<Tab, string> = { ledger: '계좌내역', pnl: '손익' };
+type Tab = 'ledger' | 'pnl' | 'chart';
+const TAB_LABEL: Record<Tab, string> = { ledger: '계좌내역', pnl: '손익', chart: '그래프' };
 
 const nearlyEqual = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.005;
 
@@ -73,6 +76,17 @@ const TradeAccount: React.FC = () => {
   const lastCheck = status?.lastBankCheck ?? null;
   const checkStale = !lastCheck || Date.now() - new Date(lastCheck.checked_at).getTime() > BANK_CHECK_STALE_DAYS * DAY_MS;
 
+  // ── 탭 선택 — 각 탭이 컨트롤 줄 왼쪽에 렌더 ──
+  const tabSwitcher = (
+    <div className="ta-tabs" role="tablist">
+      {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
+        <button key={t} role="tab" aria-selected={tab === t} className={`ta-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+          {TAB_LABEL[t]}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="app-layout">
       <TopsideMenu />
@@ -88,9 +102,11 @@ const TradeAccount: React.FC = () => {
             <div className="ta-actions">
               {status?.opened ? (
                 <>
-                  <button className={`ta-btn ${checkStale ? 'ta-btn--attention' : ''}`} onClick={() => setModal('bankcheck')}>통장 대조</button>
+                  <button className="ta-btn" onClick={() => setModal('bankcheck')}>
+                    {checkStale && <span className="ta-dot ta-dot--warn" aria-hidden />}통장 대조
+                  </button>
                   <button className="ta-btn" onClick={() => setModal('payroll')}>급여 반영</button>
-                  <button className="ta-btn ta-btn--primary" onClick={() => setModal('expense')}>회사 거래 추가</button>
+                  <button className="ta-btn" onClick={() => setModal('expense')}>회사 거래 추가</button>
                 </>
               ) : (
                 !loading && !error && <button className="ta-btn ta-btn--primary" onClick={() => setModal('opening')}>이월 설정</button>
@@ -109,12 +125,12 @@ const TradeAccount: React.FC = () => {
             </div>
           )}
 
-          {/* ── 요약 카드 ── */}
+          {/* ── 요약 카드 (색은 상태 표시에만) ── */}
           {status?.opened && (
             <div className="ta-summary">
-              <div className="ta-card ta-card--bank">
+              <div className="ta-card ta-card--lead">
                 <span className="ta-card-label">통장잔고</span>
-                <span className="ta-card-value">{fmtYuan(status.bankBalance)}</span>
+                <span className="ta-card-value ta-card-value--lead">{fmtYuan(status.bankBalance)}</span>
                 <span className="ta-card-unit">{todayRate != null && status.bankBalance != null ? `≈ ₩${Math.round(status.bankBalance * todayRate).toLocaleString()} (금일 환율)` : '위안'}</span>
               </div>
               <div className="ta-card">
@@ -122,12 +138,12 @@ const TradeAccount: React.FC = () => {
                 <span className="ta-card-value">{fmtYuan(status.customerBalance)}</span>
                 <span className="ta-card-unit">고객 원장 현재 {fmtYuan(status.ledgerCustomerBalance)}</span>
               </div>
-              <div className="ta-card ta-card--accent">
+              <div className="ta-card">
                 <span className="ta-card-label">회사자산</span>
                 <span className="ta-card-value">{fmtYuan(status.assetBalance)}</span>
                 <span className="ta-card-unit">통장 − 충전금</span>
               </div>
-              <div className="ta-card ta-card--pending">
+              <div className="ta-card">
                 <span className="ta-card-label">환불예정 (정산 전)</span>
                 <span className="ta-card-value">{pendingService > 0 ? `−${fmtYuan(pendingService)}` : fmtYuan(0)}</span>
                 <span className="ta-card-unit" title={pending ? `완료 ${pending.done_count}건 서비스비 ${fmtSigned(pending.done_service)} · 처리중 ${pending.processing_count}건 서비스비 ${fmtSigned(pending.processing_service)} · 접수(금액 미정) ${pending.pending_count}건\n판매자 환불분 ${fmtSigned(pendingSeller)} 은 통장으로 들어와 고객에게 그대로 넘어가므로 자산과 무관` : ''}>
@@ -136,46 +152,35 @@ const TradeAccount: React.FC = () => {
                     : '집계 없음'}
                 </span>
               </div>
-              <div className="ta-card ta-card--accent">
+              <div className="ta-card">
                 <span className="ta-card-label">예정 결과 (조정 자산)</span>
                 <span className="ta-card-value">{fmtYuan(adjAsset)}</span>
                 <span className="ta-card-unit">회사자산 − 환불예정 서비스비</span>
               </div>
-              <div className={`ta-card ${checkStale ? 'ta-card--warn' : 'ta-card--ok'}`}>
-                <span className="ta-card-label">통장 대조</span>
-                <span className="ta-card-value">{lastCheck ? fmtSigned(lastCheck.diff) : '—'}</span>
-                <span className="ta-card-unit">
-                  {lastCheck
-                    ? `마지막 ${fmtKstDate(lastCheck.checked_at)} · 실제 ${fmtYuan(lastCheck.actual_bank, 0)}${lastCheck.adjustment_id ? ' · 보정됨' : ''}${checkStale ? ' · 7일 경과' : ''}`
-                    : '아직 대조 기록 없음 — 매주 실제 통장잔고를 입력하세요'}
+              <div className="ta-card">
+                <span className="ta-card-label">정합 · 통장 대조</span>
+                <span className="ta-card-status">
+                  <span className={`ta-dot ${consistent ? 'ta-dot--ok' : 'ta-dot--warn'}`} aria-hidden />
+                  {consistent ? '장부 정합' : '장부 불일치'}
+                  <span className="ta-card-status-sep">·</span>
+                  <span className={`ta-dot ${checkStale ? 'ta-dot--warn' : 'ta-dot--ok'}`} aria-hidden />
+                  {lastCheck ? `대조 ${fmtKstDate(lastCheck.checked_at)} (${fmtSigned(lastCheck.diff)})` : '대조 기록 없음'}
                 </span>
-              </div>
-              <div className={`ta-card ${consistent ? 'ta-card--ok' : 'ta-card--warn'}`}>
-                <span className="ta-card-label">정합</span>
-                <span className="ta-card-value">{consistent ? '✓' : '⚠'}</span>
                 <span className="ta-card-unit">
                   {consistent
                     ? `${status.rowCount}행 · 이월 ${status.startedAt ? status.startedAt.slice(0, 10) : ''}`
                     : `충전금 스냅샷 ${fmtYuan(status.customerBalance)} vs 원장 ${fmtYuan(status.ledgerCustomerBalance)} · Σ통장 ${fmtYuan(status.sumBank)}`}
+                  {checkStale && (lastCheck ? ' · 대조 7일 경과' : ' · 매주 실제 통장잔고를 입력하세요')}
                 </span>
               </div>
             </div>
           )}
 
-          {/* ── 탭 ── */}
+          {/* ── 탭 본문 (탭행은 각 탭이 컨트롤과 함께 렌더) ── */}
           {status?.opened && (
-            <>
-              <div className="ta-tabs" role="tablist">
-                {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
-                  <button key={t} role="tab" aria-selected={tab === t} className={`ta-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                    {TAB_LABEL[t]}
-                  </button>
-                ))}
-              </div>
-              {tab === 'ledger'
-                ? <LedgerTab refreshKey={refreshKey} onChanged={afterChange} todayRate={todayRate} />
-                : <PnlTab refreshKey={refreshKey} />}
-            </>
+            tab === 'ledger' ? <LedgerTab tabSwitcher={tabSwitcher} refreshKey={refreshKey} onChanged={afterChange} todayRate={todayRate} />
+            : tab === 'pnl' ? <PnlTab tabSwitcher={tabSwitcher} refreshKey={refreshKey} />
+            : <ChartTab tabSwitcher={tabSwitcher} refreshKey={refreshKey} />
           )}
         </main>
       </div>
