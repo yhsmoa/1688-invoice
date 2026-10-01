@@ -279,6 +279,30 @@
   border-right: 1px solid #e4e4e7;
 }
 
+/* 업무 그룹 헤더 (매니저 / 검수 / 포장 / 단기 — colspan=직원수×2) */
+.pr-th-group {
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-bottom: 1px solid #c7d2fe;
+  border-left: 2px solid #a5b4fc;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.pr-th-group-count {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6366f1;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
 /* 직원명 헤더 (colspan=2) */
 .pr-th-emp {
   padding: 8px 12px;
@@ -293,25 +317,12 @@
   line-height: 1.4;
 }
 
-/* 이름 + 직책 배지 한 줄 */
+/* 이름 한 줄 */
 .pr-th-name-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-}
-
-/* 직책 배지 */
-.pr-role-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  color: #4f46e5;
-  background: #eef2ff;
-  border-radius: 4px;
-  padding: 1px 5px;
-  letter-spacing: 0;
-  white-space: nowrap;
 }
 
 /* 한글명 (이름 아래 작게) */
@@ -420,6 +431,11 @@
   border-right: 1px solid #e4e4e7;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── 업무 그룹 경계 세로선 (그룹 첫 직원의 시간 열) ── */
+.pr-table .pr-group-start {
+  border-left: 2px solid #a5b4fc;
 }
 
 /* ── 합계 행 ── */

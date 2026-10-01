@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
+import { groupByRole, sortByRole } from './utils/payrollRoles';
 import './Payroll.css';
 
 // ============================================================
@@ -231,7 +232,8 @@ const Payroll: React.FC = () => {
       const res    = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
       const result = await res.json();
       if (result.success) {
-        setEmployees(result.employees);
+        // 업무별 순서 (매니저 → 검수 → 포장 → 단기) — 시간표·정리 패널 공통
+        setEmployees(sortByRole(result.employees as Employee[]));
         setRecords(result.records);
         setDaysInMonth(result.daysInMonth);
       }
@@ -277,6 +279,15 @@ const Payroll: React.FC = () => {
     });
     return totals;
   }, [records]);
+
+  /** 업무(직책) 그룹 — 시간표 상단 그룹 헤더 */
+  const roleGroups = useMemo(() => groupByRole(employees), [employees]);
+
+  /** 그룹 첫 직원 id — 그룹 경계 세로선 */
+  const groupStartIds = useMemo(
+    () => new Set(roleGroups.map((g) => g.employees[0].id)),
+    [roleGroups]
+  );
 
   /** 날짜 배열 [1 .. daysInMonth] */
   const days = useMemo(
@@ -524,17 +535,30 @@ const Payroll: React.FC = () => {
                   </colgroup>
 
                   <thead>
-                    {/* 1행: 날 (rowspan=2) | 직원명 (colspan=2) */}
+                    {/* 1행: 날 (rowspan=3) | 업무 그룹 (colspan=직원수×2) */}
                     <tr>
-                      <th className="pr-th-date" rowSpan={2}>날</th>
+                      <th className="pr-th-date" rowSpan={3}>날</th>
+                      {roleGroups.map((group) => (
+                        <th
+                          key={group.role ?? '__none'}
+                          colSpan={group.employees.length * 2}
+                          className="pr-th-group"
+                        >
+                          {group.label}
+                          <span className="pr-th-group-count">{group.employees.length}</span>
+                        </th>
+                      ))}
+                    </tr>
+                    {/* 2행: 직원명 (colspan=2) */}
+                    <tr>
                       {employees.map((emp) => (
-                        <th key={emp.id} colSpan={2} className="pr-th-emp">
-                          {/* 이름 + 직책 배지 */}
+                        <th
+                          key={emp.id}
+                          colSpan={2}
+                          className={`pr-th-emp${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}`}
+                        >
                           <div className="pr-th-name-row">
                             <span>{emp.name || '-'}</span>
-                            {emp.role && (
-                              <span className="pr-role-badge">{emp.role}</span>
-                            )}
                           </div>
                           {/* 한글명 */}
                           {emp.name_kr && (
@@ -543,10 +567,15 @@ const Payroll: React.FC = () => {
                         </th>
                       ))}
                     </tr>
-                    {/* 2행: 시간 / h 서브헤더 */}
+                    {/* 3행: 시간 / h 서브헤더 */}
                     <tr>
                       {employees.flatMap((emp) => [
-                        <th key={`${emp.id}-r`} className="pr-th-sub">시간</th>,
+                        <th
+                          key={`${emp.id}-r`}
+                          className={`pr-th-sub${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}`}
+                        >
+                          시간
+                        </th>,
                         <th key={`${emp.id}-h`} className="pr-th-sub pr-th-h">h</th>,
                       ])}
                     </tr>
@@ -575,10 +604,11 @@ const Payroll: React.FC = () => {
                               - 기록 없으면: 클릭 → 신규 추가 모달 */}
                           {employees.flatMap((emp) => {
                             const rec = recordMap.get(day)?.get(emp.id);
+                            const groupStart = groupStartIds.has(emp.id) ? ' pr-group-start' : '';
                             return [
                               <td
                                 key={`${emp.id}-r`}
-                                className={`pr-td-range pr-td-clickable${rec ? '' : ' pr-td-empty'}`}
+                                className={`pr-td-range pr-td-clickable${rec ? '' : ' pr-td-empty'}${groupStart}`}
                                 onClick={rec ? () => openModal(emp, rec) : () => openCreateModal(emp, day)}
                               >
                                 {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
@@ -600,7 +630,10 @@ const Payroll: React.FC = () => {
                       {employees.flatMap((emp) => {
                         const total = employeeTotals.get(emp.id) ?? 0;
                         return [
-                          <td key={`${emp.id}-r`} className="pr-td-range" />,
+                          <td
+                            key={`${emp.id}-r`}
+                            className={`pr-td-range${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}`}
+                          />,
                           <td key={`${emp.id}-h`} className="pr-td-h pr-total-h">
                             {total > 0 ? minutesToHours(total) : '-'}
                           </td>,
