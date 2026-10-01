@@ -210,12 +210,7 @@ const LeftsideMenu: React.FC = () => {
             </div>
             {isInvoiceMenuOpen && (
               <ul className="submenu-list">
-                <li className="submenu-item">
-                  <Link href="/invoice/payment-history" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history')}>
-                    <span className="submenu-text">고객계좌</span>
-                  </Link>
-                </li>
-                {/* 고객계좌 (신) — 새 원장 ft_user_transactions 읽기 전용 (구 고객계좌와 병행) */}
+                {/* 고객계좌 (신) — 신 원장 ft_user_transactions (충전·차감 기록은 여기서) */}
                 <li className="submenu-item">
                   <Link href="/invoice/payment-history-v2" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history-v2')}>
                     <span className="submenu-text">고객계좌 (신)</span>
@@ -224,6 +219,13 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/invoice/trade-account" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account')}>
                     <span className="submenu-text">무역계좌</span>
+                  </Link>
+                </li>
+                {/* ── 구분선 아래: 구 원장 (조회 전용) ── */}
+                <li className="submenu-divider" aria-hidden="true" />
+                <li className="submenu-item">
+                  <Link href="/invoice/payment-history" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history')}>
+                    <span className="submenu-text">고객계좌 (구)</span>
                   </Link>
                 </li>
               </ul>

@@ -142,6 +142,13 @@
   margin-bottom: 4px;
 }
 
+/* 하위메뉴 구분선 (예: 계좌관리 — 신 원장 메뉴 | 구 원장 메뉴) */
+.submenu-divider {
+  height: 1px;
+  margin: 8px 12px;
+  background-color: #e0e0e0;
+}
+
 .submenu-link {
   display: flex;
   align-items: center;

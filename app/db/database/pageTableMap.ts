@@ -169,7 +169,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
     desc: '고객·무역 계좌 잔액 및 입출금 내역',
     pages: [
       {
-        name: '고객계좌',
+        name: '고객계좌 (구)',
         route: '/invoice/payment-history',
         file: 'app/invoice/payment-history/PaymentHistory.tsx',
         apis: [
