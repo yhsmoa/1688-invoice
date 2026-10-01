@@ -86,6 +86,22 @@ interface WriteResponse {
 
 type AddModalType = 'charge' | 'deduct' | '1688order';
 
+/**
+ * 차감 항목 프리셋 — 과거 수동 차감 기록(주문코드 차감 제외)에서 자주 쓰인 순.
+ *   부자재(포장재·라벨)는 1688 주문번호 + 비고에 "규격-수량" 을 적는 패턴,
+ *   공임비는 월말 적용일 + 주문번호 없이 기록하는 패턴이다.
+ */
+const DEDUCT_PRESETS: { group: string; items: string[] }[] = [
+  { group: '포장재', items: ['속포장 비닐', '폴리백 지퍼 포장지', '택배박스', '겉포장 비닐'] },
+  { group: '라벨', items: ['감열지 라벨', '케어라벨', '케어라벨 리본', '봉제 라벨', '브랜드 라벨', '로켓그로스 라벨 스티커'] },
+  { group: '기타', items: ['공임비', '누락 운임비'] },
+];
+
+const EMPTY_CHARGE_FORM = { date: '', description: '', amount: '', krwAmount: '', adminNote: '' };
+const EMPTY_DEDUCT_FORM = {
+  date: '', description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '',
+};
+
 const PaymentHistoryV2: React.FC = () => {
   const { t } = useTranslation();
 
@@ -137,12 +153,22 @@ const PaymentHistoryV2: React.FC = () => {
   /** 저장 시도 참조키 — 모달이 열려 있는 동안 재시도에도 같은 키 (서버 중복 차단) */
   const refKeyRef = useRef<{ charge: string | null; deduct: string | null }>({ charge: null, deduct: null });
 
-  const [chargeForm, setChargeForm] = useState({ date: todayKST(), description: '', amount: '', krwAmount: '', adminNote: '' });
-  const [deductForm, setDeductForm] = useState({
-    date: todayKST(), description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '',
-  });
+  const [chargeForm, setChargeForm] = useState({ ...EMPTY_CHARGE_FORM, date: todayKST() });
+  const [deductForm, setDeductForm] = useState({ ...EMPTY_DEDUCT_FORM, date: todayKST() });
+  /** 차감 — 비용 상세(배송비·서비스·기타) 펼침. 수동 차감은 대부분 비용 분해가 없어 기본 접힘 */
+  const [showFeeDetail, setShowFeeDetail] = useState(false);
   const [orderExcelFile, setOrderExcelFile] = useState<File | null>(null);
   const orderExcelInputRef = useRef<HTMLInputElement>(null);
+
+  /** 모달 입력값 초기화 (닫기·저장 완료 공통) */
+  const resetModalForms = () => {
+    setChargeForm({ ...EMPTY_CHARGE_FORM, date: todayKST() });
+    setDeductForm({ ...EMPTY_DEDUCT_FORM, date: todayKST() });
+    setShowFeeDetail(false);
+    setOrderExcelFile(null);
+    if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
+    refKeyRef.current = { charge: null, deduct: null };
+  };
 
   // ============================================================
   // 사용자 목록
@@ -281,11 +307,7 @@ const PaymentHistoryV2: React.FC = () => {
   const handleCloseModal = () => {
     if (isSaving) return;
     setShowAddModal(false);
-    setChargeForm({ date: todayKST(), description: '', amount: '', krwAmount: '', adminNote: '' });
-    setDeductForm({ date: todayKST(), description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
-    setOrderExcelFile(null);
-    if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
-    refKeyRef.current = { charge: null, deduct: null };
+    resetModalForms();
   };
 
   /** 참조키 — 첫 저장 시도에 만들고, 실패 후 재시도에는 같은 키를 재사용 */
@@ -309,13 +331,9 @@ const PaymentHistoryV2: React.FC = () => {
       (extra ? `${extra}\n` : '') +
       `거래ID: ${r.transactionId}`,
     );
-    refKeyRef.current = { charge: null, deduct: null };
     setIsSaving(false);
     setShowAddModal(false);
-    setChargeForm({ date: todayKST(), description: '', amount: '', krwAmount: '', adminNote: '' });
-    setDeductForm({ date: todayKST(), description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '' });
-    setOrderExcelFile(null);
-    if (orderExcelInputRef.current) orderExcelInputRef.current.value = '';
+    resetModalForms();
     await handleUpdate();
   };
 
@@ -323,8 +341,9 @@ const PaymentHistoryV2: React.FC = () => {
   const afterWriteError = async (result: WriteResponse) => {
     if (result.committed) {
       alert(result.error || '기록은 됐으나 검증에 실패했습니다. 관리자 확인 필요.');
-      refKeyRef.current = { charge: null, deduct: null };
+      // 기록은 이미 됐다 — 입력값을 남겨두면 다시 열어 새 참조키로 한 번 더 저장(이중 기록)할 수 있어 함께 비운다
       setShowAddModal(false);
+      resetModalForms();
       await handleUpdate();
     } else {
       alert(result.error || '기록 실패');
@@ -479,6 +498,22 @@ const PaymentHistoryV2: React.FC = () => {
     else if (addModalType === 'deduct') handleSaveDeduct();
     else handleSave1688Order();
   };
+
+  // ── 모달 미리보기 (입력값 기준 — 실제 기록·검증은 서버) ──
+  const numOf = (v: string) => (v && Number.isFinite(Number(v)) ? Number(v) : 0);
+  const chargeAmt = numOf(chargeForm.amount);
+  const chargeKrw = numOf(chargeForm.krwAmount);
+  const chargeRate = chargeAmt > 0 && chargeKrw > 0 ? chargeKrw / chargeAmt : null;
+  const deductAmt = numOf(deductForm.amount);
+  const deductFees = numOf(deductForm.deliveryFee) + numOf(deductForm.serviceFee) + numOf(deductForm.extraFee);
+  const deductItemAmt = Math.round((deductAmt - deductFees) * 100) / 100;
+  const isLaborItem = deductForm.description.includes('공임비');
+  /** 기록 후 예상 잔액 — 충전(+) / 차감(−). 1688 주문은 서버가 금액을 계산하므로 미리보기 없음 */
+  const previewDelta = addModalType === 'charge' ? chargeAmt : addModalType === 'deduct' ? -deductAmt : 0;
+  const previewBalance = snapshotBalance != null && previewDelta !== 0
+    ? Math.round((snapshotBalance + previewDelta) * 100) / 100
+    : null;
+  const saveLabel = addModalType === 'charge' ? '충전 기록' : addModalType === 'deduct' ? '차감 기록' : '주문 차감 기록';
 
   // ============================================================
   // 렌더링
@@ -740,15 +775,38 @@ const PaymentHistoryV2: React.FC = () => {
       {/* ============================================================ */}
       {showAddModal && (
         <div className="phv2-modal-overlay" onClick={handleCloseModal}>
-          <div className="phv2-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="phv2-modal-title">
-              결제 추가 <span className="phv2-modal-subtitle">{selectedUser ? userLabel(selectedUser) : ''} · 신 원장</span>
+          <div className={`phv2-modal is-${addModalType === '1688order' ? 'order' : addModalType}`} onClick={(e) => e.stopPropagation()}>
+
+            {/* ── 헤더: 대상 사업자 + 현재 잔액 ── */}
+            <div className="phv2-modal-header">
+              <div className="phv2-modal-heading">
+                <div className="phv2-modal-title">거래 기록</div>
+                <div className="phv2-modal-subtitle">
+                  <span className="phv2-modal-user">{selectedUser ? userLabel(selectedUser) : ''}</span>
+                  <span className="phv2-badge-ledger">새 원장</span>
+                </div>
+              </div>
+              <div className="phv2-modal-balance">
+                <span className="phv2-modal-balance-label">현재 잔액</span>
+                <span className="phv2-modal-balance-value">{snapshotBalance != null ? fmtYuan(snapshotBalance) : '-'}</span>
+              </div>
+              <button className="phv2-modal-close" onClick={handleCloseModal} disabled={isSaving} aria-label="닫기">✕</button>
             </div>
 
-            <div className="phv2-modal-type-buttons">
-              <button className={`phv2-modal-type-btn charge ${addModalType === 'charge' ? 'active' : ''}`} onClick={() => setAddModalType('charge')} disabled={isSaving}>충전</button>
-              <button className={`phv2-modal-type-btn deduct ${addModalType === 'deduct' ? 'active' : ''}`} onClick={() => setAddModalType('deduct')} disabled={isSaving}>차감</button>
-              <button className={`phv2-modal-type-btn order ${addModalType === '1688order' ? 'active' : ''}`} onClick={() => setAddModalType('1688order')} disabled={isSaving}>1688 주문</button>
+            {/* ── 유형 탭 ── */}
+            <div className="phv2-modal-tabs">
+              <button className={`phv2-modal-tab charge ${addModalType === 'charge' ? 'active' : ''}`} onClick={() => setAddModalType('charge')} disabled={isSaving}>
+                <span className="phv2-modal-tab-name">충전</span>
+                <span className="phv2-modal-tab-desc">위안 입금</span>
+              </button>
+              <button className={`phv2-modal-tab deduct ${addModalType === 'deduct' ? 'active' : ''}`} onClick={() => setAddModalType('deduct')} disabled={isSaving}>
+                <span className="phv2-modal-tab-name">차감</span>
+                <span className="phv2-modal-tab-desc">부자재 · 공임비 등</span>
+              </button>
+              <button className={`phv2-modal-tab order ${addModalType === '1688order' ? 'active' : ''}`} onClick={() => setAddModalType('1688order')} disabled={isSaving}>
+                <span className="phv2-modal-tab-name">1688 주문</span>
+                <span className="phv2-modal-tab-desc">엑셀로 구매 차감</span>
+              </button>
             </div>
 
             <div className="phv2-modal-content">
@@ -757,31 +815,42 @@ const PaymentHistoryV2: React.FC = () => {
                 <div className="phv2-form">
                   <div className="phv2-form-row">
                     <div className="phv2-form-item">
-                      <label>적용일</label>
+                      <label>충전 금액 <em>*</em></label>
+                      <div className="phv2-input-affix">
+                        <span>¥</span>
+                        <input type="number" min="0" step="0.01" placeholder="0.00" autoFocus value={chargeForm.amount} onChange={(e) => setChargeForm({ ...chargeForm, amount: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="phv2-form-item">
+                      <label>원화 송금액 <span className="phv2-form-optional">선택</span></label>
+                      <div className="phv2-input-affix">
+                        <span>₩</span>
+                        <input type="number" min="0" step="1" placeholder="0" value={chargeForm.krwAmount} onChange={(e) => setChargeForm({ ...chargeForm, krwAmount: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="phv2-form-calc">
+                    <span>적용 환율</span>
+                    <strong>{chargeRate != null ? `₩${chargeRate.toFixed(2)} / ¥` : '—'}</strong>
+                    <span className="phv2-form-calc-note">
+                      {chargeRate != null
+                        ? (todayRate != null ? `금일 환율 ₩${todayRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '')
+                        : '원화 송금액을 입력하면 환율이 함께 기록됩니다'}
+                    </span>
+                  </div>
+                  <div className="phv2-form-row">
+                    <div className="phv2-form-item">
+                      <label>적용일 <em>*</em></label>
                       <input type="date" value={chargeForm.date} max={todayKST()} onChange={(e) => setChargeForm({ ...chargeForm, date: e.target.value })} />
                     </div>
-                  </div>
-                  <div className="phv2-form-row">
                     <div className="phv2-form-item">
                       <label>항목</label>
-                      <input type="text" placeholder='항목 (비우면 "충전")' value={chargeForm.description} onChange={(e) => setChargeForm({ ...chargeForm, description: e.target.value })} />
+                      <input type="text" placeholder="충전" value={chargeForm.description} onChange={(e) => setChargeForm({ ...chargeForm, description: e.target.value })} />
                     </div>
                   </div>
-                  <div className="phv2-form-row phv2-form-row-half">
-                    <div className="phv2-form-item">
-                      <label>전체금액 (위안)</label>
-                      <input type="number" min="0" step="0.01" placeholder="충전 위안 금액" value={chargeForm.amount} onChange={(e) => setChargeForm({ ...chargeForm, amount: e.target.value })} />
-                    </div>
-                    <div className="phv2-form-item">
-                      <label>원화 송금액 (KRW)</label>
-                      <input type="number" min="0" step="1" placeholder="환율 계산용 (선택)" value={chargeForm.krwAmount} onChange={(e) => setChargeForm({ ...chargeForm, krwAmount: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="phv2-form-row">
-                    <div className="phv2-form-item">
-                      <label>관리자 비고</label>
-                      <textarea placeholder="비고를 입력하세요" rows={3} value={chargeForm.adminNote} onChange={(e) => setChargeForm({ ...chargeForm, adminNote: e.target.value })} />
-                    </div>
+                  <div className="phv2-form-item">
+                    <label>관리자 비고 <span className="phv2-form-optional">선택</span></label>
+                    <textarea placeholder="메모 (고객에게는 보이지 않습니다)" rows={2} value={chargeForm.adminNote} onChange={(e) => setChargeForm({ ...chargeForm, adminNote: e.target.value })} />
                   </div>
                 </div>
               )}
@@ -789,53 +858,90 @@ const PaymentHistoryV2: React.FC = () => {
               {/* ── 차감 폼 ── */}
               {addModalType === 'deduct' && (
                 <div className="phv2-form">
+                  <div className="phv2-form-item">
+                    <label>항목 <em>*</em></label>
+                    <input type="text" placeholder="아래에서 선택하거나 직접 입력" value={deductForm.description} onChange={(e) => setDeductForm({ ...deductForm, description: e.target.value })} />
+                    <div className="phv2-presets">
+                      {DEDUCT_PRESETS.map(g => (
+                        <div className="phv2-preset-group" key={g.group}>
+                          <span className="phv2-preset-label">{g.group}</span>
+                          <div className="phv2-preset-chips">
+                            {g.items.map(label => (
+                              <button
+                                key={label}
+                                type="button"
+                                className={`phv2-chip ${deductForm.description === label ? 'active' : ''}`}
+                                onClick={() => setDeductForm({ ...deductForm, description: label })}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   <div className="phv2-form-row">
                     <div className="phv2-form-item">
-                      <label>적용일</label>
+                      <label>전체금액 <em>*</em></label>
+                      <div className="phv2-input-affix">
+                        <span>¥</span>
+                        <input type="number" min="0" step="0.01" placeholder="0.00" value={deductForm.amount} onChange={(e) => setDeductForm({ ...deductForm, amount: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="phv2-form-item">
+                      <label>적용일 <em>*</em></label>
                       <input type="date" value={deductForm.date} max={todayKST()} onChange={(e) => setDeductForm({ ...deductForm, date: e.target.value })} />
                     </div>
                   </div>
-                  <div className="phv2-form-row">
-                    <div className="phv2-form-item">
-                      <label>항목</label>
-                      <input type="text" placeholder="항목을 입력하세요" value={deductForm.description} onChange={(e) => setDeductForm({ ...deductForm, description: e.target.value })} />
-                    </div>
+                  <div className="phv2-form-item">
+                    <label>1688 주문번호 <span className="phv2-form-optional">선택</span></label>
+                    <input
+                      type="text"
+                      placeholder={isLaborItem ? '공임비는 비워둡니다' : '부자재를 구매한 1688 주문번호'}
+                      value={deductForm.order1688Id}
+                      onChange={(e) => setDeductForm({ ...deductForm, order1688Id: e.target.value })}
+                    />
                   </div>
-                  <div className="phv2-form-quick">
-                    {['속포장 비닐', '겉포장 비닐', '택배박스', '감열지 라벨', '공임비'].map(label => (
-                      <button key={label} type="button" onClick={() => setDeductForm({ ...deductForm, description: label })}>{label}</button>
-                    ))}
+                  <div className="phv2-form-item">
+                    <label>관리자 비고 <span className="phv2-form-optional">선택</span></label>
+                    <textarea
+                      placeholder={isLaborItem ? '예: 검수 24, 포장 22' : '규격-수량  예: 30*30-10000, 25*20-3000'}
+                      rows={2}
+                      value={deductForm.adminNote}
+                      onChange={(e) => setDeductForm({ ...deductForm, adminNote: e.target.value })}
+                    />
                   </div>
-                  <div className="phv2-form-row phv2-form-row-half">
-                    <div className="phv2-form-item">
-                      <label>1688 주문번호</label>
-                      <input type="text" placeholder="1688 주문번호 (선택)" value={deductForm.order1688Id} onChange={(e) => setDeductForm({ ...deductForm, order1688Id: e.target.value })} />
-                    </div>
-                    <div className="phv2-form-item">
-                      <label>전체금액 (위안)</label>
-                      <input type="number" min="0" step="0.01" placeholder="(배송비, 서비스, 기타.. 모든 비용 포함)" value={deductForm.amount} onChange={(e) => setDeductForm({ ...deductForm, amount: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="phv2-form-row phv2-form-row-third">
-                    <div className="phv2-form-item">
-                      <label>배송비</label>
-                      <input type="number" min="0" step="0.01" placeholder="배송비" value={deductForm.deliveryFee} onChange={(e) => setDeductForm({ ...deductForm, deliveryFee: e.target.value })} />
-                    </div>
-                    <div className="phv2-form-item">
-                      <label>서비스</label>
-                      <input type="number" min="0" step="0.01" placeholder="서비스비용" value={deductForm.serviceFee} onChange={(e) => setDeductForm({ ...deductForm, serviceFee: e.target.value })} />
-                    </div>
-                    <div className="phv2-form-item">
-                      <label>기타</label>
-                      <input type="number" min="0" step="0.01" placeholder="기타비용" value={deductForm.extraFee} onChange={(e) => setDeductForm({ ...deductForm, extraFee: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="phv2-form-hint">지출금액 = 전체금액 − (배송비 + 서비스 + 기타). 비용 합계는 전체금액을 넘을 수 없습니다.</div>
-                  <div className="phv2-form-row">
-                    <div className="phv2-form-item">
-                      <label>관리자 비고</label>
-                      <textarea placeholder="비고를 입력하세요" rows={3} value={deductForm.adminNote} onChange={(e) => setDeductForm({ ...deductForm, adminNote: e.target.value })} />
-                    </div>
+
+                  {/* 비용 상세 — 수동 차감은 대부분 쓰지 않아 기본 접힘 */}
+                  <div className="phv2-fee-detail">
+                    <button type="button" className="phv2-fee-toggle" onClick={() => setShowFeeDetail(v => !v)}>
+                      <span>{showFeeDetail ? '▾' : '▸'} 비용 상세 (배송비 · 서비스비 · 기타)</span>
+                      {deductFees > 0 && <span className="phv2-fee-sum">합계 {fmtYuan(deductFees)}</span>}
+                    </button>
+                    {showFeeDetail && (
+                      <>
+                        <div className="phv2-form-row">
+                          <div className="phv2-form-item">
+                            <label>배송비</label>
+                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.deliveryFee} onChange={(e) => setDeductForm({ ...deductForm, deliveryFee: e.target.value })} />
+                          </div>
+                          <div className="phv2-form-item">
+                            <label>서비스비</label>
+                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.serviceFee} onChange={(e) => setDeductForm({ ...deductForm, serviceFee: e.target.value })} />
+                          </div>
+                          <div className="phv2-form-item">
+                            <label>기타비용</label>
+                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.extraFee} onChange={(e) => setDeductForm({ ...deductForm, extraFee: e.target.value })} />
+                          </div>
+                        </div>
+                        <div className={`phv2-form-hint ${deductItemAmt < 0 ? 'is-error' : ''}`}>
+                          {deductItemAmt < 0
+                            ? '비용 합계가 전체금액을 초과합니다.'
+                            : `전체금액에 포함된 비용입니다. 지출금액 = ${fmtYuan(deductAmt)} − ${fmtYuan(deductFees)} = ${fmtYuan(deductItemAmt)}`}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -843,11 +949,6 @@ const PaymentHistoryV2: React.FC = () => {
               {/* ── 1688 주문 — 엑셀 업로드 ── */}
               {addModalType === '1688order' && (
                 <div className="phv2-upload">
-                  <div className="phv2-form-hint">
-                    1688 주문 내보내기 엑셀(AD열 주문코드 1개)을 올리면 서버가 배송비·상품가·서비스비(6%)를 계산해 구매 차감으로 기록합니다.
-                    적용일은 오늘({todayKST()})로 기록되며, 필요하면 저장 후 표의 적용일을 클릭해 수정할 수 있습니다.
-                    같은 주문코드는 두 번 차감되지 않습니다.
-                  </div>
                   <input
                     type="file"
                     id="phv2-excel-upload"
@@ -856,19 +957,40 @@ const PaymentHistoryV2: React.FC = () => {
                     style={{ display: 'none' }}
                     onChange={handleOrderExcelSelect}
                   />
-                  <label htmlFor="phv2-excel-upload" className="phv2-upload-area">
+                  <label htmlFor="phv2-excel-upload" className={`phv2-upload-area ${orderExcelFile ? 'has-file' : ''}`}>
                     <div className="phv2-upload-icon">{orderExcelFile ? '✅' : '📁'}</div>
-                    <div className="phv2-upload-text">{orderExcelFile ? orderExcelFile.name : '클릭하여 엑셀 파일을 선택하세요'}</div>
-                    <div className="phv2-upload-hint">{orderExcelFile ? '다른 파일을 선택하려면 클릭하세요' : '.xlsx, .xls 파일만 업로드 가능합니다'}</div>
+                    <div className="phv2-upload-text">{orderExcelFile ? orderExcelFile.name : '클릭하여 1688 주문 엑셀을 선택하세요'}</div>
+                    <div className="phv2-upload-hint">{orderExcelFile ? '다른 파일을 선택하려면 클릭하세요' : '.xlsx, .xls'}</div>
                   </label>
+                  <ul className="phv2-upload-notes">
+                    <li>1688 주문 내보내기 엑셀 (AD열 주문코드 1개) — 배송비·상품가·서비스비(6%)는 서버가 계산합니다.</li>
+                    <li>적용일은 오늘({todayKST()})로 기록됩니다. 저장 후 표의 적용일을 클릭해 수정할 수 있습니다.</li>
+                    <li>같은 주문코드는 두 번 차감되지 않습니다.</li>
+                  </ul>
                 </div>
               )}
             </div>
 
+            {/* ── 푸터: 기록 후 예상 잔액 + 저장 ── */}
             <div className="phv2-modal-footer">
+              <div className="phv2-modal-preview">
+                {addModalType === '1688order' ? (
+                  <span className="phv2-modal-preview-muted">차감 금액은 엑셀에서 계산됩니다</span>
+                ) : previewBalance != null ? (
+                  <>
+                    <span className="phv2-modal-preview-label">기록 후 잔액</span>
+                    <span className={`phv2-modal-preview-value ${previewBalance < 0 ? 'is-negative' : ''}`}>{fmtYuan(previewBalance)}</span>
+                    <span className={`phv2-modal-preview-delta ${previewDelta > 0 ? 'is-plus' : 'is-minus'}`}>
+                      {previewDelta > 0 ? '+' : '−'}{fmtYuan(Math.abs(previewDelta))}
+                    </span>
+                  </>
+                ) : (
+                  <span className="phv2-modal-preview-muted">금액을 입력하면 기록 후 잔액이 표시됩니다</span>
+                )}
+              </div>
               <button className="phv2-modal-cancel-btn" onClick={handleCloseModal} disabled={isSaving}>취소</button>
               <button className="phv2-modal-save-btn" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? '저장 중...' : '저장'}
+                {isSaving ? '저장 중...' : saveLabel}
               </button>
             </div>
           </div>

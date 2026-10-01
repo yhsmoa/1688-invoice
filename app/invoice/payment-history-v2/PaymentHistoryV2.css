@@ -429,12 +429,13 @@
 .phv2-date-cancel-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
 
 /* ============================================================ */
-/* 추가 모달 — 충전 / 차감 / 1688 주문                              */
+/* 추가 모달 — 충전 / 차감 / 1688 주문 (신 원장 기록)               */
+/*   유형별 강조색: --phv2-accent (충전=초록 / 차감=빨강 / 주문=파랑) */
 /* ============================================================ */
 .phv2-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(17, 24, 39, 0.45);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -442,85 +443,150 @@
 }
 
 .phv2-modal {
+  --phv2-accent: #10b981;
+  --phv2-accent-soft: #ecfdf5;
   background: white;
-  width: 800px;
+  width: 600px;
   max-width: 96vw;
-  height: 640px;
   max-height: 92vh;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+.phv2-modal.is-deduct { --phv2-accent: #ef4444; --phv2-accent-soft: #fef2f2; }
+.phv2-modal.is-order  { --phv2-accent: #3b82f6; --phv2-accent-soft: #eff6ff; }
+
+/* ── 헤더 ── */
+.phv2-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px 14px;
+}
+
+.phv2-modal-heading {
+  flex: 1;
+  min-width: 0;
+}
+
 .phv2-modal-title {
-  padding: 20px 40px 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #111827;
 }
 
 .phv2-modal-subtitle {
-  margin-left: 10px;
-  font-size: 13px;
-  font-weight: 400;
-  color: #6b7280;
-}
-
-.phv2-modal-type-buttons {
   display: flex;
-  gap: 12px;
-  padding: 20px 40px;
-  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
 
-.phv2-modal-type-btn {
-  flex: 1;
-  padding: 10px 0;
-  border: 2px solid #d1d5db;
+.phv2-modal-user {
+  font-size: 13px;
+  color: #4b5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phv2-modal-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.phv2-modal-balance-label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.phv2-modal-balance-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.phv2-modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
   border-radius: 6px;
-  background: white;
+  background: transparent;
+  color: #9ca3af;
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
 }
 
-.phv2-modal-type-btn.charge { color: #10b981; border-color: #10b981; }
-.phv2-modal-type-btn.charge:hover,
-.phv2-modal-type-btn.charge.active { background-color: #10b981; color: white; }
-.phv2-modal-type-btn.deduct { color: #ef4444; border-color: #ef4444; }
-.phv2-modal-type-btn.deduct:hover,
-.phv2-modal-type-btn.deduct.active { background-color: #ef4444; color: white; }
-.phv2-modal-type-btn.order { color: #3b82f6; border-color: #3b82f6; }
-.phv2-modal-type-btn.order:hover,
-.phv2-modal-type-btn.order.active { background-color: #3b82f6; color: white; }
-.phv2-modal-type-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.phv2-modal-close:hover { background: #f3f4f6; color: #374151; }
+.phv2-modal-close:disabled { cursor: not-allowed; }
 
+/* ── 유형 탭 ── */
+.phv2-modal-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.phv2-modal-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.phv2-modal-tab:hover { background: #f9fafb; }
+.phv2-modal-tab:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.phv2-modal-tab-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.phv2-modal-tab-desc {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.phv2-modal-tab.active {
+  border-color: var(--phv2-accent);
+  background: var(--phv2-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--phv2-accent);
+}
+
+.phv2-modal-tab.active .phv2-modal-tab-name { color: var(--phv2-accent); }
+.phv2-modal-tab.active .phv2-modal-tab-desc { color: #6b7280; }
+
+/* ── 본문 ── */
 .phv2-modal-content {
   flex: 1;
-  padding: 20px;
+  min-height: 300px;
+  padding: 18px 24px;
   overflow-y: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
 }
 
-/* 폼 — 라벨 위 배치 */
 .phv2-form {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  width: 100%;
-  padding: 0 20px;
-  box-sizing: border-box;
 }
 
-.phv2-form-row { display: flex; gap: 16px; }
-.phv2-form-row-half .phv2-form-item { flex: 1; }
-.phv2-form-row-third .phv2-form-item { flex: 1; }
+.phv2-form-row { display: flex; gap: 12px; }
 
 .phv2-form-item {
   display: flex;
@@ -531,105 +597,253 @@
 }
 
 .phv2-form-item label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.phv2-form-item label em {
+  font-style: normal;
+  color: #ef4444;
+}
+
+.phv2-form-optional {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .phv2-form-item input,
 .phv2-form-item textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
+  font-family: inherit;
+  color: #111827;
   box-sizing: border-box;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .phv2-form-item input:focus,
 .phv2-form-item textarea:focus {
   outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+  border-color: var(--phv2-accent);
+  box-shadow: 0 0 0 2px var(--phv2-accent-soft);
 }
 
-.phv2-form-item textarea { resize: vertical; min-height: 70px; }
+.phv2-form-item textarea { resize: vertical; min-height: 56px; }
 
-.phv2-form-quick {
+/* 금액 입력 — 통화 기호 접두 */
+.phv2-input-affix { position: relative; }
+
+.phv2-input-affix > span {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.phv2-input-affix input {
+  padding-left: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 충전 — 적용 환율 계산 줄 */
+.phv2-form-calc {
   display: flex;
-  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.phv2-form-calc strong {
+  font-size: 13px;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.phv2-form-calc-note {
+  margin-left: auto;
+  color: #9ca3af;
+}
+
+/* 차감 — 항목 프리셋 */
+.phv2-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.phv2-preset-group {
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
 }
 
-.phv2-form-quick button {
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background-color: #f9fafb;
-  color: #374151;
-  font-size: 13px;
-  cursor: pointer;
+.phv2-preset-label {
+  flex: 0 0 40px;
+  padding-top: 5px;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
-.phv2-form-quick button:hover {
-  background-color: #e5e7eb;
+.phv2-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.phv2-chip {
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.phv2-chip:hover {
   border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.phv2-chip.active {
+  border-color: var(--phv2-accent);
+  background: var(--phv2-accent-soft);
+  color: var(--phv2-accent);
+  font-weight: 600;
+}
+
+/* 차감 — 비용 상세 (접힘) */
+.phv2-fee-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+}
+
+.phv2-fee-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: left;
+}
+
+.phv2-fee-toggle:hover { color: #374151; }
+
+.phv2-fee-sum {
+  font-weight: 500;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
 }
 
 .phv2-form-hint {
   font-size: 12px;
   color: #6b7280;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
+
+.phv2-form-hint.is-error { color: #dc2626; }
 
 /* 1688 주문 — 엑셀 업로드 */
 .phv2-upload {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 0 20px;
-  box-sizing: border-box;
+  gap: 14px;
 }
 
 .phv2-upload-area {
-  width: 100%;
-  flex: 1;
-  min-height: 260px;
+  min-height: 180px;
   border: 2px dashed #d1d5db;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   background-color: #fafafa;
-  transition: all 0.2s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
-.phv2-upload-area:hover {
-  border-color: #3b82f6;
-  background-color: #f0f7ff;
+.phv2-upload-area:hover,
+.phv2-upload-area.has-file {
+  border-color: var(--phv2-accent);
+  background-color: var(--phv2-accent-soft);
 }
 
-.phv2-upload-icon { font-size: 48px; margin-bottom: 16px; }
-.phv2-upload-text { font-size: 16px; font-weight: 500; color: #374151; margin-bottom: 8px; }
-.phv2-upload-hint { font-size: 13px; color: #9ca3af; }
+.phv2-upload-icon { font-size: 36px; margin-bottom: 10px; }
+.phv2-upload-text { font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px; padding: 0 16px; text-align: center; word-break: break-all; }
+.phv2-upload-hint { font-size: 12px; color: #9ca3af; }
 
+.phv2-upload-notes {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.7;
+}
+
+/* ── 푸터: 기록 후 잔액 + 버튼 ── */
 .phv2-modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 40px;
-  border-top: 1px solid #e2e8f0;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 
+.phv2-modal-preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.phv2-modal-preview-label,
+.phv2-modal-preview-muted { color: #9ca3af; }
+
+.phv2-modal-preview-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.phv2-modal-preview-value.is-negative { color: #dc2626; }
+.phv2-modal-preview-delta.is-plus { color: #059669; }
+.phv2-modal-preview-delta.is-minus { color: #dc2626; }
+
 .phv2-modal-cancel-btn {
-  padding: 10px 32px;
+  padding: 9px 18px;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border-radius: 6px;
   background: white;
   color: #374151;
   font-size: 14px;
@@ -639,18 +853,20 @@
 .phv2-modal-cancel-btn:hover { background-color: #f3f4f6; }
 
 .phv2-modal-save-btn {
-  padding: 10px 32px;
-  border: none;
-  border-radius: 4px;
-  background-color: #4CAF50;
+  min-width: 120px;
+  padding: 9px 18px;
+  border: 1px solid var(--phv2-accent);
+  border-radius: 6px;
+  background-color: var(--phv2-accent);
   color: white;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.phv2-modal-save-btn:hover { background-color: #45a049; }
+.phv2-modal-save-btn:hover { filter: brightness(0.94); }
 .phv2-modal-save-btn:disabled,
-.phv2-modal-cancel-btn:disabled { background-color: #9ca3af; color: white; cursor: not-allowed; }
+.phv2-modal-cancel-btn:disabled { background-color: #9ca3af; border-color: #9ca3af; color: white; cursor: not-allowed; filter: none; }
 
 /* ============================================================ */
 /* hover 팝오버 (비용 분해 / 관리자비고) — 마우스 우측 고정         */
