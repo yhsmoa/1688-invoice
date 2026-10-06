@@ -9,6 +9,12 @@
       "autoPort": true
     },
     {
+      "name": "purchase-agent dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "D:/project/project_2026/purchase-agent", "run", "dev"],
+      "port": 3001
+    },
+    {
       "name": "Next.js production (start)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
