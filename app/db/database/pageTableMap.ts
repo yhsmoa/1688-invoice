@@ -211,6 +211,18 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         ],
         note: '회사 통장 원장 — 통장잔고 = 회사자산 + 고객 충전금. 고객 원장(ft_user_transactions) INSERT 트리거(trade_mirror_customer_tx)가 자동 미러링, 회사 행은 rpc trade_record/trade_record_payroll/trade_reverse. DB 관리 접근 코드 필요',
       },
+      {
+        name: '무역계좌 > invoice',
+        route: '/invoice/trade-account/invoice',
+        file: 'app/invoice/trade-account/invoice/TradeInvoice.tsx',
+        apis: [
+          { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
+          { route: '/api/trade-invoice/excel', tables: [] },
+          { route: '/api/trade-invoice/stamp', tables: [] },
+        ],
+        external: ['엑셀 처리 전용'],
+        note: 'PROFORMA INVOICE 생성 — assets/trade-invoice 템플릿에 금액·저장일을 넣어 엑셀(원본/개정본 EXCEL2)·JPG·PDF 저장. 테이블 접근 없음, DB 관리 접근 코드 필요',
+      },
     ],
   },
 

@@ -221,6 +221,12 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">무역계좌</span>
                   </Link>
                 </li>
+                {/* 무역계좌 하위 — PROFORMA INVOICE 생성 (엑셀 / JPG / PDF) */}
+                <li className="submenu-item submenu-item--child">
+                  <Link href="/invoice/trade-account/invoice" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account/invoice')}>
+                    <span className="submenu-text">invoice</span>
+                  </Link>
+                </li>
                 {/* ── 구분선 아래: 구 원장 (조회 전용) ── */}
                 <li className="submenu-divider" aria-hidden="true" />
                 <li className="submenu-item">

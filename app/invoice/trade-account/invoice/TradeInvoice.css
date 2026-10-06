@@ -1,0 +1,237 @@
+/* ============================================================
+   무역계좌 > invoice 페이지 스타일
+   셸(헤더·툴바·버튼)은 무역계좌(.ta-*) 와 같은 톤. 시트(.inv-*) 는
+   엑셀 인쇄 영역을 재현하는 영역이라 화면 장식을 넣지 않는다.
+   ============================================================ */
+
+/* ── 메인 영역 ── */
+.ti-main {
+  flex: 1;
+  padding: 24px 28px 48px;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+/* ── 페이지 헤더 ── */
+.ti-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ti-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ti-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0;
+}
+
+.ti-page-sub {
+  font-size: 12.5px;
+  color: #71717a;
+}
+
+/* ============================================================
+   툴바 — 왼쪽 금액 입력 / 오른쪽 저장 버튼
+   ============================================================ */
+.ti-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.ti-form {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ti-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ti-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3f3f46;
+  white-space: nowrap;
+}
+
+.ti-input {
+  width: 180px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #18181b;
+  text-align: right;
+  padding: 8px 12px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ti-input:focus {
+  border-color: #18181b;
+}
+
+/* 번호 · 작성일 (저장 시 들어갈 값) */
+.ti-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #71717a;
+  white-space: nowrap;
+}
+
+.ti-meta-sep {
+  color: #d4d4d8;
+}
+
+.ti-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── 버튼 ── */
+.ti-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3f3f46;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ti-btn:hover:not(:disabled) {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+/* EXCEL2 — 개정본 구분 */
+.ti-btn--alt {
+  border-style: dashed;
+}
+
+.ti-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── 알림 ── */
+.ti-alert {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-left: 3px solid #fab219;
+  color: #3f3f46;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.ti-alert--error {
+  border-left-color: #d03b3b;
+  color: #991b1b;
+}
+
+/* ============================================================
+   미리보기 영역 — 시트를 가운데 두고 좁으면 가로 스크롤
+   ============================================================ */
+.ti-preview-wrap {
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+  padding: 8px 0 24px;
+}
+
+.ti-preview-loading {
+  font-size: 13px;
+  color: #a1a1aa;
+  padding: 40px 0;
+}
+
+/* ============================================================
+   시트 (엑셀 A1:N48 재현) — 이 DOM 이 JPG/PDF 원본
+   ============================================================ */
+.inv-sheet {
+  position: relative;
+  flex: none;
+  background: #ffffff;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+  font-family: 'Century Gothic', 'URW Gothic', 'Avant Garde', sans-serif;
+  color: #000000;
+}
+
+.inv-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.inv-table td {
+  padding: 0 2px;
+  vertical-align: middle;
+  white-space: pre; /* 원본 문구의 연속 공백 유지 (예: 'CHINA   …   TEL') */
+  overflow: visible;
+  line-height: 1.2;
+}
+
+/* 문구 — 셀보다 길면 엑셀 '셀에 맞춤'처럼 가로로 줄인다 (InvoicePreview 가 측정해 scaleX 적용) */
+.inv-fit {
+  display: inline-block;
+  max-width: none;
+  transform-origin: left center;
+  vertical-align: middle;
+}
+
+td[style*='text-align: center'] .inv-fit,
+td[style*='text-align: right'] .inv-fit {
+  transform-origin: center center;
+}
+
+/* 회계 서식 — 통화는 왼쪽, 숫자는 오른쪽 */
+.inv-acc {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+/* 수량 — 오른쪽 정렬 */
+.inv-num {
+  display: block;
+  text-align: right;
+  padding-right: 6px;
+}
+
+/* 도장 (시트 좌표 기준 절대 위치) */
+.inv-stamp {
+  position: absolute;
+  pointer-events: none;
+}
