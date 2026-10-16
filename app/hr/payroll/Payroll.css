@@ -201,6 +201,36 @@
   box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
 }
 
+/* ── [부분엑셀] ↔ [취소] 버튼 ── */
+.pr-partial-btn {
+  padding: 6px 16px;
+  background: #ffffff;
+  color: #15803d;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pr-partial-btn:hover {
+  background: #f0fdf4;
+}
+
+/* 선택 모드 ON — [취소] 상태 */
+.pr-partial-btn.pr-partial-active {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+}
+
+.pr-partial-btn.pr-partial-active:hover {
+  background: #c2410c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
 /* ── [엑셀] 버튼 ── */
 .pr-excel-btn {
   padding: 6px 16px;
@@ -418,6 +448,22 @@
 .pr-td-empty:hover {
   background: #eff6ff !important;
   color: #1d4ed8;
+}
+
+/* ── 부분엑셀: 선택된 시간 셀 (시간 + h 한 쌍) ── */
+.pr-td-selected {
+  background: #ffedd5 !important;
+  color: #9a3412 !important;
+  font-weight: 700;
+}
+
+.pr-td-range.pr-td-selected {
+  box-shadow: inset 0 0 0 1px #fb923c;
+}
+
+.pr-td-clickable.pr-td-selected:hover {
+  background: #fed7aa !important;
+  color: #9a3412;
 }
 
 /* h(근무시간) 셀 */

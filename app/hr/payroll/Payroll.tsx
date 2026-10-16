@@ -142,15 +142,58 @@ const Payroll: React.FC = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   // ============================================================
-  // ④-1 엑셀 다운로드
+  // ④-1 엑셀 다운로드 / 부분엑셀(시간 셀 선택)
+  //   · 일반     : GET  — 해당 월 전체 계산
+  //   · 부분엑셀 : POST — 선택한 출근기록만 계산
   // ============================================================
   const [isExporting, setIsExporting] = useState(false);
 
+  /** 부분엑셀 모드 — true 면 시간 셀 클릭이 '선택'으로 동작 (수정 모달 대신) */
+  const [isPartialMode, setIsPartialMode] = useState(false);
+
+  /** 선택된 출근기록 id 집합 */
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  /** [부분엑셀] ↔ [취소] 토글 — 취소 시 선택 초기화 */
+  const togglePartialMode = () => {
+    if (isPartialMode) {
+      setIsPartialMode(false);
+      setSelectedIds(new Set());
+    } else {
+      setIsPartialMode(true);
+    }
+  };
+
+  /** 시간 셀 선택/해제 (다중) */
+  const toggleSelect = (recordId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(recordId)) next.delete(recordId);
+      else                    next.add(recordId);
+      return next;
+    });
+  };
+
   const handleExcelExport = async () => {
     if (isExporting) return;
+
+    // 부분엑셀 모드인데 선택이 없으면 중단
+    if (isPartialMode && selectedIds.size === 0) {
+      alert('부분엑셀로 만들 시간을 먼저 선택해 주세요.');
+      return;
+    }
+
+    const isPartial = isPartialMode && selectedIds.size > 0;
     setIsExporting(true);
     try {
-      const res = await fetch(`/api/hr/payroll/export-excel?year=${year}&month=${month}`);
+      const res = isPartial
+        ? await fetch('/api/hr/payroll/export-excel', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ year, month, recordIds: [...selectedIds] }),
+          })
+        : await fetch(`/api/hr/payroll/export-excel?year=${year}&month=${month}`);
+
       if (!res.ok) {
         const err = await res.json();
         alert(err.error || '엑셀 생성에 실패했습니다.');
@@ -160,7 +203,7 @@ const Payroll: React.FC = () => {
       const url      = URL.createObjectURL(blob);
       const a        = document.createElement('a');
       a.href         = url;
-      a.download     = `${year}년_${String(month).padStart(2, '0')}월_급여.xlsx`;
+      a.download     = `${year}년_${String(month).padStart(2, '0')}월_급여${isPartial ? '_부분' : ''}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -228,6 +271,9 @@ const Payroll: React.FC = () => {
     setRecords([]);
     setModal(null);
     setIsSummaryOpen(false);
+    // 월이 바뀌면 이전 달 기록 id 가 남지 않도록 부분엑셀 선택 해제
+    setIsPartialMode(false);
+    setSelectedIds(new Set());
     try {
       const res    = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
       const result = await res.json();
@@ -496,7 +542,7 @@ const Payroll: React.FC = () => {
                 </button>
               </div>
 
-              {/* [정리] + [엑셀] 버튼: 데이터 있을 때만 표시 */}
+              {/* [정리] + [부분엑셀] + [엑셀] 버튼: 데이터 있을 때만 표시 */}
               {!isLoading && employees.length > 0 && (
                 <div className="pr-nav-actions">
                   <button
@@ -504,6 +550,15 @@ const Payroll: React.FC = () => {
                     onClick={() => setIsSummaryOpen(true)}
                   >
                     정리
+                  </button>
+                  {/* [부분엑셀] ↔ [취소]: 켜면 시간 셀을 다중 선택할 수 있다 */}
+                  <button
+                    className={`pr-partial-btn${isPartialMode ? ' pr-partial-active' : ''}`}
+                    onClick={togglePartialMode}
+                  >
+                    {isPartialMode
+                      ? `취소${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`
+                      : '부분엑셀'}
                   </button>
                   <button
                     className="pr-excel-btn"
@@ -600,20 +655,32 @@ const Payroll: React.FC = () => {
                           </td>
 
                           {/* 직원별 시간대 + h 셀
-                              - 기록 있으면: 클릭 → 수정 모달
-                              - 기록 없으면: 클릭 → 신규 추가 모달 */}
+                              - 일반 모드   : 기록 있으면 수정 모달 / 없으면 신규 추가 모달
+                              - 부분엑셀 모드: 기록 있는 셀만 선택/해제 (빈 셀은 클릭 불가) */}
                           {employees.flatMap((emp) => {
                             const rec = recordMap.get(day)?.get(emp.id);
                             const groupStart = groupStartIds.has(emp.id) ? ' pr-group-start' : '';
+
+                            // 부분엑셀 모드에서는 기록 있는 셀만 클릭 대상
+                            const clickable  = isPartialMode ? !!rec : true;
+                            const isSelected = !!rec && selectedIds.has(rec.id);
+                            const selected   = isSelected ? ' pr-td-selected' : '';
+                            // 빈 셀 hover 강조는 일반 모드에서만
+                            const empty      = !rec && !isPartialMode ? ' pr-td-empty' : '';
+
+                            const onCellClick = isPartialMode
+                              ? (rec ? () => toggleSelect(rec.id) : undefined)
+                              : (rec ? () => openModal(emp, rec) : () => openCreateModal(emp, day));
+
                             return [
                               <td
                                 key={`${emp.id}-r`}
-                                className={`pr-td-range pr-td-clickable${rec ? '' : ' pr-td-empty'}${groupStart}`}
-                                onClick={rec ? () => openModal(emp, rec) : () => openCreateModal(emp, day)}
+                                className={`pr-td-range${clickable ? ' pr-td-clickable' : ''}${empty}${groupStart}${selected}`}
+                                onClick={onCellClick}
                               >
                                 {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
                               </td>,
-                              <td key={`${emp.id}-h`} className="pr-td-h">
+                              <td key={`${emp.id}-h`} className={`pr-td-h${selected}`}>
                                 {rec ? minutesToHours(rec.total_minutes) : ''}
                               </td>,
                             ];

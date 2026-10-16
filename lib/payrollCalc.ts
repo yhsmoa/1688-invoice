@@ -109,3 +109,31 @@ export async function fetchPayrollMonth(year: number, month: number): Promise<Pa
 
   return { year, month, daysInMonth, startDate, endDate, records, employees, minutesByEmployee };
 }
+
+// ============================================================
+// 선택 출근기록만 추리기 (부분 급여 계산)
+// ============================================================
+
+/**
+ * 월 급여 데이터에서 지정한 출근기록 id 만 남긴 결과를 반환한다.
+ *   · 급여 엑셀 [부분엑셀] — 선택한 시간 셀만 계산할 때 사용
+ *   · 선택된 기록이 없는 직원은 employees 에서 제외
+ *   · year/month/daysInMonth/startDate/endDate 는 원본 그대로 유지
+ */
+export function filterPayrollByRecords(month: PayrollMonth, recordIds: string[]): PayrollMonth {
+  const idSet = new Set(recordIds);
+  const records = month.records.filter((rec) => idSet.has(rec.id));
+
+  const minutesByEmployee = new Map<string, number>();
+  for (const rec of records) {
+    minutesByEmployee.set(
+      rec.employee_id,
+      (minutesByEmployee.get(rec.employee_id) ?? 0) + (rec.total_minutes ?? 0)
+    );
+  }
+
+  // 기록이 선택된 직원만 (fetchPayrollMonth 의 이름순 정렬 유지)
+  const employees = month.employees.filter((emp) => minutesByEmployee.has(emp.id));
+
+  return { ...month, records, employees, minutesByEmployee };
+}
