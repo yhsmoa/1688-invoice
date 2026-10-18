@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import ComboboxInput from './ComboboxInput';
+import { BANK_NAMES } from '../utils/bankNames';
 import {
   EDIT_FIELDS,
   DATE_FIELDS,
@@ -17,6 +19,7 @@ import {
 // 직원 입력 필드 (추가 모달 · 상세 수정 공용) — 2열 그리드
 //   직책: 드롭박스 (매니저 / 검수 / 포장 / 단기 아르바이트)
 //     선택지에 없는 기존 값(예: '기업')은 현재 값으로만 표시 — 저장해도 그대로 유지된다
+//   은행명: 입력형 + 드롭박스 (utils/bankNames.ts) — 목록 외 값도 직접 입력 가능
 // ============================================================
 interface EmployeeFormFieldsProps {
   form: EditableFields;
@@ -65,6 +68,17 @@ const EmployeeFormFields: React.FC<EmployeeFormFieldsProps> = ({ form, onChange,
             <option key={o.value} value={o.value}>{roleLabel(o.value)}</option>
           ))}
         </select>
+      );
+    }
+
+    if (field === 'bank_name') {
+      return (
+        <ComboboxInput
+          className="em-form-input"
+          value={(form.bank_name as string) || ''}
+          options={BANK_NAMES}
+          onChange={(v) => onChange('bank_name', v)}
+        />
       );
     }
 

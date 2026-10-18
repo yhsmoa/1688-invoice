@@ -1,0 +1,77 @@
+/* ============================================================ */
+/* 입력형 + 드롭박스 (콤보박스)                                    */
+/*   입력칸 스타일은 호출 측 className(.em-form-input)을 그대로 쓴다 */
+/* ============================================================ */
+.cb-wrap {
+  position: relative;
+}
+
+.cb-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 32px;
+}
+
+/* ── 열기/닫기 버튼 ── */
+.cb-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cb-toggle:hover {
+  color: #475569;
+}
+
+/* ============================================================ */
+/* 선택지 목록                                                    */
+/* ============================================================ */
+.cb-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+
+.cb-option {
+  padding: 7px 12px;
+  font-size: 14px;
+  color: #1e293b;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cb-option-active {
+  background: #eff6ff;
+}
+
+.cb-option-current {
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+/* ── 일치 구간 강조 ── */
+.cb-match {
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+}
