@@ -262,22 +262,29 @@ export function useFtFulfillmentSummary(items: FtOrderItem[], userId: string) {
 //
 // · data 변경 시 첫 페이지로 리셋
 // · paginatedData 는 useMemo 로 slice
-// · goToNextPage / goToPrevPage / setCurrentPage 로 이동
+// · goToFirstPage / goToLastPage / setCurrentPage 로 이동 ([처음] [끝])
+// · showAll=true 면 페이지 없이 전체 (검색 결과 표시용)
 // ============================================================
-export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100) {
+export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100, showAll = false) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+  const totalPages = showAll ? 1 : Math.max(1, Math.ceil(data.length / itemsPerPage));
 
   // 데이터 변경 시 첫 페이지로 리셋
   useEffect(() => {
     setCurrentPage(1);
   }, [data.length]);
 
+  // 전체 표시 ↔ 페이지 표시 전환 시에도 첫 페이지로
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showAll]);
+
   const paginatedData = useMemo(() => {
+    if (showAll) return data;
     const start = (currentPage - 1) * itemsPerPage;
     return data.slice(start, start + itemsPerPage);
-  }, [data, currentPage, itemsPerPage]);
+  }, [data, currentPage, itemsPerPage, showAll]);
 
   const goToNextPage = useCallback(() => {
     setCurrentPage((p) => Math.min(p + 1, totalPages));
@@ -287,6 +294,9 @@ export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100) {
     setCurrentPage((p) => Math.max(p - 1, 1));
   }, []);
 
+  const goToFirstPage = useCallback(() => setCurrentPage(1), []);
+  const goToLastPage = useCallback(() => setCurrentPage(totalPages), [totalPages]);
+
   return {
     currentPage,
     setCurrentPage,
@@ -294,6 +304,8 @@ export function useOrderStatusPagination<T>(data: T[], itemsPerPage = 100) {
     totalPages,
     goToNextPage,
     goToPrevPage,
+    goToFirstPage,
+    goToLastPage,
   };
 }
 

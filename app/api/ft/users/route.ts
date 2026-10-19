@@ -9,6 +9,11 @@ export const dynamic = 'force-dynamic';
 // ============================================================
 // GET /api/ft/users
 // ft_users 테이블에서 사용자 목록 조회
+//
+// 정렬 = 사업자 드롭박스 표시 순서 (이 API 를 쓰는 전 페이지 공통)
+//   1) display_order 오름차순 (BZ → BO → BR → HI → MB …)
+//   2) display_order 가 비어 있는 새 사업자는 그 뒤에 가입 순(created_at)
+//   순서 변경은 DB 값만 바꾸면 된다 — supabase/users/001_ft_users_display_order.sql
 // ============================================================
 // 클라이언트로 내보내지 않는 민감 컬럼
 const SENSITIVE = new Set(['password']);
@@ -20,7 +25,8 @@ export async function GET() {
     const { data, error } = await supabase
       .from('ft_users')
       .select('*')
-      .order('user_code', { ascending: true });
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
 

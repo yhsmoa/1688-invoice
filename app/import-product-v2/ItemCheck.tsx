@@ -22,6 +22,7 @@ import {
   useFtOrderItems,
   useFtSearch,
   useFtPagination,
+  SEARCH_SHOW_ALL_MAX,
   useFtFulfillmentSummary,
   type FtOrderItem,
 } from './hooks/useFtData';
@@ -123,15 +124,21 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 4) 페이지네이션
+  //    처음 화면은 페이지(20건) 표시. 검색했을 때는 결과 전체를 한 화면에 —
+  //    단 SEARCH_SHOW_ALL_MAX 를 넘으면 렌더·이미지 부담 때문에 페이지 표시 유지.
   // ============================================================
+  const isSearchActive =
+    searchType === '배송번호' ? deliveryItems !== null : searchTerm.trim() !== '';
+  const showAllResults = isSearchActive && filteredItems.length <= SEARCH_SHOW_ALL_MAX;
+
   const {
     currentPage,
     setCurrentPage,
     paginatedData,
     totalPages,
-    goToNextPage,
-    goToPrevPage,
-  } = useFtPagination(filteredItems);
+    goToFirstPage,
+    goToLastPage,
+  } = useFtPagination(filteredItems, undefined, showAllResults);
 
   // ============================================================
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
@@ -998,14 +1005,28 @@ const ItemCheck: React.FC = () => {
             {/* ============================================================ */}
             {/* 페이지네이션 */}
             {/* ============================================================ */}
-            {!loading && filteredItems.length > 0 && (
+            {/* 검색 결과 전체 표시 중 — 페이지 버튼 대신 건수만 */}
+            {!loading && showAllResults && filteredItems.length > 0 && (
               <div className="v2-pagination">
+                <span className="v2-page-info">
+                  {t('importProductV2.pagination.searchAll', { count: filteredItems.length })}
+                </span>
+              </div>
+            )}
+
+            {!loading && !showAllResults && filteredItems.length > 0 && (
+              <div className="v2-pagination">
+                {isSearchActive && (
+                  <span className="v2-page-info">
+                    {t('importProductV2.pagination.searchTooMany', { count: filteredItems.length, max: SEARCH_SHOW_ALL_MAX })}
+                  </span>
+                )}
                 <button
-                  onClick={goToPrevPage}
+                  onClick={goToFirstPage}
                   disabled={currentPage === 1}
                   className="v2-pagination-button"
                 >
-                  {t('importProductV2.pagination.previous')}
+                  {t('importProductV2.pagination.first')}
                 </button>
 
                 <div className="v2-page-numbers">
@@ -1034,11 +1055,11 @@ const ItemCheck: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={goToNextPage}
+                  onClick={goToLastPage}
                   disabled={currentPage === totalPages}
                   className="v2-pagination-button"
                 >
-                  {t('importProductV2.pagination.next')}
+                  {t('importProductV2.pagination.last')}
                 </button>
 
                 <span className="v2-page-info">

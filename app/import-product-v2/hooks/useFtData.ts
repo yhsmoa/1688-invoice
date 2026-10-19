@@ -343,22 +343,38 @@ export function useFtFulfillmentSummary(items: FtOrderItem[], userId: string) {
 }
 
 // ============================================================
-// useFtPagination — 간단한 페이지네이션
+// 검색 결과 전체 표시 상한
+//   검색(배송번호·일반·주문번호·비고)했을 때는 페이지 없이 결과 전체를 보여 준다.
+//   단, 결과가 이 건수를 넘으면 행 렌더·이미지 로딩이 무거워져 페이지 표시를 유지한다.
+//   상품입고 V2 · 주문상태 V2 공용
 // ============================================================
-export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20) {
+export const SEARCH_SHOW_ALL_MAX = 500;
+
+// ============================================================
+// useFtPagination — 간단한 페이지네이션
+//   showAll=true 면 페이지 없이 전체 (검색 결과 표시용)
+//   [처음] [끝] 이동: goToFirstPage / goToLastPage
+// ============================================================
+export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20, showAll = false) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+  const totalPages = showAll ? 1 : Math.max(1, Math.ceil(data.length / itemsPerPage));
 
   // 데이터 변경 시 첫 페이지로 리셋
   useEffect(() => {
     setCurrentPage(1);
   }, [data.length]);
 
+  // 전체 표시 ↔ 페이지 표시 전환 시에도 첫 페이지로
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showAll]);
+
   const paginatedData = useMemo(() => {
+    if (showAll) return data;
     const start = (currentPage - 1) * itemsPerPage;
     return data.slice(start, start + itemsPerPage);
-  }, [data, currentPage, itemsPerPage]);
+  }, [data, currentPage, itemsPerPage, showAll]);
 
   const goToNextPage = useCallback(() => {
     setCurrentPage((p) => Math.min(p + 1, totalPages));
@@ -368,6 +384,9 @@ export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20) {
     setCurrentPage((p) => Math.max(p - 1, 1));
   }, []);
 
+  const goToFirstPage = useCallback(() => setCurrentPage(1), []);
+  const goToLastPage = useCallback(() => setCurrentPage(totalPages), [totalPages]);
+
   return {
     currentPage,
     setCurrentPage,
@@ -375,5 +394,7 @@ export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20) {
     totalPages,
     goToNextPage,
     goToPrevPage,
+    goToFirstPage,
+    goToLastPage,
   };
 }

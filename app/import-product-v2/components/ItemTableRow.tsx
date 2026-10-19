@@ -134,6 +134,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
               alt="상품 이미지"
               className="v2-product-thumbnail"
+              // 검색 결과 전체 표시 시 화면 밖 행의 이미지는 스크롤해 올 때 불러온다
+              loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = '/placeholder.svg';
               }}
@@ -148,6 +150,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               <img
                 src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
                 alt="상품 이미지 미리보기"
+                loading="lazy"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                 }}

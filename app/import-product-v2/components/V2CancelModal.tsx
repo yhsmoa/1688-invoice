@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { calcServiceFee, calcTotalRefund } from '../../../lib/cancelAmounts';
@@ -173,6 +173,41 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
       return Math.max(0, arrival - existingReturn);
     },
     [cancelType, arrivalMap, cancelMap, returnMap]
+  );
+
+  // ============================================================
+  // Enter 이동 — 수량 → 가격 → 배송비 → (다음 상품의) 수량
+  //   서비스료·환불금·사유는 이동 대상이 아니다. 마지막 상품의 배송비에서는 멈춘다.
+  // ============================================================
+  const NAV_FIELDS = ['qty', 'price_cny', 'delivery_price_cny'] as const;
+  const navRefs = useRef(new Map<string, HTMLInputElement>());
+  const navKey = (itemId: string, field: (typeof NAV_FIELDS)[number]) => `${itemId}:${field}`;
+
+  const registerNav = useCallback(
+    (itemId: string, field: (typeof NAV_FIELDS)[number]) => (el: HTMLInputElement | null) => {
+      const key = navKey(itemId, field);
+      if (el) navRefs.current.set(key, el);
+      else navRefs.current.delete(key);
+    },
+    []
+  );
+
+  const handleNavKeyDown = useCallback(
+    (itemId: string, field: (typeof NAV_FIELDS)[number]) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const order = items.flatMap((it) => NAV_FIELDS.map((f) => navKey(it.id, f)));
+      const next = order[order.indexOf(navKey(itemId, field)) + 1];
+      const el = next ? navRefs.current.get(next) : undefined;
+      if (el) {
+        el.focus();
+        el.select();
+      } else {
+        (e.target as HTMLInputElement).blur();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items]
   );
 
   // ============================================================
@@ -413,6 +448,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                           min={1}
                           max={limit !== Infinity ? limit : undefined}
                           placeholder="수량 입력"
+                          ref={registerNav(item.id, 'qty')}
+                          onKeyDown={handleNavKeyDown(item.id, 'qty')}
                           onChange={(e) => updateField(item.id, 'qty', e.target.value)}
                         />
                       </div>
@@ -426,6 +463,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                           value={data.price_cny}
                           placeholder="0.00"
                           step="0.01"
+                          ref={registerNav(item.id, 'price_cny')}
+                          onKeyDown={handleNavKeyDown(item.id, 'price_cny')}
                           onChange={(e) => updateField(item.id, 'price_cny', e.target.value)}
                         />
                       </div>
@@ -439,6 +478,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                           value={data.delivery_price_cny}
                           placeholder="0.00"
                           step="0.01"
+                          ref={registerNav(item.id, 'delivery_price_cny')}
+                          onKeyDown={handleNavKeyDown(item.id, 'delivery_price_cny')}
                           onChange={(e) => updateField(item.id, 'delivery_price_cny', e.target.value)}
                         />
                       </div>

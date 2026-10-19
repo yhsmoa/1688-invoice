@@ -17,6 +17,7 @@ import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
+import { SEARCH_SHOW_ALL_MAX } from '../import-product-v2/hooks/useFtData';
 import ImportUploadButtons, { V2MigrationButton } from '../import-product-v2/components/ImportUploadButtons';
 import { useWorkers } from '../import-product-v2/hooks/useWorkers';
 import { useImportUploads } from '../import-product-v2/hooks/useImportUploads';
@@ -165,14 +166,17 @@ const OrderStatusV2: React.FC = () => {
   }, [sortedItems, searchFilteredIds, alertOnly, deliveryAlertMap]);
 
   // ── 페이지네이션 (100개/page) — filteredItems 기준 ──
+  //    검색했을 때는 결과 전체를 한 화면에 (SEARCH_SHOW_ALL_MAX 초과 시엔 페이지 유지)
+  const isSearchActive = searchFilteredIds !== null;
+  const showAllResults = isSearchActive && filteredItems.length <= SEARCH_SHOW_ALL_MAX;
   const {
     currentPage,
     setCurrentPage,
     paginatedData,
     totalPages,
-    goToNextPage,
-    goToPrevPage,
-  } = useOrderStatusPagination(filteredItems, 100);
+    goToFirstPage,
+    goToLastPage,
+  } = useOrderStatusPagination(filteredItems, 100, showAllResults);
 
   // ── 세트 그룹 키 배열 (paginatedData 순서 기준) ──
   //    렌더 시 thisKey === nextKey 인 행에 '--same-group' 클래스 부여 → 행 사이 border 제거
@@ -917,14 +921,26 @@ const OrderStatusV2: React.FC = () => {
             {/* ============================================================ */}
             {/* 페이지네이션 (100개/page) */}
             {/* ============================================================ */}
-            {!loading && filteredItems.length > 0 && (
+            {/* 검색 결과 전체 표시 중 — 페이지 버튼 대신 건수만 */}
+            {!loading && showAllResults && filteredItems.length > 0 && (
               <div className="order-status-v2-pagination">
+                <span className="order-status-v2-page-info">검색 결과 {filteredItems.length}건 (전체 표시)</span>
+              </div>
+            )}
+
+            {!loading && !showAllResults && filteredItems.length > 0 && (
+              <div className="order-status-v2-pagination">
+                {isSearchActive && (
+                  <span className="order-status-v2-page-info">
+                    검색 결과 {filteredItems.length}건 — {SEARCH_SHOW_ALL_MAX}건을 넘어 페이지로 나눠 표시합니다
+                  </span>
+                )}
                 <button
-                  onClick={goToPrevPage}
+                  onClick={goToFirstPage}
                   disabled={currentPage === 1}
                   className="order-status-v2-pagination-button"
                 >
-                  이전
+                  처음
                 </button>
 
                 <div className="order-status-v2-page-numbers">
@@ -953,11 +969,11 @@ const OrderStatusV2: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={goToNextPage}
+                  onClick={goToLastPage}
                   disabled={currentPage === totalPages}
                   className="order-status-v2-pagination-button"
                 >
-                  다음
+                  끝
                 </button>
 
                 <span className="order-status-v2-page-info">
