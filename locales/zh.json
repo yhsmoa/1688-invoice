@@ -318,6 +318,68 @@
       "invoicePrintError": "运单打印时发生错误。"
     }
   },
+  "importProductV3": {
+    "title": "商品入库 V3",
+    "showAll": "查看全部",
+    "searchFirst": "请搜索配送单号或勾选[查看全部]。",
+    "noResult": "没有可显示的商品。",
+    "card": {
+      "options": "规格 {{count}}",
+      "remaining": "剩余 {{remaining}} / {{total}}",
+      "set": "SET",
+      "done": "入库完成"
+    },
+    "modal": {
+      "offer": "商品",
+      "notInDelivery": "不在本次配送中",
+      "arrivedOf": "入库 {{arrived}} / 订购 {{total}}",
+      "remainingOf": "剩余 {{remaining}} (订购 {{total}})",
+      "selectOption": "请在左侧选择规格。",
+      "reallocHint": "修改规格数量后，各行数量将重新分配。",
+      "overLimit": "超过可入库数量({{max}})。",
+      "unsavedClose": "有未保存的作业数量。确定关闭吗？",
+      "rows": "订单 {{count}}条",
+      "setPart": "SET {{seq}}/{{total}}",
+      "finishOptionFirst": "请先用[全部]或[保存]完成 {{option}}，再输入其他规格。"
+    },
+    "footer": {
+      "summary": "作业 {{options}}个规格 · 入库 {{qty}}件",
+      "sticker": "条码标签 {{count}}张",
+      "stickerSkipped": "套装去重 −{{count}}张",
+      "care": "洗唛 {{count}}张",
+      "stickerNone": "套装标签已打印 (0张)",
+      "skipped": "跳过条码标签 (套装已打印)",
+      "saveOk": "保存完成",
+      "stickerKeep": "套装条码标签两种颜色共用 — 与先到的颜色放在一起保管"
+    },
+    "stickerPlan": {
+      "title": "套装条码标签计算",
+      "product": "套装 (product_no)",
+      "cap": "最多",
+      "target": "需要",
+      "printed": "已打印",
+      "toPrint": "本次打印",
+      "override": "手动指定",
+      "auto": "自动",
+      "hint": "2026-09-08 之前(BarTender)打印的没有记录，不会计入[已打印]。如果已经贴好标签，请把手动指定改为0。",
+      "printedLine": "{{at}} · {{by}} · PC-{{station}} · {{color}} 入库时打印",
+      "printedUnknown": "无法确认打印时间",
+      "setCount": "{{count}}套",
+      "more": "另外 {{count}}条",
+      "reprintConfirm": "套装条码标签 {{count}}套 已经打印过。\n{{details}}\n\n仍要重新打印吗？\n[确定] 重新打印    [取消] 跳过"
+    },
+    "alerts": {
+      "selectWorker": "请选择Worker。",
+      "selectPcNo": "请选择PC-NO。",
+      "selectUser": "请选择用户。",
+      "nothingToSave": "没有输入作业数量。",
+      "userMismatch": "包含与所选用户不同用户的订单，无法保存。\n(订单用户: {{codes}})",
+      "limitChanged": "由于其他作业，可入库数量已变更。请重新确认。\n{{list}}",
+      "selectRows": "请在右侧表格中选择项目。",
+      "stickerDataFailed": "无法加载套装标签计算所需的数据。",
+      "noPrintable": "没有带条码的项目。"
+    }
+  },
   "shipmentV2": {
     "title": "发货 V2 😈",
     "selectUser": "选择用户",

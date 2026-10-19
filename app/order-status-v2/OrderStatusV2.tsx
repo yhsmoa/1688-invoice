@@ -17,6 +17,9 @@ import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
+import ImportUploadButtons, { V2MigrationButton } from '../import-product-v2/components/ImportUploadButtons';
+import { useWorkers } from '../import-product-v2/hooks/useWorkers';
+import { useImportUploads } from '../import-product-v2/hooks/useImportUploads';
 import {
   DELIVERY_STATUS_KR,
   formatDeliveryDisplay,
@@ -73,6 +76,20 @@ const OrderStatusV2: React.FC = () => {
 
   // 상태 필터 (PROCESSING 기본 / ALL 전체)
   const [statusMode, setStatusMode] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
+
+  // ============================================================
+  // 2-1) 주문 데이터 업로드·다운로드 — [V2 이전] [1688 XLSX] [XLSX 다운] [주문 ID]
+  //      상품입고 V3 에서 옮겨 온 버튼. 핸들러는 import-product-v2/hooks/useImportUploads.ts
+  //      (V2 이전은 N열 입고 데이터의 담당자 저장에 Worker 가 필요)
+  //      [배송상황 csv] 는 이 페이지의 DeliveryStatusTools 가 이미 있어 숨긴다.
+  // ============================================================
+  const workers = useWorkers();
+  const [selectedWorker, setSelectedWorker] = useState('');
+  const refetchForUploads = useCallback(
+    (userId: string) => fetchItems(userId, statusMode),
+    [fetchItems, statusMode]
+  );
+  const uploads = useImportUploads({ selectedUserId, selectedWorker, workers, fetchItems: refetchForUploads });
 
   // 검색 state — filteredItems 계산 전에 선언 (TDZ 회피)
   const [searchInput, setSearchInput] = useState('');
@@ -582,7 +599,28 @@ const OrderStatusV2: React.FC = () => {
 
             {/* ── 타이틀 + 사용자 드롭다운 ── */}
             <div className="order-status-v2-header">
-              <h1 className="order-status-v2-title">주문상태 V2 😈</h1>
+              <div className="order-status-v2-header-left">
+                <h1 className="order-status-v2-title">주문상태 V2 😈</h1>
+                {/* [V2 이전] — Worker 선택 후 활성화 */}
+                <select
+                  className="order-status-v2-user-dropdown os-v2-worker-dropdown"
+                  value={selectedWorker}
+                  onChange={(e) => setSelectedWorker(e.target.value)}
+                >
+                  <option value="">Worker</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                      {w.name} {w.name_kr}
+                    </option>
+                  ))}
+                </select>
+                <V2MigrationButton
+                  uploads={uploads}
+                  selectedUserId={selectedUserId}
+                  selectedWorker={selectedWorker}
+                  className="os-v2-delivery-tool-btn"
+                />
+              </div>
               <div className="order-status-v2-header-right">
                 {items.length > 0 && (
                   <span className="order-status-v2-count">
@@ -593,6 +631,15 @@ const OrderStatusV2: React.FC = () => {
                 )}
                 {/* 배송상황 갱신 — [배송상황 콘솔] 스크립트 복사 / [배송상황 csv] 업로드 */}
                 <DeliveryStatusTools onUploaded={reloadDeliveryStatus} />
+                {/* 1688 XLSX / XLSX 다운 / 주문 ID */}
+                <div className="os-v2-delivery-tools">
+                  <ImportUploadButtons
+                    uploads={uploads}
+                    selectedUserId={selectedUserId}
+                    buttonClassName="os-v2-delivery-tool-btn"
+                    hideCsv
+                  />
+                </div>
                 <select
                   className="order-status-v2-user-dropdown"
                   value={selectedUserId}

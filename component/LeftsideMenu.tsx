@@ -175,6 +175,12 @@ const LeftsideMenu: React.FC = () => {
             </Link>
           </li>
           <li className="menu-item">
+            <Link href="/import-product-v3" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v3')}>
+              <span className="menu-icon">{Icons.importProduct}</span>
+              <span className="menu-text">상품입고V3</span>
+            </Link>
+          </li>
+          <li className="menu-item">
             <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
               <span className="menu-icon">{Icons.exportProduct}</span>
               <span className="menu-text">상품출고</span>

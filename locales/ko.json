@@ -324,6 +324,68 @@
       "invoicePrintError": "송장 출력 중 오류가 발생했습니다."
     }
   },
+  "importProductV3": {
+    "title": "상품입고 V3",
+    "showAll": "전체 보기",
+    "searchFirst": "배송번호를 검색하거나 [전체 보기]를 체크하세요.",
+    "noResult": "표시할 상품이 없습니다.",
+    "card": {
+      "options": "옵션 {{count}}",
+      "remaining": "잔여 {{remaining}} / {{total}}",
+      "set": "SET",
+      "done": "입고 완료"
+    },
+    "modal": {
+      "offer": "오퍼",
+      "notInDelivery": "이 배송에 없음",
+      "arrivedOf": "입고 {{arrived}} / 주문 {{total}}",
+      "remainingOf": "잔여 {{remaining}} (주문 {{total}})",
+      "selectOption": "왼쪽에서 옵션을 선택하세요.",
+      "reallocHint": "옵션 수량을 바꾸면 행별 수량이 다시 배분됩니다.",
+      "overLimit": "입고 가능 수량({{max}})을 초과했습니다.",
+      "unsavedClose": "저장하지 않은 작업 수량이 있습니다. 닫을까요?",
+      "rows": "주문 {{count}}건",
+      "setPart": "SET {{seq}}/{{total}}",
+      "finishOptionFirst": "{{option}} 을(를) 먼저 [모두] 또는 [저장]으로 끝낸 뒤 다른 옵션을 입력하세요."
+    },
+    "footer": {
+      "summary": "작업 {{options}}옵션 · 입고 {{qty}}개",
+      "sticker": "라벨 스티커 {{count}}장",
+      "stickerSkipped": "세트 중복 제외 −{{count}}장",
+      "care": "케어 라벨 {{count}}장",
+      "stickerNone": "세트 스티커 출력됨 (0장)",
+      "skipped": "라벨 스티커 건너뜀 (세트 출력됨)",
+      "saveOk": "저장 완료",
+      "stickerKeep": "세트 스티커는 두 색상 공용 — 먼저 온 색상 묶음과 함께 보관"
+    },
+    "stickerPlan": {
+      "title": "세트 라벨 스티커 계산",
+      "product": "세트 (product_no)",
+      "cap": "최대",
+      "target": "필요",
+      "printed": "출력됨",
+      "toPrint": "이번 출력",
+      "override": "직접 지정",
+      "auto": "자동",
+      "hint": "2026-09-08 이전(BarTender) 출력분은 기록이 없어 [출력됨]에 잡히지 않습니다. 이미 스티커가 있으면 직접 지정을 0으로 바꾸세요.",
+      "printedLine": "{{at}} · {{by}} · PC-{{station}} · {{color}} 입고 때 출력",
+      "printedUnknown": "출력 시각 확인 불가",
+      "setCount": "{{count}}세트",
+      "more": "외 {{count}}건",
+      "reprintConfirm": "세트 라벨 스티커 {{count}}세트는 이미 출력됐습니다.\n{{details}}\n\n그래도 다시 출력하시겠습니까?\n[확인] 다시 출력    [취소] 건너뛰기"
+    },
+    "alerts": {
+      "selectWorker": "Worker를 선택해주세요.",
+      "selectPcNo": "PC-NO를 선택해주세요.",
+      "selectUser": "사용자를 선택해주세요.",
+      "nothingToSave": "입력된 작업 수량이 없습니다.",
+      "userMismatch": "선택한 사용자와 다른 사용자의 주문이 포함되어 있어 저장할 수 없습니다.\n(주문 사용자: {{codes}})",
+      "limitChanged": "다른 작업으로 입고 가능 수량이 바뀌었습니다. 다시 확인하세요.\n{{list}}",
+      "selectRows": "오른쪽 표에서 항목을 선택해주세요.",
+      "stickerDataFailed": "세트 스티커 계산에 필요한 데이터를 불러오지 못했습니다.",
+      "noPrintable": "바코드가 있는 항목이 없습니다."
+    }
+  },
   "shipmentV2": {
     "title": "쉽먼트 V2 😈",
     "selectUser": "사용자 선택",
