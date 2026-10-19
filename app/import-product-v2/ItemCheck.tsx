@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // ============================================================
@@ -40,23 +40,11 @@ import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
 import { printLabels, type AudienceTemplates, type PrintLabelResult } from './utils/printLabels';
-import { mergeAndPrint } from '../../lib/invoicePdfClient';
+import ImportUploadButtons, { V2MigrationButton } from './components/ImportUploadButtons';
+import { useWorkers, PC_NO_OPTIONS } from './hooks/useWorkers';
+import { useImportUploads } from './hooks/useImportUploads';
+import { usePersonalInvoicePrint } from './hooks/usePersonalInvoicePrint';
 import type { LabelType } from '../../lib/labelTypes';
-
-// ============================================================
-// Worker 타입 (invoiceManager_employees)
-// ============================================================
-interface Worker {
-  id: string;
-  name: string;
-  name_kr: string;
-  role: string;
-}
-
-// ============================================================
-// PC-NO 옵션 (라벨 프린터 번호)
-// ============================================================
-const PC_NO_OPTIONS = [1, 2, 3, 4];
 
 const ItemCheck: React.FC = () => {
   const { t } = useTranslation();
@@ -154,94 +142,15 @@ const ItemCheck: React.FC = () => {
   // ============================================================
   // 5) Worker / PC-NO 드롭박스
   // ============================================================
-  const [workers, setWorkers] = useState<Worker[]>([]);
+  const workers = useWorkers();
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedPcNo, setSelectedPcNo] = useState<number | null>(null);
 
-  // Worker 목록 로드 (마운트 시 1회)
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/hr/workers');
-        const json = await res.json();
-        if (json.success) setWorkers(json.data);
-      } catch (err) {
-        console.error('workers 조회 오류:', err);
-      }
-    })();
-  }, []);
-
   // ============================================================
-  // 5-2) [V2 이전] 엑셀 업로드 (ft_orders + ft_order_items 마이그레이션)
+  // 5-2) 업로드·다운로드 액션 — [V2 이전] / 1688 XLSX / 배송상황 csv / XLSX 다운 / 주문 ID
+  //      핸들러·상태는 hooks/useImportUploads.ts (상품입고 V3 공용)
   // ============================================================
-  const v2MigrationFileInputRef = useRef<HTMLInputElement>(null);
-  const [isV2Migrating, setIsV2Migrating] = useState(false);
-
-  const handleV2MigrationClick = useCallback(() => {
-    if (!selectedUserId) {
-      alert('사용자를 선택해주세요.');
-      return;
-    }
-    if (!selectedWorker) {
-      alert('Worker를 선택해주세요. (N열 입고 데이터 저장에 필요)');
-      return;
-    }
-    v2MigrationFileInputRef.current?.click();
-  }, [selectedUserId, selectedWorker]);
-
-  const handleV2MigrationFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // selectedWorker(display 문자열)에서 실제 worker 객체 역조회
-    const worker = workers.find((w) => `${w.name} ${w.name_kr}` === selectedWorker);
-    if (!worker) {
-      alert('선택한 Worker 정보를 찾을 수 없습니다. 다시 선택해주세요.');
-      e.target.value = '';
-      return;
-    }
-
-    setIsV2Migrating(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('user_id', selectedUserId);
-      fd.append('worker_id', worker.id);
-      fd.append('worker_name', worker.name);
-
-      const res = await fetch('/api/ft/v2-migration/upload-xlsx', {
-        method: 'POST',
-        body: fd,
-      });
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        // 사전 중복 케이스 — duplicates 배열 안내
-        if (Array.isArray(json.duplicates) && json.duplicates.length > 0) {
-          const preview = json.duplicates.slice(0, 10).join(', ');
-          const extra = json.duplicates.length > 10 ? ` 외 ${json.duplicates.length - 10}건` : '';
-          alert(`⚠️ 이미 존재하는 order_no가 있어 작업을 중단합니다.\n\n${preview}${extra}`);
-        } else {
-          alert(`❌ 업로드 실패: ${json.error || '알 수 없는 오류'}${json.details ? `\n${json.details}` : ''}`);
-        }
-        return;
-      }
-
-      alert(
-        `✅ V2 이전 완료!\n` +
-        `ft_orders: ${json.orderCount}건\n` +
-        `ft_order_items: ${json.itemCount}건\n` +
-        `ft_fulfillment_inbounds: ${json.inboundCount ?? 0}건`
-      );
-    } catch (err) {
-      console.error('[V2 이전] 업로드 오류:', err);
-      alert(`❌ 업로드 중 오류가 발생했습니다.\n${err instanceof Error ? err.message : ''}`);
-    } finally {
-      setIsV2Migrating(false);
-      // 같은 파일 재업로드 가능하도록 값 초기화
-      e.target.value = '';
-    }
-  }, [selectedUserId, selectedWorker, workers]);
+  const uploads = useImportUploads({ selectedUserId, selectedWorker, workers, fetchItems });
 
   // 5-1) searchType은 2-1 섹션에서 선언됨 (hook 순서)
 
@@ -551,28 +460,16 @@ const ItemCheck: React.FC = () => {
     return Array.from(nos).sort();
   }, [readyItems]);
 
-  // ── activeItems 내 전체 P 상품의 personal_order_no 집합 (안정된 키) ──
-  //    배지(운송장 출력) 표시 + 모달 송장 출력 양쪽에서 공유하는 단일 PDF 존재 맵 근거.
-  const activePersonalOrderNosKey = useMemo(() => {
-    const nos = new Set<string>();
-    for (const item of activeItems) {
-      const type = item.shipment_type?.trim().toUpperCase() ?? '';
-      if (type !== 'PERSONAL') continue;
-      const no = item.personal_order_no?.trim();
-      if (no) nos.add(no);
-    }
-    return [...nos].sort().join('|');
-  }, [activeItems]);
-
-  // Storage 에 PDF 가 존재하는 personal_order_no Set (activeItems 기준 전역)
-  const [invoicePdfSet, setInvoicePdfSet] = useState<Set<string>>(new Set());
-  const [isCheckingInvoices, setIsCheckingInvoices] = useState(false);
-
-  // ── 운송장 출력 이력 — personal_order_no → 출력된 item_id Set ──
-  //    비어있음 = 자유 출력 가능 (첫 출력)
-  //    있음 = 선택된 item_ids 가 이 Set 의 부분집합일 때만 재출력 가능
-  //    (분실/손상 대응 시 동일 조합 재출력)
-  const [printedItemIdsMap, setPrintedItemIdsMap] = useState<Map<string, Set<string>>>(new Map());
+  // ── P 상품 운송장 — PDF 존재·출력 이력 조회 + 출력 ──
+  //    로직은 hooks/usePersonalInvoicePrint.ts (상품입고 V3 공용).
+  //    출력 가능 룰: PDF 존재 + (출력 이력 없음 OR 선택 item ⊆ 이전 출력 조합)
+  const {
+    invoicePdfSet,
+    isCheckingInvoices,
+    printedItemIdsMap,
+    isItemInvoicePrintable,
+    printInvoicesForItems,
+  } = usePersonalInvoicePrint({ selectedUserId, selectedWorker, activeItems, t });
 
   // ============================================================
   // 12) 처리준비 모달
@@ -605,264 +502,11 @@ const ItemCheck: React.FC = () => {
     }
   }, [hasReadySaveCompleted]);
 
-  // ── activeItems 의 P 상품 personal_order_no 집합이 변경될 때 PDF 존재 조회 ──
-  //    모달 open 여부와 무관 — 배지('운송장 출력') 렌더에도 사용되므로 데이터 로드 시점에 조회.
-  //    sort 만 바뀌는 경우엔 key 가 동일 → 재호출되지 않음 (useMemo + sort 덕분에 안정).
-  useEffect(() => {
-    if (!selectedUserId || !activePersonalOrderNosKey) {
-      setInvoicePdfSet(new Set());
-      return;
-    }
-
-    const orderNos = activePersonalOrderNosKey.split('|');
-    let cancelled = false;
-    (async () => {
-      setIsCheckingInvoices(true);
-      try {
-        const res = await fetch('/api/ft/personal-invoices/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            order_user_id: selectedUserId,
-            order_nos: orderNos,
-          }),
-        });
-        const json = await res.json();
-        if (cancelled) return;
-        if (!json.success) {
-          console.error('personal-invoices check 실패:', json.error);
-          setInvoicePdfSet(new Set());
-          return;
-        }
-        const existing = new Set<string>();
-        for (const [no, exists] of Object.entries(json.exists as Record<string, boolean>)) {
-          if (exists) existing.add(no);
-        }
-        setInvoicePdfSet(existing);
-      } catch (err) {
-        if (!cancelled) {
-          console.error('personal-invoices check 오류:', err);
-          setInvoicePdfSet(new Set());
-        }
-      } finally {
-        if (!cancelled) setIsCheckingInvoices(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [selectedUserId, activePersonalOrderNosKey]);
-
-  // ── activeItems 의 P 상품 personal_order_no 집합 변경 시 출력 이력 조회 ──
-  //    invoicePdfSet 과 동일 트리거 — 데이터 일관성 위해.
-  useEffect(() => {
-    if (!selectedUserId || !activePersonalOrderNosKey) {
-      setPrintedItemIdsMap(new Map());
-      return;
-    }
-
-    const orderNos = activePersonalOrderNosKey.split('|');
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/ft/personal-invoice-prints/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: selectedUserId,
-            personal_order_nos: orderNos,
-          }),
-        });
-        const json = await res.json();
-        if (cancelled) return;
-        if (!json.success) {
-          console.error('personal-invoice-prints check 실패:', json.error);
-          setPrintedItemIdsMap(new Map());
-          return;
-        }
-        const map = new Map<string, Set<string>>();
-        const raw = json.printedItemIdsByOrderNo as Record<string, string[]>;
-        for (const [no, ids] of Object.entries(raw)) {
-          map.set(no, new Set(ids));
-        }
-        setPrintedItemIdsMap(map);
-      } catch (err) {
-        if (!cancelled) {
-          console.error('personal-invoice-prints check 오류:', err);
-          setPrintedItemIdsMap(new Map());
-        }
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [selectedUserId, activePersonalOrderNosKey]);
-
-  // ── 출력 가능 헬퍼 — 단일 item 의 송장 출력 가능 여부 ──
-  //    Storage PDF 존재 + (prints 비어있음 || item.id ∈ prints) 일 때 true.
-  const isItemInvoicePrintable = useCallback(
-    (item: FtOrderItem): boolean => {
-      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') return false;
-      const no = item.personal_order_no?.trim();
-      if (!no || !invoicePdfSet.has(no)) return false;
-      const printedSet = printedItemIdsMap.get(no);
-      if (!printedSet || printedSet.size === 0) return true; // 첫 출력
-      return printedSet.has(item.id);                         // 재출력 (조합 안)
-    },
-    [invoicePdfSet, printedItemIdsMap]
-  );
-
-  // ── 송장 출력 — 핵심 로직 (signed URL → 다운로드 → crop + merge + print) ──
-  //    targetNos 받아 호출 → 두 진입점(모달 [송장 출력] / 사이드바 [운송장]) 공유.
-  //    itemIdsByNo: 출력 성공 후 ft_personal_invoice_prints 에 기록할 item_id 매핑.
-  const printInvoicesByOrderNos = useCallback(
-    async (targetNos: string[], itemIdsByNo: Map<string, string[]>) => {
-      if (!selectedUserId) return;
-      if (targetNos.length === 0) {
-        alert(t('importProductV2.alerts.noInvoiceToPrint'));
-        return;
-      }
-
-      try {
-        // 1) signed URL 발급
-        const res = await fetch('/api/ft/personal-invoices/signed-urls', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            order_user_id: selectedUserId,
-            order_nos: targetNos,
-          }),
-        });
-        const json = await res.json();
-        if (!json.success) {
-          alert(json.error || t('importProductV2.alerts.invoiceUrlFailed'));
-          return;
-        }
-
-        // 2) URL → ArrayBuffer 병렬 다운로드 (Promise.all)
-        const urlsMap = json.urls as Record<string, string | null>;
-        const downloadTasks = targetNos
-          .map((no) => ({ no, url: urlsMap[no] }))
-          .filter((task): task is { no: string; url: string } => !!task.url);
-
-        const results = await Promise.all(
-          downloadTasks.map(async ({ no, url }) => {
-            try {
-              const pdfRes = await fetch(url);
-              if (!pdfRes.ok) {
-                console.error(`PDF 다운로드 실패 (${no}): status=${pdfRes.status}`);
-                return null;
-              }
-              return { no, buffer: await pdfRes.arrayBuffer() };
-            } catch (err) {
-              console.error(`PDF 다운로드 오류 (${no}):`, err);
-              return null;
-            }
-          })
-        );
-
-        const successResults = results.filter(
-          (r): r is { no: string; buffer: ArrayBuffer } => r !== null
-        );
-        const buffers = successResults.map((r) => r.buffer);
-
-        if (buffers.length === 0) {
-          alert(t('importProductV2.alerts.invoiceDownloadFailed'));
-          return;
-        }
-
-        // 3) 크롭 + 병합 + 인쇄
-        const result = await mergeAndPrint(buffers);
-        if (result.success === 0) {
-          alert(t('importProductV2.alerts.invoicePrintFailed'));
-          return;
-        }
-
-        // 4) 출력 성공한 personal_order_no 들에 대해 prints 기록 UPSERT.
-        //    인쇄 실패한 송장은 mergeAndPrint 의 success 카운트로만 알 수 있어
-        //    개별 매핑이 어려움 → 다운로드 성공한 송장 모두 기록 (보수적 접근).
-        //    재출력 시에도 ON CONFLICT 로 printed_at 만 갱신.
-        await Promise.all(
-          successResults.map(async ({ no }) => {
-            const itemIds = itemIdsByNo.get(no);
-            if (!itemIds || itemIds.length === 0) return;
-            try {
-              const insertRes = await fetch('/api/ft/personal-invoice-prints', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  personal_order_no: no,
-                  item_ids: itemIds,
-                  user_id: selectedUserId,
-                  printed_by: selectedWorker || null,
-                }),
-              });
-              const insertJson = await insertRes.json();
-              if (!insertJson.success) {
-                console.error(`prints 기록 실패 (${no}):`, insertJson.error);
-              }
-            } catch (err) {
-              console.error(`prints 기록 오류 (${no}):`, err);
-            }
-          })
-        );
-
-        // 5) 로컬 printedItemIdsMap 즉시 갱신 (재호출 없이 UI 반영)
-        setPrintedItemIdsMap((prev) => {
-          const next = new Map(prev);
-          for (const { no } of successResults) {
-            const itemIds = itemIdsByNo.get(no);
-            if (!itemIds || itemIds.length === 0) continue;
-            const existing = new Set(next.get(no) ?? []);
-            // 첫 출력만 조합 영구 등록 — 기존 prints 가 비어있을 때만 새 ids 추가.
-            // 재출력은 같은 ids 라 차이 없음.
-            if (existing.size === 0) {
-              for (const id of itemIds) existing.add(id);
-            }
-            next.set(no, existing);
-          }
-          return next;
-        });
-      } catch (err) {
-        console.error('송장 출력 오류:', err);
-        alert(err instanceof Error ? err.message : t('importProductV2.alerts.invoicePrintError'));
-      }
-    },
-    [selectedUserId, selectedWorker, t]
-  );
-
   // ── 모달 [송장 출력] — readyItems(작업값 입력 항목) 의 P 상품 ──
-  //   출력 가능 룰: PDF 존재 + (prints 비어있음 OR readyItems P-item ⊆ prints)
-  //   itemIdsByNo: 송장별로 readyItems 안의 P 상품 id 묶음
-  const handlePrintInvoices = useCallback(() => {
-    // 1) personal_order_no 별 readyItems P-item id 매핑
-    const itemIdsByNo = new Map<string, string[]>();
-    for (const { item } of readyItems) {
-      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') continue;
-      const no = item.personal_order_no?.trim();
-      if (!no || !invoicePdfSet.has(no)) continue;
-      const arr = itemIdsByNo.get(no) ?? [];
-      arr.push(item.id);
-      itemIdsByNo.set(no, arr);
-    }
-
-    // 2) 룰 검증 + 차단 송장 분리
-    const targetNos: string[] = [];
-    const blockedNos: string[] = [];
-    for (const [no, ids] of itemIdsByNo.entries()) {
-      const printedSet = printedItemIdsMap.get(no);
-      if (!printedSet || printedSet.size === 0) {
-        targetNos.push(no);
-        continue;
-      }
-      const isSubset = ids.every((id) => printedSet.has(id));
-      if (isSubset) targetNos.push(no);
-      else blockedNos.push(no);
-    }
-
-    if (blockedNos.length > 0) {
-      alert(`이미 다른 조합으로 출력된 송장이 있어 차단됩니다:\n${blockedNos.join(', ')}`);
-    }
-    return printInvoicesByOrderNos(targetNos, itemIdsByNo);
-  }, [readyItems, invoicePdfSet, printedItemIdsMap, printInvoicesByOrderNos]);
+  const handlePrintInvoices = useCallback(
+    () => printInvoicesForItems(readyItems.map(({ item }) => item)),
+    [readyItems, printInvoicesForItems]
+  );
 
   // ── 사이드바 [운송장] — 체크박스 선택된 행의 P 상품 (라벨 버튼과 동일 패턴) ──
   const handlePrintInvoicesFromSelection = useCallback(() => {
@@ -870,38 +514,8 @@ const ItemCheck: React.FC = () => {
       alert(t('importProductV2.alerts.selectItems'));
       return;
     }
-
-    // 1) 선택된 행 → personal_order_no 별 item id 매핑 (P + PDF 매칭만)
-    const itemIdsByNo = new Map<string, string[]>();
-    for (const item of items) {
-      if (!selectedRows.has(item.id)) continue;
-      if (item.shipment_type?.trim().toUpperCase() !== 'PERSONAL') continue;
-      const no = item.personal_order_no?.trim();
-      if (!no || !invoicePdfSet.has(no)) continue;
-      const arr = itemIdsByNo.get(no) ?? [];
-      arr.push(item.id);
-      itemIdsByNo.set(no, arr);
-    }
-
-    // 2) 룰 검증 + 차단 송장 분리
-    const targetNos: string[] = [];
-    const blockedNos: string[] = [];
-    for (const [no, ids] of itemIdsByNo.entries()) {
-      const printedSet = printedItemIdsMap.get(no);
-      if (!printedSet || printedSet.size === 0) {
-        targetNos.push(no);
-        continue;
-      }
-      const isSubset = ids.every((id) => printedSet.has(id));
-      if (isSubset) targetNos.push(no);
-      else blockedNos.push(no);
-    }
-
-    if (blockedNos.length > 0) {
-      alert(`이미 다른 조합으로 출력된 송장이 있어 차단됩니다:\n${blockedNos.join(', ')}`);
-    }
-    return printInvoicesByOrderNos(targetNos, itemIdsByNo);
-  }, [selectedRows, items, invoicePdfSet, printedItemIdsMap, t, printInvoicesByOrderNos]);
+    return printInvoicesForItems(items.filter((item) => selectedRows.has(item.id)));
+  }, [selectedRows, items, t, printInvoicesForItems]);
 
   // 모달 [송장 출력] 버튼 활성화 조건 — readyItems 기준 (P + PDF 매칭 + 출력 가능 룰)
   const invoicePrintable = useMemo(() => {
@@ -1116,185 +730,6 @@ const ItemCheck: React.FC = () => {
   );
 
   // ============================================================
-  // 15) 1688 xlsx 업로드
-  // ============================================================
-  const excelFileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
-
-  // 배송상황 CSV 업로드
-  const csvFileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
-
-  const handleXlsxClick = useCallback(() => {
-    excelFileInputRef.current?.click();
-  }, []);
-
-  const handleXlsxFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
-        return;
-      }
-
-      setIsUploadingExcel(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const response = await fetch('/api/upload-delivery-excel', {
-          method: 'POST',
-          body: formData,
-        });
-        const result = await response.json();
-
-        if (response.ok) {
-          alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
-        } else {
-          alert(result.error || '업로드 중 오류가 발생했습니다.');
-        }
-      } catch {
-        alert('업로드 중 오류가 발생했습니다.');
-      } finally {
-        setIsUploadingExcel(false);
-        if (excelFileInputRef.current) excelFileInputRef.current.value = '';
-      }
-    },
-    []
-  );
-
-  // ============================================================
-  // 15-1) 📋 배송상황 CSV 업로드
-  // ============================================================
-  const handleCsvClick = useCallback(() => {
-    csvFileInputRef.current?.click();
-  }, []);
-
-  const handleCsvFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      if (!file.name.toLowerCase().endsWith('.csv')) {
-        alert('CSV 파일(.csv)만 업로드 가능합니다.');
-        return;
-      }
-
-      setIsUploadingCsv(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const response = await fetch('/api/upload-delivery-status-csv', {
-          method: 'POST',
-          body: formData,
-        });
-        const result = await response.json();
-
-        if (response.ok) {
-          alert(`배송상황 CSV 업로드 완료\n저장: ${result.savedCount || 0}개`);
-        } else {
-          alert(result.error || '업로드 중 오류가 발생했습니다.');
-        }
-      } catch {
-        alert('업로드 중 오류가 발생했습니다.');
-      } finally {
-        setIsUploadingCsv(false);
-        if (csvFileInputRef.current) csvFileInputRef.current.value = '';
-      }
-    },
-    []
-  );
-
-  // ============================================================
-  // 16) 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭
-  // ============================================================
-  const orderIdFileInputRef = useRef<HTMLInputElement>(null);
-  const [isMatchingOrderId, setIsMatchingOrderId] = useState(false);
-
-  const handleOrderIdClick = useCallback(() => {
-    orderIdFileInputRef.current?.click();
-  }, []);
-
-  const handleOrderIdFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
-        return;
-      }
-
-      setIsMatchingOrderId(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const response = await fetch('/api/ft/order-items/match-order-id', {
-          method: 'POST',
-          body: formData,
-        });
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          alert(`${result.matched}개 항목 매칭 완료\n(전체 미매칭: ${result.total_null}개)`);
-          // 데이터 새로고침
-          if (selectedUserId) fetchItems(selectedUserId);
-        } else {
-          alert(result.error || '주문 ID 매칭 중 오류가 발생했습니다.');
-        }
-      } catch {
-        alert('주문 ID 매칭 중 오류가 발생했습니다.');
-      } finally {
-        setIsMatchingOrderId(false);
-        if (orderIdFileInputRef.current) orderIdFileInputRef.current.value = '';
-      }
-    },
-    [selectedUserId, fetchItems]
-  );
-
-  // ============================================================
-  // 17) XLSX 다운로드
-  // ============================================================
-  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
-
-  const handleXlsxDownload = useCallback(async () => {
-    if (!selectedUserId) {
-      alert('사용자를 선택해주세요.');
-      return;
-    }
-
-    setIsDownloadingExcel(true);
-    try {
-      const response = await fetch('/api/ft/order-items/export-xlsx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId }),
-      });
-
-      if (!response.ok) throw new Error('XLSX 다운로드 실패');
-
-      const blob = await response.blob();
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ft_order_items_${today}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert('XLSX 다운로드 중 오류가 발생했습니다.');
-    } finally {
-      setIsDownloadingExcel(false);
-    }
-  }, [selectedUserId]);
-
-  // ============================================================
   // 18) 품목 분류 (Gemini AI)
   // ============================================================
   const [isClassifying, setIsClassifying] = useState(false);
@@ -1450,26 +885,10 @@ const ItemCheck: React.FC = () => {
               {/* ── 왼쪽: 제목 + [V2 이전] 버튼 ─────────── */}
               <div className="v2-title-left">
                 <h1 className="v2-item-title">{t('importProductV2.title')}</h1>
-                <button
-                  className="v2-migration-btn"
-                  onClick={handleV2MigrationClick}
-                  disabled={isV2Migrating || !selectedUserId || !selectedWorker}
-                  title={
-                    !selectedUserId
-                      ? t('importProductV2.alerts.selectUser')
-                      : !selectedWorker
-                        ? t('importProductV2.worker')
-                        : undefined
-                  }
-                >
-                  {isV2Migrating ? t('importProductV2.buttons.uploading') : t('importProductV2.buttons.v2Migration')}
-                </button>
-                <input
-                  ref={v2MigrationFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  style={{ display: 'none' }}
-                  onChange={handleV2MigrationFileChange}
+                <V2MigrationButton
+                  uploads={uploads}
+                  selectedUserId={selectedUserId}
+                  selectedWorker={selectedWorker}
                 />
               </div>
               <div className="v2-title-dropdowns">
@@ -1536,94 +955,7 @@ const ItemCheck: React.FC = () => {
               filteredItemsCount={filteredItems.length}
               groupByProduct={groupByProduct}
               onGroupByProductChange={setGroupByProduct}
-              rightButtons={
-                <>
-                  {/* ⬆️ 1688 XLSX 업로드 버튼 */}
-                  <button
-                    className="v2-excel-upload-btn"
-                    onClick={handleXlsxClick}
-                    disabled={isUploadingExcel}
-                  >
-                    {isUploadingExcel ? (
-                      <span className="v2-button-loading">
-                        <span className="v2-spinner"></span>
-                        {t('importProductV2.buttons.uploading')}
-                      </span>
-                    ) : (
-                      `⬆️ ${t('importProductV2.buttons.xlsx')}`
-                    )}
-                  </button>
-                  <input
-                    ref={excelFileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    style={{ display: 'none' }}
-                    onChange={handleXlsxFileChange}
-                  />
-
-                  {/* 📋 배송상황 CSV 업로드 버튼 */}
-                  <button
-                    className="v2-excel-upload-btn"
-                    onClick={handleCsvClick}
-                    disabled={isUploadingCsv}
-                  >
-                    {isUploadingCsv ? (
-                      <span className="v2-button-loading">
-                        <span className="v2-spinner"></span>
-                        {t('importProductV2.buttons.uploading')}
-                      </span>
-                    ) : (
-                      `📋 ${t('importProductV2.buttons.csv')}`
-                    )}
-                  </button>
-                  <input
-                    ref={csvFileInputRef}
-                    type="file"
-                    accept=".csv"
-                    style={{ display: 'none' }}
-                    onChange={handleCsvFileChange}
-                  />
-
-                  {/* ⬇️ XLSX 다운 버튼 */}
-                  <button
-                    className="v2-excel-upload-btn"
-                    onClick={handleXlsxDownload}
-                    disabled={isDownloadingExcel || !selectedUserId}
-                  >
-                    {isDownloadingExcel ? (
-                      <span className="v2-button-loading">
-                        <span className="v2-spinner"></span>
-                        다운로드 중
-                      </span>
-                    ) : (
-                      '⬇️ XLSX 다운'
-                    )}
-                  </button>
-
-                  {/* 🔗 주문 ID — 엑셀 업로드 → 1688_order_id 매칭 */}
-                  <button
-                    className="v2-excel-upload-btn"
-                    onClick={handleOrderIdClick}
-                    disabled={isMatchingOrderId}
-                  >
-                    {isMatchingOrderId ? (
-                      <span className="v2-button-loading">
-                        <span className="v2-spinner"></span>
-                        매칭 중
-                      </span>
-                    ) : (
-                      '🔗 주문 ID'
-                    )}
-                  </button>
-                  <input
-                    ref={orderIdFileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    style={{ display: 'none' }}
-                    onChange={handleOrderIdFileChange}
-                  />
-                </>
-              }
+              rightButtons={<ImportUploadButtons uploads={uploads} selectedUserId={selectedUserId} />}
             />
 
             {/* ============================================================ */}

@@ -15,6 +15,9 @@
 
 export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   'id',
+  // user_id — 상품입고 V3 저장 시 "선택한 사용자 ≠ 주문 사용자" 차단에 쓴다
+  //   (by-delivery-code 는 사용자 필터가 없어서 다른 사용자의 행이 섞일 수 있다)
+  'user_id',
   'order_no',
   'item_no',
   'item_name',

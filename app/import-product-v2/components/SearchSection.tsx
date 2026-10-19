@@ -29,6 +29,8 @@ interface SearchSectionProps {
   // ── 상품별로 보기 (정렬 전환, 클라이언트 처리) ──
   groupByProduct: boolean;
   onGroupByProductChange: (value: boolean) => void;
+  /** 토글 체크박스 문구 — 미지정 시 "상품별로 보기" (V3 는 "전체 보기" 로 재사용) */
+  groupToggleLabel?: string;
   // ── 우측 액션 버튼들 (1688 XLSX ~ 주문 ID) — 배송번호 행 오른쪽 ──
   rightButtons?: React.ReactNode;
 }
@@ -46,6 +48,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   filteredItemsCount,
   groupByProduct,
   onGroupByProductChange,
+  groupToggleLabel,
   rightButtons,
 }) => {
   const { t } = useTranslation();
@@ -90,7 +93,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
               checked={groupByProduct}
               onChange={(e) => onGroupByProductChange(e.target.checked)}
             />
-            {t('importProductV2.filter.groupByProduct')}
+            {groupToggleLabel ?? t('importProductV2.filter.groupByProduct')}
           </label>
 
           {/* 전체 건수 */}

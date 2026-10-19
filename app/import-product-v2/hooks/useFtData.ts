@@ -21,6 +21,8 @@ export interface FtUser {
 
 export interface FtOrderItem {
   id: string;
+  /** ft_users.id — FT_ORDER_ITEMS_DISPLAY_SELECT 에 포함 (V3 저장 시 사용자 일치 검증) */
+  user_id?: string | null;
   order_no: string | null;
   item_no: string | null;
   item_name: string | null;

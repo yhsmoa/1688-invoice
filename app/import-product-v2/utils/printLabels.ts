@@ -50,6 +50,14 @@ export interface PrintLabelParams {
   templates: AudienceTemplates;
   /** 기록용 담당자 */
   printedBy?: string | null;
+  /**
+   * 세트상품 병합 여부 (기본 true — V2 [입고]·[라벨] 모달의 기존 동작).
+   * 상품입고 V3 는 false 로 호출한다:
+   *   · 라벨 스티커 — 호출 측(utils/stickerPlan.ts)이 이미 세트를 1벌 1장으로 접어서 넘긴다
+   *     (여러 번에 나눠 들어오는 구성품을 label_print_logs 로 추적해야 해서 여기서 접으면 안 됨)
+   *   · 케어 라벨  — 구성품마다 자기 수량만큼 찍어야 한다 (화이트 10 + 블랙 10 = 20장)
+   */
+  mergeSets?: boolean;
 }
 
 export interface PrintLabelResult {
@@ -157,15 +165,16 @@ export function groupByAudience<T extends { item: Pick<FtOrderItem, 'recommanded
 }
 
 export async function printLabels(params: PrintLabelParams): Promise<PrintLabelResult> {
-  const { items, selectedUser, brand, stationNo, labelType, templates, printedBy } = params;
+  const { items, selectedUser, brand, stationNo, labelType, templates, printedBy, mergeSets: shouldMergeSets = true } =
+    params;
 
   if (items.length === 0) {
     return { success: false, printed: 0, error: '출력할 항목이 없습니다.' };
   }
 
   try {
-    // ── 1) 세트 병합 → 대상별 분류 ──
-    const merged = mergeSets(items);
+    // ── 1) 세트 병합(호출 측이 끄지 않았으면) → 대상별 분류 ──
+    const merged = shouldMergeSets ? mergeSets(items) : items;
     const byAudience = groupByAudience(merged);
 
     // ── 2) 대상마다 템플릿 확인 — 하나라도 없으면 아무것도 찍지 않는다 ──
