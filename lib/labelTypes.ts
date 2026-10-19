@@ -516,11 +516,12 @@ export const SAMPLE_LABEL_DATA: LabelData = {
 // ============================================================
 export const DEFAULT_FONT = 'NanumSquare';
 
-/** 사이트가 직접 내려주는 웹폰트 — 인쇄 PC 에 설치돼 있지 않아도 쓸 수 있다 */
-export const WEB_FONTS: string[] = ['NanumSquare'];
+/** 사이트가 직접 내려주는 웹폰트 — 인쇄 PC 에 설치돼 있지 않아도 쓸 수 있다 (app/layout.tsx <link>) */
+export const WEB_FONTS: string[] = ['NanumSquare', 'Nanum Pen Script'];
 
 export const LABEL_FONTS: { key: string; label: string }[] = [
   { key: 'NanumSquare', label: '나눔스퀘어 (네이버 · 웹폰트)' },
+  { key: 'Nanum Pen Script', label: '나눔손글씨 펜 (손글씨 · 웹폰트)' },
   { key: 'Malgun Gothic', label: '맑은 고딕' },
   { key: 'Noto Sans KR', label: 'Noto Sans KR' },
   { key: 'NanumGothic', label: '나눔고딕' },
