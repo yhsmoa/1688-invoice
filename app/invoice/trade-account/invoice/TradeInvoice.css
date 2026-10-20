@@ -182,6 +182,7 @@
 .inv-sheet {
   position: relative;
   flex: none;
+  box-sizing: border-box; /* 인라인 width/height = 표 + 바깥 여유(padding) */
   background: #ffffff;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
   font-family: 'Century Gothic', 'URW Gothic', 'Avant Garde', sans-serif;
@@ -208,6 +209,7 @@
   max-width: none;
   transform-origin: left center;
   vertical-align: middle;
+  text-decoration: inherit; /* 밑줄은 inline-block 안으로 전해지지 않으므로 셀(td) 값을 직접 받는다 */
 }
 
 td[style*='text-align: center'] .inv-fit,
@@ -215,12 +217,14 @@ td[style*='text-align: right'] .inv-fit {
   transform-origin: center center;
 }
 
-/* 회계 서식 — 통화는 왼쪽, 숫자는 오른쪽 */
+/* 회계 서식 — 통화는 왼쪽, 숫자는 오른쪽
+   좌우 여백은 엑셀 회계 서식(_-"US$"* … _ )이 인쇄본에서 띄우는 간격 (원본 실측: 셀 경계에서 US$ 15px, 숫자 끝 10px) */
 .inv-acc {
   display: flex;
   justify-content: space-between;
   gap: 4px;
-  padding: 0 4px;
+  padding: 0 8px 0 13px;
+  transform-origin: left center; /* 셀보다 넓으면 셀에 맞춤으로 가로 축소 */
 }
 
 /* 수량 — 오른쪽 정렬 */
@@ -228,6 +232,7 @@ td[style*='text-align: right'] .inv-fit {
   display: block;
   text-align: right;
   padding-right: 6px;
+  transform-origin: left center; /* 셀보다 넓으면 셀에 맞춤으로 가로 축소 */
 }
 
 /* 도장 (시트 좌표 기준 절대 위치) */

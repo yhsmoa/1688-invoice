@@ -93,9 +93,9 @@ export const INVOICE_ROW_COUNT = 48; // 인쇄 영역
 /** 열 너비 (엑셀 문자 단위) A..N */
 export const INVOICE_COL_WIDTHS = [1.33, 6.11, 2.66, 2.66, 13.33, 4.55, 9.89, 6.78, 7.89, 7.89, 7.89, 9.33, 7.89, 7.89];
 
-/** 행 높이 (pt) 1..48 */
+/** 행 높이 (pt) 1..48 — 1행(제목 위 여백)만 개정: 원본 16.5 → 66 (4배) */
 export const INVOICE_ROW_HEIGHTS = [
-  16.5, 40.5, 15.75, 13.5, 12.75, 16.5, 24, 17.25, 17.25, 17.25,   // 1~10
+  66, 40.5, 15.75, 13.5, 12.75, 16.5, 24, 17.25, 17.25, 17.25,   // 1~10
   17.25, 9, 16.5, 6, 13.5, 11.25, 16.5, 16.5, 16.5, 16.5,          // 11~20
   17.25, 18, 9, 4.5, 16.5, 16.5, 17.25, 17.25, 16.5, 17.25,        // 21~30
   16.5, 16.5, 17.25, 15, 15, 17.25, 16.5, 16.5, 17.25, 16.5,       // 31~40
@@ -103,13 +103,20 @@ export const INVOICE_ROW_HEIGHTS = [
 ];
 
 /**
- * 엑셀 열 너비(문자) → 화면 px
- *   px = 문자 수 × 기본 글꼴 최대 숫자 폭 + 여백 5. 템플릿 기본 글꼴은 돋움 11pt (숫자 폭 8px).
- *   (원본이 A4 에 85% 축소로 맞춰져 있는 것과 일치한다)
+ * 엑셀 인쇄 시 열 너비 1문자당 px (100% 기준)
+ *   원본 엑셀 인쇄본(Microsoft Print to PDF, 85% 축소)을 실측한 값 — 표의 열 묶음 6개
+ *   (Model·Item·Quantity·U/Price·Amount·Rmks) 모두 문자당 8.63px 로 일정하다.
+ *   예전 공식(문자 × 8 + 열마다 여백 5px)은 좁은 열이 많은 Model 묶음을 9% 부풀렸다.
  */
-export const colWidthPx = (chars: number) => Math.round(chars * 8 + 5);
+export const INVOICE_PRINT_PX_PER_CHAR = 8.63;
+
+/** 엑셀 열 너비(문자) → 화면 px */
+export const colWidthPx = (chars: number) => Math.round(chars * INVOICE_PRINT_PX_PER_CHAR);
 /** 행 높이(pt) → 화면 px */
 export const rowHeightPx = (pt: number) => Math.round((pt * 4) / 3);
+
+/** 인쇄 배율 — 원본 템플릿 pageSetup scale="85" (PDF 를 원본 인쇄본과 같은 크기로 놓는다) */
+export const INVOICE_PRINT_SCALE = 0.85;
 
 /** 1px = 9525 EMU (엑셀 drawing 좌표 단위) */
 export const EMU_PER_PX = 9525;
@@ -212,13 +219,23 @@ export type InvoiceCellKind =
   | 'issueDate';  // B35 =K5
 
 export interface InvoiceFont {
-  /** gothic = Century Gothic (기본), korean = 맑은 고딕 (한글 주의사항) */
-  family?: 'gothic' | 'korean';
+  /**
+   * gothic = Century Gothic (기본), korean = 맑은 고딕 (한글 주의사항),
+   * dotum = 돋움 (품목 표 값·FOB 금액 — 원본 템플릿 글꼴), symbol = Segoe UI Symbol (제목 별)
+   */
+  family?: 'gothic' | 'korean' | 'dotum' | 'symbol';
   /** pt (기본 11) */
   size?: number;
   bold?: boolean;
+  underline?: boolean;
   /** RRGGBB */
   color?: string;
+}
+
+/** 서식 있는 문구의 한 조각 — font 는 셀 font 위에 덮어쓴다 */
+export interface InvoiceRun {
+  text: string;
+  font?: InvoiceFont;
 }
 
 export interface InvoiceCellSpec {
@@ -228,6 +245,8 @@ export interface InvoiceCellSpec {
   to?: string;
   kind?: InvoiceCellKind;
   text?: string;
+  /** 서식 있는 문구 (예: 라벨은 보통·값은 굵게) — 있으면 text 대신 쓴다 */
+  runs?: InvoiceRun[];
   font?: InvoiceFont;
   align?: 'left' | 'center' | 'right';
   /** 배경 RRGGBB */
@@ -237,7 +256,21 @@ export interface InvoiceCellSpec {
 export const INVOICE_FONT_FAMILY: Record<NonNullable<InvoiceFont['family']>, string> = {
   gothic: 'Century Gothic',
   korean: '맑은 고딕',
+  dotum: '돋움',
+  symbol: 'Segoe UI Symbol',
 };
+
+/**
+ * 굵은 글꼴 파일이 없어 엑셀이 '가짜 굵게'로 그리는 글꼴
+ *   엑셀은 글자 윤곽선을 0.0134em 두께로 덧그려서 거의 보통 굵기처럼 보인다
+ *   (원본 인쇄본 실측: 돋움 10/11pt·Segoe UI Symbol 28pt 모두 선 두께 / 글자 크기 = 0.0134).
+ *   브라우저의 가짜 굵게는 훨씬 두꺼우므로, 미리보기는 보통 굵기 + 같은 두께의 윤곽선으로 그린다.
+ */
+export const SYNTHETIC_BOLD_FAMILIES = new Set<NonNullable<InvoiceFont['family']>>(['dotum', 'symbol']);
+export const SYNTHETIC_BOLD_STROKE_EM = 0.0134;
+
+/** 셀 font 위에 조각 font 를 덮어쓴다 */
+export const mergeInvoiceFont = (base?: InvoiceFont, over?: InvoiceFont): InvoiceFont => ({ ...base, ...over });
 
 /** 색 — 제목(테마 accent1), 상자 머리글(accent2 80% 밝게), 표 머리글(회색) */
 export const INVOICE_COLOR = {
@@ -247,14 +280,24 @@ export const INVOICE_COLOR = {
 } as const;
 
 const B = { bold: true };
+/** 소제목 — 굵게 + 밑줄 */
+const BU = { bold: true, underline: true };
+/** 품목 표 값·합계 — 원본 템플릿 글꼴 (돋움 굵게) */
+const DOTUM_B: InvoiceFont = { family: 'dotum', bold: true };
+/** 제목 별 — 원본처럼 Segoe UI Symbol 로 그려 흑백 별(가운데 흰 별)로 나온다. 컬러 이모지 글꼴로 넘어가지 않게 글꼴을 고정 */
+const TITLE_STAR: InvoiceRun = { text: '⭐', font: { family: 'symbol' } };
 
 /**
- * 셀 목록 — 원본 템플릿의 문구·위치 그대로. (개정: 텍스트가 셀 밖으로 흘러넘치던
- * 곳을 병합 셀로 묶고, 글꼴을 Century Gothic 으로 통일)
+ * 셀 목록 — 원본 템플릿의 문구·위치·글꼴 그대로. (개정: 텍스트가 셀 밖으로 흘러넘치던
+ * 곳을 병합 셀로 묶음)
  */
 export const INVOICE_CELLS: InvoiceCellSpec[] = [
   // ── 제목 / 번호 / 날짜 ──
-  { ref: 'A2', to: 'N2', text: '⭐PROFORMA INVOICE⭐', font: { size: 28, bold: true, color: INVOICE_COLOR.title }, align: 'center' },
+  {
+    ref: 'A2', to: 'N2',
+    runs: [TITLE_STAR, { text: 'PROFORMA INVOICE' }, TITLE_STAR],
+    font: { size: 28, bold: true, color: INVOICE_COLOR.title }, align: 'center',
+  },
   { ref: 'K4', to: 'N4', kind: 'invoiceNo', align: 'center' },
   { ref: 'K5', to: 'N5', kind: 'date', align: 'center' },
 
@@ -280,10 +323,10 @@ export const INVOICE_CELLS: InvoiceCellSpec[] = [
 
   // ── 품목 행 (17 입력, 18~21 빈 행) ──
   { ref: 'A17', to: 'C17' },
-  { ref: 'D17', to: 'F17', text: 'CLOTHING', font: { size: 10, bold: true }, align: 'center' },
-  { ref: 'G17', to: 'H17', kind: 'qty', font: B },
-  { ref: 'I17', to: 'J17', kind: 'unitPrice', font: B },
-  { ref: 'K17', to: 'L17', kind: 'amount', font: B },
+  { ref: 'D17', to: 'F17', text: 'CLOTHING', font: { ...DOTUM_B, size: 10 }, align: 'center' },
+  { ref: 'G17', to: 'H17', kind: 'qty', font: DOTUM_B },
+  { ref: 'I17', to: 'J17', kind: 'unitPrice', font: DOTUM_B },
+  { ref: 'K17', to: 'L17', kind: 'amount', font: DOTUM_B },
   { ref: 'M17', to: 'N17' },
   ...[18, 19, 20, 21].flatMap((r): InvoiceCellSpec[] => [
     { ref: `A${r}`, to: `C${r}` }, { ref: `D${r}`, to: `F${r}` }, { ref: `G${r}`, to: `H${r}` },
@@ -291,36 +334,44 @@ export const INVOICE_CELLS: InvoiceCellSpec[] = [
   ]),
   // ── 합계 ──
   { ref: 'A22', to: 'C22' },
-  { ref: 'D22', to: 'F22', text: 'TOTAL', font: B, align: 'center' },
+  { ref: 'D22', to: 'F22', text: 'TOTAL', font: DOTUM_B, align: 'center' },
   { ref: 'G22', to: 'H22' },
   { ref: 'I22', to: 'J22' },
-  { ref: 'K22', to: 'L22', kind: 'total', font: B },
+  { ref: 'K22', to: 'L22', kind: 'total', font: DOTUM_B },
   { ref: 'M22', to: 'N22' },
 
   // ── 조건 (왼쪽 상자) ──
-  { ref: 'B25', to: 'G25', text: 'Amount', font: B },
+  { ref: 'B25', to: 'G25', text: 'Amount', font: BU },
   { ref: 'B26', to: 'D26', text: 'FOB KOREA ' },
-  { ref: 'E26', to: 'G26', kind: 'fobAmount', font: { size: 10, bold: true } },
-  { ref: 'B28', to: 'G28', text: 'Port of lading', font: B },
+  // 원본처럼 E열 한 칸 (US$ 는 E열 왼쪽, 숫자는 E열 오른쪽). 큰 금액은 셀에 맞춤으로 줄어든다
+  { ref: 'E26', kind: 'fobAmount', font: { ...DOTUM_B, size: 10 } },
+  { ref: 'B28', to: 'G28', text: 'Port of lading', font: BU },
   { ref: 'B29', to: 'G29', text: 'Weihai China' },
-  { ref: 'B31', to: 'G31', text: 'Port of discharge', font: B },
+  { ref: 'B31', to: 'G31', text: 'Port of discharge', font: BU },
   { ref: 'B32', to: 'G32', text: 'Incheon Korea' },
-  { ref: 'B34', to: 'G34', text: 'the date of issue', font: B },
+  { ref: 'B34', to: 'G34', text: 'the date of issue', font: BU },
   { ref: 'B35', to: 'G35', kind: 'issueDate', align: 'left' },
-  { ref: 'B37', to: 'G37', text: 'TERMS OF PAYMENT : ', font: B },
+  // 원본의 끝 공백은 밑줄 없는 별도 조각이라 문구에서 뺀다 (밑줄이 공백까지 늘어나지 않도록)
+  { ref: 'B37', to: 'G37', text: 'TERMS OF PAYMENT :', font: BU },
   { ref: 'B38', to: 'G38', text: 'Advanced remittance' },
 
   // ── 은행 (오른쪽 상자) ──
-  { ref: 'H25', to: 'N25', text: 'INTERMEDIARY BANK ', font: { size: 12, bold: true } },
+  { ref: 'H25', to: 'N25', text: 'INTERMEDIARY BANK ', font: { ...BU, size: 12 } },
   { ref: 'H26', to: 'N26', text: 'BANK OF AMERICA , NEW YORK BRANCH' },
   { ref: 'H27', to: 'N27', text: 'SWIFT CODE NO : BOFAUS3N' },
-  { ref: 'H29', to: 'N29', text: 'BENEFICIARY BANK', font: { size: 12, bold: true } },
+  { ref: 'H29', to: 'N29', text: 'BENEFICIARY BANK', font: { ...BU, size: 12 } },
   { ref: 'H30', to: 'N30', text: 'CHINA CONSTRUCTION BANK, LINYI BRANCH', font: B },
-  { ref: 'H31', to: 'N31', text: 'SWIFT CODE NO : PCBCCNBJSDL' },
+  { ref: 'H31', to: 'N31', runs: [{ text: 'SWIFT CODE NO : ' }, { text: 'PCBCCNBJSDL', font: B }] },
   { ref: 'H32', to: 'N32', text: 'ADD : NO.58-1,YINQUESHAN ROAD,LINYI CITY,SHANDONG,CHINA', font: { size: 10 } },
-  { ref: 'H34', to: 'N34', text: 'BENEFICIARY', font: { size: 12, bold: true } },
-  { ref: 'H35', to: 'N35', text: 'NAME : LINYI JIEYUN TONG IMPORT AND EXPORT CO., LTD', font: { size: 10 } },
-  { ref: 'H36', to: 'N36', text: 'A/C NO : 3705 0182 6301 0000 2692' },
+  { ref: 'H34', to: 'N34', text: 'BENEFICIARY', font: { ...BU, size: 12 } },
+  {
+    ref: 'H35', to: 'N35', font: { size: 10 },
+    runs: [{ text: 'NAME : ' }, { text: 'LINYI JIEYUN TONG IMPORT AND EXPORT CO., LTD', font: { bold: true, size: 12 } }],
+  },
+  {
+    ref: 'H36', to: 'N36',
+    runs: [{ text: 'A/C NO', font: { size: 10 } }, { text: ' : ' }, { text: '3705 0182 6301 0000 2692', font: B }],
+  },
   { ref: 'H37', text: 'ADD : ' },
   { ref: 'I37', to: 'N37', text: '531-2 ADMINISTRATIVE SERVICE CENTER, NO.1 RENMIN ROAD, PINGSHANG', font: { size: 9 } },
   { ref: 'I38', to: 'N38', text: 'TOWN, LINGANG ECONOMIC DEVELOPMENT ZONE, LINYI CITY,', font: { size: 9 } },
@@ -384,6 +435,6 @@ export function resolveCellDisplay(spec: InvoiceCellSpec, input: InvoiceInput): 
     case 'amount':
     case 'total':
     case 'fobAmount': return { text: fmtUsdNumber(input.amount), currency: 'US$' };
-    default: return { text: spec.text ?? '' };
+    default: return { text: spec.text ?? spec.runs?.map((r) => r.text).join('') ?? '' };
   }
 }

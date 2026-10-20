@@ -5,8 +5,8 @@ import ExcelJS from 'exceljs';
 import {
   EMU_PER_PX, INVOICE_CELLS, INVOICE_COL_COUNT, INVOICE_COL_WIDTHS, INVOICE_FONT_FAMILY, INVOICE_NUM_FMT,
   INVOICE_ROW_COUNT, INVOICE_ROW_HEIGHTS, INVOICE_STAMP, INVOICE_UNIT_PRICE,
-  excelDateSerial, makeInvoiceNo, rangeBorders, specRange,
-  type CellBorders, type InvoiceCellSpec, type InvoiceInput,
+  excelDateSerial, makeInvoiceNo, mergeInvoiceFont, rangeBorders, specRange,
+  type CellBorders, type InvoiceCellSpec, type InvoiceFont, type InvoiceInput,
 } from './tradeInvoice';
 
 // ============================================================
@@ -142,18 +142,23 @@ const toExcelBorder = (b: CellBorders): Partial<ExcelJS.Borders> => ({
   right: b.right ? { style: b.right } : undefined,
 });
 
-function excelFont(spec: InvoiceCellSpec): Partial<ExcelJS.Font> {
-  const f = spec.font ?? {};
+function excelFont(f: InvoiceFont = {}): Partial<ExcelJS.Font> {
   return {
     name: INVOICE_FONT_FAMILY[f.family ?? 'gothic'],
     size: f.size ?? 11,
     bold: !!f.bold,
+    ...(f.underline ? { underline: true } : {}),
     ...(f.color ? { color: { argb: `FF${f.color}` } } : {}),
   };
 }
 
-/** kind 별 엑셀 값·서식 — 숫자·날짜는 실제 값, 합계·FOB·발행일은 수식 */
+/** kind 별 엑셀 값·서식 — 숫자·날짜는 실제 값, 합계·FOB·발행일은 수식, runs 는 서식 있는 문구 */
 function excelValue(spec: InvoiceCellSpec, input: InvoiceInput): { value: ExcelJS.CellValue; numFmt?: string } {
+  if (spec.runs) {
+    return {
+      value: { richText: spec.runs.map((r) => ({ text: r.text, font: excelFont(mergeInvoiceFont(spec.font, r.font)) })) },
+    };
+  }
   const dateValue = (() => {
     const [y, m, d] = input.date.split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d));
@@ -201,12 +206,13 @@ export async function buildInvoiceV2(input: InvoiceInput): Promise<Buffer> {
     const { value, numFmt } = excelValue(spec, input);
     cell.value = value;
     if (numFmt) cell.numFmt = numFmt;
-    cell.font = excelFont(spec);
-    // 문구 셀은 '셀에 맞춤' — 병합 폭보다 긴 주소 줄이 옆 칸(O열 안내문)에 잘리지 않도록
+    cell.font = excelFont(spec.font);
+    // 모든 칸 '셀에 맞춤' — 병합 폭보다 긴 주소 줄이 옆 칸(O열 안내문)에 잘리지 않고,
+    // 한 칸짜리 FOB 금액(E26)이 큰 금액에서 ##### 로 바뀌지 않도록 (넘칠 때만 글자가 줄어든다)
     cell.alignment = {
       vertical: 'middle',
       ...(spec.align ? { horizontal: spec.align } : {}),
-      ...((spec.kind ?? 'text') === 'text' ? { shrinkToFit: true } : {}),
+      shrinkToFit: true,
     };
     if (spec.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${spec.fill}` } };
     // 병합 범위는 좌상단 셀의 테두리가 범위 전체 바깥선이 된다

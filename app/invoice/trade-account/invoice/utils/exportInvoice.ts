@@ -1,5 +1,5 @@
 import { dbAccessHeaders } from '../../../../../component/DbAccessGate';
-import { invoiceFileBase, type InvoiceInput } from '../../../../../lib/tradeInvoice';
+import { INVOICE_PRINT_SCALE, invoiceFileBase, type InvoiceInput } from '../../../../../lib/tradeInvoice';
 
 // ============================================================
 // exportInvoice — 인보이스 저장 helper (클라이언트)
@@ -48,9 +48,10 @@ export async function downloadInvoiceExcel(input: InvoiceInput, variant: 'templa
 }
 
 // ── 시트 DOM → 캔버스 (JPG·PDF 공용, 2배 해상도) ──
+const RENDER_SCALE = 2;
 async function renderSheet(sheet: HTMLElement): Promise<HTMLCanvasElement> {
   const { default: html2canvas } = await import('html2canvas');
-  return html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+  return html2canvas(sheet, { scale: RENDER_SCALE, backgroundColor: '#ffffff', useCORS: true, logging: false });
 }
 
 export async function downloadInvoiceJpg(sheet: HTMLElement, input: InvoiceInput): Promise<void> {
@@ -61,7 +62,11 @@ export async function downloadInvoiceJpg(sheet: HTMLElement, input: InvoiceInput
   triggerDownload(blob, `${invoiceFileBase(input.date)}.jpg`);
 }
 
-/** A4 세로, 여백 10mm 안에 비율 유지로 맞춘다 */
+/**
+ * A4 세로 — 원본 엑셀 인쇄와 같은 배율(85%)로 가로 가운데, 위 여백 10mm 에 놓는다.
+ * 여백 10mm 안에 들어가지 않으면 비율 유지로 줄인다.
+ */
+const MM_PER_CSS_PX = 25.4 / 96;
 export async function downloadInvoicePdf(sheet: HTMLElement, input: InvoiceInput): Promise<void> {
   const canvas = await renderSheet(sheet);
   const { jsPDF } = await import('jspdf');
@@ -73,8 +78,12 @@ export async function downloadInvoicePdf(sheet: HTMLElement, input: InvoiceInput
   const maxW = PAGE_W - MARGIN * 2;
   const maxH = PAGE_H - MARGIN * 2;
   const ratio = canvas.height / canvas.width;
-  let w = maxW;
+  let w = (canvas.width / RENDER_SCALE) * MM_PER_CSS_PX * INVOICE_PRINT_SCALE;
   let h = w * ratio;
+  if (w > maxW) {
+    w = maxW;
+    h = w * ratio;
+  }
   if (h > maxH) {
     h = maxH;
     w = h / ratio;
