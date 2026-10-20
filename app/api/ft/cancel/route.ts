@@ -24,6 +24,8 @@ interface CancelItem {
   product_no: string | null;
   product_id: string | null;
   order_1688_id: string | null;  // ft_order_items.'1688_order_id'
+  barcode?: string | null;       // ft_order_items.barcode  (접수 당시 스냅샷)
+  site_url?: string | null;      // ft_order_items.site_url (상품 링크 스냅샷)
   qty: number;
   price_cny: number | null;      // 상품가격
   delivery_price_cny: number | null;
@@ -136,6 +138,8 @@ export async function POST(request: NextRequest) {
           option_name: item.option_name || null,
           china_option1: item.china_option1 || null,
           china_option2: item.china_option2 || null,
+          barcode: item.barcode || null,
+          site_url: item.site_url || null,
           qty: item.qty,
           price_cny: item.price_cny ?? null,   // total_refund_cny 는 DB 트리거가 계산
           delivery_price_cny: item.delivery_price_cny ?? null,

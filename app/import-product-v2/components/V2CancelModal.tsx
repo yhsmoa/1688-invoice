@@ -296,6 +296,8 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
           product_no: item.product_no,
           product_id: item.product_id,
           order_1688_id: item['1688_order_id'],
+          barcode: item.barcode,
+          site_url: item.site_url,
           qty,
           price_cny: data.price_cny ? parseFloat(data.price_cny) : null,
           delivery_price_cny: data.delivery_price_cny ? parseFloat(data.delivery_price_cny) : null,
