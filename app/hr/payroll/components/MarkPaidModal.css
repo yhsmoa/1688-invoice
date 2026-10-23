@@ -1,0 +1,208 @@
+/* ============================================================
+   급여지급완료 확인 모달 — 급여장부 시간 수정 모달과 같은 톤
+   ============================================================ */
+.pmp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.40);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+.pmp-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   헤더
+   ============================================================ */
+.pmp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 24px 0;
+}
+
+.pmp-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #15803d;
+  margin: 0 0 4px;
+}
+
+.pmp-sub {
+  font-size: 12px;
+  color: #71717a;
+  margin: 0;
+}
+
+.pmp-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.pmp-close:hover:not(:disabled) {
+  color: #18181b;
+}
+
+/* ============================================================
+   바디 — 직원별 합계 표 + 지급일
+   ============================================================ */
+.pmp-body {
+  padding: 18px 24px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pmp-table th {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #71717a;
+  text-align: left;
+  background: #f4f4f5;
+}
+
+.pmp-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f4f4f5;
+  color: #27272a;
+}
+
+.pmp-table tfoot td {
+  font-weight: 800;
+  color: #18181b;
+  border-top: 2px solid #e4e4e7;
+  border-bottom: none;
+}
+
+.pmp-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.pmp-amount {
+  font-weight: 800;
+  color: #15803d;
+}
+
+.pmp-name-kr {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.pmp-warn {
+  margin: 0;
+  font-size: 12px;
+  color: #b45309;
+}
+
+.pmp-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pmp-date-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #71717a;
+}
+
+.pmp-date-input {
+  padding: 8px 12px;
+  border: 1.5px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.pmp-date-input:focus {
+  border-color: #16a34a;
+}
+
+.pmp-date-hint {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.pmp-error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ef4444;
+  white-space: pre-line;
+}
+
+/* ============================================================
+   푸터
+   ============================================================ */
+.pmp-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px 22px;
+  border-top: 1px solid #f4f4f5;
+}
+
+.pmp-btn-cancel {
+  padding: 9px 18px;
+  background: #f4f4f5;
+  color: #71717a;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pmp-btn-cancel:hover:not(:disabled) {
+  background: #e4e4e7;
+  color: #18181b;
+}
+
+.pmp-btn-confirm {
+  padding: 9px 22px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pmp-btn-confirm:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.pmp-btn-confirm:disabled,
+.pmp-btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

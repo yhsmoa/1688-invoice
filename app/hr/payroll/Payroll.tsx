@@ -6,6 +6,8 @@ import LeftsideMenu from '../../../component/LeftsideMenu';
 import { groupByRole, sortByRole } from './utils/payrollRoles';
 import { birthdayInThisWeek, todayKSTDate, type BirthdayInWeek } from './utils/birthday';
 import { useDragScroll } from './hooks/useDragScroll';
+import { calcSalary, paidByEmployee, todayKSTString, type PaidItem } from './utils/payrollPaid';
+import MarkPaidModal, { type MarkPaidRow } from './components/MarkPaidModal';
 import './Payroll.css';
 
 // ============================================================
@@ -43,6 +45,16 @@ interface TimeModal {
   isCreate: boolean;     // true = 신규 추가 / false = 수정
   isSaving: boolean;
   isDeleting: boolean;
+  error: string;
+  /** 급여 지급완료된 기록이면 지급 정보 — 수정·삭제 잠금, [지급 취소]만 가능 */
+  paid: PaidItem | null;
+  isCancelingPaid: boolean;
+}
+
+/** [급여지급완료] 확인 모달 상태 */
+interface MarkPaidState {
+  paidDate: string;      // YYYY-MM-DD
+  isSaving: boolean;
   error: string;
 }
 
@@ -133,6 +145,8 @@ const Payroll: React.FC = () => {
   const [records, setRecords]         = useState<AttendanceRecord[]>([]);
   const [daysInMonth, setDaysInMonth] = useState(0);
   const [isLoading, setIsLoading]     = useState(false);
+  /** 급여 지급완료 항목 (활성) — 시간 셀 ✓ · 정리 패널 지급/미지급 */
+  const [paidItems, setPaidItems]     = useState<PaidItem[]>([]);
 
   // ============================================================
   // ③ 시간 수정/삭제 모달 상태
@@ -153,8 +167,8 @@ const Payroll: React.FC = () => {
 
   // ============================================================
   // ④-1 엑셀 다운로드 / 부분엑셀(시간 셀 선택)
-  //   · 일반     : GET  — 해당 월 전체 계산
-  //   · 부분엑셀 : POST — 선택한 출근기록만 계산
+  //   · [엑셀]     : GET  — 해당 월 전체 (부분엑셀 모드면 POST — 선택한 출근기록만)
+  //   · [월급엑셀] : GET scope=unpaid — 지급완료된 시간을 뺀 나머지
   // ============================================================
   const [isExporting, setIsExporting] = useState(false);
 
@@ -163,6 +177,9 @@ const Payroll: React.FC = () => {
 
   /** 선택된 출근기록 id 집합 */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  /** [급여지급완료] 확인 모달 */
+  const [markPaid, setMarkPaid] = useState<MarkPaidState | null>(null);
 
   /** [부분엑셀] ↔ [취소] 토글 — 취소 시 선택 초기화 */
   const togglePartialMode = () => {
@@ -174,8 +191,9 @@ const Payroll: React.FC = () => {
     }
   };
 
-  /** 시간 셀 선택/해제 (다중) */
+  /** 시간 셀 선택/해제 (다중) — 지급완료된 시간은 선택하지 않는다 (이중 지급 방지) */
   const toggleSelect = (recordId: string) => {
+    if (paidMap.has(recordId)) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(recordId)) next.delete(recordId);
@@ -184,16 +202,35 @@ const Payroll: React.FC = () => {
     });
   };
 
-  const handleExcelExport = async () => {
+  /** 엑셀 응답 → 파일 저장 */
+  const saveExcel = async (res: Response, fileName: string) => {
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  /**
+   * 엑셀 다운로드
+   *   kind 'sheet'  : [엑셀] — 부분엑셀 모드면 선택분, 아니면 해당 월 전체
+   *   kind 'unpaid' : [월급엑셀] — 지급완료된 시간을 뺀 나머지
+   */
+  const handleExcelExport = async (kind: 'sheet' | 'unpaid') => {
     if (isExporting) return;
 
     // 부분엑셀 모드인데 선택이 없으면 중단
-    if (isPartialMode && selectedIds.size === 0) {
+    if (kind === 'sheet' && isPartialMode && selectedIds.size === 0) {
       alert('부분엑셀로 만들 시간을 먼저 선택해 주세요.');
       return;
     }
 
-    const isPartial = isPartialMode && selectedIds.size > 0;
+    const isPartial = kind === 'sheet' && isPartialMode && selectedIds.size > 0;
+    const mm = String(month).padStart(2, '0');
     setIsExporting(true);
     try {
       const res = isPartial
@@ -202,22 +239,17 @@ const Payroll: React.FC = () => {
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ year, month, recordIds: [...selectedIds] }),
           })
-        : await fetch(`/api/hr/payroll/export-excel?year=${year}&month=${month}`);
+        : await fetch(
+            `/api/hr/payroll/export-excel?year=${year}&month=${month}${kind === 'unpaid' ? '&scope=unpaid' : ''}`
+          );
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         alert(err.error || '엑셀 생성에 실패했습니다.');
         return;
       }
-      const blob     = await res.blob();
-      const url      = URL.createObjectURL(blob);
-      const a        = document.createElement('a');
-      a.href         = url;
-      a.download     = `${year}년_${String(month).padStart(2, '0')}월_급여${isPartial ? '_부분' : ''}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const label = kind === 'unpaid' ? '월급' : isPartial ? '급여_부분' : '급여';
+      await saveExcel(res, `${year}년_${mm}월_${label}.xlsx`);
     } catch {
       alert('엑셀 다운로드 중 오류가 발생했습니다.');
     } finally {
@@ -274,12 +306,32 @@ const Payroll: React.FC = () => {
 
   // ============================================================
   // ⑦ 데이터 조회 (isUnlocked가 true일 때만 실행)
+  //   requestSeqRef — 늦게 도착한 이전 요청 응답이 최신 화면을 덮지 않도록 순번으로 거른다
+  //                   (월을 빠르게 넘기거나, 지급 처리 후 재조회 중 월을 바꾼 경우)
   // ============================================================
+  const requestSeqRef = useRef(0);
+  /** 지금 화면에 띄운(또는 불러오는 중인) 연·월 — 늦게 끝난 지급 처리의 재조회가 다른 달을 덮지 않게 */
+  const viewKeyRef = useRef('');
+
+  /** 응답 적용 — 업무별 순서 (매니저 → 검수 → 포장 → 단기) 는 시간표·정리 패널 공통 */
+  const applyPayroll = (result: {
+    employees: Employee[]; records: AttendanceRecord[]; daysInMonth: number; paidItems?: PaidItem[];
+  }) => {
+    setEmployees(sortByRole(result.employees));
+    setRecords(result.records);
+    setDaysInMonth(result.daysInMonth);
+    setPaidItems(result.paidItems ?? []);
+  };
+
   const fetchPayroll = useCallback(async (y: number, m: number) => {
+    const seq = ++requestSeqRef.current;
+    viewKeyRef.current = `${y}-${m}`;
     setIsLoading(true);
     setEmployees([]);
     setRecords([]);
+    setPaidItems([]);
     setModal(null);
+    setMarkPaid(null);
     setIsSummaryOpen(false);
     // 월이 바뀌면 이전 달 기록 id 가 남지 않도록 부분엑셀 선택 해제
     setIsPartialMode(false);
@@ -287,18 +339,33 @@ const Payroll: React.FC = () => {
     try {
       const res    = await fetch(`/api/hr/payroll?year=${y}&month=${m}`);
       const result = await res.json();
-      if (result.success) {
-        // 업무별 순서 (매니저 → 검수 → 포장 → 단기) — 시간표·정리 패널 공통
-        setEmployees(sortByRole(result.employees as Employee[]));
-        setRecords(result.records);
-        setDaysInMonth(result.daysInMonth);
-      }
+      if (seq !== requestSeqRef.current) return;
+      if (result.success) applyPayroll(result);
     } catch (err) {
       console.error('급여장부 조회 오류:', err);
     } finally {
-      setIsLoading(false);
+      if (seq === requestSeqRef.current) setIsLoading(false);
     }
   }, []);
+
+  /**
+   * 화면을 비우지 않고 다시 읽기 — 지급완료·지급 취소 뒤 DB 기준으로 맞춘다
+   *   (지급 금액은 DB 의 시급 스냅샷으로 계산하므로 로컬 값으로 흉내 내지 않는다)
+   */
+  const reloadSilently = async () => {
+    // 처리 중에 다른 달로 넘어갔으면 그 달은 fetchPayroll 이 이미 새로 읽는다 → 건너뜀
+    //   (여기서 순번을 올리면 진행 중인 fetchPayroll 의 로딩 해제가 막힌다)
+    if (viewKeyRef.current !== `${year}-${month}`) return;
+    const seq = ++requestSeqRef.current;
+    try {
+      const res    = await fetch(`/api/hr/payroll?year=${year}&month=${month}`);
+      const result = await res.json();
+      if (seq !== requestSeqRef.current) return;
+      if (result.success) applyPayroll(result);
+    } catch (err) {
+      console.error('급여장부 재조회 오류:', err);
+    }
+  };
 
   useEffect(() => {
     if (!isUnlocked) return;
@@ -362,16 +429,145 @@ const Payroll: React.FC = () => {
     [daysInMonth]
   );
 
+  /** 지급완료 항목: record_id → 지급 정보 (시간 셀 ✓ · 선택 차단 · 모달 잠금) */
+  const paidMap = useMemo(() => {
+    const map = new Map<string, PaidItem>();
+    paidItems.forEach((p) => map.set(p.record_id, p));
+    return map;
+  }, [paidItems]);
+
+  /** 직원별 지급완료 합계 — 정리 패널 지급완료/미지급 */
+  const paidTotals = useMemo(() => paidByEmployee(paidItems), [paidItems]);
+
   /** 모달 열려있을 때 실시간 근무 시간 계산 */
   const modalPreviewMins = modal
     ? calcMinutesFromTimes(modal.clockIn, modal.clockOut)
     : null;
 
   // ============================================================
+  // ⑧-1 [급여지급완료] — 부분엑셀 모드에서 고른 시간을 지급완료로 표시
+  //   · 버튼을 처음 누르면 선택 모드로 들어간다 (부분엑셀과 같은 선택을 공유)
+  //   · 확인 모달에서 직원별 금액·지급일을 보고 확정 → DB 함수가 한 트랜잭션으로 기록
+  // ============================================================
+
+  /** 선택한 기록 (지급완료된 것은 선택 단계에서 이미 빠짐) */
+  const selectedRecords = useMemo(
+    () => records.filter((r) => selectedIds.has(r.id) && !paidMap.has(r.id)),
+    [records, selectedIds, paidMap]
+  );
+
+  /** 확인 모달 — 직원별 일수·시간·금액 (금액 = floor(시급 × 선택 시간 합 / 60)) */
+  const markPaidRows = useMemo<MarkPaidRow[]>(() => {
+    const byEmp = new Map<string, { days: number; minutes: number }>();
+    selectedRecords.forEach((r) => {
+      const cur = byEmp.get(r.employee_id) ?? { days: 0, minutes: 0 };
+      cur.days += 1;
+      cur.minutes += r.total_minutes ?? 0;
+      byEmp.set(r.employee_id, cur);
+    });
+    return employees
+      .filter((emp) => byEmp.has(emp.id))
+      .map((emp) => {
+        const s = byEmp.get(emp.id)!;
+        return {
+          employeeId: emp.id,
+          name: emp.name || emp.name_kr || '-',
+          nameKr: emp.name_kr,
+          days: s.days,
+          minutes: s.minutes,
+          hourlyWage: emp.hourly_wage,
+          amount: calcSalary(emp.hourly_wage, s.minutes),
+        };
+      });
+  }, [selectedRecords, employees]);
+
+  /** 지급일 하한 — 선택한 가장 늦은 근무일 */
+  const markPaidMinDate = useMemo(
+    () => selectedRecords.reduce((max, r) => (r.work_date > max ? r.work_date : max), ''),
+    [selectedRecords]
+  );
+
+  const handleMarkPaidClick = () => {
+    if (!isPartialMode) {
+      setIsPartialMode(true);           // 선택 모드로 진입 — 안내 문구가 표시된다
+      return;
+    }
+    if (selectedRecords.length === 0) {
+      alert('급여 지급완료로 표시할 시간을 먼저 선택해 주세요.');
+      return;
+    }
+    // 퇴근 기록 없는(근무 0분) 시간은 지급완료할 수 없다 — DB 도 같은 규칙으로 막는다
+    const open = selectedRecords.filter((r) => !r.clock_out || !r.total_minutes);
+    if (open.length > 0) {
+      alert(`퇴근 기록이 없거나 근무 시간이 0 인 시간 ${open.length}건이 선택되어 있습니다.\n해당 시간을 빼고 다시 시도해 주세요.`);
+      return;
+    }
+    const today = todayKSTString();
+    setMarkPaid({
+      paidDate: markPaidMinDate > today ? markPaidMinDate : today,
+      isSaving: false,
+      error:    '',
+    });
+  };
+
+  const handleMarkPaidConfirm = async () => {
+    if (!markPaid || markPaid.isSaving) return;
+    setMarkPaid((prev) => prev ? { ...prev, isSaving: true, error: '' } : null);
+    try {
+      const res = await fetch('/api/hr/payroll/payments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          record_ids: selectedRecords.map((r) => r.id),
+          paid_date:  markPaid.paidDate,
+        }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        setMarkPaid((prev) => prev ? { ...prev, isSaving: false, error: result.error || '지급완료 처리에 실패했습니다.' } : null);
+        // 다른 사람이 먼저 처리했을 수 있다 (409) → 화면을 DB 기준으로 맞춘다
+        if (res.status === 409) await reloadSilently();
+        return;
+      }
+      setMarkPaid(null);
+      setIsPartialMode(false);
+      setSelectedIds(new Set());
+      await reloadSilently();
+    } catch {
+      setMarkPaid((prev) => prev ? { ...prev, isSaving: false, error: '서버 오류가 발생했습니다.' } : null);
+    }
+  };
+
+  /** 수정 모달의 [지급 취소] — 이 시간만 취소, 취소 후 바로 수정할 수 있게 모달 유지 */
+  const handleCancelPaid = async () => {
+    if (!modal || !modal.paid || modal.isCancelingPaid) return;
+    if (!confirm(`${modal.workDate.replace(/-/g, '.')} ${modal.employeeName} 의 급여 지급완료를 취소하시겠습니까?\n취소하면 이 시간은 다시 수정·지급할 수 있습니다.`)) return;
+
+    setModal((prev) => prev ? { ...prev, isCancelingPaid: true, error: '' } : null);
+    try {
+      const res = await fetch('/api/hr/payroll/payments/cancel', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ record_ids: [modal.recordId] }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        setModal((prev) => prev ? { ...prev, isCancelingPaid: false, error: result.error || '지급 취소에 실패했습니다.' } : null);
+        if (res.status === 409) await reloadSilently();
+        return;
+      }
+      setModal((prev) => prev ? { ...prev, paid: null, isCancelingPaid: false } : null);
+      await reloadSilently();
+    } catch {
+      setModal((prev) => prev ? { ...prev, isCancelingPaid: false, error: '서버 오류가 발생했습니다.' } : null);
+    }
+  };
+
+  // ============================================================
   // ⑨ 시간 수정/삭제 모달 핸들러
   // ============================================================
 
-  /** 기존 기록 셀 클릭 → 수정 모달 열기 */
+  /** 기존 기록 셀 클릭 → 수정 모달 열기 (지급완료된 기록은 잠금 상태로 열림) */
   const openModal = (emp: Employee, rec: AttendanceRecord) => {
     setModal({
       recordId:     rec.id,
@@ -384,6 +580,8 @@ const Payroll: React.FC = () => {
       isSaving:     false,
       isDeleting:   false,
       error:        '',
+      paid:         paidMap.get(rec.id) ?? null,
+      isCancelingPaid: false,
     });
   };
 
@@ -401,12 +599,16 @@ const Payroll: React.FC = () => {
       isSaving:     false,
       isDeleting:   false,
       error:        '',
+      paid:         null,
+      isCancelingPaid: false,
     });
   };
 
   /** 저장: 신규 추가(isCreate) or 수정 분기 */
   const handleModalSave = async () => {
-    if (!modal || modal.isSaving || modal.isDeleting) return;
+    if (!modal || modal.isSaving || modal.isDeleting || modal.isCancelingPaid) return;
+    // 지급완료된 기록은 잠금 — 먼저 [지급 취소] (DB 트리거도 같은 규칙으로 막는다)
+    if (modal.paid) return;
 
     // 출근 시간 필수 검증
     if (!modal.clockIn) {
@@ -471,7 +673,8 @@ const Payroll: React.FC = () => {
 
   /** 삭제: 출퇴근 기록 삭제 → DELETE /api/hr/attendance/[id] */
   const handleModalDelete = async () => {
-    if (!modal || modal.isSaving || modal.isDeleting) return;
+    if (!modal || modal.isSaving || modal.isDeleting || modal.isCancelingPaid) return;
+    if (modal.paid) return;   // 지급완료된 기록은 잠금
     if (!confirm('이 출퇴근 기록을 삭제하시겠습니까?')) return;
 
     setModal((prev) => prev ? { ...prev, isDeleting: true, error: '' } : null);
@@ -561,17 +764,31 @@ const Payroll: React.FC = () => {
                 >
                   ▶
                 </button>
+                {/* 이번 달 지급완료 건수 */}
+                {!isLoading && paidItems.length > 0 && (
+                  <span className="pr-paid-count">✓ 지급완료 {paidItems.length}건</span>
+                )}
+                {/* 선택 모드 안내 */}
+                {isPartialMode && (
+                  <span className="pr-select-hint">
+                    시간을 눌러 선택 → [엑셀] 부분 급여 엑셀 · [급여지급완료] 지급 표시 (✓ 지급완료된 시간은 선택 안 됨)
+                  </span>
+                )}
               </div>
 
-              {/* [정리] + [부분엑셀] + [엑셀] 버튼: 데이터 있을 때만 표시 */}
+              {/* 버튼: 데이터 있을 때만 표시
+                  · 평소     : [정리] [부분엑셀] [급여지급완료] [월급엑셀] [엑셀]
+                  · 선택 모드 : [취소(n)] [급여지급완료] [엑셀(선택분)] */}
               {!isLoading && employees.length > 0 && (
                 <div className="pr-nav-actions">
-                  <button
-                    className="pr-summary-btn"
-                    onClick={() => setIsSummaryOpen(true)}
-                  >
-                    정리
-                  </button>
+                  {!isPartialMode && (
+                    <button
+                      className="pr-summary-btn"
+                      onClick={() => setIsSummaryOpen(true)}
+                    >
+                      정리
+                    </button>
+                  )}
                   {/* [부분엑셀] ↔ [취소]: 켜면 시간 셀을 다중 선택할 수 있다 */}
                   <button
                     className={`pr-partial-btn${isPartialMode ? ' pr-partial-active' : ''}`}
@@ -581,10 +798,30 @@ const Payroll: React.FC = () => {
                       ? `취소${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`
                       : '부분엑셀'}
                   </button>
+                  {/* [급여지급완료]: 평소엔 선택 모드로 진입, 선택 모드에선 확인 모달 */}
+                  <button
+                    className="pr-paid-btn"
+                    onClick={handleMarkPaidClick}
+                    disabled={isPartialMode && selectedRecords.length === 0}
+                    title={isPartialMode ? '선택한 시간을 급여 지급완료로 표시' : '지급완료로 표시할 시간을 선택합니다'}
+                  >
+                    급여지급완료
+                  </button>
+                  {!isPartialMode && (
+                    <button
+                      className="pr-monthly-btn"
+                      onClick={() => handleExcelExport('unpaid')}
+                      disabled={isExporting}
+                      title="지급완료된 시간을 뺀 나머지로 급여 엑셀"
+                    >
+                      월급엑셀
+                    </button>
+                  )}
                   <button
                     className="pr-excel-btn"
-                    onClick={handleExcelExport}
+                    onClick={() => handleExcelExport('sheet')}
                     disabled={isExporting}
+                    title={isPartialMode ? '선택한 시간만 급여 엑셀' : '이번 달 전체 급여 엑셀 (지급완료 포함)'}
                   >
                     {isExporting ? '생성 중...' : '엑셀'}
                   </button>
@@ -686,37 +923,46 @@ const Payroll: React.FC = () => {
 
                           {/* 직원별 시간대 + h 셀
                               - 일반 모드   : 시간 셀 — 기록 있으면 수정 모달 / 없으면 신규 추가 모달
+                                              (지급완료된 기록은 잠금 모달 — [지급 취소]만 가능)
                               - 부분엑셀 모드: 시간·h 두 칸이 한 쌍 — 어느 칸을 눌러도 같이 선택/해제
-                                              (기록 없는 칸은 클릭 불가) */}
+                                              (기록 없는 칸·지급완료된 칸은 선택 불가)
+                              - 지급완료    : 두 칸 연초록 + 시간 옆 ✓ */}
                           {employees.flatMap((emp) => {
                             const rec = recordMap.get(day)?.get(emp.id);
                             const groupStart = groupStartIds.has(emp.id) ? ' pr-group-start' : '';
+                            const paid       = rec ? paidMap.get(rec.id) : undefined;
+                            const paidCls    = paid ? ' pr-td-paid' : '';
 
-                            // 부분엑셀 모드에서는 기록 있는 셀만 클릭 대상
-                            const clickable  = isPartialMode ? !!rec : true;
+                            // 부분엑셀 모드에서는 기록 있고 지급 안 된 셀만 선택 대상
+                            const pickable   = isPartialMode && !!rec && !paid;
+                            const clickable  = isPartialMode ? pickable : true;
                             const isSelected = !!rec && selectedIds.has(rec.id);
                             const selected   = isSelected ? ' pr-td-selected' : '';
                             // 빈 셀 hover 강조는 일반 모드에서만
                             const empty      = !rec && !isPartialMode ? ' pr-td-empty' : '';
+                            // 선택 모드에서 지급완료 칸은 선택 불가 표시
+                            const locked     = isPartialMode && paid ? ' pr-td-locked' : '';
                             // 부분엑셀 모드의 h 칸도 시간 칸과 같은 선택 대상
-                            const hPick      = isPartialMode && rec ? ' pr-td-clickable pr-td-pair' : '';
+                            const hPick      = pickable ? ' pr-td-clickable pr-td-pair' : '';
 
                             const onCellClick = isPartialMode
-                              ? (rec ? () => toggleSelect(rec.id) : undefined)
+                              ? (pickable ? () => toggleSelect(rec!.id) : undefined)
                               : (rec ? () => openModal(emp, rec) : () => openCreateModal(emp, day));
 
                             return [
                               <td
                                 key={`${emp.id}-r`}
-                                className={`pr-td-range${clickable ? ' pr-td-clickable' : ''}${isPartialMode && rec ? ' pr-td-pair' : ''}${empty}${groupStart}${selected}`}
+                                className={`pr-td-range${clickable ? ' pr-td-clickable' : ''}${pickable ? ' pr-td-pair' : ''}${empty}${groupStart}${paidCls}${locked}${selected}`}
                                 onClick={onCellClick}
+                                title={paid ? `급여 지급완료 · 지급일 ${paid.paid_date}` : undefined}
                               >
                                 {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
+                                {paid && <span className="pr-paid-check" aria-label="급여 지급완료">✓</span>}
                               </td>,
                               <td
                                 key={`${emp.id}-h`}
-                                className={`pr-td-h${hPick}${selected}`}
-                                onClick={isPartialMode && rec ? () => toggleSelect(rec.id) : undefined}
+                                className={`pr-td-h${hPick}${paidCls}${locked}${selected}`}
+                                onClick={pickable ? () => toggleSelect(rec!.id) : undefined}
                               >
                                 {rec ? minutesToHours(rec.total_minutes) : ''}
                               </td>,
@@ -755,26 +1001,36 @@ const Payroll: React.FC = () => {
               - 시간 셀 클릭 시 열림 / 오버레이 클릭 or × 버튼으로 닫기
               - 출근·퇴근 시간 수정 + 실시간 근무 시간 미리보기
               - 삭제 버튼으로 해당 출퇴근 기록 삭제
+              - 급여 지급완료된 기록: 입력 잠금 + [지급 취소]만 (취소하면 바로 수정 가능)
               ============================================================ */}
           {modal && (
-            <div className="pr-modal-overlay" onClick={() => setModal(null)}>
+            <div className="pr-modal-overlay" onClick={() => !modal.isCancelingPaid && setModal(null)}>
               <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
 
                 {/* 모달 헤더 */}
                 <div className="pr-modal-header">
                   <div>
                     <h3 className="pr-modal-title">
-                      {modal.isCreate ? '근무 시간 추가' : '근무 시간 수정'}
+                      {modal.isCreate ? '근무 시간 추가' : modal.paid ? '근무 시간 (지급완료)' : '근무 시간 수정'}
                     </h3>
                     <p className="pr-modal-sub">
                       {modal.workDate.replace(/-/g, '.')} · {modal.employeeName}
                     </p>
                   </div>
-                  <button className="pr-modal-close" onClick={() => setModal(null)}>×</button>
+                  <button className="pr-modal-close" onClick={() => setModal(null)} disabled={modal.isCancelingPaid}>×</button>
                 </div>
 
                 {/* 모달 바디: 출근/퇴근 입력 + 미리보기 */}
                 <div className="pr-modal-body">
+
+                  {/* 지급완료 안내 — 수정·삭제 잠금 */}
+                  {modal.paid && (
+                    <div className="pr-modal-paid">
+                      <span className="pr-modal-paid-badge">✓ 급여 지급완료</span>
+                      <span className="pr-modal-paid-date">지급일 {modal.paid.paid_date}</span>
+                      <p className="pr-modal-paid-desc">시간을 고치거나 삭제하려면 먼저 지급을 취소하세요.</p>
+                    </div>
+                  )}
 
                   <div className="pr-modal-field">
                     <label className="pr-modal-label">출근</label>
@@ -782,7 +1038,8 @@ const Payroll: React.FC = () => {
                       type="time"
                       className="pr-modal-time"
                       value={modal.clockIn}
-                      autoFocus
+                      autoFocus={!modal.paid}
+                      disabled={!!modal.paid}
                       onChange={(e) =>
                         setModal((prev) => prev ? { ...prev, clockIn: e.target.value, error: '' } : null)
                       }
@@ -795,6 +1052,7 @@ const Payroll: React.FC = () => {
                       type="time"
                       className="pr-modal-time"
                       value={modal.clockOut}
+                      disabled={!!modal.paid}
                       onChange={(e) =>
                         setModal((prev) => prev ? { ...prev, clockOut: e.target.value, error: '' } : null)
                       }
@@ -813,37 +1071,77 @@ const Payroll: React.FC = () => {
                   {modal.error && <p className="pr-modal-error">{modal.error}</p>}
                 </div>
 
-                {/* 모달 푸터: [삭제] 왼쪽(수정 시만) / [취소][저장] 오른쪽 */}
-                <div className="pr-modal-footer">
-                  {!modal.isCreate && (
+                {/* 모달 푸터
+                    · 지급완료 : [지급 취소] 왼쪽 / [닫기] 오른쪽
+                    · 그 외   : [삭제] 왼쪽(수정 시만) / [취소][저장] 오른쪽 */}
+                {modal.paid ? (
+                  <div className="pr-modal-footer">
                     <button
-                      className="pr-modal-btn-delete"
-                      onClick={handleModalDelete}
-                      disabled={modal.isSaving || modal.isDeleting}
+                      className="pr-modal-btn-unpay"
+                      onClick={handleCancelPaid}
+                      disabled={modal.isCancelingPaid}
                     >
-                      {modal.isDeleting ? '삭제 중...' : '삭제'}
+                      {modal.isCancelingPaid ? '취소 중...' : '지급 취소'}
                     </button>
-                  )}
-                  <div className="pr-modal-footer-right">
-                    <button
-                      className="pr-modal-btn-cancel"
-                      onClick={() => setModal(null)}
-                      disabled={modal.isSaving || modal.isDeleting}
-                    >
-                      취소
-                    </button>
-                    <button
-                      className="pr-modal-btn-save"
-                      onClick={handleModalSave}
-                      disabled={modal.isSaving || modal.isDeleting}
-                    >
-                      {modal.isSaving ? '저장 중...' : '저장'}
-                    </button>
+                    <div className="pr-modal-footer-right">
+                      <button
+                        className="pr-modal-btn-cancel"
+                        onClick={() => setModal(null)}
+                        disabled={modal.isCancelingPaid}
+                      >
+                        닫기
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="pr-modal-footer">
+                    {!modal.isCreate && (
+                      <button
+                        className="pr-modal-btn-delete"
+                        onClick={handleModalDelete}
+                        disabled={modal.isSaving || modal.isDeleting}
+                      >
+                        {modal.isDeleting ? '삭제 중...' : '삭제'}
+                      </button>
+                    )}
+                    <div className="pr-modal-footer-right">
+                      <button
+                        className="pr-modal-btn-cancel"
+                        onClick={() => setModal(null)}
+                        disabled={modal.isSaving || modal.isDeleting}
+                      >
+                        취소
+                      </button>
+                      <button
+                        className="pr-modal-btn-save"
+                        onClick={handleModalSave}
+                        disabled={modal.isSaving || modal.isDeleting}
+                      >
+                        {modal.isSaving ? '저장 중...' : '저장'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>
+          )}
+
+          {/* ============================================================
+              [급여지급완료] 확인 모달 — 직원별 금액 + 지급일
+              ============================================================ */}
+          {markPaid && (
+            <MarkPaidModal
+              rows={markPaidRows}
+              paidDate={markPaid.paidDate}
+              minDate={markPaidMinDate}
+              maxDate={todayKSTString()}
+              isSaving={markPaid.isSaving}
+              error={markPaid.error}
+              onChangeDate={(d) => setMarkPaid((prev) => prev ? { ...prev, paidDate: d, error: '' } : null)}
+              onConfirm={handleMarkPaidConfirm}
+              onClose={() => setMarkPaid(null)}
+            />
           )}
 
           {/* ============================================================
@@ -875,6 +1173,8 @@ const Payroll: React.FC = () => {
                         <th>시급</th>
                         <th>총 근무</th>
                         <th>예상 급여</th>
+                        <th>지급완료</th>
+                        <th>미지급</th>
                         <th>은행</th>
                         <th>계좌번호</th>
                       </tr>
@@ -882,6 +1182,10 @@ const Payroll: React.FC = () => {
                     <tbody>
                       {employees.map((emp) => {
                         const totalMinutes = employeeTotals.get(emp.id) ?? 0;
+                        // 지급완료 = 지급 시점 시급(스냅샷) 기준 / 미지급 = 남은 시간 × 현재 시급 ([월급엑셀] 과 같은 값)
+                        const paid          = paidTotals.get(emp.id);
+                        const unpaidMinutes = Math.max(0, totalMinutes - (paid?.minutes ?? 0));
+                        const unpaidAmount  = calcSalary(emp.hourly_wage, unpaidMinutes);
                         return (
                           <tr key={emp.id}>
                             <td>{emp.name || '-'}</td>
@@ -894,6 +1198,12 @@ const Payroll: React.FC = () => {
                             </td>
                             <td className="ps-calc">
                               {calcWage(emp.hourly_wage, totalMinutes)}
+                            </td>
+                            <td className="ps-paid">
+                              {paid ? `${paid.amount.toLocaleString()} (${minutesToHours(paid.minutes)})` : '-'}
+                            </td>
+                            <td className="ps-unpaid">
+                              {unpaidMinutes > 0 ? unpaidAmount.toLocaleString() : '-'}
                             </td>
                             <td>{emp.bank_name || '-'}</td>
                             <td className="ps-bankno">{emp.bank_no || '-'}</td>

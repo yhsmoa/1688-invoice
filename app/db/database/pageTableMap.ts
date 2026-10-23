@@ -299,8 +299,10 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         route: '/hr/payroll',
         file: 'app/hr/payroll/Payroll.tsx',
         apis: [
-          { route: '/api/hr/payroll', tables: ['invoiceManager_emplyee_records', 'invoiceManager_employees'] },
-          { route: '/api/hr/payroll/export-excel', tables: ['invoiceManager_emplyee_records', 'invoiceManager_employees'] },
+          { route: '/api/hr/payroll', tables: ['invoiceManager_emplyee_records', 'invoiceManager_employees', 'invoiceManager_payroll_payment_items', 'invoiceManager_payroll_payments'] },
+          { route: '/api/hr/payroll/export-excel', tables: ['invoiceManager_emplyee_records', 'invoiceManager_employees', 'invoiceManager_payroll_payment_items', 'invoiceManager_payroll_payments'] },
+          { route: '/api/hr/payroll/payments', tables: ['invoiceManager_payroll_payments', 'invoiceManager_payroll_payment_items', 'invoiceManager_emplyee_records', 'invoiceManager_employees'] },
+          { route: '/api/hr/payroll/payments/cancel', tables: ['invoiceManager_payroll_payment_items'] },
           { route: '/api/hr/verify-access', tables: ['invoiceManager_employees'] },
           { route: '/api/hr/attendance/create', tables: ['invoiceManager_emplyee_records'] },
           { route: '/api/hr/attendance/update-time', tables: ['invoiceManager_emplyee_records'] },

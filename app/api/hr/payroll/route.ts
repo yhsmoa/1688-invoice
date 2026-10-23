@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPayrollMonth, parseYearMonth } from '../../../../lib/payrollCalc';
+import { fetchPaidItems } from '../../../../lib/payrollPayments';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,10 +9,11 @@ export const dynamic = 'force-dynamic';
 //
 // 특정 월의 급여장부 데이터 반환
 //   조회·집계는 lib/payrollCalc (급여 엑셀·무역계좌 급여 반영과 공용)
+//   지급완료 항목은 lib/payrollPayments (시간 셀 ✓ 표시 · 정리 패널 지급/미지급)
 //   → 프론트에서 날짜 × 직원 매트릭스로 처리
 //
 // Response:
-//   { success, year, month, daysInMonth, employees, records }
+//   { success, year, month, daysInMonth, employees, records, paidItems }
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payroll = await fetchPayrollMonth(ym.year, ym.month);
+    const paidItems = await fetchPaidItems(payroll.startDate, payroll.endDate);
 
     return NextResponse.json({
       success: true,
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
       daysInMonth: payroll.daysInMonth,
       employees: payroll.employees,
       records: payroll.records,
+      paidItems,
     });
 
   } catch (error) {

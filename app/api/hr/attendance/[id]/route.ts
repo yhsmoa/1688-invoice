@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { payrollDbMessage } from '../../../../../lib/payrollPayments';
 
 // ============================================================
 // DELETE /api/hr/attendance/[id]
@@ -26,7 +27,12 @@ export async function DELETE(
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      // 급여 지급완료된 기록은 DB 트리거가 삭제를 막는다 → 사유를 그대로 안내
+      const locked = payrollDbMessage(error.message);
+      if (locked) return NextResponse.json({ success: false, error: locked }, { status: 409 });
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
 

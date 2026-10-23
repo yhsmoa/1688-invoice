@@ -7,12 +7,15 @@ import {
   parseYearMonth,
   type PayrollEmployee,
 } from '../../../../../lib/payrollCalc';
+import { fetchPaidItems } from '../../../../../lib/payrollPayments';
 
 // ============================================================
 // 급여장부 엑셀 다운로드 — [정리] 패널과 동일한 데이터
 //
-//   GET  ?year=YYYY&month=MM           → 해당 월 전체
-//   POST { year, month, recordIds[] }  → 선택한 출근기록만 ([부분엑셀])
+//   GET  ?year=YYYY&month=MM               → 해당 월 전체 ([엑셀])
+//   GET  ?year=YYYY&month=MM&scope=unpaid  → 지급완료된 시간을 뺀 나머지 ([월급엑셀])
+//   POST { year, month, recordIds[] }      → 선택한 출근기록만 ([부분엑셀])
+//                                            이미 지급완료된 시간이 섞이면 거부 (이중 지급 방지)
 //
 //   조회·급여 계산은 lib/payrollCalc (급여장부·무역계좌와 공용)
 // 컬럼(헤더 영문): Name | Korean Name | Position | Hourly Wage | Total Hours (h)
@@ -65,20 +68,29 @@ const HEADERS = [
 // 입력 열(주황): G=Expense(7), K=TAX(11)
 const INPUT_COLS = new Set([7, 11]);
 
+// ── 엑셀 종류 — 시트명·파일명 표기만 다르고 컬럼은 같다 ──
+type ExcelKind = 'full' | 'partial' | 'unpaid';
+
+const KIND_LABEL: Record<ExcelKind, { sheet: string; file: string }> = {
+  full:    { sheet: '급여',                file: '급여' },
+  partial: { sheet: '급여 (부분)',         file: '급여_부분' },
+  unpaid:  { sheet: '월급 (지급분 제외)', file: '월급' },
+};
+
 // ============================================================
 // 워크북 생성 → 엑셀 응답
-//   isPartial: [부분엑셀] 여부 (시트명·파일명에 '부분' 표기)
+//   kind: 전체 / 부분 / 월급(지급분 제외) — KIND_LABEL 참고
 // ============================================================
 async function buildExcelResponse(
   year: number,
   month: number,
   employees: PayrollEmployee[],
   minutesMap: Map<string, number>,
-  isPartial: boolean
+  kind: ExcelKind
 ): Promise<NextResponse> {
   const workbook = new ExcelJS.Workbook();
-  const suffix   = isPartial ? ' (부분)' : '';
-  const ws       = workbook.addWorksheet(`${year}년 ${month}월 급여${suffix}`);
+  const label    = KIND_LABEL[kind];
+  const ws       = workbook.addWorksheet(`${year}년 ${month}월 ${label.sheet}`);
 
   // ── 열 너비 설정 ──────────────────────────────────────────
   ws.columns = [
@@ -149,7 +161,7 @@ async function buildExcelResponse(
   // ── 버퍼로 변환 후 응답 ───────────────────────────────────
   const buffer = await workbook.xlsx.writeBuffer();
 
-  const namePart = `${year}년_${String(month).padStart(2, '0')}월_급여${isPartial ? '_부분' : ''}.xlsx`;
+  const namePart = `${year}년_${String(month).padStart(2, '0')}월_${label.file}.xlsx`;
   const filename = encodeURIComponent(namePart);
 
   return new NextResponse(buffer, {
@@ -162,7 +174,7 @@ async function buildExcelResponse(
 }
 
 // ============================================================
-// GET — 해당 월 전체 급여 엑셀
+// GET — 해당 월 전체 급여 엑셀 / scope=unpaid 면 지급완료된 시간을 뺀 월급 엑셀
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -178,17 +190,45 @@ export async function GET(request: NextRequest) {
     }
     const { year, month } = ym;
 
-    // ── 출근기록 · 직원별 총 근무 분 · 직원 정보 (lib/payrollCalc) ──
-    const { records, employees, minutesByEmployee } = await fetchPayrollMonth(year, month);
+    const scope = searchParams.get('scope');
+    if (scope !== null && scope !== 'unpaid') {
+      return NextResponse.json(
+        { success: false, error: 'scope 는 unpaid 만 지원합니다.' },
+        { status: 400 }
+      );
+    }
 
-    if (records.length === 0) {
+    // ── 출근기록 · 직원별 총 근무 분 · 직원 정보 (lib/payrollCalc) ──
+    const monthData = await fetchPayrollMonth(year, month);
+
+    if (monthData.records.length === 0) {
       return NextResponse.json(
         { success: false, error: '해당 월 근무 기록이 없습니다.' },
         { status: 404 }
       );
     }
 
-    return await buildExcelResponse(year, month, employees, minutesByEmployee, false);
+    if (scope !== 'unpaid') {
+      return await buildExcelResponse(year, month, monthData.employees, monthData.minutesByEmployee, 'full');
+    }
+
+    // ── [월급엑셀]: 지급완료된 출근기록을 빼고 남은 시간만 계산 ──
+    const paidIds = new Set(
+      (await fetchPaidItems(monthData.startDate, monthData.endDate)).map((p) => p.record_id)
+    );
+    const unpaid = filterPayrollByRecords(
+      monthData,
+      monthData.records.filter((r) => !paidIds.has(r.id)).map((r) => r.id)
+    );
+
+    if (unpaid.records.length === 0) {
+      return NextResponse.json(
+        { success: false, error: '지급하지 않은 근무 기록이 없습니다. (모두 지급완료)' },
+        { status: 404 }
+      );
+    }
+
+    return await buildExcelResponse(year, month, unpaid.employees, unpaid.minutesByEmployee, 'unpaid');
 
   } catch (error) {
     console.error('급여 엑셀 생성 오류:', error);
@@ -244,6 +284,19 @@ export async function POST(request: NextRequest) {
 
     // ── 해당 월 조회 후 선택 기록만 필터 ─────────────────────
     const monthData = await fetchPayrollMonth(year, month);
+
+    // 이미 지급완료된 시간이 섞이면 거부 — 부분엑셀로 같은 시간을 두 번 지급하지 않도록
+    const paidIds = new Set(
+      (await fetchPaidItems(monthData.startDate, monthData.endDate)).map((p) => p.record_id)
+    );
+    const paidPicked = recordIds.filter((id) => paidIds.has(id)).length;
+    if (paidPicked > 0) {
+      return NextResponse.json(
+        { success: false, error: `이미 급여 지급완료된 시간 ${paidPicked}건이 선택되어 있습니다. 새로고침 후 다시 선택해 주세요.` },
+        { status: 409 }
+      );
+    }
+
     const picked    = filterPayrollByRecords(monthData, recordIds);
 
     if (picked.records.length === 0) {
@@ -253,7 +306,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return await buildExcelResponse(year, month, picked.employees, picked.minutesByEmployee, true);
+    return await buildExcelResponse(year, month, picked.employees, picked.minutesByEmployee, 'partial');
 
   } catch (error) {
     console.error('급여 부분 엑셀 생성 오류:', error);

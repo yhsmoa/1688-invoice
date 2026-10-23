@@ -231,6 +231,80 @@
   box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
 }
 
+/* ── [급여지급완료] 버튼 ── */
+.pr-paid-btn {
+  padding: 6px 16px;
+  background: #ffffff;
+  color: #15803d;
+  border: 1.5px solid #22c55e;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pr-paid-btn:hover:not(:disabled) {
+  background: #dcfce7;
+}
+
+/* 선택 모드에서 선택이 있으면 채운 버튼으로 강조 */
+.pr-partial-active ~ .pr-paid-btn:not(:disabled) {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.pr-partial-active ~ .pr-paid-btn:not(:disabled):hover {
+  background: #16a34a;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.pr-paid-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── [월급엑셀] 버튼 — 지급완료분 제외 ── */
+.pr-monthly-btn {
+  padding: 6px 16px;
+  background: #0f766e;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pr-monthly-btn:hover:not(:disabled) {
+  background: #115e59;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+}
+
+.pr-monthly-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 이번 달 지급완료 건수 / 선택 모드 안내 ── */
+.pr-paid-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.pr-select-hint {
+  font-size: 12px;
+  color: #c2410c;
+  font-weight: 600;
+}
+
 /* ── [엑셀] 버튼 ── */
 .pr-excel-btn {
   padding: 6px 16px;
@@ -539,6 +613,40 @@
   color: #9a3412 !important;
 }
 
+/* ============================================================
+   급여 지급완료 칸 — 시간·h 두 칸 연초록 + 시간 옆 ✓
+   선택 모드에서는 선택 불가(흐리게 + not-allowed)
+   ============================================================ */
+.pr-table .pr-td-paid {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.pr-table tbody tr:hover td.pr-td-paid {
+  background: #dcfce7;
+}
+
+.pr-paid-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: 1px;
+}
+
+.pr-table .pr-td-locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* h(근무시간) 셀 */
 .pr-td-h {
   padding: 3px 8px;
@@ -739,6 +847,72 @@
   gap: 8px;
 }
 
+/* ── 지급완료 안내 (수정·삭제 잠금) ── */
+.pr-modal-paid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+}
+
+.pr-modal-paid-badge {
+  font-size: 13px;
+  font-weight: 800;
+  color: #15803d;
+}
+
+.pr-modal-paid-date {
+  font-size: 12px;
+  color: #166534;
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-modal-paid-desc {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.pr-modal-time:disabled {
+  color: #71717a;
+  background: #f4f4f5;
+  cursor: not-allowed;
+}
+
+/* [지급 취소] 버튼 */
+.pr-modal-btn-unpay {
+  padding: 9px 18px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1.5px solid #fed7aa;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pr-modal-btn-unpay:hover:not(:disabled) {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+}
+
+.pr-modal-btn-unpay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pr-modal-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* 삭제 버튼 */
 .pr-modal-btn-delete {
   padding: 9px 18px;
@@ -935,3 +1109,5 @@
 .ps-hours   { font-weight: 700; color: #18181b; font-variant-numeric: tabular-nums; }
 .ps-calc    { font-weight: 800; color: #059669; font-variant-numeric: tabular-nums; }
 .ps-bankno  { font-size: 11px; color: #71717a; font-variant-numeric: tabular-nums; }
+.ps-paid    { color: #15803d; font-variant-numeric: tabular-nums; }
+.ps-unpaid  { font-weight: 800; color: #c2410c; font-variant-numeric: tabular-nums; }

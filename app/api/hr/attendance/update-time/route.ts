@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { payrollDbMessage } from '../../../../../lib/payrollPayments';
 
 // ============================================================
 // PUT /api/hr/attendance/update-time
@@ -92,7 +93,12 @@ export async function PUT(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // 급여 지급완료된 기록은 DB 트리거가 수정을 막는다 → 사유를 그대로 안내
+      const locked = payrollDbMessage(error.message);
+      if (locked) return NextResponse.json({ success: false, error: locked }, { status: 409 });
+      throw error;
+    }
 
     return NextResponse.json({ success: true, record: data });
 
