@@ -28,6 +28,8 @@ export interface PayrollEmployee {
   hourly_wage: number | null;
   bank_name: string | null;
   bank_no: string | null;
+  /** 생일 YYYY-MM-DD — 급여장부 헤더 생일 주간 표시용 (엑셀에는 넣지 않음) */
+  birth_date: string | null;
 }
 
 export interface PayrollMonth {
@@ -100,7 +102,7 @@ export async function fetchPayrollMonth(year: number, month: number): Promise<Pa
   if (employeeIds.length > 0) {
     const { data, error } = await supabase
       .from('invoiceManager_employees')
-      .select('id, name, name_kr, role, hourly_wage, bank_name, bank_no')
+      .select('id, name, name_kr, role, hourly_wage, bank_name, bank_no, birth_date')
       .in('id', employeeIds)
       .order('name');
     if (error) throw error;

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import { groupByRole, sortByRole } from './utils/payrollRoles';
+import { birthdayInThisWeek, todayKSTDate, type BirthdayInWeek } from './utils/birthday';
+import { useDragScroll } from './hooks/useDragScroll';
 import './Payroll.css';
 
 // ============================================================
@@ -18,6 +20,7 @@ interface Employee {
   hourly_wage: number | null;
   bank_name: string | null;
   bank_no: string | null;
+  birth_date: string | null;   // YYYY-MM-DD — 생일 주간 👑
 }
 
 interface AttendanceRecord {
@@ -140,6 +143,13 @@ const Payroll: React.FC = () => {
   // ④ 정리 패널 상태
   // ============================================================
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+  // ============================================================
+  // ④-0 시간표 드래그 이동 — 표를 잡고 끌면 가로·세로 스크롤
+  //   (훅은 잠금 화면 return 보다 위에서 호출해야 한다)
+  // ============================================================
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const { onMouseDown: onTableMouseDown, isPanning } = useDragScroll(tableWrapperRef);
 
   // ============================================================
   // ④-1 엑셀 다운로드 / 부분엑셀(시간 셀 선택)
@@ -328,6 +338,17 @@ const Payroll: React.FC = () => {
 
   /** 업무(직책) 그룹 — 시간표 상단 그룹 헤더 */
   const roleGroups = useMemo(() => groupByRole(employees), [employees]);
+
+  /** 생일 주간 직원 — 오늘(KST)이 속한 주(월~일)에 생일이 있으면 헤더에 👑 */
+  const birthdayMap = useMemo(() => {
+    const today = todayKSTDate();
+    const map = new Map<string, BirthdayInWeek>();
+    employees.forEach((emp) => {
+      const b = birthdayInThisWeek(emp.birth_date, today);
+      if (b) map.set(emp.id, b);
+    });
+    return map;
+  }, [employees]);
 
   /** 그룹 첫 직원 id — 그룹 경계 세로선 */
   const groupStartIds = useMemo(
@@ -571,8 +592,12 @@ const Payroll: React.FC = () => {
               )}
             </div>
 
-            {/* ── 시간표 테이블 ── */}
-            <div className="pr-table-wrapper">
+            {/* ── 시간표 테이블 — 잡고 끌어서 좌우·상하 이동 (useDragScroll) ── */}
+            <div
+              ref={tableWrapperRef}
+              className={`pr-table-wrapper${isPanning ? ' is-panning' : ''}`}
+              onMouseDown={onTableMouseDown}
+            >
               {isLoading ? (
                 <div className="pr-state-msg">불러오는 중...</div>
               ) : employees.length === 0 ? (
@@ -580,12 +605,12 @@ const Payroll: React.FC = () => {
               ) : (
                 <table className="pr-table">
 
-                  {/* colgroup: 날짜 고정 / 직원별 시간(flex) + h(고정) */}
+                  {/* colgroup: 날짜 고정 / 직원별 시간(내용 폭 그대로, 생략 없음) + h(고정) */}
                   <colgroup>
                     <col style={{ width: '36px' }} />
                     {employees.flatMap((_, i) => [
                       <col key={`col-r-${i}`} />,
-                      <col key={`col-h-${i}`} style={{ width: '60px' }} />,
+                      <col key={`col-h-${i}`} style={{ width: '52px' }} />,
                     ])}
                   </colgroup>
 
@@ -604,15 +629,19 @@ const Payroll: React.FC = () => {
                         </th>
                       ))}
                     </tr>
-                    {/* 2행: 직원명 (colspan=2) */}
+                    {/* 2행: 직원명 (colspan=2) — 생일 주간이면 👑 + 금빛 효과 */}
                     <tr>
-                      {employees.map((emp) => (
+                      {employees.map((emp) => {
+                        const birthday = birthdayMap.get(emp.id);
+                        return (
                         <th
                           key={emp.id}
                           colSpan={2}
-                          className={`pr-th-emp${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}`}
+                          className={`pr-th-emp${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}${birthday ? ' pr-th-birthday' : ''}`}
+                          title={birthday ? `🎂 이번 주 생일 (${birthday.month}/${birthday.day})` : undefined}
                         >
                           <div className="pr-th-name-row">
+                            {birthday && <span className="pr-crown" aria-label="생일 주간">👑</span>}
                             <span>{emp.name || '-'}</span>
                           </div>
                           {/* 한글명 */}
@@ -620,7 +649,8 @@ const Payroll: React.FC = () => {
                             <div className="pr-th-name-kr">{emp.name_kr}</div>
                           )}
                         </th>
-                      ))}
+                        );
+                      })}
                     </tr>
                     {/* 3행: 시간 / h 서브헤더 */}
                     <tr>
@@ -655,8 +685,9 @@ const Payroll: React.FC = () => {
                           </td>
 
                           {/* 직원별 시간대 + h 셀
-                              - 일반 모드   : 기록 있으면 수정 모달 / 없으면 신규 추가 모달
-                              - 부분엑셀 모드: 기록 있는 셀만 선택/해제 (빈 셀은 클릭 불가) */}
+                              - 일반 모드   : 시간 셀 — 기록 있으면 수정 모달 / 없으면 신규 추가 모달
+                              - 부분엑셀 모드: 시간·h 두 칸이 한 쌍 — 어느 칸을 눌러도 같이 선택/해제
+                                              (기록 없는 칸은 클릭 불가) */}
                           {employees.flatMap((emp) => {
                             const rec = recordMap.get(day)?.get(emp.id);
                             const groupStart = groupStartIds.has(emp.id) ? ' pr-group-start' : '';
@@ -667,6 +698,8 @@ const Payroll: React.FC = () => {
                             const selected   = isSelected ? ' pr-td-selected' : '';
                             // 빈 셀 hover 강조는 일반 모드에서만
                             const empty      = !rec && !isPartialMode ? ' pr-td-empty' : '';
+                            // 부분엑셀 모드의 h 칸도 시간 칸과 같은 선택 대상
+                            const hPick      = isPartialMode && rec ? ' pr-td-clickable pr-td-pair' : '';
 
                             const onCellClick = isPartialMode
                               ? (rec ? () => toggleSelect(rec.id) : undefined)
@@ -675,12 +708,16 @@ const Payroll: React.FC = () => {
                             return [
                               <td
                                 key={`${emp.id}-r`}
-                                className={`pr-td-range${clickable ? ' pr-td-clickable' : ''}${empty}${groupStart}${selected}`}
+                                className={`pr-td-range${clickable ? ' pr-td-clickable' : ''}${isPartialMode && rec ? ' pr-td-pair' : ''}${empty}${groupStart}${selected}`}
                                 onClick={onCellClick}
                               >
                                 {rec ? `${formatTime(rec.clock_in)}~${formatTime(rec.clock_out)}` : ''}
                               </td>,
-                              <td key={`${emp.id}-h`} className={`pr-td-h${selected}`}>
+                              <td
+                                key={`${emp.id}-h`}
+                                className={`pr-td-h${hPick}${selected}`}
+                                onClick={isPartialMode && rec ? () => toggleSelect(rec.id) : undefined}
+                              >
                                 {rec ? minutesToHours(rec.total_minutes) : ''}
                               </td>,
                             ];

@@ -255,10 +255,18 @@
   cursor: not-allowed;
 }
 
-/* ── 시간표 테이블 래퍼 ── */
+/* ── 시간표 테이블 래퍼 — 가로·세로 스크롤 + 잡고 끌기(useDragScroll) ── */
 .pr-table-wrapper {
   flex: 1;
   overflow: auto;
+  cursor: grab;
+}
+
+/* 끄는 중: 커서 고정 + 텍스트 선택 방지 (셀의 pointer 커서보다 우선) */
+.pr-table-wrapper.is-panning,
+.pr-table-wrapper.is-panning * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 /* ── 로딩 / 빈 상태 ── */
@@ -274,13 +282,15 @@
 
 /* ============================================================
    시간표 테이블
-   - table-layout: fixed → colgroup 기반 균등 분배
-   - 날짜 열: 36px 고정 / h 열: 60px 고정 / 시간 열: flex(auto)
+   - table-layout: auto + width: max-content → 시간이 잘리지 않고 전부 보인다
+     직원이 많아 화면보다 넓어지면 래퍼에서 좌우 스크롤 (min-width 100% 로 적을 땐 꽉 채움)
+   - 날짜 열: 36px 고정 / h 열: 52px / 시간 열: 내용 폭
    - 행 padding 최소화 → 31일 + 합계 한 화면에 표시
    ============================================================ */
 .pr-table {
-  table-layout: fixed;
-  width: 100%;
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
@@ -353,6 +363,50 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
+}
+
+/* ============================================================
+   생일 주간 — 직원 헤더 👑 + 금빛 효과
+   - 오늘(KST)이 속한 주(월~일)에 생일이 있는 직원 (utils/birthday)
+   - 왕관: 살짝 흔들리며 떠오름 / 헤더: 금빛 그라데이션이 천천히 흐름
+   - 움직임 줄이기 설정이면 애니메이션 없이 색만 표시
+   ============================================================ */
+.pr-th-emp.pr-th-birthday {
+  background: linear-gradient(110deg, #fef9c3 0%, #fde68a 35%, #fffbeb 50%, #fde68a 65%, #fef9c3 100%);
+  background-size: 220% 100%;
+  animation: prBirthdayShimmer 3.2s linear infinite;
+  box-shadow: inset 0 0 0 1px #fbbf24;
+  color: #92400e;
+}
+
+.pr-th-birthday .pr-th-name-kr {
+  color: #b45309;
+}
+
+.pr-crown {
+  display: inline-block;
+  font-size: 15px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(180, 83, 9, 0.45));
+  transform-origin: 50% 90%;
+  animation: prCrownFloat 1.8s ease-in-out infinite;
+}
+
+@keyframes prBirthdayShimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: -120% 0; }
+}
+
+@keyframes prCrownFloat {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50%      { transform: translateY(-3px) rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-th-emp.pr-th-birthday,
+  .pr-crown {
+    animation: none;
+  }
 }
 
 /* 한글명 (이름 아래 작게) */
@@ -431,7 +485,6 @@
   border-left: 2px solid #f0f0f0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  overflow: hidden;
 }
 
 /* 클릭 가능한 시간 셀 */
@@ -450,20 +503,40 @@
   color: #1d4ed8;
 }
 
-/* ── 부분엑셀: 선택된 시간 셀 (시간 + h 한 쌍) ── */
+/* ============================================================
+   부분엑셀: 시간 + h 두 칸을 한 쌍으로 선택
+   - 어느 칸을 눌러도 같이 선택되고, 테두리도 두 칸을 하나로 감싼다
+   - hover 도 두 칸이 같이 강조 (:has 로 뒤 칸 hover → 앞 칸)
+   ============================================================ */
 .pr-td-selected {
   background: #ffedd5 !important;
   color: #9a3412 !important;
   font-weight: 700;
 }
 
+/* 한 쌍 테두리 — 시간 칸: 위·아래·왼쪽 / h 칸: 위·아래·오른쪽 */
 .pr-td-range.pr-td-selected {
-  box-shadow: inset 0 0 0 1px #fb923c;
+  box-shadow: inset 1px 0 0 #fb923c, inset 0 1px 0 #fb923c, inset 0 -1px 0 #fb923c;
 }
 
-.pr-td-clickable.pr-td-selected:hover {
+.pr-td-h.pr-td-selected {
+  box-shadow: inset -1px 0 0 #fb923c, inset 0 1px 0 #fb923c, inset 0 -1px 0 #fb923c;
+}
+
+/* 한 쌍 hover (선택 전) */
+.pr-td-pair:hover,
+.pr-td-range.pr-td-pair:hover + .pr-td-h,
+.pr-td-range.pr-td-pair:has(+ .pr-td-h:hover) {
+  background: #eff6ff !important;
+  color: #1d4ed8;
+}
+
+/* 한 쌍 hover (선택된 상태) */
+.pr-td-pair.pr-td-selected:hover,
+.pr-td-range.pr-td-pair.pr-td-selected:hover + .pr-td-h.pr-td-selected,
+.pr-td-range.pr-td-pair.pr-td-selected:has(+ .pr-td-h:hover) {
   background: #fed7aa !important;
-  color: #9a3412;
+  color: #9a3412 !important;
 }
 
 /* h(근무시간) 셀 */
