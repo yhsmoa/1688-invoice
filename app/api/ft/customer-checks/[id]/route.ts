@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import {
-  CHECK_TRANSITIONS,
+  CHECK_ACTION_FROM,
   isCheckAction,
+  reopenTarget,
   type CustomerCheckComment,
   type CustomerCheckDetail,
   type CustomerCheckImage,
@@ -15,8 +16,8 @@ export const dynamic = 'force-dynamic';
 // /api/ft/customer-checks/[id]
 //
 //   GET   : 건 + 댓글 + 이미지 + 같은 아이템번호의 다른 요청
-//   PATCH : 창고 상태 전이 { action: 'recheck' | 'close' | 'reopen', comment?, author_name? }
-//           허용 전이는 lib/customerChecks.CHECK_TRANSITIONS — 조건부 UPDATE 로 강제 (0행 → 409)
+//   PATCH : 창고 상태 전이 { action: 'close' | 'reopen', comment?, author_name? }
+//           허용 전이는 lib/customerChecks.CHECK_ACTION_FROM — 조건부 UPDATE 로 강제 (0행 → 409)
 // ============================================================
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -90,12 +91,12 @@ export async function GET(
 // ============================================================
 // PATCH — 창고 상태 전이
 //
-//   recheck : 답변완료 → 재확인요청 (댓글 필수 — 무엇을 다시 확인할지)
-//   close   : 확인요청·재확인요청·답변완료 → 처리완료 (closed_at = now)
-//   reopen  : 처리완료 → 재확인요청 (closed_at = NULL)
+//   close  : 확인요청(잘못 보낸 요청 회수)·재문의·답변완료 → 처리완료 (closed_at = now)
+//   reopen : 처리완료 → 고객 선택에 따른 원래 단계 (lib reopenTarget — DB 정합 제약과 같은 규칙)
+//            선택 없음 → 확인요청 · 재문의 → 재문의 · 출고/취소 → 답변완료 (closed_at = NULL)
 //
 //   UPDATE … WHERE id = ? AND status IN (from) 로 한 번에 처리 → 다른 사람이 먼저 바꿨으면 0행 = 409.
-//   댓글은 전이 성공 후 저장 (warehouse). 댓글 저장만 실패하면 상태는 바뀐 채 500 으로 알린다.
+//   comment 가 있으면 전이 성공 후 창고 댓글로 저장. 댓글 저장만 실패하면 상태는 바뀐 채 500 으로 알린다.
 // ============================================================
 export async function PATCH(
   request: NextRequest,
@@ -112,40 +113,44 @@ export async function PATCH(
       | null;
     const action = body?.action;
     if (!isCheckAction(action)) {
-      return NextResponse.json({ success: false, error: 'action 값이 올바르지 않습니다. (recheck / close / reopen)' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'action 값이 올바르지 않습니다. (close / reopen)' }, { status: 400 });
     }
     const comment = str(body?.comment);
     const authorName = str(body?.author_name);
-    const rule = CHECK_TRANSITIONS[action];
-    if (rule.commentRequired && !comment) {
-      return NextResponse.json({ success: false, error: '재확인요청에는 다시 확인할 내용을 댓글로 적어야 합니다.' }, { status: 400 });
+
+    // ── 현재 건 (reopen 목표 계산 + 409 안내용) ──
+    const { data: cur, error: curErr } = await supabase
+      .from('ft_customer_checks')
+      .select('id, status, decision')
+      .eq('id', id)
+      .maybeSingle();
+    if (curErr) throw curErr;
+    if (!cur) {
+      return NextResponse.json({ success: false, error: '확인요청을 찾을 수 없습니다.' }, { status: 404 });
     }
+    const current = cur as Pick<CustomerCheckRow, 'id' | 'status' | 'decision'>;
 
-    const patch: Record<string, unknown> = { status: rule.to };
-    if (action === 'close') patch.closed_at = new Date().toISOString();
-    if (action === 'reopen') patch.closed_at = null;
+    const patch: Record<string, unknown> =
+      action === 'close'
+        ? { status: '처리완료', closed_at: new Date().toISOString() }
+        : { status: reopenTarget(current.decision), closed_at: null };
 
-    const { data: updated, error: updErr } = await supabase
+    // 조건부 UPDATE — 위에서 읽은 뒤 다른 사람이 바꿨어도 from 조건이 막는다.
+    //   reopen 은 decision 도 조건에 넣는다: 목표 단계를 decision 으로 계산했으므로 그 사이 바뀌면 0행.
+    let upd = supabase
       .from('ft_customer_checks')
       .update(patch)
       .eq('id', id)
-      .in('status', [...rule.from])
-      .select('*');
+      .in('status', [...CHECK_ACTION_FROM[action]]);
+    if (action === 'reopen') {
+      upd = current.decision === null ? upd.is('decision', null) : upd.eq('decision', current.decision);
+    }
+    const { data: updated, error: updErr } = await upd.select('*');
     if (updErr) throw updErr;
 
     if (!updated || updated.length === 0) {
-      // 전이 조건 불일치 — 현재 상태를 알려준다 (없으면 404)
-      const { data: cur, error: curErr } = await supabase
-        .from('ft_customer_checks')
-        .select('status')
-        .eq('id', id)
-        .maybeSingle();
-      if (curErr) throw curErr;
-      if (!cur) {
-        return NextResponse.json({ success: false, error: '확인요청을 찾을 수 없습니다.' }, { status: 404 });
-      }
       return NextResponse.json(
-        { success: false, error: `현재 상태(${cur.status})에서는 이 동작을 할 수 없습니다. 새로고침 후 다시 확인해 주세요.`, status: cur.status },
+        { success: false, error: `현재 상태(${current.status})에서는 이 동작을 할 수 없습니다. 새로고침 후 다시 확인해 주세요.`, status: current.status },
         { status: 409 }
       );
     }
@@ -160,7 +165,7 @@ export async function PATCH(
       if (cmErr) {
         console.error('customer-checks PATCH 댓글 저장 오류:', cmErr);
         return NextResponse.json(
-          { success: false, error: `상태는 '${rule.to}' 로 바뀌었지만 댓글 저장에 실패했습니다: ${cmErr.message}` },
+          { success: false, error: `상태는 '${patch.status}' 로 바뀌었지만 댓글 저장에 실패했습니다: ${cmErr.message}` },
           { status: 500 }
         );
       }

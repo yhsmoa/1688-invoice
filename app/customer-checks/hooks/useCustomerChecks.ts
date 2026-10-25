@@ -16,7 +16,7 @@ import type {
 
 export interface CheckFilter {
   tab: CheckTab;
-  /** open 탭의 팀 필터 (null = 전체 팀) */
+  /** 팀 필터 (null = 전체 팀) — 모든 탭 공통 */
   userId: string | null;
   q: string;
   page: number;
@@ -32,7 +32,12 @@ interface ListResponse {
   counts: CustomerCheckCounts;
 }
 
-const EMPTY_COUNTS: CustomerCheckCounts = { openByUser: {}, answered: 0, done: 0 };
+const EMPTY_COUNTS: CustomerCheckCounts = {
+  open: { total: 0, byUser: {} },
+  reinquiry: { total: 0, byUser: {} },
+  answered: { total: 0, byUser: {} },
+  done: { total: 0, byUser: {} },
+};
 
 export function useCustomerChecks(filter: CheckFilter) {
   const [rows, setRows] = useState<CustomerCheckListRow[]>([]);
@@ -49,7 +54,7 @@ export function useCustomerChecks(filter: CheckFilter) {
     setError(null);
     try {
       const params = new URLSearchParams({ tab: filter.tab, page: String(filter.page) });
-      if (filter.tab === 'open' && filter.userId) params.set('user_id', filter.userId);
+      if (filter.userId) params.set('user_id', filter.userId);
       if (filter.q.trim()) params.set('q', filter.q.trim());
 
       const res = await fetch(`/api/ft/customer-checks?${params.toString()}`, { cache: 'no-store' });

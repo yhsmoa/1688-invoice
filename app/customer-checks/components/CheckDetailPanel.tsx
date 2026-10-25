@@ -3,12 +3,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CHECK_TRANSITIONS,
+  CHECK_ACTION_FROM,
+  reopenTarget,
   type CheckAction,
+  type CheckStatus,
   type CustomerCheckDetail,
 } from '../../../lib/customerChecks';
 import type { Worker } from '../../import-product-v2/hooks/useWorkers';
-import { DecisionBadge, SizeBadge, StatusBadge, TeamBadge } from './CheckBadges';
+import { DecisionBadge, SizeBadge, StatusBadge, STATUS_TONE, TeamBadge } from './CheckBadges';
 import CheckImageViewer from './CheckImageViewer';
 import { chinaOptions, fmtDateTime, itemTitle, proxiedImage } from '../utils/format';
 
@@ -16,12 +18,15 @@ import { chinaOptions, fmtDateTime, itemTitle, proxiedImage } from '../utils/for
 // 고객 검수 확인 — 상세 슬라이드 패널
 //
 //   GET /api/ft/customer-checks/[id] 로 건·댓글·이미지·관련 요청을 가져온다.
-//   하단 작성칸 하나로 댓글 추가 / 재확인요청(댓글 필수) / 처리완료 / 다시 열기를 처리:
-//     · [댓글]        POST  …/comments
-//     · [재확인요청]  PATCH action=recheck  (작성칸 내용이 댓글 — 비어 있으면 안내)
-//     · [처리완료]    PATCH action=close    (작성칸 내용이 있으면 함께 댓글로)
-//     · [다시 열기]   PATCH action=reopen   (〃)
-//   버튼은 현재 상태에서 가능한 전이(lib/customerChecks.CHECK_TRANSITIONS)만 보인다.
+//
+//   상단 진행 단계: 답변 필요 → (재문의) → 답변완료 → 처리완료
+//     재문의 단계는 지금 재문의 중일 때만 보인다 (지난 경로는 기록이 없어 그리지 않는다).
+//
+//   하단 작성칸 하나로:
+//     · [댓글] / 재문의 중엔 [답변 보내기]  POST …/comments (상태 변화 없음)
+//     · [처리완료]  PATCH action=close  — 확인요청·재문의·답변완료에서. 작성칸 내용이 있으면 함께 댓글로
+//                   고객이 아직 답하지 않은 확인요청을 닫을 때는 '회수' 확인을 한 번 더 묻는다
+//     · [다시 열기] PATCH action=reopen — 처리완료에서. 고객 선택에 따라 원래 단계로
 //   서버가 409 를 주면(다른 사람이 먼저 바꿈) 안내 후 다시 불러온다.
 // ============================================================
 
@@ -42,6 +47,13 @@ type DetailState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: CustomerCheckDetail };
+
+/** 진행 단계 — 재문의는 지금 재문의일 때만 */
+function stepsFor(status: CheckStatus): CheckStatus[] {
+  return status === '재문의'
+    ? ['확인요청', '재문의', '답변완료', '처리완료']
+    : ['확인요청', '답변완료', '처리완료'];
+}
 
 const CheckDetailPanel: React.FC<Props> = ({
   checkId, onClose, onChanged, onNavigate, authorName, onAuthorChange, workers,
@@ -97,24 +109,27 @@ const CheckDetailPanel: React.FC<Props> = ({
 
   // ── 이미지 목록 (상품 원본 → 첨부) ──
   const imageUrls = useMemo(() => {
-    if (state.phase !== 'ready') return [] as { url: string; label: string }[];
-    const list: { url: string; label: string }[] = [];
+    if (state.phase !== 'ready') return [] as { url: string; label: string; product: boolean }[];
+    const list: { url: string; label: string; product: boolean }[] = [];
     const product = proxiedImage(state.data.check.img_url);
-    if (product) list.push({ url: product, label: t('customerChecks.detail.productImage') });
-    state.data.images.forEach((img, i) => list.push({ url: img.public_url, label: `${t('customerChecks.detail.attached')} ${i + 1}` }));
+    if (product) list.push({ url: product, label: t('customerChecks.detail.productImage'), product: true });
+    state.data.images.forEach((img, i) =>
+      list.push({ url: img.public_url, label: `${t('customerChecks.detail.attached')} ${i + 1}`, product: false })
+    );
     return list;
   }, [state, t]);
 
-  // ── 전이 / 댓글 ──
+  // ── 전이 ──
   const runAction = useCallback(async (action: CheckAction) => {
-    if (busy) return;
+    if (busy || state.phase !== 'ready') return;
+    const cur = state.data.check;
     const body = composer.trim();
-    const rule = CHECK_TRANSITIONS[action];
-    if (rule.commentRequired && !body) {
-      setNotice({ kind: 'error', text: t('customerChecks.detail.recheckNeedsComment') });
-      return;
+    if (action === 'close') {
+      const msg = cur.status === '확인요청'
+        ? t('customerChecks.detail.confirmWithdraw')
+        : t('customerChecks.detail.confirmClose');
+      if (!window.confirm(msg)) return;
     }
-    if (action === 'close' && !window.confirm(t('customerChecks.detail.confirmClose'))) return;
 
     setBusy(action);
     setNotice(null);
@@ -127,7 +142,8 @@ const CheckDetailPanel: React.FC<Props> = ({
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || t('customerChecks.detail.actionError'));
       setComposer('');
-      setNotice({ kind: 'ok', text: t(`customerChecks.detail.done.${action}`) });
+      const to = action === 'close' ? '처리완료' : reopenTarget(cur.decision);
+      setNotice({ kind: 'ok', text: t('customerChecks.detail.moved', { status: t(`customerChecks.status.${to}`) }) });
       await load(true);
       onChanged();
     } catch (e) {
@@ -137,7 +153,7 @@ const CheckDetailPanel: React.FC<Props> = ({
     } finally {
       setBusy(null);
     }
-  }, [busy, composer, checkId, authorName, t, load, onChanged]);
+  }, [busy, state, composer, checkId, authorName, t, load, onChanged]);
 
   const submitComment = useCallback(async () => {
     if (busy) return;
@@ -178,21 +194,37 @@ const CheckDetailPanel: React.FC<Props> = ({
   // ── 렌더 ──
   const data = state.phase === 'ready' ? state.data : null;
   const check = data?.check ?? null;
-  const availableActions = check
-    ? (Object.keys(CHECK_TRANSITIONS) as CheckAction[]).filter((a) => CHECK_TRANSITIONS[a].from.includes(check.status))
-    : [];
+  const canClose = check ? CHECK_ACTION_FROM.close.includes(check.status) : false;
+  const canReopen = check ? CHECK_ACTION_FROM.reopen.includes(check.status) : false;
+  const steps = check ? stepsFor(check.status) : [];
+  const stepIndex = check ? steps.indexOf(check.status) : -1;
+  const isReinquiry = check?.status === '재문의';
 
   return (
     <div className="cc-overlay" onClick={() => { if (!busy) onClose(); }}>
-      <aside className="cc-panel" onClick={(e) => e.stopPropagation()}>
-        {/* ── 헤더 ── */}
+      <aside className="cc-panel" onClick={(e) => e.stopPropagation()} aria-label={t('customerChecks.detail.panelLabel')}>
+        {/* ── 헤더 + 진행 단계 ── */}
         <header className="cc-panel-header">
-          <div className="cc-panel-head-left">
+          <div className="cc-panel-head-row">
             {check && <TeamBadge code={check.team_code} />}
             <h2 className="cc-panel-title">{check?.item_no || t('customerChecks.detail.noItemNo')}</h2>
             {check && <StatusBadge status={check.status} />}
+            <button type="button" className="cc-panel-close" onClick={onClose} disabled={!!busy} aria-label={t('customerChecks.close')}>×</button>
           </div>
-          <button type="button" className="cc-panel-close" onClick={onClose} disabled={!!busy} aria-label="close">×</button>
+          {check && (
+            <ol className="cc-steps" aria-label={t('customerChecks.detail.stepsLabel')}>
+              {steps.map((s, i) => (
+                <li
+                  key={s}
+                  className={`cc-step ${STATUS_TONE[check.status]} ${i < stepIndex ? 'is-past' : ''} ${i === stepIndex ? 'is-current' : ''}`}
+                  aria-current={i === stepIndex ? 'step' : undefined}
+                >
+                  <span className="cc-step-bar" aria-hidden="true" />
+                  <span className="cc-step-label">{t(`customerChecks.status.${s}`)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
         </header>
 
         {/* ── 바디 ── */}
@@ -201,80 +233,83 @@ const CheckDetailPanel: React.FC<Props> = ({
           {state.phase === 'error' && (
             <div className="cc-panel-state is-error">
               {state.message}
-              <button type="button" className="cc-btn-ghost" onClick={() => load()}>{t('customerChecks.retry')}</button>
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => load()}>{t('customerChecks.retry')}</button>
             </div>
           )}
 
           {data && check && (
             <>
-              {/* 상품명 · 옵션 */}
+              {/* 상품 */}
               <section className="cc-sec">
                 <div className="cc-item-title">{itemTitle(check.item_name, check.option_name) || t('customerChecks.detail.noName')}</div>
-                {chinaOptions(check.china_option1, check.china_option2) && (
-                  <div className="cc-item-sub">{chinaOptions(check.china_option1, check.china_option2)}</div>
-                )}
+                <div className="cc-item-sub">
+                  {chinaOptions(check.china_option1, check.china_option2) && <span>{chinaOptions(check.china_option1, check.china_option2)}</span>}
+                  <span>{t('customerChecks.detail.orderQty')} <b>{check.order_qty ?? '–'}</b></span>
+                  <span>{t('customerChecks.detail.confirmQty')} <b className="cc-accent">{check.confirm_qty ?? '–'}</b></span>
+                  <span>{t('customerChecks.detail.arrivalQty')} <b>{check.arrival_qty ?? '–'}</b></span>
+                  <SizeBadge code={check.size_code} />
+                </div>
               </section>
 
-              {/* 이미지 띠 */}
+              {/* 사진 */}
               {imageUrls.length > 0 && (
-                <section className="cc-sec">
-                  <div className="cc-img-strip">
-                    {imageUrls.map((img, i) => (
-                      <button
-                        key={`${img.url}-${i}`}
-                        type="button"
-                        className={`cc-img-tile ${i === 0 && check.img_url ? 'is-product' : ''}`}
-                        onClick={() => setViewer(i)}
-                        title={img.label}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img.url} alt={img.label} loading="lazy" />
-                        <span className="cc-img-label">{img.label}</span>
-                      </button>
-                    ))}
-                  </div>
+                <section className="cc-gallery">
+                  {imageUrls.map((img, i) => (
+                    <button
+                      key={`${img.url}-${i}`}
+                      type="button"
+                      className={`cc-gallery-tile ${img.product ? 'is-product' : ''}`}
+                      onClick={() => setViewer(i)}
+                      aria-label={img.label}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt="" loading="lazy" />
+                      <span className="cc-gallery-label">{img.label}</span>
+                    </button>
+                  ))}
                 </section>
               )}
 
-              {/* 고객 선택 */}
+              {/* 확인 항목 + 고객 선택 */}
+              <section className="cc-sec cc-row-wrap">
+                <span className="cc-sec-label">{t('customerChecks.detail.attributes')}</span>
+                {check.attributes.length === 0
+                  ? <span className="cc-muted">{t('customerChecks.detail.noAttributes')}</span>
+                  : check.attributes.map((a, i) => <span key={`${a}-${i}`} className="cc-attr is-lg">{a}</span>)}
+              </section>
               {check.decision && (
-                <section className="cc-sec cc-decision-box">
-                  <div className="cc-sec-title">{t('customerChecks.detail.customerDecision')}</div>
-                  <div className="cc-decision-row">
-                    <DecisionBadge decision={check.decision} qty={check.decision_qty} />
-                    <span className="cc-muted">{fmtDateTime(check.answered_at)}</span>
-                  </div>
+                <section className="cc-sec cc-row-wrap">
+                  <span className="cc-sec-label">{t('customerChecks.detail.customerDecision')}</span>
+                  <DecisionBadge decision={check.decision} />
+                  <span className="cc-muted">{fmtDateTime(check.answered_at)}</span>
                 </section>
               )}
 
-              {/* 확인 항목 */}
+              {/* 대화 */}
               <section className="cc-sec">
-                <div className="cc-sec-title">{t('customerChecks.detail.attributes')}</div>
-                {check.attributes.length === 0 ? (
-                  <span className="cc-muted">{t('customerChecks.detail.noAttributes')}</span>
-                ) : (
-                  <div className="cc-chips">
-                    {check.attributes.map((a, i) => <span key={`${a}-${i}`} className="cc-chip">{a}</span>)}
-                  </div>
-                )}
+                <span className="cc-sec-label">{t('customerChecks.detail.comments', { count: data.comments.length })}</span>
+                <div className="cc-thread" ref={threadRef}>
+                  {data.comments.length === 0 && <div className="cc-muted">{t('customerChecks.detail.noComments')}</div>}
+                  {data.comments.map((c) => (
+                    <div key={c.id} className={`cc-bubble is-${c.author_role}`}>
+                      <div className="cc-bubble-meta">
+                        <b>{t(`customerChecks.role.${c.author_role}`)}</b>
+                        {c.author_name && <span>{c.author_name}</span>}
+                        <span>{fmtDateTime(c.created_at)}</span>
+                      </div>
+                      <div className="cc-bubble-body">{c.body}</div>
+                    </div>
+                  ))}
+                </div>
               </section>
 
-              {/* 정보 그리드 */}
+              {/* 정보 */}
               <section className="cc-sec">
                 <dl className="cc-facts">
-                  <dt>{t('customerChecks.col.orderNo')}</dt><dd className="cc-mono">{check.order_no || '–'}</dd>
+                  <dt>{t('customerChecks.detail.orderNo')}</dt><dd className="cc-mono">{check.order_no || '–'}</dd>
                   <dt>{t('customerChecks.detail.productNo')}</dt><dd className="cc-mono">{check.product_no || '–'}</dd>
-                  <dt>{t('customerChecks.detail.qty')}</dt>
-                  <dd>
-                    <span className="cc-qty-group">
-                      <span>{t('customerChecks.detail.orderQty')} <b>{check.order_qty ?? '–'}</b></span>
-                      <span>{t('customerChecks.detail.confirmQty')} <b className="is-accent">{check.confirm_qty ?? '–'}</b></span>
-                      <span>{t('customerChecks.detail.arrivalQty')} <b>{check.arrival_qty ?? '–'}</b></span>
-                    </span>
-                  </dd>
-                  <dt>{t('customerChecks.col.size')}</dt><dd><SizeBadge code={check.size_code} /></dd>
-                  <dt>{t('customerChecks.col.requestedBy')}</dt><dd>{check.requested_by || '–'}</dd>
-                  <dt>{t('customerChecks.col.createdAt')}</dt><dd className="cc-mono">{fmtDateTime(check.created_at)}</dd>
+                  <dt>{t('customerChecks.detail.requestedBy')}</dt><dd>{check.requested_by || '–'}</dd>
+                  <dt>{t('customerChecks.detail.createdAt')}</dt><dd className="cc-mono">{fmtDateTime(check.created_at)}</dd>
                   {check.closed_at && (<><dt>{t('customerChecks.detail.closedAt')}</dt><dd className="cc-mono">{fmtDateTime(check.closed_at)}</dd></>)}
                   {check.site_url && (
                     <>
@@ -288,7 +323,7 @@ const CheckDetailPanel: React.FC<Props> = ({
               {/* 같은 아이템번호의 다른 요청 */}
               {data.related.length > 0 && (
                 <section className="cc-sec">
-                  <div className="cc-sec-title">{t('customerChecks.detail.related', { count: data.related.length })}</div>
+                  <span className="cc-sec-label">{t('customerChecks.detail.related', { count: data.related.length })}</span>
                   <ul className="cc-related">
                     {data.related.map((r) => (
                       <li key={r.id}>
@@ -303,24 +338,6 @@ const CheckDetailPanel: React.FC<Props> = ({
                   </ul>
                 </section>
               )}
-
-              {/* 댓글 */}
-              <section className="cc-sec cc-sec-thread">
-                <div className="cc-sec-title">{t('customerChecks.detail.comments', { count: data.comments.length })}</div>
-                <div className="cc-thread" ref={threadRef}>
-                  {data.comments.length === 0 && <div className="cc-muted">{t('customerChecks.detail.noComments')}</div>}
-                  {data.comments.map((c) => (
-                    <div key={c.id} className={`cc-comment is-${c.author_role}`}>
-                      <div className="cc-comment-meta">
-                        <span className="cc-comment-role">{t(`customerChecks.role.${c.author_role}`)}</span>
-                        {c.author_name && <span className="cc-comment-author">{c.author_name}</span>}
-                        <span className="cc-comment-time">{fmtDateTime(c.created_at)}</span>
-                      </div>
-                      <div className="cc-comment-body">{c.body}</div>
-                    </div>
-                  ))}
-                </div>
-              </section>
             </>
           )}
         </div>
@@ -328,13 +345,14 @@ const CheckDetailPanel: React.FC<Props> = ({
         {/* ── 작성칸 + 동작 ── */}
         {check && (
           <footer className="cc-panel-footer">
-            {notice && <div className={`cc-notice is-${notice.kind}`}>{notice.text}</div>}
+            {notice && <div className={`cc-notice is-${notice.kind}`} role="status">{notice.text}</div>}
             <textarea
               className="cc-composer"
               rows={2}
               value={composer}
               maxLength={2000}
-              placeholder={t('customerChecks.detail.composerPlaceholder')}
+              placeholder={isReinquiry ? t('customerChecks.detail.replyPlaceholder') : t('customerChecks.detail.composerPlaceholder')}
+              aria-label={t('customerChecks.detail.composerLabel')}
               onChange={(e) => setComposer(e.target.value)}
               onKeyDown={onComposerKey}
               disabled={!!busy}
@@ -345,7 +363,7 @@ const CheckDetailPanel: React.FC<Props> = ({
                 value={authorName}
                 onChange={(e) => onAuthorChange(e.target.value)}
                 disabled={!!busy}
-                title={t('customerChecks.detail.author')}
+                aria-label={t('customerChecks.detail.author')}
               >
                 <option value="">{t('customerChecks.detail.author')}</option>
                 {workers.map((w) => {
@@ -354,21 +372,23 @@ const CheckDetailPanel: React.FC<Props> = ({
                 })}
               </select>
               <div className="cc-footer-actions">
-                <button type="button" className="cc-btn-ghost" onClick={submitComment} disabled={!!busy}>
-                  {busy === 'comment' ? t('customerChecks.saving') : t('customerChecks.detail.addComment')}
+                <button
+                  type="button"
+                  className={`cc-btn ${isReinquiry ? 'cc-btn-violet' : 'cc-btn-ghost'}`}
+                  onClick={submitComment}
+                  disabled={!!busy}
+                >
+                  {busy === 'comment'
+                    ? t('customerChecks.saving')
+                    : isReinquiry ? t('customerChecks.detail.sendReply') : t('customerChecks.detail.addComment')}
                 </button>
-                {availableActions.includes('recheck') && (
-                  <button type="button" className="cc-btn cc-btn-recheck" onClick={() => runAction('recheck')} disabled={!!busy}>
-                    {busy === 'recheck' ? t('customerChecks.saving') : t('customerChecks.action.recheck')}
-                  </button>
-                )}
-                {availableActions.includes('close') && (
-                  <button type="button" className="cc-btn cc-btn-close" onClick={() => runAction('close')} disabled={!!busy}>
+                {canClose && (
+                  <button type="button" className="cc-btn cc-btn-dark" onClick={() => runAction('close')} disabled={!!busy}>
                     {busy === 'close' ? t('customerChecks.saving') : t('customerChecks.action.close')}
                   </button>
                 )}
-                {availableActions.includes('reopen') && (
-                  <button type="button" className="cc-btn cc-btn-reopen" onClick={() => runAction('reopen')} disabled={!!busy}>
+                {canReopen && (
+                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => runAction('reopen')} disabled={!!busy}>
                     {busy === 'reopen' ? t('customerChecks.saving') : t('customerChecks.action.reopen')}
                   </button>
                 )}

@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 // ============================================================
 // 고객 검수 확인 — 표시 포맷 (KST)
 // ============================================================
@@ -13,6 +15,10 @@ const DATE_ONLY = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit', day: '2-digit',
 });
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
 /** 2026-10-25 14:03 */
 export function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -22,11 +28,16 @@ export function fmtDateTime(iso: string | null | undefined): string {
   return DATE_TIME.format(d).replace(',', '');
 }
 
-/** 10-25 (목록용) */
-export function fmtDateShort(iso: string | null | undefined): string {
+/** 상대 시각 — 방금 · N분 전 · N시간 전 · N일 전, 7일 넘으면 10-25 */
+export function fmtAgo(iso: string | null | undefined, t: TFunction): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  if (diff < MINUTE) return t('customerChecks.ago.justNow');
+  if (diff < HOUR) return t('customerChecks.ago.minutes', { count: Math.floor(diff / MINUTE) });
+  if (diff < DAY) return t('customerChecks.ago.hours', { count: Math.floor(diff / HOUR) });
+  if (diff < 7 * DAY) return t('customerChecks.ago.days', { count: Math.floor(diff / DAY) });
   return DATE_ONLY.format(d);
 }
 

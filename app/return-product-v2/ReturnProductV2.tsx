@@ -186,7 +186,7 @@ const ReturnProductV2: React.FC = () => {
   // 행별 저장 큐 — 같은 행의 PATCH 는 앞 요청이 끝난 뒤 보낸다
   //
   //   가격 저장은 "가격 → 자동 서비스료(6%)" 두 요청이 순서대로 나간다. 그 사이에
-  //   사용자가 서비스 칸을 직접 저장하면(가격 Enter 직후 서비스 칸이 바로 열린다)
+  //   사용자가 서비스 칸을 직접 저장하면(가격 저장 직후 서비스 칸을 바로 고치는 경우)
   //   자동값이 나중에 도착해 사용자 입력을 덮어쓸 수 있다. 행 단위로 직렬화하면
   //   "가격 → 자동 서비스 → 사용자 서비스" 순서가 항상 지켜진다.
   //   화면의 환불 총액도 큐의 마지막 응답으로만 확정한다.
@@ -353,10 +353,10 @@ const ReturnProductV2: React.FC = () => {
   );
 
   // ── 인라인 편집 저장 (blur / Enter)
-  //    advanceToService: 가격을 Enter 로 저장했을 때만 true —
-  //    같은 행 서비스 칸을 자동 계산값(6%)이 채워진 채 바로 열어 이어서 입력하게 한다.
+  //    advanceToDelivery: 가격 칸에서 Enter 로 저장했을 때만 true —
+  //    같은 행 배송비 칸을 바로 열어 이어서 입력하게 한다 (서비스료는 6% 자동 저장).
   //    (blur 로 저장한 경우는 사용자가 다른 곳을 눌렀으므로 이동하지 않는다)
-  const commitEdit = useCallback((opts?: { advanceToService?: boolean }) => {
+  const commitEdit = useCallback((opts?: { advanceToDelivery?: boolean }) => {
     if (!editingCell) return;
     const { id, field } = editingCell;
     let value: string | number | null;
@@ -399,21 +399,24 @@ const ReturnProductV2: React.FC = () => {
         );
       });
 
-      // Enter 였으면 서비스 칸으로 이어서 — 자동 계산값을 채워 두고 포커스(autoFocus)
-      if (opts?.advanceToService) {
-        setEditingCell({ id, field: 'service_fee' });
-        setEditValue(String(fee));
-      }
     } else {
       updateField(id, field, value);
     }
-  }, [editingCell, editValue, updateField, enqueueSave, patchDetail, selectedUserId, fetchDetails]);
+
+    // 가격 Enter → 같은 행 배송비 칸으로 이어서 (현재 배송비 값을 채워 두고 포커스 — autoFocus)
+    //   가격을 비워 Enter 한 경우도 같은 흐름 (다음 칸 입력)
+    if (opts?.advanceToDelivery && field === 'price_cny') {
+      const current = details.find((d) => d.id === id)?.delivery_price_cny ?? null;
+      setEditingCell({ id, field: 'delivery_price_cny' });
+      setEditValue(current != null ? String(current) : '');
+    }
+  }, [editingCell, editValue, details, updateField, enqueueSave, patchDetail, selectedUserId, fetchDetails]);
 
   const handleEditKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && editingCell?.field !== 'cancel_reason') {
         e.preventDefault();
-        commitEdit({ advanceToService: editingCell?.field === 'price_cny' });
+        commitEdit({ advanceToDelivery: editingCell?.field === 'price_cny' });
       }
       if (e.key === 'Escape') {
         setEditingCell(null);

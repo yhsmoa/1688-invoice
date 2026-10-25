@@ -231,91 +231,112 @@
   },
   "customerChecks": {
     "title": "客户检验确认",
-    "subtitle": "入库[客户确认]请求 · 客户回复 · 处理",
+    "subtitle": "入库[客户确认]请求 → 客户回复 → 仓库处理",
     "refresh": "刷新",
     "loading": "加载中...",
     "saving": "保存中...",
     "retry": "重试",
+    "close": "关闭",
     "search": "搜索",
+    "clearSearch": "清除搜索",
     "searchPlaceholder": "订单号 · 商品项编号 · 商品名",
     "emptySearch": "没有与\"{{q}}\"匹配的请求。",
     "empty": {
       "open": "没有等待客户回复的请求。",
+      "reinquiry": "没有再次咨询中的请求。",
       "answered": "没有待处理的回复。",
       "done": "没有已处理完成的请求。"
     },
     "pager": "第 {{page}} / {{pages}} 页 · 共 {{total}} 条",
     "total": "共 {{total}} 条",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "tabsLabel": "进度阶段",
+    "team": "团队",
+    "allTeams": "全部",
+    "noImage": "无图片",
     "tab": {
-      "allTeams": "全部",
+      "open": "待回复",
+      "reinquiry": "再次咨询",
       "answered": "已回复",
       "done": "已处理"
     },
-    "col": {
-      "team": "团队",
-      "status": "状态",
-      "decision": "客户选择",
-      "itemNo": "商品项 / 订单号",
-      "orderNo": "订单号",
-      "item": "商品",
-      "qty": "确认 / 入库",
-      "size": "尺寸",
-      "requestedBy": "请求人",
-      "createdAt": "请求日"
+    "tabHint": {
+      "open": "等待客户回复",
+      "reinquiry": "客户再次提问 — 用评论回复",
+      "answered": "已确定出库·取消 — 处理后点[处理完成]",
+      "done": "已结束的请求"
+    },
+    "tabFlag": {
+      "reinquiry": "需仓库回复",
+      "answered": "待处理"
     },
     "status": {
-      "확인요청": "待确认",
-      "재확인요청": "再次确认",
+      "확인요청": "待回复",
+      "재문의": "再次咨询",
       "답변완료": "已回复",
       "처리완료": "已处理"
     },
     "decision": {
       "출고": "出库",
       "취소": "取消",
-      "재문의": "再次咨询",
-      "출고수량변경": "更改出库数量"
+      "재문의": "再次咨询"
     },
     "role": {
       "warehouse": "仓库",
       "customer": "客户"
     },
     "action": {
-      "recheck": "再次确认请求",
       "close": "处理完成",
       "reopen": "重新打开"
     },
+    "ago": {
+      "justNow": "刚刚",
+      "minutes": "{{count}}分钟前",
+      "hours": "{{count}}小时前",
+      "days": "{{count}}天前"
+    },
+    "card": {
+      "confirm": "确认",
+      "arrival": "入库",
+      "needsReply": "需仓库回复",
+      "waitingCustomer": "等待客户确定"
+    },
     "detail": {
+      "panelLabel": "确认请求详情",
+      "stepsLabel": "进度阶段",
       "loadError": "无法加载确认请求。",
       "actionError": "处理时发生错误。",
       "noItemNo": "（无商品项编号）",
       "noName": "（无商品名）",
       "productImage": "商品",
-      "attached": "附件",
+      "attached": "实物",
       "customerDecision": "客户选择",
       "attributes": "确认项目",
       "noAttributes": "无确认项目",
+      "orderNo": "订单号",
       "productNo": "商品编号",
-      "qty": "数量",
       "orderQty": "订购",
       "confirmQty": "确认",
       "arrivalQty": "入库",
+      "requestedBy": "请求人",
+      "createdAt": "请求日",
       "closedAt": "处理完成",
       "siteUrl": "网站",
       "openSite": "打开商品页面",
       "related": "同一商品项编号的其他请求 {{count}} 条",
-      "comments": "评论 {{count}}",
-      "noComments": "还没有评论。",
-      "composerPlaceholder": "输入评论（Ctrl+Enter 提交）— [再次确认请求]会一并发送此处的内容",
+      "comments": "对话 {{count}}",
+      "noComments": "还没有对话。",
+      "composerLabel": "评论",
+      "composerPlaceholder": "输入评论（Ctrl+Enter 提交）— 点[处理完成]时此内容也会一并保存",
+      "replyPlaceholder": "回复客户的再次咨询（Ctrl+Enter 发送）",
       "author": "作者",
       "addComment": "评论",
-      "commentEmpty": "请输入评论内容。",
-      "recheckNeedsComment": "再次确认请求需要在评论中写明要再次确认的内容。",
+      "sendReply": "发送回复",
+      "commentEmpty": "请输入内容。",
       "confirmClose": "要将此请求标记为处理完成吗？",
-      "done": {
-        "recheck": "已更改为再次确认请求，将再次显示给客户。",
-        "close": "已标记为处理完成。",
-        "reopen": "已重新打开（再次确认请求）。"
-      }
+      "confirmWithdraw": "客户还没有回复。要将此请求关闭为处理完成吗？（客户页面也会变为已处理）",
+      "moved": "已更改为{{status}}。"
     }
   },
   "saveResult": {

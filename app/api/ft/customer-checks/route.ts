@@ -8,10 +8,13 @@ import {
 import {
   CHECK_PAGE_SIZE,
   CHECK_SIZE_CODES,
-  CHECK_TAB_STATUSES,
+  CHECK_TAB_STATUS,
+  CHECK_TABS,
   isCheckTab,
+  type CheckTab,
   type CustomerCheckCounts,
   type CustomerCheckListRow,
+  type CheckAuthorRole,
   type CustomerCheckRow,
 } from '../../../../lib/customerChecks';
 
@@ -269,16 +272,72 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================
+// 건수 — 탭(상태)별 전체 + 팀별
+//
+//   진행 중 상태(확인요청·재문의·답변완료)는 쌓이지 않고 처리되며 줄어드는 집합이라
+//   user_id 만 range 루프로 모아 센다. 처리완료는 계속 늘어나므로 행을 가져오지 않고
+//   팀별 head count 로 센다 (팀 = ft_users, 몇 개 수준).
+// ============================================================
+async function fetchCounts(): Promise<CustomerCheckCounts> {
+  const counts = Object.fromEntries(
+    CHECK_TABS.map((t) => [t, { total: 0, byUser: {} as Record<string, number> }])
+  ) as CustomerCheckCounts;
+
+  const activeTabs: CheckTab[] = ['open', 'reinquiry', 'answered'];
+  const tabByStatus = new Map(activeTabs.map((t) => [CHECK_TAB_STATUS[t], t]));
+
+  const [activeRows, usersRes, doneTotalRes] = await Promise.all([
+    fetchAllRows<{ user_id: string; status: string }>((a, b) =>
+      supabase
+        .from('ft_customer_checks')
+        .select('user_id, status')
+        .in('status', activeTabs.map((t) => CHECK_TAB_STATUS[t]))
+        .order('id', { ascending: true })
+        .range(a, b)
+    ),
+    supabase.from('ft_users').select('id'),
+    supabase.from('ft_customer_checks').select('id', { count: 'exact', head: true }).eq('status', CHECK_TAB_STATUS.done),
+  ]);
+  if (usersRes.error) throw usersRes.error;
+  if (doneTotalRes.error) throw doneTotalRes.error;
+
+  activeRows.forEach((r) => {
+    const tab = tabByStatus.get(r.status as CustomerCheckRow['status']);
+    if (!tab) return;
+    counts[tab].total += 1;
+    counts[tab].byUser[r.user_id] = (counts[tab].byUser[r.user_id] ?? 0) + 1;
+  });
+
+  counts.done.total = doneTotalRes.count ?? 0;
+  const userIds = (usersRes.data ?? []).map((u: { id: string }) => u.id);
+  const perUser = await Promise.all(
+    userIds.map((uid) =>
+      supabase
+        .from('ft_customer_checks')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', CHECK_TAB_STATUS.done)
+        .eq('user_id', uid)
+    )
+  );
+  perUser.forEach((res, i) => {
+    if (res.error) throw res.error;
+    if ((res.count ?? 0) > 0) counts.done.byUser[userIds[i]] = res.count ?? 0;
+  });
+
+  return counts;
+}
+
+// ============================================================
 // GET — 목록 + 건수
 //
 // Query:
-//   tab     : open | answered | done   (기본 open)
-//   user_id : 팀 필터 (open 탭의 팀 탭)  선택
+//   tab     : open(확인요청) | reinquiry(재문의) | answered(답변완료) | done(처리완료)   (기본 open)
+//   user_id : 팀 필터 (모든 탭)  선택
 //   q       : 주문번호·아이템번호·상품명 검색 (부분 일치) 선택
 //   page    : 1부터 (CHECK_PAGE_SIZE 건씩)
 //
 // 응답: { success, rows: CustomerCheckListRow[], total, page, pageSize, counts }
-//   counts.openByUser 는 팀 탭 배지, answered/done 은 상단 탭 배지 — 필터와 무관한 전체 값
+//   counts[tab] = { total, byUser } — 상태 타일·팀 칩 배지. 검색·팀 필터와 무관한 전체 값
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -300,7 +359,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('ft_customer_checks')
       .select('*', { count: 'exact' })
-      .in('status', [...CHECK_TAB_STATUSES[tabParam]])
+      .eq('status', CHECK_TAB_STATUS[tabParam])
       .order('created_at', { ascending: false })
       .range(from, from + CHECK_PAGE_SIZE - 1);
     if (userId) query = query.eq('user_id', userId);
@@ -316,7 +375,7 @@ export async function GET(request: NextRequest) {
       let countQuery = supabase
         .from('ft_customer_checks')
         .select('id', { count: 'exact', head: true })
-        .in('status', [...CHECK_TAB_STATUSES[tabParam]]);
+        .eq('status', CHECK_TAB_STATUS[tabParam]);
       if (userId) countQuery = countQuery.eq('user_id', userId);
       if (q) countQuery = countQuery.or(`order_no.ilike.%${q}%,item_no.ilike.%${q}%,item_name.ilike.%${q}%`);
       const countRes = await countQuery;
@@ -331,16 +390,26 @@ export async function GET(request: NextRequest) {
     // ── 댓글·이미지 수 (이 페이지의 건만) ──
     const commentCount = new Map<string, number>();
     const imageCount = new Map<string, number>();
+    const lastRole = new Map<string, CheckAuthorRole>();
     if (ids.length > 0) {
       const [comments, images] = await Promise.all([
-        fetchAllRows<{ check_id: string }>((a, b) =>
-          supabase.from('ft_customer_check_comments').select('check_id').in('check_id', ids).range(a, b)
+        fetchAllRows<{ check_id: string; author_role: CheckAuthorRole }>((a, b) =>
+          supabase
+            .from('ft_customer_check_comments')
+            .select('check_id, author_role')
+            .in('check_id', ids)
+            .order('created_at', { ascending: true })
+            .order('id', { ascending: true })
+            .range(a, b)
         ),
         fetchAllRows<{ check_id: string }>((a, b) =>
           supabase.from('ft_customer_check_images').select('check_id').in('check_id', ids).range(a, b)
         ),
       ]);
-      comments.forEach((c) => commentCount.set(c.check_id, (commentCount.get(c.check_id) ?? 0) + 1));
+      comments.forEach((c) => {
+        commentCount.set(c.check_id, (commentCount.get(c.check_id) ?? 0) + 1);
+        lastRole.set(c.check_id, c.author_role);   // 시간순 → 마지막 값이 최근 댓글
+      });
       images.forEach((i) => imageCount.set(i.check_id, (imageCount.get(i.check_id) ?? 0) + 1));
     }
 
@@ -348,26 +417,11 @@ export async function GET(request: NextRequest) {
       ...c,
       comment_count: commentCount.get(c.id) ?? 0,
       image_count: imageCount.get(c.id) ?? 0,
+      last_comment_role: lastRole.get(c.id) ?? null,
     }));
 
     // ── 건수 (필터 무관 전체) ──
-    const [openRows, answeredRes, doneRes] = await Promise.all([
-      fetchAllRows<{ user_id: string }>((a, b) =>
-        supabase.from('ft_customer_checks').select('user_id').in('status', [...CHECK_TAB_STATUSES.open]).range(a, b)
-      ),
-      supabase.from('ft_customer_checks').select('id', { count: 'exact', head: true }).in('status', [...CHECK_TAB_STATUSES.answered]),
-      supabase.from('ft_customer_checks').select('id', { count: 'exact', head: true }).in('status', [...CHECK_TAB_STATUSES.done]),
-    ]);
-    if (answeredRes.error) throw answeredRes.error;
-    if (doneRes.error) throw doneRes.error;
-
-    const openByUser: Record<string, number> = {};
-    openRows.forEach((r) => { openByUser[r.user_id] = (openByUser[r.user_id] ?? 0) + 1; });
-    const counts: CustomerCheckCounts = {
-      openByUser,
-      answered: answeredRes.count ?? 0,
-      done: doneRes.count ?? 0,
-    };
+    const counts = await fetchCounts();
 
     return NextResponse.json({
       success: true,
