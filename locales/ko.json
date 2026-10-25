@@ -206,6 +206,34 @@
     "saving": "저장 중...",
     "orders": "주문"
   },
+  "barcodePrint": {
+    "title": "바코드 자동 출력",
+    "hint": "스캔 → 수량 입력 → [출력] (수량 칸에서 Enter 도 됩니다). 출력 후 바로 다음 스캔.",
+    "scanPlaceholder": "QR 또는 바코드를 스캔하세요 (Enter)",
+    "lookingUp": "조회 중...",
+    "lookupError": "상품 조회 중 오류가 발생했습니다.",
+    "notFound": "일치하는 상품이 없습니다: {{code}}",
+    "matchedBy": {
+      "product_no": "상품번호(QR)로 조회",
+      "item_no": "아이템번호로 조회",
+      "barcode": "바코드로 조회"
+    },
+    "resultCount": "{{count}}건",
+    "totalMatched": "주문행 {{count}}건 묶음",
+    "truncated": "일치하는 주문이 많아 최신 {{count}}건만 표시합니다. 개인(P) 상품은 QR(상품번호)로 스캔해 주세요.",
+    "pickUser": "사업자 선택",
+    "set": "세트 {{count}}",
+    "qty": "수량",
+    "noQty": "출력할 수량을 입력하세요.",
+    "invalidQty": "수량은 1~{{max}} 사이 숫자만 가능합니다.",
+    "print": "출력",
+    "printing": "출력 중...",
+    "printed": "{{count}}장 전송됨",
+    "printError": "출력 중 오류가 발생했습니다.",
+    "templateMissing": "라벨 스티커 템플릿이 없어 출력할 수 없습니다. [라벨 설정]에서 템플릿을 확인하세요.",
+    "history": "이번 출력 기록",
+    "close": "닫기"
+  },
   "saveResult": {
     "sheetSave": "입고 저장",
     "labelSave": "라벨 저장",

@@ -487,6 +487,17 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         external: ['Google Sheets'],
       },
       {
+        name: '[BARCODE] 바코드 자동 출력 (탑메뉴 모달)',
+        route: '(모든 페이지 — 탑메뉴 버튼)',
+        file: 'component/BarcodePrintModal.tsx',
+        apis: [
+          { route: '/api/ft/order-items/lookup', tables: ['ft_order_items', 'ft_users'] },
+          { route: '/api/label-templates', tables: ['label_templates'] },
+          { route: '/api/label-print-logs', tables: ['label_print_logs'] },
+        ],
+        note: 'QR(product_no)·바코드·아이템번호 스캔 → 수량 → QZ Tray 라벨 스티커 출력. 출력 경로는 입고 화면 printLabels 와 동일',
+      },
+      {
         name: '바코드 라벨',
         route: '/barcode-labels',
         file: 'app/barcode-labels/page.tsx',

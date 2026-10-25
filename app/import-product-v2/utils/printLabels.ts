@@ -43,8 +43,11 @@ export interface PrintLabelParams {
   selectedUser?: FtUser | null;
   /** ft_users.brand — 라벨 brand 필드 (하위 호환. selectedUser 가 있으면 그쪽이 우선 소스) */
   brand: string | null;
-  /** PC-NO (작업 자리) — 프린터 조회에는 안 쓰고, 인쇄 기록(label_print_logs)에만 남긴다 */
-  stationNo: number;
+  /**
+   * PC-NO (작업 자리) — 프린터 조회에는 안 쓰고, 인쇄 기록(label_print_logs)에만 남긴다.
+   * 탑메뉴 [BARCODE] 모달처럼 자리 선택이 없는 경로는 null (컬럼이 NULL 허용).
+   */
+  stationNo: number | null;
   labelType: LabelType;
   /** 대상(성인/키즈)별 템플릿 — 모달의 드롭다운에서 확정된 값 */
   templates: AudienceTemplates;

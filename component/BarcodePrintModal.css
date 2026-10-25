@@ -1,0 +1,385 @@
+/* ============================================================ */
+/* [BARCODE] 바코드 자동 출력 모달 — 탑메뉴 공통                   */
+/* ============================================================ */
+.bpm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1100;                 /* 탑메뉴(999) 위 */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+}
+
+.bpm-modal {
+  width: 100%;
+  max-width: 760px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 20px;
+  box-sizing: border-box;
+}
+
+/* ============================================================ */
+/* 헤더                                                          */
+/* ============================================================ */
+.bpm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bpm-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #18181b;
+  letter-spacing: -0.3px;
+}
+
+.bpm-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #71717a;
+}
+
+.bpm-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.bpm-close:hover:not(:disabled) { color: #18181b; }
+.bpm-close:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============================================================ */
+/* 스캔 입력                                                      */
+/* ============================================================ */
+.bpm-scan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 2px solid #18181b;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.bpm-scan-row:focus-within {
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(24, 24, 27, 0.08);
+}
+
+.bpm-scan-icon {
+  font-size: 18px;
+  color: #52525b;
+}
+
+.bpm-scan-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #18181b;
+  font-variant-numeric: tabular-nums;
+}
+
+.bpm-scan-input::placeholder {
+  color: #a1a1aa;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.bpm-scan-status {
+  font-size: 12px;
+  color: #71717a;
+  white-space: nowrap;
+}
+
+/* ============================================================ */
+/* 메시지                                                         */
+/* ============================================================ */
+.bpm-msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: pre-line;
+}
+
+.bpm-msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.bpm-msg-ok    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.bpm-msg-warn  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 500; }
+
+/* ============================================================ */
+/* 결과                                                          */
+/* ============================================================ */
+.bpm-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bpm-result-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bpm-result-code {
+  font-size: 14px;
+  font-weight: 800;
+  color: #18181b;
+  background: #f4f4f5;
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bpm-result-meta {
+  font-size: 12px;
+  color: #71717a;
+}
+
+/* 사업자 선택 (결과에 사업자가 여럿일 때만) */
+.bpm-users {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bpm-users-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #71717a;
+}
+
+.bpm-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1.5px solid #e4e4e7;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3f3f46;
+  cursor: pointer;
+}
+
+.bpm-user-chip.is-active {
+  border-color: #18181b;
+  background: #18181b;
+  color: #ffffff;
+}
+
+.bpm-user-count {
+  font-size: 11px;
+  background: rgba(127, 127, 127, 0.18);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+
+/* 행 */
+.bpm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.bpm-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.bpm-row-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f4f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bpm-row-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bpm-row-noimg { color: #a1a1aa; }
+
+.bpm-row-body { min-width: 0; }
+
+.bpm-row-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #18181b;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.bpm-row-option {
+  margin-left: 6px;
+  font-weight: 500;
+  color: #52525b;
+}
+
+.bpm-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bpm-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bpm-tag-item    { background: #eef2ff; color: #4338ca; }
+.bpm-tag-barcode { background: #f4f4f5; color: #3f3f46; }
+.bpm-tag-set     { background: #fff7ed; color: #c2410c; }
+.bpm-tag-user    { background: #ecfdf5; color: #047857; }
+.bpm-tag-kids    { background: #fdf2f8; color: #be185d; }
+
+.bpm-row-qty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.bpm-qty-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #71717a;
+}
+
+.bpm-qty-input {
+  width: 84px;
+  padding: 8px 10px;
+  border: 1.5px solid #d4d4d8;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: #18181b;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.bpm-qty-input:focus {
+  border-color: #18181b;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.1);
+}
+
+.bpm-qty-input:disabled { background: #f4f4f5; color: #a1a1aa; }
+
+/* 템플릿 선택 */
+.bpm-template {
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+/* 출력 */
+.bpm-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bpm-print-btn {
+  min-width: 160px;
+  padding: 12px 28px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bpm-print-btn:hover:not(:disabled) {
+  background: #15803d;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.3);
+}
+
+.bpm-print-btn:disabled {
+  background: #a1a1aa;
+  cursor: not-allowed;
+}
+
+/* ============================================================ */
+/* 이번 세션 출력 기록                                            */
+/* ============================================================ */
+.bpm-history {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 10px;
+}
+
+.bpm-history-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+.bpm-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bpm-history li {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 10px;
+  font-size: 12px;
+  color: #52525b;
+  align-items: center;
+}
+
+.bpm-history-time { color: #a1a1aa; font-variant-numeric: tabular-nums; }
+.bpm-history-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpm-history-sheets { font-weight: 700; color: #15803d; white-space: nowrap; }

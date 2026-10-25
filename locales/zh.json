@@ -200,6 +200,34 @@
     "saving": "保存中...",
     "orders": "订单"
   },
+  "barcodePrint": {
+    "title": "条码自动打印",
+    "hint": "扫描 → 输入数量 → [打印]（在数量栏按回车也可以）。打印后直接扫描下一个。",
+    "scanPlaceholder": "请扫描二维码或条形码（回车）",
+    "lookingUp": "查询中...",
+    "lookupError": "查询商品时发生错误。",
+    "notFound": "没有匹配的商品：{{code}}",
+    "matchedBy": {
+      "product_no": "按商品编号(QR)查询",
+      "item_no": "按商品项编号查询",
+      "barcode": "按条形码查询"
+    },
+    "resultCount": "{{count}}条",
+    "totalMatched": "合并自{{count}}条订单行",
+    "truncated": "匹配的订单较多，仅显示最新{{count}}条。个人(P)商品请扫描二维码(商品编号)。",
+    "pickUser": "选择商家",
+    "set": "套装 {{count}}",
+    "qty": "数量",
+    "noQty": "请输入要打印的数量。",
+    "invalidQty": "数量只能是 1~{{max}} 之间的数字。",
+    "print": "打印",
+    "printing": "打印中...",
+    "printed": "已发送{{count}}张",
+    "printError": "打印时发生错误。",
+    "templateMissing": "没有标签贴纸模板，无法打印。请在[标签设置]中确认模板。",
+    "history": "本次打印记录",
+    "close": "关闭"
+  },
   "saveResult": {
     "sheetSave": "入库保存",
     "labelSave": "标签保存",
