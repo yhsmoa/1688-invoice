@@ -183,6 +183,41 @@ const ReturnProductV2: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================================
+  // 행별 저장 큐 — 같은 행의 PATCH 는 앞 요청이 끝난 뒤 보낸다
+  //
+  //   가격 저장은 "가격 → 자동 서비스료(6%)" 두 요청이 순서대로 나간다. 그 사이에
+  //   사용자가 서비스 칸을 직접 저장하면(가격 Enter 직후 서비스 칸이 바로 열린다)
+  //   자동값이 나중에 도착해 사용자 입력을 덮어쓸 수 있다. 행 단위로 직렬화하면
+  //   "가격 → 자동 서비스 → 사용자 서비스" 순서가 항상 지켜진다.
+  //   화면의 환불 총액도 큐의 마지막 응답으로만 확정한다.
+  // ============================================================
+  const saveQueueRef = useRef<Map<string, Promise<void>>>(new Map());
+
+  const enqueueSave = useCallback((id: string, task: () => Promise<void>): Promise<void> => {
+    const prev = saveQueueRef.current.get(id) ?? Promise.resolve();
+    const next = prev.catch(() => undefined).then(task);
+    saveQueueRef.current.set(id, next);
+    // 마지막 작업이 끝나면 큐에서 비운다 (다른 작업이 뒤에 붙었으면 그대로 둔다)
+    next.finally(() => {
+      if (saveQueueRef.current.get(id) === next) saveQueueRef.current.delete(id);
+    });
+    return next;
+  }, []);
+
+  /** 단일 필드 PATCH — 응답 JSON 그대로 반환 (success / error / total_refund_cny) */
+  const patchDetail = useCallback(
+    async (id: string, field: string, value: string | number | null) => {
+      const res = await fetch('/api/ft/cancel-details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, field, value }),
+      });
+      return (await res.json()) as { success: boolean; error?: string; total_refund_cny?: number | null };
+    },
+    []
+  );
+
+  // ============================================================
   // 드롭다운 외부 클릭 시 닫기
   // ============================================================
   useEffect(() => {
@@ -268,29 +303,26 @@ const ReturnProductV2: React.FC = () => {
         })
       );
 
-      // 2) API 저장
-      const res = await fetch('/api/ft/cancel-details', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, field, value }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        // 낙관적으로 바꾼 화면을 서버 값으로 되돌린다 (정산 잠금 409 등)
-        console.error('ft_cancel_details 업데이트 실패:', json.error);
-        alert(json.error || '저장에 실패했습니다.');
-        if (selectedUserId) fetchDetails(selectedUserId);
-        return;
-      }
+      // 2) API 저장 — 같은 행의 앞선 저장(예: 가격 → 자동 서비스료)이 끝난 뒤
+      await enqueueSave(id, async () => {
+        const json = await patchDetail(id, field, value);
+        if (!json.success) {
+          // 낙관적으로 바꾼 화면을 서버 값으로 되돌린다 (정산 잠금 409 등)
+          console.error('ft_cancel_details 업데이트 실패:', json.error);
+          alert(json.error || '저장에 실패했습니다.');
+          if (selectedUserId) fetchDetails(selectedUserId);
+          return;
+        }
 
-      // 3) 환불 총액 — 서버(트리거) 계산값으로 확정
-      if (isAmount) {
-        setDetails((prev) =>
-          prev.map((d) => (d.id === id ? { ...d, total_refund_cny: json.total_refund_cny } : d))
-        );
-      }
+        // 3) 환불 총액 — 서버(트리거) 계산값으로 확정
+        if (isAmount) {
+          setDetails((prev) =>
+            prev.map((d) => (d.id === id ? { ...d, total_refund_cny: json.total_refund_cny ?? d.total_refund_cny } : d))
+          );
+        }
+      });
     },
-    [selectedUserId, fetchDetails]
+    [selectedUserId, fetchDetails, enqueueSave, patchDetail]
   );
 
   // ── 상태 드롭다운 선택
@@ -321,7 +353,10 @@ const ReturnProductV2: React.FC = () => {
   );
 
   // ── 인라인 편집 저장 (blur / Enter)
-  const commitEdit = useCallback(() => {
+  //    advanceToService: 가격을 Enter 로 저장했을 때만 true —
+  //    같은 행 서비스 칸을 자동 계산값(6%)이 채워진 채 바로 열어 이어서 입력하게 한다.
+  //    (blur 로 저장한 경우는 사용자가 다른 곳을 눌렀으므로 이동하지 않는다)
+  const commitEdit = useCallback((opts?: { advanceToService?: boolean }) => {
     if (!editingCell) return;
     const { id, field } = editingCell;
     let value: string | number | null;
@@ -335,42 +370,50 @@ const ReturnProductV2: React.FC = () => {
     setEditingCell(null);
     setEditValue('');
 
-    // ── 가격 입력 시 서비스료 자동 계산 (6%) — 순차 처리
+    // ── 가격 입력 시 서비스료 자동 계산 (6%) — 행 큐로 순차 저장
     if (field === 'price_cny' && typeof value === 'number') {
       const fee = calcServiceFee(value);
       // 로컬 상태를 한번에 반영 (price + fee + 환불 총액)
       setDetails((prev) =>
         prev.map((d) => (d.id === id ? withRefund({ ...d, price_cny: value, service_fee: fee }) : d))
       );
-      // API 순차 저장 — 마지막 응답의 환불 총액(트리거 계산값)으로 확정
-      (async () => {
-        await fetch('/api/ft/cancel-details', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, field: 'price_cny', value }),
-        });
-        const res = await fetch('/api/ft/cancel-details', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, field: 'service_fee', value: fee }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          setDetails((prev) =>
-            prev.map((d) => (d.id === id ? { ...d, total_refund_cny: json.total_refund_cny } : d))
-          );
+      // 가격 → 서비스료 순서로 저장. 뒤이어 사용자가 서비스 칸을 고치면 그 저장은
+      // 이 큐 뒤에 붙어 자동값이 사용자 값을 덮어쓰지 못한다.
+      enqueueSave(id, async () => {
+        const priceRes = await patchDetail(id, 'price_cny', value);
+        if (!priceRes.success) {
+          console.error('ft_cancel_details 가격 저장 실패:', priceRes.error);
+          alert(priceRes.error || '가격 저장에 실패했습니다.');
+          if (selectedUserId) fetchDetails(selectedUserId);
+          return;
         }
-      })();
+        const feeRes = await patchDetail(id, 'service_fee', fee);
+        if (!feeRes.success) {
+          console.error('ft_cancel_details 서비스료 저장 실패:', feeRes.error);
+          alert(feeRes.error || '서비스료 저장에 실패했습니다.');
+          if (selectedUserId) fetchDetails(selectedUserId);
+          return;
+        }
+        setDetails((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, total_refund_cny: feeRes.total_refund_cny ?? d.total_refund_cny } : d))
+        );
+      });
+
+      // Enter 였으면 서비스 칸으로 이어서 — 자동 계산값을 채워 두고 포커스(autoFocus)
+      if (opts?.advanceToService) {
+        setEditingCell({ id, field: 'service_fee' });
+        setEditValue(String(fee));
+      }
     } else {
       updateField(id, field, value);
     }
-  }, [editingCell, editValue, updateField]);
+  }, [editingCell, editValue, updateField, enqueueSave, patchDetail, selectedUserId, fetchDetails]);
 
   const handleEditKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && editingCell?.field !== 'cancel_reason') {
         e.preventDefault();
-        commitEdit();
+        commitEdit({ advanceToService: editingCell?.field === 'price_cny' });
       }
       if (e.key === 'Escape') {
         setEditingCell(null);
@@ -820,7 +863,7 @@ const ReturnProductV2: React.FC = () => {
                                   type="number"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={commitEdit}
+                                  onBlur={() => commitEdit()}
                                   onKeyDown={handleEditKeyDown}
                                   autoFocus
                                 />
@@ -841,7 +884,7 @@ const ReturnProductV2: React.FC = () => {
                                   type="number"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={commitEdit}
+                                  onBlur={() => commitEdit()}
                                   onKeyDown={handleEditKeyDown}
                                   autoFocus
                                 />
@@ -862,7 +905,7 @@ const ReturnProductV2: React.FC = () => {
                                   type="number"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={commitEdit}
+                                  onBlur={() => commitEdit()}
                                   onKeyDown={handleEditKeyDown}
                                   autoFocus
                                 />
@@ -915,7 +958,7 @@ const ReturnProductV2: React.FC = () => {
                                   className="return-v2-inline-textarea"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={commitEdit}
+                                  onBlur={() => commitEdit()}
                                   onKeyDown={handleEditKeyDown}
                                   autoFocus
                                   rows={2}
