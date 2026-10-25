@@ -12,7 +12,8 @@
     "barcodeSettings": "바코드 설정",
     "orderSearch": "주문 검색",
     "orderCheck": "주문 검사",
-    "labelSettings": "라벨 설정"
+    "labelSettings": "라벨 설정",
+    "customerChecks": "고객 검수 확인"
   },
   "orderSearch": {
     "title": "주문 검색",
@@ -234,6 +235,95 @@
     "history": "이번 출력 기록",
     "close": "닫기"
   },
+  "customerChecks": {
+    "title": "고객 검수 확인",
+    "subtitle": "입고 [고객확인] 요청 · 고객 답변 · 처리",
+    "refresh": "새로고침",
+    "loading": "불러오는 중...",
+    "saving": "저장 중...",
+    "retry": "다시 시도",
+    "search": "검색",
+    "searchPlaceholder": "주문번호 · 아이템번호 · 상품명",
+    "emptySearch": "\"{{q}}\" 에 해당하는 요청이 없습니다.",
+    "empty": {
+      "open": "고객 답변을 기다리는 요청이 없습니다.",
+      "answered": "처리할 답변이 없습니다.",
+      "done": "처리완료된 요청이 없습니다."
+    },
+    "pager": "{{page}} / {{pages}} 페이지 · 총 {{total}}건",
+    "total": "총 {{total}}건",
+    "tab": {
+      "allTeams": "전체",
+      "answered": "답변완료",
+      "done": "처리완료"
+    },
+    "col": {
+      "team": "팀",
+      "status": "상태",
+      "decision": "고객 선택",
+      "itemNo": "아이템 / 주문번호",
+      "orderNo": "주문번호",
+      "item": "상품",
+      "qty": "확인 / 입고",
+      "size": "사이즈",
+      "requestedBy": "요청자",
+      "createdAt": "요청일"
+    },
+    "status": {
+      "확인요청": "확인요청",
+      "재확인요청": "재확인요청",
+      "답변완료": "답변완료",
+      "처리완료": "처리완료"
+    },
+    "decision": {
+      "출고": "출고",
+      "취소": "취소",
+      "재문의": "재문의",
+      "출고수량변경": "출고수량변경"
+    },
+    "role": {
+      "warehouse": "창고",
+      "customer": "고객"
+    },
+    "action": {
+      "recheck": "재확인요청",
+      "close": "처리완료",
+      "reopen": "다시 열기"
+    },
+    "detail": {
+      "loadError": "확인요청을 불러오지 못했습니다.",
+      "actionError": "처리 중 오류가 발생했습니다.",
+      "noItemNo": "(아이템번호 없음)",
+      "noName": "(상품명 없음)",
+      "productImage": "상품",
+      "attached": "첨부",
+      "customerDecision": "고객 선택",
+      "attributes": "확인 항목",
+      "noAttributes": "확인 항목 없음",
+      "productNo": "상품번호",
+      "qty": "수량",
+      "orderQty": "주문",
+      "confirmQty": "확인",
+      "arrivalQty": "입고",
+      "closedAt": "처리완료",
+      "siteUrl": "사이트",
+      "openSite": "상품 페이지 열기",
+      "related": "같은 아이템번호의 다른 요청 {{count}}건",
+      "comments": "댓글 {{count}}",
+      "noComments": "아직 댓글이 없습니다.",
+      "composerPlaceholder": "댓글 입력 (Ctrl+Enter 로 등록) — [재확인요청]은 여기 적은 내용이 함께 전달됩니다",
+      "author": "작성자",
+      "addComment": "댓글",
+      "commentEmpty": "댓글 내용을 입력하세요.",
+      "recheckNeedsComment": "재확인요청에는 다시 확인할 내용을 댓글로 적어야 합니다.",
+      "confirmClose": "이 요청을 처리완료로 표시할까요?",
+      "done": {
+        "recheck": "재확인요청으로 변경했습니다. 고객에게 다시 표시됩니다.",
+        "close": "처리완료로 표시했습니다.",
+        "reopen": "다시 열었습니다 (재확인요청)."
+      }
+    }
+  },
   "saveResult": {
     "sheetSave": "입고 저장",
     "labelSave": "라벨 저장",
@@ -268,7 +358,10 @@
         "material": "소재",
         "color": "색상",
         "etc": "기타"
-      }
+      },
+      "memo": "요청 메모",
+      "memoHint": "선택 — 모든 항목의 첫 댓글로 저장됩니다",
+      "memoPlaceholder": "예) 색상 확인 부탁드립니다"
     },
     "cancelReason": {
       "selectCategory": "사유 선택",

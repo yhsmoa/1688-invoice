@@ -107,6 +107,14 @@ const Icons = {
       <path d="M3 12a9 3 0 0 0 18 0" />
     </svg>
   ),
+  // 고객 검수 확인 — clipboard-check
+  customerChecks: (
+    <svg {...iconProps}>
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  ),
   // V1 — layers
   v1: (
     <svg {...iconProps}>
@@ -397,6 +405,16 @@ const LeftsideMenu: React.FC = () => {
             <Link href="/label-settings" className="menu-link" onClick={(e) => handleNavigation(e, '/label-settings')}>
               <span className="menu-icon">🏷️</span>
               <span className="menu-text">{t('menu.labelSettings')}</span>
+            </Link>
+          </li>
+
+          {/* ============================================================ */}
+          {/* 고객 검수 확인 — 입고 [고객확인] 요청 · 고객 답변 · 처리 (Notion 대체) */}
+          {/* ============================================================ */}
+          <li className="menu-item">
+            <Link href="/customer-checks" className="menu-link" onClick={(e) => handleNavigation(e, '/customer-checks')}>
+              <span className="menu-icon">{Icons.customerChecks}</span>
+              <span className="menu-text">{t('menu.customerChecks')}</span>
             </Link>
           </li>
         </ul>

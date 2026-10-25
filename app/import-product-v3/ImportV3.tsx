@@ -430,13 +430,14 @@ const ImportV3: React.FC = () => {
       />
 
       {/* ============================================================ */}
-      {/* 고객확인 (Notion)                                              */}
+      {/* 고객확인 — 고객 검수 확인요청 생성 (ft_customer_checks)          */}
       {/* ============================================================ */}
       <V2CustomerConfirmModal
         isOpen={confirmTarget !== null}
         onClose={() => setConfirmTarget(null)}
         items={confirmTarget ?? EMPTY_ITEMS}
-        sellerCode={selectedUser?.user_code || ''}
+        userId={selectedUser?.id || ''}
+        requestedBy={selectedWorker}
         arrivalMap={arrivalMap}
         onSaveComplete={() => setConfirmTarget(null)}
       />

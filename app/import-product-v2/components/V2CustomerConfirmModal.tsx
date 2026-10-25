@@ -11,8 +11,9 @@ import './V2CustomerConfirmModal.css';
 // ============================================================
 // V2 고객확인 모달
 //
-// 목적: 체크된 ft_order_items 를 Notion DB 로 전송하여 고객 확인을 요청.
-//       (구 Google Sheets Apps Script sendSelectedRowToNotion 대체)
+// 목적: 체크된 ft_order_items 로 고객 검수 확인요청을 만든다.
+//       → POST /api/ft/customer-checks (ft_customer_checks — Notion 상품확인 DB 대체)
+//       창고는 /customer-checks, 고객은 purchase-agent /inspections 에서 본다.
 //
 // 동작:
 //   - 체크된 항목 each 마다 카드 1개 (항목별 폼)
@@ -26,14 +27,15 @@ import './V2CustomerConfirmModal.css';
 //              압축은 한 장씩 순서대로 (대용량 여러 장 동시 디코딩 → 메모리 폭증 방지),
 //              압축 중에는 저장 버튼을 막는다.
 //       하단 : 확인수량 입력 ([입력] / 입고개수) + 확인 항목 체크박스
-//              속성 라벨은 언어설정(ko/zh) 적용, 단 Notion 저장은 항상 한글
+//              속성 라벨은 언어설정(ko/zh) 적용, 단 DB 저장은 항상 한글
 //              기타 체크박스 + 입력폼 상시 노출, 입력 시 기타 자동 체크
-//   - [저장] → /api/notion/customer-confirm (multipart) → 항목당 Notion 페이지 1개 생성
+//   - 푸터 위 "요청 메모" 1칸 (저장 1회당 1개) — 모든 항목의 첫 댓글로 저장 (비우면 없음)
+//   - [저장] → /api/ft/customer-checks (multipart) → 항목당 확인요청 1건 (+이미지·메모 댓글)
 // ============================================================
 
 // ── 확인 속성 정의 ──
 //   key : 영문 식별자 (i18n 키 + 내부 식별)
-//   ko  : Notion 저장용 한글 라벨 (언어설정과 무관하게 항상 한글로 전송)
+//   ko  : DB 저장용 한글 라벨 (언어설정과 무관하게 항상 한글로 전송)
 const ATTRIBUTE_OPTIONS: { key: string; ko: string }[] = [
   { key: 'neckline', ko: '네크라인' },
   { key: 'sleeve',   ko: '소매' },
@@ -51,8 +53,10 @@ interface V2CustomerConfirmModalProps {
   onClose: () => void;
   /** 체크박스로 선택된 ft_order_items 목록 */
   items: FtOrderItem[];
-  /** 선택된 ft_users.user_code → Notion '팀' 속성 */
-  sellerCode: string;
+  /** 선택된 ft_users.id — 요청의 팀(고객 계정). 서버가 user_code 를 스냅샷으로 저장한다 */
+  userId: string;
+  /** 요청한 작업자 이름 (Worker 드롭박스 값, 없으면 빈 문자열) */
+  requestedBy?: string;
   /** item_id → ARRIVAL(입고) 합계 — '확인수량 / 입고개수' 표시용 */
   arrivalMap: Map<string, number>;
   /** 저장 완료 후 콜백 (모달 닫기 + 선택 해제 등) */
@@ -91,7 +95,8 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
   isOpen,
   onClose,
   items,
-  sellerCode,
+  userId,
+  requestedBy = '',
   arrivalMap,
   onSaveComplete,
 }) => {
@@ -99,6 +104,8 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
 
   // ── 아이템별 폼 상태 ──
   const [formData, setFormData] = useState<Map<string, ItemFormState>>(new Map());
+  // 요청 메모 — 저장 1회당 1개, 모든 항목의 첫 댓글 (선택)
+  const [memo, setMemo] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   // 저장 시도 여부 — 미입력 확인수량 강조용 (저장 1회 시도 후 true)
   const [attemptedSave, setAttemptedSave] = useState(false);
@@ -124,6 +131,7 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
       const next = new Map<string, ItemFormState>();
       items.forEach((item) => next.set(item.id, createEmptyForm()));
       setFormData(next);
+      setMemo('');
       setAttemptedSave(false);
       sessionRef.current += 1;               // 이전 세션의 진행 중 압축 결과 무효화
       removedKeysRef.current = new Set();
@@ -328,8 +336,8 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
       return;
     }
 
-    if (!sellerCode) {
-      alert('선택된 사용자의 USER_CODE 가 없어 Notion 팀 정보를 저장할 수 없습니다.');
+    if (!userId) {
+      alert('선택된 사업자가 없어 고객 검수 확인요청을 저장할 수 없습니다.');
       return;
     }
 
@@ -377,12 +385,13 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
         china_option1: item.china_option1,
         china_option2: item.china_option2,
         order_no: item.order_no,
+        product_no: item.product_no,
         order_qty: item.order_qty,
         confirm_qty: form.confirmQty || null,
         arrival_qty: arrivalMap.get(item.id) ?? 0,
         img_url: item.img_url,
         site_url: item.site_url,
-        // 배송 사이즈 코드 (A/B/C/P/X) — 화면 배지와 동일 로직, Notion 'type' 속성용
+        // 배송 사이즈 코드 (A/B/C/P/X) — 화면 배지와 동일 로직 (size_code 컬럼)
         size_code: resolveSizeBadge(item.shipment_type, item.coupang_shipment_size)?.code ?? null,
         attributes: attributeLabels,
         // 서버가 받은 장수와 대조 — 전송 중 일부 누락 시 그 항목을 실패 처리
@@ -390,39 +399,42 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
       };
     });
 
-    fd.append('seller_code', sellerCode);
+    fd.append('user_id', userId);
+    fd.append('requested_by', requestedBy.trim());
+    fd.append('memo', memo.trim());
     fd.append('payload', JSON.stringify(payload));
 
     setIsSaving(true);
     try {
-      const res = await fetch('/api/notion/customer-confirm', {
+      const res = await fetch('/api/ft/customer-checks', {
         method: 'POST',
         body: fd,
       });
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Notion 저장에 실패했습니다.');
+        throw new Error(json.error || '고객 검수 확인요청 저장에 실패했습니다.');
       }
 
-      // 일부 실패 항목 안내 (있을 경우)
+      // 일부 실패 항목 안내 (있을 경우) — 실패 건은 모달을 닫지 않고 다시 시도할 수 있게 둔다
       if (Array.isArray(json.failed) && json.failed.length > 0) {
         alert(
           `✅ ${json.created}건 저장 완료\n` +
           `❌ ${json.failed.length}건 실패:\n${json.failed.map((f: { item_no: string; error: string }) => `- ${f.item_no}: ${f.error}`).join('\n')}`
         );
+        if (json.created === 0) return;
       } else {
-        alert(`✅ Notion 에 ${json.created}건 저장 완료되었습니다.`);
+        alert(`✅ 고객 검수 확인요청 ${json.created}건 저장 완료되었습니다.`);
       }
 
       onSaveComplete();
     } catch (err) {
       console.error('고객확인 저장 오류:', err);
-      alert(err instanceof Error ? err.message : 'Notion 저장 중 오류가 발생했습니다.');
+      alert(err instanceof Error ? err.message : '고객 검수 확인요청 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, items, formData, sellerCode, arrivalMap, onSaveComplete]);
+  }, [isSaving, items, formData, userId, requestedBy, memo, arrivalMap, onSaveComplete]);
 
   if (!isOpen) return null;
 
@@ -628,6 +640,28 @@ const V2CustomerConfirmModal: React.FC<V2CustomerConfirmModalProps> = ({
             })
           )}
         </div>
+
+        {/* ────────────────────────────────────────
+            요청 메모 — 저장 1회당 1개, 모든 항목의 첫 댓글 (선택)
+        ──────────────────────────────────────── */}
+        {items.length > 0 && (
+          <div className="v2-cc-memo">
+            <label className="v2-cc-memo-label" htmlFor="v2-cc-memo-input">
+              {t('importProductV2.customerConfirm.memo')}
+              <span className="v2-cc-memo-hint">{t('importProductV2.customerConfirm.memoHint')}</span>
+            </label>
+            <textarea
+              id="v2-cc-memo-input"
+              className="v2-cc-memo-input"
+              value={memo}
+              rows={2}
+              maxLength={2000}
+              placeholder={t('importProductV2.customerConfirm.memoPlaceholder')}
+              onChange={(e) => setMemo(e.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+        )}
 
         {/* ────────────────────────────────────────
             푸터 — 닫기 / 저장

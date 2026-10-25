@@ -569,7 +569,7 @@ const ItemCheck: React.FC = () => {
     return users.find((u) => u.id === selectedUserId) || null;
   }, [users, selectedUserId]);
 
-  // ── 고객확인 모달 대상 — 체크된 항목 (Notion 전송) ──
+  // ── 고객확인 모달 대상 — 체크된 항목 (고객 검수 확인요청) ──
   const customerConfirmItems = useMemo(
     () => items.filter((item) => selectedRows.has(item.id)),
     [items, selectedRows]
@@ -1189,13 +1189,14 @@ const ItemCheck: React.FC = () => {
       />
 
       {/* ============================================================ */}
-      {/* 고객확인 모달 — 체크된 항목을 Notion 으로 전송 */}
+      {/* 고객확인 모달 — 체크된 항목으로 고객 검수 확인요청 생성 (ft_customer_checks) */}
       {/* ============================================================ */}
       <V2CustomerConfirmModal
         isOpen={isCustomerConfirmModalOpen}
         onClose={() => setIsCustomerConfirmModalOpen(false)}
         items={customerConfirmItems}
-        sellerCode={selectedUser?.user_code || ''}
+        userId={selectedUser?.id || ''}
+        requestedBy={selectedWorker}
         arrivalMap={arrivalMap}
         onSaveComplete={() => {
           setIsCustomerConfirmModalOpen(false);
