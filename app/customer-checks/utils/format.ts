@@ -47,11 +47,6 @@ export function proxiedImage(url: string | null | undefined): string | null {
   return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
-/** 상품명 + 옵션명 한 줄 */
-export function itemTitle(itemName: string | null, optionName: string | null): string {
-  return [itemName, optionName].filter(Boolean).join(' · ');
-}
-
 /** 중국 옵션 1·2 */
 export function chinaOptions(o1: string | null, o2: string | null): string {
   return [o1, o2].filter(Boolean).join(', ');

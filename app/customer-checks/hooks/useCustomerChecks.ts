@@ -5,6 +5,8 @@ import type {
   CheckTab,
   CustomerCheckCounts,
   CustomerCheckListRow,
+  AnsweredDecision,
+  AnsweredDecisionCounts,
 } from '../../../lib/customerChecks';
 
 // ============================================================
@@ -18,6 +20,8 @@ export interface CheckFilter {
   tab: CheckTab;
   /** 팀 필터 (null = 전체 팀) — 모든 탭 공통 */
   userId: string | null;
+  /** 답변완료 탭에서 출고분 / 취소분만 (null = 둘 다) — 다른 탭에서는 서버가 무시 */
+  decision: AnsweredDecision | null;
   q: string;
   page: number;
 }
@@ -30,6 +34,7 @@ interface ListResponse {
   page: number;
   pageSize: number;
   counts: CustomerCheckCounts;
+  answeredByDecision: AnsweredDecisionCounts;
 }
 
 const EMPTY_COUNTS: CustomerCheckCounts = {
@@ -44,6 +49,7 @@ export function useCustomerChecks(filter: CheckFilter) {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [counts, setCounts] = useState<CustomerCheckCounts>(EMPTY_COUNTS);
+  const [answeredByDecision, setAnsweredByDecision] = useState<AnsweredDecisionCounts>({ 출고: 0, 취소: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const seqRef = useRef(0);
@@ -55,6 +61,7 @@ export function useCustomerChecks(filter: CheckFilter) {
     try {
       const params = new URLSearchParams({ tab: filter.tab, page: String(filter.page) });
       if (filter.userId) params.set('user_id', filter.userId);
+      if (filter.tab === 'answered' && filter.decision) params.set('decision', filter.decision);
       if (filter.q.trim()) params.set('q', filter.q.trim());
 
       const res = await fetch(`/api/ft/customer-checks?${params.toString()}`, { cache: 'no-store' });
@@ -66,6 +73,7 @@ export function useCustomerChecks(filter: CheckFilter) {
       setTotal(json.total);
       setPageSize(json.pageSize);
       setCounts(json.counts);
+      setAnsweredByDecision(json.answeredByDecision);
     } catch (e) {
       if (seq !== seqRef.current) return;
       console.error('customer-checks 목록 조회 오류:', e);
@@ -74,9 +82,9 @@ export function useCustomerChecks(filter: CheckFilter) {
     } finally {
       if (seq === seqRef.current) setIsLoading(false);
     }
-  }, [filter.tab, filter.userId, filter.q, filter.page]);
+  }, [filter.tab, filter.userId, filter.decision, filter.q, filter.page]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
-  return { rows, total, pageSize, counts, isLoading, error, refetch: fetchList };
+  return { rows, total, pageSize, counts, answeredByDecision, isLoading, error, refetch: fetchList };
 }

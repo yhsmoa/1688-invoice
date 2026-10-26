@@ -13,6 +13,9 @@ import {
   isCheckTab,
   type CheckTab,
   type CustomerCheckCounts,
+  type AnsweredDecisionCounts,
+  ANSWERED_DECISIONS,
+  CHECK_ACTION_FROM,
   type CustomerCheckListRow,
   type CheckAuthorRole,
   type CustomerCheckRow,
@@ -278,7 +281,7 @@ export async function POST(request: NextRequest) {
 //   user_id 만 range 루프로 모아 센다. 처리완료는 계속 늘어나므로 행을 가져오지 않고
 //   팀별 head count 로 센다 (팀 = ft_users, 몇 개 수준).
 // ============================================================
-async function fetchCounts(): Promise<CustomerCheckCounts> {
+async function fetchCounts(userId: string | null): Promise<{ counts: CustomerCheckCounts; answeredByDecision: AnsweredDecisionCounts }> {
   const counts = Object.fromEntries(
     CHECK_TABS.map((t) => [t, { total: 0, byUser: {} as Record<string, number> }])
   ) as CustomerCheckCounts;
@@ -287,10 +290,10 @@ async function fetchCounts(): Promise<CustomerCheckCounts> {
   const tabByStatus = new Map(activeTabs.map((t) => [CHECK_TAB_STATUS[t], t]));
 
   const [activeRows, usersRes, doneTotalRes] = await Promise.all([
-    fetchAllRows<{ user_id: string; status: string }>((a, b) =>
+    fetchAllRows<{ user_id: string; status: string; decision: string | null }>((a, b) =>
       supabase
         .from('ft_customer_checks')
-        .select('user_id, status')
+        .select('user_id, status, decision')
         .in('status', activeTabs.map((t) => CHECK_TAB_STATUS[t]))
         .order('id', { ascending: true })
         .range(a, b)
@@ -301,11 +304,17 @@ async function fetchCounts(): Promise<CustomerCheckCounts> {
   if (usersRes.error) throw usersRes.error;
   if (doneTotalRes.error) throw doneTotalRes.error;
 
+  // 답변완료 탭의 출고 / 취소 건수 — 현재 팀 필터를 반영 (오른쪽 [출고]·[취소] 버튼 배지)
+  const answeredByDecision: AnsweredDecisionCounts = { 출고: 0, 취소: 0 };
+
   activeRows.forEach((r) => {
     const tab = tabByStatus.get(r.status as CustomerCheckRow['status']);
     if (!tab) return;
     counts[tab].total += 1;
     counts[tab].byUser[r.user_id] = (counts[tab].byUser[r.user_id] ?? 0) + 1;
+    if (tab === 'answered' && (!userId || r.user_id === userId) && (r.decision === '출고' || r.decision === '취소')) {
+      answeredByDecision[r.decision] += 1;
+    }
   });
 
   counts.done.total = doneTotalRes.count ?? 0;
@@ -324,7 +333,7 @@ async function fetchCounts(): Promise<CustomerCheckCounts> {
     if ((res.count ?? 0) > 0) counts.done.byUser[userIds[i]] = res.count ?? 0;
   });
 
-  return counts;
+  return { counts, answeredByDecision };
 }
 
 // ============================================================
@@ -333,11 +342,14 @@ async function fetchCounts(): Promise<CustomerCheckCounts> {
 // Query:
 //   tab     : open(확인요청) | reinquiry(재문의) | answered(답변완료) | done(처리완료)   (기본 open)
 //   user_id : 팀 필터 (모든 탭)  선택
+//   decision: 출고 | 취소 — 답변완료 탭에서만 (출고분 / 취소분 모아 보기)  선택
 //   q       : 주문번호·아이템번호·상품명 검색 (부분 일치) 선택
 //   page    : 1부터 (CHECK_PAGE_SIZE 건씩)
 //
-// 응답: { success, rows: CustomerCheckListRow[], total, page, pageSize, counts }
-//   counts[tab] = { total, byUser } — 상태 타일·팀 칩 배지. 검색·팀 필터와 무관한 전체 값
+// 응답: { success, rows: CustomerCheckListRow[], total, page, pageSize, counts, answeredByDecision }
+//   counts[tab] = { total, byUser } — 단계 타일·팀 칩 배지. 검색·팀 필터와 무관한 전체 값
+//   answeredByDecision = { 출고, 취소 } — 답변완료 탭 버튼 배지. 팀 필터 반영, 검색 무관
+//   행의 last_comment_role / last_comment_body — 재문의에서 고객이 마지막에 남긴 말을 카드에 보여 준다
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -350,6 +362,12 @@ export async function GET(request: NextRequest) {
     if (userId && !UUID_RE.test(userId)) {
       return NextResponse.json({ success: false, error: 'user_id 값이 올바르지 않습니다.' }, { status: 400 });
     }
+    const decisionParam = str(sp.get('decision'));
+    if (decisionParam && !(ANSWERED_DECISIONS as readonly string[]).includes(decisionParam)) {
+      return NextResponse.json({ success: false, error: 'decision 값이 올바르지 않습니다. (출고 / 취소)' }, { status: 400 });
+    }
+    // 출고/취소 필터는 답변완료 탭에서만 의미가 있다 — 다른 탭에서는 무시
+    const decision = tabParam === 'answered' ? decisionParam : null;
     // 검색어 — PostgREST or() 필터 구분자(, ( ) )와 역슬래시 제거, 길이 제한
     const q = (sp.get('q') ?? '').trim().replace(/[,()\\]/g, '').slice(0, 60);
     const page = Math.max(1, int(sp.get('page')) ?? 1);
@@ -363,6 +381,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .range(from, from + CHECK_PAGE_SIZE - 1);
     if (userId) query = query.eq('user_id', userId);
+    if (decision) query = query.eq('decision', decision);
     if (q) query = query.or(`order_no.ilike.%${q}%,item_no.ilike.%${q}%,item_name.ilike.%${q}%`);
 
     const listRes = await query;
@@ -377,6 +396,7 @@ export async function GET(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('status', CHECK_TAB_STATUS[tabParam]);
       if (userId) countQuery = countQuery.eq('user_id', userId);
+      if (decision) countQuery = countQuery.eq('decision', decision);
       if (q) countQuery = countQuery.or(`order_no.ilike.%${q}%,item_no.ilike.%${q}%,item_name.ilike.%${q}%`);
       const countRes = await countQuery;
       if (countRes.error) throw countRes.error;
@@ -391,12 +411,13 @@ export async function GET(request: NextRequest) {
     const commentCount = new Map<string, number>();
     const imageCount = new Map<string, number>();
     const lastRole = new Map<string, CheckAuthorRole>();
+    const lastBody = new Map<string, string>();
     if (ids.length > 0) {
       const [comments, images] = await Promise.all([
-        fetchAllRows<{ check_id: string; author_role: CheckAuthorRole }>((a, b) =>
+        fetchAllRows<{ check_id: string; author_role: CheckAuthorRole; body: string }>((a, b) =>
           supabase
             .from('ft_customer_check_comments')
-            .select('check_id, author_role')
+            .select('check_id, author_role, body')
             .in('check_id', ids)
             .order('created_at', { ascending: true })
             .order('id', { ascending: true })
@@ -409,6 +430,7 @@ export async function GET(request: NextRequest) {
       comments.forEach((c) => {
         commentCount.set(c.check_id, (commentCount.get(c.check_id) ?? 0) + 1);
         lastRole.set(c.check_id, c.author_role);   // 시간순 → 마지막 값이 최근 댓글
+        lastBody.set(c.check_id, c.body);
       });
       images.forEach((i) => imageCount.set(i.check_id, (imageCount.get(i.check_id) ?? 0) + 1));
     }
@@ -418,10 +440,11 @@ export async function GET(request: NextRequest) {
       comment_count: commentCount.get(c.id) ?? 0,
       image_count: imageCount.get(c.id) ?? 0,
       last_comment_role: lastRole.get(c.id) ?? null,
+      last_comment_body: lastBody.get(c.id) ?? null,
     }));
 
     // ── 건수 (필터 무관 전체) ──
-    const counts = await fetchCounts();
+    const { counts, answeredByDecision } = await fetchCounts(userId);
 
     return NextResponse.json({
       success: true,
@@ -430,6 +453,7 @@ export async function GET(request: NextRequest) {
       page,
       pageSize: CHECK_PAGE_SIZE,
       counts,
+      answeredByDecision,
     });
   } catch (error) {
     console.error('customer-checks GET 오류:', error);
@@ -437,6 +461,60 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: '고객 검수 확인 목록을 불러오는 중 오류가 발생했습니다.',
+        details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================
+// PATCH — 일괄 처리완료 (다중선택)
+//
+// Body: { action: 'close', ids: string[] }   (1 ~ BULK_CLOSE_MAX 건, 중복 제거)
+//
+//   UPDATE … WHERE id IN (ids) AND status IN (확인요청·재문의·답변완료) 한 번으로 처리.
+//   고르는 사이 다른 사람이 이미 처리했거나 상태가 바뀐 건은 조건에 걸려 건너뛴다
+//   → 응답 { closed, skipped } 로 화면이 몇 건이 건너뛰어졌는지 알려 준다.
+// ============================================================
+const BULK_CLOSE_MAX = 100;
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => null) as { action?: unknown; ids?: unknown } | null;
+    if (body?.action !== 'close') {
+      return NextResponse.json({ success: false, error: 'action 값이 올바르지 않습니다. (close)' }, { status: 400 });
+    }
+    if (!Array.isArray(body.ids)) {
+      return NextResponse.json({ success: false, error: 'ids 가 필요합니다.' }, { status: 400 });
+    }
+    if (body.ids.length === 0) {
+      return NextResponse.json({ success: false, error: '처리할 요청을 선택하세요.' }, { status: 400 });
+    }
+    if (!body.ids.every((v) => typeof v === 'string' && UUID_RE.test(v))) {
+      return NextResponse.json({ success: false, error: '요청 id 형식이 올바르지 않습니다.' }, { status: 400 });
+    }
+    const ids = Array.from(new Set(body.ids as string[]));
+    if (ids.length > BULK_CLOSE_MAX) {
+      return NextResponse.json({ success: false, error: `한 번에 최대 ${BULK_CLOSE_MAX}건까지 처리할 수 있습니다.` }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('ft_customer_checks')
+      .update({ status: '처리완료', closed_at: new Date().toISOString() })
+      .in('id', ids)
+      .in('status', [...CHECK_ACTION_FROM.close])
+      .select('id');
+    if (error) throw error;
+
+    const closed = (data ?? []).length;
+    return NextResponse.json({ success: true, closed, skipped: ids.length - closed });
+  } catch (error) {
+    console.error('customer-checks PATCH(일괄 처리완료) 오류:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: '일괄 처리완료 중 오류가 발생했습니다.',
         details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error),
       },
       { status: 500 }

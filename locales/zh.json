@@ -247,6 +247,7 @@
       "answered": "没有待处理的回复。",
       "done": "没有已处理完成的请求。"
     },
+    "emptyDecision": "没有{{decision}}的回复。",
     "pager": "第 {{page}} / {{pages}} 页 · 共 {{total}} 条",
     "total": "共 {{total}} 条",
     "prevPage": "上一页",
@@ -266,10 +267,6 @@
       "reinquiry": "客户再次提问 — 用评论回复",
       "answered": "已确定出库·取消 — 处理后点[处理完成]",
       "done": "已结束的请求"
-    },
-    "tabFlag": {
-      "reinquiry": "需仓库回复",
-      "answered": "待处理"
     },
     "status": {
       "확인요청": "待回复",
@@ -299,8 +296,8 @@
     "card": {
       "confirm": "确认",
       "arrival": "入库",
-      "needsReply": "需仓库回复",
-      "waitingCustomer": "等待客户确定"
+      "waitingCustomer": "等待客户确定",
+      "customerAsked": "客户再次咨询 — 需仓库回复"
     },
     "detail": {
       "panelLabel": "确认请求详情",
@@ -337,6 +334,19 @@
       "confirmClose": "要将此请求标记为处理完成吗？",
       "confirmWithdraw": "客户还没有回复。要将此请求关闭为处理完成吗？（客户页面也会变为已处理）",
       "moved": "已更改为{{status}}。"
+    },
+    "step": "第{{n}}步",
+    "decisionFilter": "按出库 · 取消查看",
+    "bulk": {
+      "toggle": "多选",
+      "pickPage": "本页全选",
+      "picked": "已选 {{count}} 条",
+      "cancel": "取消选择",
+      "close": "处理完成 ({{count}})",
+      "confirmClose": "要将选中的 {{count}} 条标记为处理完成吗？",
+      "confirmWithdraw": "选中的 {{count}} 条客户还没有回复。要关闭为处理完成吗？（客户页面也会变为已处理）",
+      "done": "已将 {{closed}} 条标记为处理完成。",
+      "doneWithSkip": "已将 {{closed}} 条标记为处理完成。{{skipped}} 条状态已变更，已跳过。"
     }
   },
   "saveResult": {

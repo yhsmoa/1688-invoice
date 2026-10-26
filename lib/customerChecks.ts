@@ -88,11 +88,13 @@ export interface CustomerCheckRow {
   updated_at: string;
 }
 
-/** 목록 행 — 댓글·이미지 수 + 마지막 댓글 작성자(재문의에서 창고 답변이 필요한지) */
+/** 목록 행 — 댓글·이미지 수 + 마지막 댓글(작성자·내용 — 재문의에서 창고 답변이 필요한지) */
 export interface CustomerCheckListRow extends CustomerCheckRow {
   comment_count: number;
   image_count: number;
   last_comment_role: CheckAuthorRole | null;
+  /** 마지막 댓글 내용 — 재문의에서 고객이 마지막에 남긴 말을 카드에 보여 준다 */
+  last_comment_body: string | null;
 }
 
 export interface CustomerCheckComment {
@@ -130,6 +132,13 @@ export interface CheckTabCount {
 
 /** 목록 응답의 건수 — 상태 타일 + 팀 칩 배지 (검색과 무관한 전체 값) */
 export type CustomerCheckCounts = Record<CheckTab, CheckTabCount>;
+
+/** 답변완료 탭에서 모아 볼 고객 선택 (출고분 / 취소분) */
+export const ANSWERED_DECISIONS = ['출고', '취소'] as const;
+export type AnsweredDecision = (typeof ANSWERED_DECISIONS)[number];
+
+/** 답변완료 탭 출고 / 취소 건수 — 팀 필터 반영 */
+export type AnsweredDecisionCounts = Record<AnsweredDecision, number>;
 
 // ============================================================
 // 헬퍼

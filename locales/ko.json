@@ -253,6 +253,7 @@
       "answered": "처리할 답변이 없습니다.",
       "done": "처리완료된 요청이 없습니다."
     },
+    "emptyDecision": "{{decision}} 답변이 없습니다.",
     "pager": "{{page}} / {{pages}} 페이지 · 총 {{total}}건",
     "total": "총 {{total}}건",
     "prevPage": "이전 페이지",
@@ -272,10 +273,6 @@
       "reinquiry": "고객이 다시 물어본 건 — 댓글로 답변",
       "answered": "출고·취소 확정 — 처리 후 [처리완료]",
       "done": "끝난 요청"
-    },
-    "tabFlag": {
-      "reinquiry": "창고 답변",
-      "answered": "처리 대기"
     },
     "status": {
       "확인요청": "답변 필요",
@@ -305,8 +302,8 @@
     "card": {
       "confirm": "확인",
       "arrival": "입고",
-      "needsReply": "창고 답변 필요",
-      "waitingCustomer": "고객 확정 대기"
+      "waitingCustomer": "고객 확정 대기",
+      "customerAsked": "고객 재문의 — 창고 답변 필요"
     },
     "detail": {
       "panelLabel": "확인요청 상세",
@@ -343,6 +340,19 @@
       "confirmClose": "이 요청을 처리완료로 표시할까요?",
       "confirmWithdraw": "고객이 아직 답하지 않았습니다. 이 요청을 처리완료로 닫을까요? (고객 화면에서도 처리완료로 바뀝니다)",
       "moved": "{{status}}(으)로 변경했습니다."
+    },
+    "step": "{{n}}단계",
+    "decisionFilter": "출고 · 취소 모아 보기",
+    "bulk": {
+      "toggle": "다중선택",
+      "pickPage": "이 페이지 전체",
+      "picked": "{{count}}건 선택",
+      "cancel": "선택 취소",
+      "close": "처리완료 ({{count}})",
+      "confirmClose": "선택한 {{count}}건을 처리완료로 표시할까요?",
+      "confirmWithdraw": "선택한 {{count}}건은 고객이 아직 답하지 않았습니다. 처리완료로 닫을까요? (고객 화면에서도 처리완료로 바뀝니다)",
+      "done": "{{closed}}건을 처리완료로 표시했습니다.",
+      "doneWithSkip": "{{closed}}건을 처리완료로 표시했습니다. {{skipped}}건은 이미 상태가 바뀌어 건너뛰었습니다."
     }
   },
   "saveResult": {

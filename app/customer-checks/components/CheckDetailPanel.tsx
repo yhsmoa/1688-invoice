@@ -10,9 +10,9 @@ import {
   type CustomerCheckDetail,
 } from '../../../lib/customerChecks';
 import type { Worker } from '../../import-product-v2/hooks/useWorkers';
-import { DecisionBadge, SizeBadge, StatusBadge, STATUS_TONE, TeamBadge } from './CheckBadges';
+import { DecisionBadge, SizeBadge, StatusBadge, STATUS_DOT, TeamBadge } from './CheckBadges';
 import CheckImageViewer from './CheckImageViewer';
-import { chinaOptions, fmtDateTime, itemTitle, proxiedImage } from '../utils/format';
+import { chinaOptions, fmtDateTime, proxiedImage } from '../utils/format';
 
 // ============================================================
 // 고객 검수 확인 — 상세 슬라이드 패널
@@ -216,7 +216,7 @@ const CheckDetailPanel: React.FC<Props> = ({
               {steps.map((s, i) => (
                 <li
                   key={s}
-                  className={`cc-step ${STATUS_TONE[check.status]} ${i < stepIndex ? 'is-past' : ''} ${i === stepIndex ? 'is-current' : ''}`}
+                  className={`cc-step ${STATUS_DOT[check.status]} ${i < stepIndex ? 'is-past' : ''} ${i === stepIndex ? 'is-current' : ''}`}
                   aria-current={i === stepIndex ? 'step' : undefined}
                 >
                   <span className="cc-step-bar" aria-hidden="true" />
@@ -241,11 +241,14 @@ const CheckDetailPanel: React.FC<Props> = ({
             <>
               {/* 상품 */}
               <section className="cc-sec">
-                <div className="cc-item-title">{itemTitle(check.item_name, check.option_name) || t('customerChecks.detail.noName')}</div>
+                {/* 중국 작업자용 — item_name + 중국어 옵션만 (한글 옵션명은 표시하지 않음) */}
+                <div className="cc-item-title">{check.item_name || t('customerChecks.detail.noName')}</div>
+                {chinaOptions(check.china_option1, check.china_option2) && (
+                  <div className="cc-item-option">{chinaOptions(check.china_option1, check.china_option2)}</div>
+                )}
                 <div className="cc-item-sub">
-                  {chinaOptions(check.china_option1, check.china_option2) && <span>{chinaOptions(check.china_option1, check.china_option2)}</span>}
                   <span>{t('customerChecks.detail.orderQty')} <b>{check.order_qty ?? '–'}</b></span>
-                  <span>{t('customerChecks.detail.confirmQty')} <b className="cc-accent">{check.confirm_qty ?? '–'}</b></span>
+                  <span>{t('customerChecks.detail.confirmQty')} <b>{check.confirm_qty ?? '–'}</b></span>
                   <span>{t('customerChecks.detail.arrivalQty')} <b>{check.arrival_qty ?? '–'}</b></span>
                   <SizeBadge code={check.size_code} />
                 </div>
@@ -374,7 +377,7 @@ const CheckDetailPanel: React.FC<Props> = ({
               <div className="cc-footer-actions">
                 <button
                   type="button"
-                  className={`cc-btn ${isReinquiry ? 'cc-btn-violet' : 'cc-btn-ghost'}`}
+                  className={`cc-btn ${isReinquiry ? 'cc-btn-dark' : 'cc-btn-ghost'}`}
                   onClick={submitComment}
                   disabled={!!busy}
                 >
@@ -383,7 +386,7 @@ const CheckDetailPanel: React.FC<Props> = ({
                     : isReinquiry ? t('customerChecks.detail.sendReply') : t('customerChecks.detail.addComment')}
                 </button>
                 {canClose && (
-                  <button type="button" className="cc-btn cc-btn-dark" onClick={() => runAction('close')} disabled={!!busy}>
+                  <button type="button" className={`cc-btn ${isReinquiry ? 'cc-btn-ghost' : 'cc-btn-dark'}`} onClick={() => runAction('close')} disabled={!!busy}>
                     {busy === 'close' ? t('customerChecks.saving') : t('customerChecks.action.close')}
                   </button>
                 )}
