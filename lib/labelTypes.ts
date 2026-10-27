@@ -159,6 +159,12 @@ export interface TextElement extends ElementBase {
   letter_spacing_mm?: number;
   /** 검정 배경 + 흰 글씨 (반전) */
   invert?: boolean;
+  /**
+   * 모델명 배지 (2026-10-27) — 글 안의 모델명만 검정 둥근 상자 + 굵은 흰 글씨로 (나머지는 그대로).
+   * 모델명 = 첫 콤마 앞부분의 마지막 단어가 모델명 모양(I6F200 · WI5F008, 세트 접미사 _S2 · _set 포함)일 때.
+   * 판정·그리기 규칙은 lib/labelRender.ts findModelBadge / drawLineB. 찾지 못하면 평소처럼 그린다.
+   */
+  model_badge?: boolean;
 }
 
 export interface BarcodeElement extends ElementBase {

@@ -911,6 +911,7 @@
       "bold": "粗体",
       "italic": "斜体",
       "invert": "反白",
+      "modelBadge": "型号标签",
       "letterSpacing": "字距 (mm)",
       "lineGap": "行距（倍数）",
       "areaTitle": "区域",
