@@ -8,7 +8,7 @@ import {
   useFtOrderItems,
   useFtFulfillmentSummary,
   use1688DeliveryStatus,
-  use1688OrderAccounts,
+  use1688OrderXlsx,
   useOrderStatusPagination,
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
@@ -16,6 +16,7 @@ import FulfillmentLogModal, { type DeliveryTracking } from './components/Fulfill
 import DeliveryStatusTools from './components/DeliveryStatusTools';
 import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
+import { evaluateOrderMissing, type OrderMissing } from './utils/orderMissing';
 import TypeChangePopup from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import { SEARCH_SHOW_ALL_MAX } from '../import-product-v2/hooks/useFtData';
@@ -76,8 +77,8 @@ const OrderStatusV2: React.FC = () => {
   // 배송 상태 (im_1688_orders_delivery_status)
   const { statusMap: deliveryStatusMap, reload: reloadDeliveryStatus } = use1688DeliveryStatus(items);
 
-  // 1688 구매 계정 배지 N / Y (1688_invoice_deliveryInfo_check.buyer_account)
-  const { accountMap: orderAccountMap, reload: reloadOrderAccounts } = use1688OrderAccounts(items);
+  // [1688 XLSX] 정보 (1688_invoice_deliveryInfo_check) — 계정 배지 N / Y · 1688 주문상태(주문누락? 판정)
+  const { xlsxMap: orderXlsxMap, reload: reloadOrderXlsx } = use1688OrderXlsx(items);
 
   // 상태 필터 (PROCESSING 기본 / ALL 전체)
   const [statusMode, setStatusMode] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
@@ -99,7 +100,7 @@ const OrderStatusV2: React.FC = () => {
     selectedWorker,
     workers,
     fetchItems: refetchForUploads,
-    onDeliveryExcelUploaded: reloadOrderAccounts,
+    onDeliveryExcelUploaded: reloadOrderXlsx,
   });
 
   // 검색 state — filteredItems 계산 전에 선언 (TDZ 회피)
@@ -159,21 +160,46 @@ const OrderStatusV2: React.FC = () => {
     return m;
   }, [items, deliveryStatusMap, arrivalMap, cancelMap, returnMap, lastArrivalMap, packedMap, lastPackedMap, exportMap]);
 
-  // [⚠️ 확인필요] 토글 — 켜면 경고 항목만, 경과일 많은 순
-  const [alertOnly, setAlertOnly] = useState(false);
+  // ── 주문누락? — 1688 에서는 交易关闭 · 退款中 인데 입고·취소 안 된 수량이 남은 항목 ──
+  //    (utils/orderMissing — 판정 기준)
+  const orderMissingMap = useMemo(() => {
+    const m = new Map<string, OrderMissing>();
+    for (const item of items) {
+      const oid = item['1688_order_id'];
+      const missing = evaluateOrderMissing({
+        statuses: oid ? orderXlsxMap.get(oid)?.statuses : undefined,
+        itemStatus: item.status,
+        orderQty: item.order_qty,
+        arrivalQty: arrivalMap.get(item.id) ?? 0,
+        cancelQty: cancelMap.get(item.id) ?? 0,
+        returnQty: returnMap.get(item.id) ?? 0,
+      });
+      if (missing) m.set(item.id, missing);
+    }
+    return m;
+  }, [items, orderXlsxMap, arrivalMap, cancelMap, returnMap]);
+
+  // [⚠️ 확인필요] / [❓ 주문누락?] 모아보기 — 한 번에 하나만 켠다 (null = 끔)
+  //   alert   : 경고 항목만, 경과일 많은 순
+  //   missing : 주문누락? 항목만, 원래 순서
+  const [listFilter, setListFilter] = useState<'alert' | 'missing' | null>(null);
+  const toggleListFilter = useCallback((mode: 'alert' | 'missing') => {
+    setListFilter((cur) => (cur === mode ? null : mode));
+  }, []);
   // [⚠️ 확인필요] hover 중 커서 위치 — 판정 기준 팝업(AlertCriteriaPopover) 표시용
   const [alertCriteriaCursor, setAlertCriteriaCursor] = useState<{ x: number; y: number } | null>(null);
 
-  // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) → 경고 필터 ──
+  // ── 검색 필터 적용 (필터 없으면 sortedItems 전체) → 모아보기 필터 ──
   const filteredItems = useMemo(() => {
     const searched = searchFilteredIds === null
       ? sortedItems
       : sortedItems.filter((i) => searchFilteredIds.has(i.id));
-    if (!alertOnly) return searched;
+    if (listFilter === 'missing') return searched.filter((i) => orderMissingMap.has(i.id));
+    if (listFilter !== 'alert') return searched;
     return searched
       .filter((i) => deliveryAlertMap.has(i.id))
       .sort((a, b) => (deliveryAlertMap.get(b.id)?.days ?? 0) - (deliveryAlertMap.get(a.id)?.days ?? 0));
-  }, [sortedItems, searchFilteredIds, alertOnly, deliveryAlertMap]);
+  }, [sortedItems, searchFilteredIds, listFilter, deliveryAlertMap, orderMissingMap]);
 
   // ── 페이지네이션 (100개/page) — filteredItems 기준 ──
   //    검색했을 때는 결과 전체를 한 화면에 (SEARCH_SHOW_ALL_MAX 초과 시엔 페이지 유지)
@@ -638,7 +664,7 @@ const OrderStatusV2: React.FC = () => {
               <div className="order-status-v2-header-right">
                 {items.length > 0 && (
                   <span className="order-status-v2-count">
-                    {searchFilteredIds !== null || alertOnly
+                    {searchFilteredIds !== null || listFilter !== null
                       ? `${filteredItems.length} / ${items.length}건`
                       : `총 ${items.length}건`}
                   </span>
@@ -709,14 +735,24 @@ const OrderStatusV2: React.FC = () => {
                 >
                   <button
                     type="button"
-                    className={`os-v2-alert-btn ${alertOnly ? 'active' : ''}`}
-                    onClick={() => setAlertOnly((v) => !v)}
-                    disabled={!selectedUserId || (deliveryAlertMap.size === 0 && !alertOnly)}
+                    className={`os-v2-alert-btn ${listFilter === 'alert' ? 'active' : ''}`}
+                    onClick={() => toggleListFilter('alert')}
+                    disabled={!selectedUserId || (deliveryAlertMap.size === 0 && listFilter !== 'alert')}
                   >
                     ⚠️ 확인필요 {deliveryAlertMap.size}
                   </button>
                 </span>
                 {alertCriteriaCursor && <AlertCriteriaPopover x={alertCriteriaCursor.x} y={alertCriteriaCursor.y} />}
+                {/* 주문누락? 모아보기 — 1688 에서 交易关闭 · 退款中 인데 입고·취소 안 된 수량이 남은 항목 */}
+                <button
+                  type="button"
+                  className={`os-v2-alert-btn os-v2-missing-btn ${listFilter === 'missing' ? 'active' : ''}`}
+                  onClick={() => toggleListFilter('missing')}
+                  disabled={!selectedUserId || (orderMissingMap.size === 0 && listFilter !== 'missing')}
+                  title={'1688 주문상태가 交易关闭(거래 종료) · 退款中(환불 중) 인데\n입고·취소·반품 처리 안 된 수량이 남은 항목 ([1688 XLSX] 기준)'}
+                >
+                  ❓ 주문누락? {orderMissingMap.size}
+                </button>
               </div>
               <div className="order-status-v2-action-right">
                 <button
@@ -822,6 +858,15 @@ const OrderStatusV2: React.FC = () => {
                             }}
                           >
                             {item.item_no || '-'}
+                            {/* 주문누락? — 1688 에서 끝난 주문인데 입고·취소 안 된 수량 남음 */}
+                            {orderMissingMap.has(item.id) && (
+                              <span
+                                className="os-v2-missing-mark"
+                                title={orderMissingMap.get(item.id)?.message}
+                              >
+                                ❓
+                              </span>
+                            )}
                           </td>
                           {/* 상품정보 (item_name + option_name) — 클릭 시 처리 로그 드로워 오픈
                               드래그 복사 시 클릭 액션 skip
@@ -837,7 +882,7 @@ const OrderStatusV2: React.FC = () => {
                               <span className="os-v2-product-text">
                                 {[item.item_name, item.option_name].filter(Boolean).join(', ') || '-'}
                               </span>
-                              {item['1688_order_id'] && orderAccountMap.get(item['1688_order_id'])?.map((a) => (
+                              {item['1688_order_id'] && orderXlsxMap.get(item['1688_order_id'])?.accounts.map((a) => (
                                 <span
                                   key={a.account}
                                   className="os-v2-account-badge"

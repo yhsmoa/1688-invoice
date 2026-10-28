@@ -256,6 +256,29 @@
   cursor: not-allowed;
 }
 
+/* ── [주문누락?] — 확인필요와 같은 모양, 색만 보라 계열 ── */
+.os-v2-missing-btn {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.os-v2-missing-btn:hover:not(:disabled) {
+  background: #ede9fe;
+}
+
+.os-v2-missing-btn.active {
+  background: #7c3aed;
+  border-color: #6d28d9;
+  color: #fff;
+}
+
+/* 주문번호 칸 옆 ❓ — 마우스를 올리면 판정 이유 */
+.os-v2-missing-mark {
+  margin-left: 4px;
+  cursor: help;
+}
+
 /* ── [확인필요] hover 기준 팝업 (components/AlertCriteriaPopover) ── */
 .os-v2-alert-btn-wrap {
   display: inline-flex;
