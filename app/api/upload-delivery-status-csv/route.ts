@@ -3,18 +3,29 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
 import { deliveryPhase, samePhase } from '../../../lib/deliveryPhase';
 import { pickRepresentativeRows } from '../../../lib/deliveryRowPick';
+import {
+  DeliveryStatusAccountError,
+  replaceDeliveryStatusByAccount,
+  resolveDeliveryStatusAccount,
+} from '../../../lib/deliveryStatusAccount';
+import { buyerAccountBadge } from '../../../lib/buyerAccountBadge';
 
 // ============================================================
 // POST /api/upload-delivery-status-csv
 // 배송상황 CSV 업로드 → im_1688_orders_delivery_status 테이블 저장
-// 업로드 시 기존 데이터 전체 삭제 후 새 데이터 삽입
-// + 삭제 전에 im_1688_delivery_history 에 발송/배송완료 전환 이력 누적 (7-b)
+// 업로드 시 그 CSV 계정(1688 구매 계정)의 행만 교체 — 다른 계정 행은 그대로
+// + 교체 전에 im_1688_delivery_history 에 발송/배송완료 전환 이력 누적 (7-b)
 //
-// ── 검증을 삭제보다 먼저 하는 이유 ─────────────────────────
-// 전체 삭제 → 삽입 구조라, 깨진 파일을 올리면 정상 데이터가 통째로
+// ── 계정 판정 (6-b) ───────────────────────────────────────
+// 배송상황 콘솔은 로그인한 계정의 주문목록만 긁는다. CSV 에 계정 열은 없어서
+// 주문번호를 1688 주문 엑셀 표와 맞춰 계정을 정한다 (lib/deliveryStatusAccount).
+// 교체는 DB 함수 한 번 = 한 트랜잭션 → 실패하면 아무것도 바뀌지 않는다.
+//
+// ── 검증을 교체보다 먼저 하는 이유 ─────────────────────────
+// 삭제 → 삽입 구조라, 깨진 파일을 올리면 정상 데이터가 통째로
 // 쓰레기 값으로 바뀐다. (실제 사례: 2026-09-02 파일은 물류상태 열에
 // 화면 버튼 글자 '订单详情' 이 섞여 들어와 배송완료 판별이 불가능했음)
-// → 헤더·내용 검증을 모두 통과한 경우에만 삭제를 시작한다.
+// → 헤더·내용·계정 검증을 모두 통과한 경우에만 교체를 시작한다.
 //
 // ── 열은 위치가 아니라 헤더 이름으로 찾는다 ────────────────
 // 수집기 버전마다 열 구성이 다르다.
@@ -45,10 +56,9 @@ const REQUIRED_FIELDS: Field[] = ['order_no', 'delivery_status'];
  */
 const SCRAPE_ERROR_MARKER = '订单详情';
 
-/** 삽입 배치 크기 — 1,400여 건이면 3회 요청 (50 이면 29회) */
-const BATCH = 500;
-
 interface DeliveryRow {
+  /** 1688 구매 계정 — 6-b 에서 판정 */
+  buyer_account: string;
   order_status: string | null;
   '1688_order_no': string;
   timestamp: string | null;
@@ -204,7 +214,7 @@ export async function POST(request: NextRequest) {
     const pick = (row: unknown[], field: Field) => (col[field] === -1 ? null : clean(row[col[field]]));
 
     // ── 5) 행 변환 ──
-    type ParsedRow = Omit<DeliveryRow, 'status_since' | 'location_since'>;
+    type ParsedRow = Omit<DeliveryRow, 'buyer_account' | 'status_since' | 'location_since'>;
     const parsed: ParsedRow[] = [];
     for (const row of jsonData.slice(1)) {
       if (!row || row.length === 0) continue;
@@ -239,11 +249,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── 6-b) 계정 판정 (교체 전) — 1688 주문 엑셀과 대조 ──
+    const resolution = await resolveDeliveryStatusAccount(rows.map((r) => r['1688_order_no']));
+    for (const r of rows) r.buyer_account = resolution.account;
+
     // ── 7) 이전 상태 이어받기 — "언제부터 이 상태/위치인지" (경고 판정용) ──
     //   상태는 글자가 아니라 단계(lib/deliveryPhase)가 같으면 유지
     //   (已签收 → 已收货未到账 처럼 같은 단계 안의 전환에서 시계가 리셋되지 않도록).
     //   위치 문구는 글자 그대로 비교. 다르거나 처음이면 지금.
-    //   전체 삭제 직전에 읽어야 하므로 이 위치.
+    //   교체 직전에 읽어야 하므로 이 위치.
     const now = new Date().toISOString();
     const prev = await loadPrevStates();
     for (const r of rows) {
@@ -282,41 +296,39 @@ export async function POST(request: NextRequest) {
     }
     const historyResult = (historyData as HistoryApplyResult[] | null)?.[0] ?? null;
 
-    // ── 8) 기존 데이터 전체 삭제 ──
-    const { error: deleteError } = await supabase
-      .from('im_1688_orders_delivery_status')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
-
-    if (deleteError) {
-      return fail('기존 데이터 삭제 중 오류가 발생했습니다.', 500, { details: deleteError.message });
+    // ── 8) 그 계정 행만 교체 — 한 트랜잭션 (lib/deliveryStatusAccount) ──
+    let replaced;
+    try {
+      replaced = await replaceDeliveryStatusByAccount(resolution.account, rows);
+    } catch (err) {
+      console.error('배송상황 계정별 교체 오류:', err);
+      return fail('배송상황 저장 중 오류가 발생했습니다. 기존 데이터는 그대로 유지했습니다.', 500, {
+        details: err instanceof Error ? err.message : 'Unknown error',
+      });
     }
 
-    // ── 9) 새 데이터 배치 삽입 ──
-    let savedCount = 0;
-    let errorCount = 0;
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const batch = rows.slice(i, i + BATCH);
-      const { data, error } = await supabase
-        .from('im_1688_orders_delivery_status')
-        .insert(batch)
-        .select('id');
-
-      if (error) {
-        console.error(`배송상황 CSV 배치 ${Math.floor(i / BATCH) + 1} 저장 오류:`, error);
-        errorCount += batch.length;
-      } else {
-        savedCount += data?.length || 0;
-      }
-    }
-
-    // ── 10) 결과 반환 ──
+    // ── 9) 결과 반환 ──
+    //   message 는 화면 안내 문구 그대로 (상품입고 V2·V3 · 주문상태 V2 가 alert 로 표시)
+    //   savedCount 는 기존 화면(상품입고 V1) 호환용으로 유지
+    const badge = buyerAccountBadge(resolution.account);
+    const accountLabel = badge === resolution.account ? badge : `${badge} (${resolution.account})`;
     return NextResponse.json({
       success: true,
-      message: `배송상황 CSV 업로드 완료 (${savedCount}개 저장)`,
+      message:
+        `배송상황 CSV 업로드 완료\n` +
+        `계정: ${accountLabel} — 1688 XLSX 주문 ${resolution.matchedOrders}/${resolution.totalOrders}건으로 판정\n` +
+        `저장: ${replaced.inserted}개 (이전 ${replaced.deleted}개 교체)\n\n` +
+        `이 계정의 배송상황만 바뀌고, 다른 계정 데이터는 그대로입니다.`,
       count: rows.length,
-      savedCount,
-      errorCount,
+      savedCount: replaced.inserted,
+      errorCount: 0,
+      account: {
+        id: resolution.account,
+        badge,
+        matchedOrders: resolution.matchedOrders,
+        totalOrders: resolution.totalOrders,
+        deleted: replaced.deleted,
+      },
       history: {
         applied: historyResult?.applied ?? 0,
         newlyShipped: historyResult?.newly_shipped ?? 0,
@@ -324,6 +336,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof DeliveryStatusAccountError) return fail(error.message);
     console.error('배송상황 CSV 업로드 오류:', error);
     return fail('CSV 파일 처리 중 오류가 발생했습니다.', 500, {
       details: error instanceof Error ? error.message : 'Unknown error',

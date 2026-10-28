@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 //   1) [배송상황 콘솔] → 1688 크롤러 스크립트를 클립보드에 복사
 //   2) 1688 주문목록 페이지 콘솔에 붙여넣기 → CSV 가 다운로드됨
 //   3) [배송상황 csv] → 그 CSV 업로드 (/api/upload-delivery-status-csv)
+//      → 서버가 1688 XLSX 와 대조해 계정을 정하고 그 계정 행만 교체
 //      → 완료 후 onUploaded() 로 배송 칸 재조회
 //
 // 스크립트는 public/scripts 에 두어, 새 버전이 나오면 파일만 교체한다.
@@ -118,7 +119,8 @@ const DeliveryStatusTools: React.FC<DeliveryStatusToolsProps> = ({ onUploaded })
         const result = await response.json();
 
         if (response.ok) {
-          alert(`배송상황 CSV 업로드 완료\n저장: ${result.savedCount || 0}개`);
+          // 서버 안내 문구 — 판정된 계정 · 저장/교체 건수 포함
+          alert(result.message);
           onUploaded?.();
         } else {
           alert(result.error || '업로드 중 오류가 발생했습니다.');

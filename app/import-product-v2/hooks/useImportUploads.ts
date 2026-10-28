@@ -8,7 +8,7 @@ import type { Worker } from './useWorkers';
 //
 //   [V2 이전]       엑셀 → ft_orders + ft_order_items (+ N열 입고) 마이그레이션
 //   [1688 XLSX]     /api/upload-delivery-excel  (계정별 엑셀 여러 개 — 그 계정 행만 교체)
-//   [배송상황 csv]   /api/upload-delivery-status-csv
+//   [배송상황 csv]   /api/upload-delivery-status-csv  (1688 XLSX 와 대조해 계정 판정 — 그 계정 행만 교체)
 //   [XLSX 다운]     /api/ft/order-items/export-xlsx
 //   [주문 ID]       엑셀 → 1688_order_id 매칭 후 목록 새로고침
 //
@@ -188,7 +188,8 @@ export function useImportUploads({ selectedUserId, selectedWorker, workers, fetc
         const result = await response.json();
 
         if (response.ok) {
-          alert(`배송상황 CSV 업로드 완료\n저장: ${result.savedCount || 0}개`);
+          // 서버 안내 문구 — 판정된 계정 · 저장/교체 건수 포함
+          alert(result.message);
         } else {
           alert(result.error || '업로드 중 오류가 발생했습니다.');
         }
