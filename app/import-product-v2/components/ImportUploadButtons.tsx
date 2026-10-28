@@ -60,6 +60,7 @@ const ImportUploadButtons: React.FC<ImportUploadButtonsProps> = ({
         ref={uploads.excelFileInputRef}
         type="file"
         accept=".xlsx,.xls"
+        multiple
         style={{ display: 'none' }}
         onChange={uploads.handleXlsxFileChange}
       />

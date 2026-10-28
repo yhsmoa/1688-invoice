@@ -7,7 +7,7 @@ import type { Worker } from './useWorkers';
 // 상품입고 업로드·다운로드 액션 — V2 · V3 공용
 //
 //   [V2 이전]       엑셀 → ft_orders + ft_order_items (+ N열 입고) 마이그레이션
-//   [1688 XLSX]     /api/upload-delivery-excel
+//   [1688 XLSX]     /api/upload-delivery-excel  (계정별 엑셀 여러 개 — 그 계정 행만 교체)
 //   [배송상황 csv]   /api/upload-delivery-status-csv
 //   [XLSX 다운]     /api/ft/order-items/export-xlsx
 //   [주문 ID]       엑셀 → 1688_order_id 매칭 후 목록 새로고침
@@ -108,19 +108,23 @@ export function useImportUploads({ selectedUserId, selectedWorker, workers, fetc
     excelFileInputRef.current?.click();
   }, []);
 
+  //   1688 계정마다 받은 주문 엑셀 — 한 번에 여러 개 선택 가능.
+  //   서버는 파일의 계정(C열 买家会员名) 행만 교체한다 → 다른 계정 데이터는 그대로.
   const handleXlsxFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(e.target.files ?? []);
+      if (files.length === 0) return;
 
-      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
+      const notExcel = files.find((f) => !/\.(xlsx|xls)$/i.test(f.name));
+      if (notExcel) {
+        alert(`엑셀 파일(.xlsx 또는 .xls)만 업로드 가능합니다: ${notExcel.name}`);
+        if (excelFileInputRef.current) excelFileInputRef.current.value = '';
         return;
       }
 
       setIsUploadingExcel(true);
       const formData = new FormData();
-      formData.append('file', file);
+      files.forEach((f) => formData.append('file', f));
 
       try {
         const response = await fetch('/api/upload-delivery-excel', {
@@ -130,7 +134,12 @@ export function useImportUploads({ selectedUserId, selectedWorker, workers, fetc
         const result = await response.json();
 
         if (response.ok) {
-          alert(`엑셀 파일이 성공적으로 업로드되었습니다.\n저장된 데이터: ${result.count || 0}개`);
+          // 계정별 결과
+          const lines = (result.accounts ?? []).map(
+            (a: { account: string; orders: number; inserted: number; deleted: number }) =>
+              `· ${a.account}: 주문 ${a.orders}건 · ${a.inserted}행 저장 (이전 ${a.deleted}행 교체)`
+          );
+          alert(`1688 엑셀 업로드 완료\n${lines.join('\n')}\n\n올린 계정의 데이터만 바뀌고, 다른 계정 데이터는 그대로입니다.`);
         } else {
           alert(result.error || '업로드 중 오류가 발생했습니다.');
         }
