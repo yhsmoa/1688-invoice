@@ -430,6 +430,119 @@
 
 .ls-sample-grid .ls-field:has(textarea) { grid-column: span 2; }
 
+/* ── 주문 검색 → 대입 ── */
+.ls-sample-search {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ls-sample-search input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ls-sample-search input:focus { outline: none; border-color: #18181b; }
+
+.ls-sample-applied {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f4f4f5;
+  color: #18181b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ls-sample-error {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.ls-sample-results {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ls-sample-result {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ls-sample-result:hover { border-color: #18181b; }
+
+.ls-sample-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+
+.ls-sample-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.ls-sample-result-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ls-sample-result-top { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+
+.ls-sample-team {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: #18181b;
+  color: #fff;
+  font-size: 10px;
+}
+
+.ls-sample-itemno { color: #3f3f46; font-variant-numeric: tabular-nums; }
+
+.ls-sample-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #18181b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-sample-sub { font-size: 11px; color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 직접 수정 (접힘) ── */
+.ls-sample-manual { margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 8px; }
+
+.ls-sample-manual > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3f3f46;
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
 /* ============================================================ */
 /* 폼                                                            */
 /* ============================================================ */

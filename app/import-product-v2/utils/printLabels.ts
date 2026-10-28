@@ -98,8 +98,9 @@ const RAW_COLUMN_SKIP = new Set(['id', 'order_id', 'user_id', 'product_id', 'img
  *   1) ft_order_items 컬럼을 이름 그대로 전부 깐다 (boolean 은 Y/빈값, null 은 빈 문자열)
  *   2) 가공 값(상품명+옵션 합침, 사이즈코드 변환, product_no/item_no 구분)으로 덮는다
  *   3) 선택된 사업자 계정 정보(ACCOUNT_FIELDS, acc_ 접두사)를 붙인다
+ *   라벨 설정 미리보기(SampleDataPanel 주문 검색)도 이 함수를 써서 인쇄와 같은 값을 쓴다
  */
-function toLabelData(
+export function toLabelData(
   item: FtOrderItem,
   qty: number,
   brand: string | null,
