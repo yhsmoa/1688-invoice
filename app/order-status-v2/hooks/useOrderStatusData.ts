@@ -369,3 +369,60 @@ export function use1688DeliveryStatus(items: FtOrderItem[]) {
 
   return { statusMap, loading, reload };
 }
+
+// ============================================================
+// use1688OrderAccounts — 1688 주문 → 구매 계정 배지 (N / Y)
+//
+// items 의 unique 1688_order_id 추출 → POST /api/ft/1688-order-accounts
+// Map<1688_order_id, OrderAccountBadge[]> 반환
+//   · 출처: 1688_invoice_deliveryInfo_check.buyer_account ([1688 XLSX] 엑셀 C열)
+//   · 엑셀에 없는 주문은 Map 에 없음 → 배지 없음
+//   · [1688 XLSX] 업로드 직후 reload() 로 다시 조회
+// ============================================================
+export interface OrderAccountBadge {
+  account: string;
+  badge: string;
+}
+
+export function use1688OrderAccounts(items: FtOrderItem[]) {
+  const [accountMap, setAccountMap] = useState<Map<string, OrderAccountBadge[]>>(new Map());
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+
+  // unique 1688_order_id 추출
+  const idsKey = useMemo(() => {
+    const ids = Array.from(new Set(
+      items
+        .map((i) => i['1688_order_id'])
+        .filter((v): v is string => !!v)
+    ));
+    return ids.join(',');
+  }, [items]);
+
+  useEffect(() => {
+    if (!idsKey) {
+      setAccountMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/ft/1688-order-accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_ids: idsKey.split(',').filter(Boolean) }),
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.success) {
+          setAccountMap(new Map(Object.entries(json.data as Record<string, OrderAccountBadge[]>)));
+        }
+      } catch (err) {
+        if (!cancelled) console.error('1688 주문 계정 조회 오류:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [idsKey, reloadKey]);
+
+  return { accountMap, reload };
+}

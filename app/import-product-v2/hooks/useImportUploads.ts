@@ -23,9 +23,11 @@ interface Params {
   workers: Worker[];
   /** 주문 ID 매칭 성공 후 목록 새로고침 */
   fetchItems: (userId: string, status?: string) => Promise<void> | void;
+  /** [1688 XLSX] 업로드 성공 후 호출 (선택) — 주문상태 V2 계정 배지 재조회 */
+  onDeliveryExcelUploaded?: () => void;
 }
 
-export function useImportUploads({ selectedUserId, selectedWorker, workers, fetchItems }: Params) {
+export function useImportUploads({ selectedUserId, selectedWorker, workers, fetchItems, onDeliveryExcelUploaded }: Params) {
   // ============================================================
   // [V2 이전] 엑셀 업로드 (ft_orders + ft_order_items 마이그레이션)
   // ============================================================
@@ -140,6 +142,7 @@ export function useImportUploads({ selectedUserId, selectedWorker, workers, fetc
               `· ${a.account}: 주문 ${a.orders}건 · ${a.inserted}행 저장 (이전 ${a.deleted}행 교체)`
           );
           alert(`1688 엑셀 업로드 완료\n${lines.join('\n')}\n\n올린 계정의 데이터만 바뀌고, 다른 계정 데이터는 그대로입니다.`);
+          onDeliveryExcelUploaded?.();
         } else {
           alert(result.error || '업로드 중 오류가 발생했습니다.');
         }
@@ -150,7 +153,7 @@ export function useImportUploads({ selectedUserId, selectedWorker, workers, fetc
         if (excelFileInputRef.current) excelFileInputRef.current.value = '';
       }
     },
-    []
+    [onDeliveryExcelUploaded]
   );
 
   // ============================================================

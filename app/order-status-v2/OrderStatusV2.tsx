@@ -8,6 +8,7 @@ import {
   useFtOrderItems,
   useFtFulfillmentSummary,
   use1688DeliveryStatus,
+  use1688OrderAccounts,
   useOrderStatusPagination,
   type FtOrderItem,
 } from './hooks/useOrderStatusData';
@@ -75,6 +76,9 @@ const OrderStatusV2: React.FC = () => {
   // 배송 상태 (im_1688_orders_delivery_status)
   const { statusMap: deliveryStatusMap, reload: reloadDeliveryStatus } = use1688DeliveryStatus(items);
 
+  // 1688 구매 계정 배지 N / Y (1688_invoice_deliveryInfo_check.buyer_account)
+  const { accountMap: orderAccountMap, reload: reloadOrderAccounts } = use1688OrderAccounts(items);
+
   // 상태 필터 (PROCESSING 기본 / ALL 전체)
   const [statusMode, setStatusMode] = useState<'PROCESSING' | 'ALL'>('PROCESSING');
 
@@ -90,7 +94,13 @@ const OrderStatusV2: React.FC = () => {
     (userId: string) => fetchItems(userId, statusMode),
     [fetchItems, statusMode]
   );
-  const uploads = useImportUploads({ selectedUserId, selectedWorker, workers, fetchItems: refetchForUploads });
+  const uploads = useImportUploads({
+    selectedUserId,
+    selectedWorker,
+    workers,
+    fetchItems: refetchForUploads,
+    onDeliveryExcelUploaded: reloadOrderAccounts,
+  });
 
   // 검색 state — filteredItems 계산 전에 선언 (TDZ 회피)
   const [searchInput, setSearchInput] = useState('');
@@ -814,7 +824,8 @@ const OrderStatusV2: React.FC = () => {
                             {item.item_no || '-'}
                           </td>
                           {/* 상품정보 (item_name + option_name) — 클릭 시 처리 로그 드로워 오픈
-                              드래그 복사 시 클릭 액션 skip */}
+                              드래그 복사 시 클릭 액션 skip
+                              오른쪽 끝: 1688 구매 계정 배지 (N 노랑 / Y 파랑, [1688 XLSX] 매칭) */}
                           <td
                             className="os-v2-clickable"
                             onClick={() => {
@@ -822,7 +833,21 @@ const OrderStatusV2: React.FC = () => {
                               openLogDrawer(item);
                             }}
                           >
-                            {[item.item_name, item.option_name].filter(Boolean).join(', ') || '-'}
+                            <div className="os-v2-product-cell">
+                              <span className="os-v2-product-text">
+                                {[item.item_name, item.option_name].filter(Boolean).join(', ') || '-'}
+                              </span>
+                              {item['1688_order_id'] && orderAccountMap.get(item['1688_order_id'])?.map((a) => (
+                                <span
+                                  key={a.account}
+                                  className="os-v2-account-badge"
+                                  data-badge={a.badge}
+                                  title={`1688 계정 ${a.account}`}
+                                >
+                                  {a.badge}
+                                </span>
+                              ))}
+                            </div>
                           </td>
                           {/* cn 옵션명 (china_option1 + china_option2) */}
                           <td>
