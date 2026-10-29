@@ -4,14 +4,18 @@ import { supabase } from './supabase';
 // ============================================================
 // DB 관리 메뉴 접근 권한 검증 (서버 전용)
 //
-//   대상 페이지: /db/orders, /db/volume, /db/database
-//
-//   통과 조건 (둘 다 만족)
+//   접근 범위(scope) 별 통과 조건 — 둘 다 만족해야 통과
 //     1. invoiceManager_employees.code 일치
-//     2. access_authorization = true  AND  role = '기업'
+//     2. access_authorization = true  AND  role ∈ DB_ACCESS_ROLES[scope]
 //
-//   → 현재 '기업' 직책은 YUHWA(유화무역) 1명. 직책은 직원관리 화면에서
-//     수정 가능하므로 코드에 이름·ID 를 하드코딩하지 않는다.
+//   scope
+//     · 'db'     (기본) : /db/orders, /db/database, /db/order-inspect, 무역계좌
+//                         → 직책 '기업' 만 (현재 YUHWA 1명)
+//     · 'volume'        : /db/volume (물량관리) + 그 데이터 API
+//                         → 직책 '기업' · '매니저'
+//
+//   직책·권한 플래그는 모두 DB 값이므로 코드에 이름·ID 를 하드코딩하지 않는다.
+//   (access_authorization 은 직원관리 화면에서 바꿀 수 없는 관리자 전용 플래그)
 //
 //   화면 잠금만으로는 API 직접 호출을 막을 수 없으므로,
 //   /api/db/* 라우트는 반드시 guardDbRoute() 로 먼저 검증한다.
@@ -20,8 +24,25 @@ import { supabase } from './supabase';
 /** 클라이언트가 접근 코드를 실어 보내는 요청 헤더명 */
 export const DB_ACCESS_HEADER = 'x-db-access-code';
 
-/** DB 관리 메뉴를 볼 수 있는 직책 */
-const DB_ACCESS_ROLE = '기업';
+// ============================================================
+// 접근 범위 / 범위별 허용 직책
+// ============================================================
+export const DB_ACCESS_SCOPES = ['db', 'volume'] as const;
+export type DbAccessScope = (typeof DB_ACCESS_SCOPES)[number];
+
+const DB_ACCESS_ROLES: Record<DbAccessScope, readonly string[]> = {
+  db: ['기업'],
+  volume: ['기업', '매니저'],
+};
+
+const DB_ACCESS_DENIED_MESSAGE: Record<DbAccessScope, string> = {
+  db: 'DB 관리 메뉴 접근 권한이 없습니다.',
+  volume: '물량관리 접근 권한이 없습니다.',
+};
+
+/** 문자열이 허용된 scope 인지 (요청 body 검증용) */
+export const isDbAccessScope = (v: unknown): v is DbAccessScope =>
+  typeof v === 'string' && (DB_ACCESS_SCOPES as readonly string[]).includes(v);
 
 export interface DbAccessResult {
   ok: boolean;
@@ -34,8 +55,12 @@ export interface DbAccessResult {
 /**
  * 접근 코드 검증.
  * 코드 자체를 매 요청 재검증하므로, 권한을 회수하면 즉시 반영된다.
+ *   401 = 코드 자체가 틀림 / 403 = 코드는 맞지만 이 범위 권한 없음
  */
-export async function verifyDbAccessCode(code: string | null | undefined): Promise<DbAccessResult> {
+export async function verifyDbAccessCode(
+  code: string | null | undefined,
+  scope: DbAccessScope = 'db',
+): Promise<DbAccessResult> {
   const trimmed = (code ?? '').trim();
 
   if (!trimmed) {
@@ -57,8 +82,8 @@ export async function verifyDbAccessCode(code: string | null | undefined): Promi
     return { ok: false, status: 401, error: '코드가 일치하는 직원이 없습니다.' };
   }
 
-  if (!data.access_authorization || data.role !== DB_ACCESS_ROLE) {
-    return { ok: false, status: 403, error: 'DB 관리 메뉴 접근 권한이 없습니다.' };
+  if (!data.access_authorization || !DB_ACCESS_ROLES[scope].includes(data.role ?? '')) {
+    return { ok: false, status: 403, error: DB_ACCESS_DENIED_MESSAGE[scope] };
   }
 
   return { ok: true, status: 200, employeeId: data.id as string };
@@ -74,8 +99,9 @@ export async function verifyDbAccessCode(code: string | null | undefined): Promi
  */
 export async function requireDbAccess(
   request: NextRequest,
+  scope: DbAccessScope = 'db',
 ): Promise<{ ok: true; employeeId: string } | { ok: false; response: NextResponse }> {
-  const result = await verifyDbAccessCode(request.headers.get(DB_ACCESS_HEADER));
+  const result = await verifyDbAccessCode(request.headers.get(DB_ACCESS_HEADER), scope);
   if (result.ok && result.employeeId) return { ok: true, employeeId: result.employeeId };
   return {
     ok: false,
@@ -87,11 +113,15 @@ export async function requireDbAccess(
  * /api/db/* 라우트 가드.
  * 통과하면 null, 실패하면 그대로 반환할 에러 응답을 돌려준다.
  *
- *   const denied = await guardDbRoute(request);
+ *   const denied = await guardDbRoute(request);            // 'db' 범위
+ *   const denied = await guardDbRoute(request, 'volume');  // 물량관리
  *   if (denied) return denied;
  */
-export async function guardDbRoute(request: NextRequest): Promise<NextResponse | null> {
-  const result = await verifyDbAccessCode(request.headers.get(DB_ACCESS_HEADER));
+export async function guardDbRoute(
+  request: NextRequest,
+  scope: DbAccessScope = 'db',
+): Promise<NextResponse | null> {
+  const result = await verifyDbAccessCode(request.headers.get(DB_ACCESS_HEADER), scope);
   if (result.ok) return null;
   return NextResponse.json({ success: false, error: result.error }, { status: result.status });
 }

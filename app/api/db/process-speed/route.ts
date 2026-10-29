@@ -51,7 +51,7 @@ const STAGE_SET = new Set<string>(STAGES);
 export async function GET(request: NextRequest) {
   try {
     // ── 접근 권한 검증 (DB 관리 메뉴 전용) ──
-    const denied = await guardDbRoute(request);
+    const denied = await guardDbRoute(request, 'volume');
     if (denied) return denied;
 
     const { searchParams } = new URL(request.url);

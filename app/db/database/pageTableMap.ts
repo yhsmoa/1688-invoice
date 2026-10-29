@@ -315,7 +315,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
   // ── DB 관리 ───────────────────────────────────────────────
   {
     group: 'DB 관리',
-    desc: "데이터베이스 구조 관리 — 접근 권한: access_authorization + role='기업' (현재 YUHWA)",
+    desc: "데이터베이스 구조 관리 — 접근 권한: access_authorization + role='기업' (현재 YUHWA). 물량관리만 '매니저' 도 허용 (scope='volume')",
     pages: [
       {
         name: '주문 데이터 관리',
@@ -355,7 +355,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           },
           { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
         ],
-        note: '[물량처리] 주간/월간 출고·입고량 및 근무시간 대비 처리량 / [처리속도] 배송·입고·포장·출고 단계별 평균 소요일 (rpc db_process_speed)',
+        note: '[물량처리] 주간/월간 출고·입고량 및 근무시간 대비 처리량 / [처리속도] 배송·입고·포장·출고 단계별 평균 소요일 (rpc db_process_speed). 접근 범위 volume — 직책 기업·매니저',
       },
       {
         name: '데이터베이스 관리',
