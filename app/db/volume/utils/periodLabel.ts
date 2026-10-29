@@ -12,6 +12,14 @@ export const PERIOD_LABEL: Record<Period, string> = {
 /** '2026-07-27' → '07.27' */
 export const shortDate = (d: string) => d.slice(5).replace('-', '.');
 
+const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 일간 라벨 — '2026-10-29' → '10.29 (목)' */
+export const dayLabel = (date: string): string => {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${shortDate(date)} (${WEEKDAY_KO[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]})`;
+};
+
 /** 구간 라벨 — 주간: '{월}월 {n}주차'(그 달 첫 월요일 기준) / 월간: '{연}년 {월}월' */
 export const periodLabel = (periodStart: string, period: Period): string => {
   const [y, m, d] = periodStart.split('-').map(Number);

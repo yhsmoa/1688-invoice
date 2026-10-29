@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { parsePeriod, periodEndOf, type Period } from '../../../../lib/periodBucket';
+import { periodEndOf } from '../../../../lib/periodBucket';
 import { guardDbRoute } from '../../../../lib/dbAccess';
 import { resolveScanSizeCode } from '../../../../lib/sizeCode';
 import {
   STAGES,
   addStat,
   emptyCells,
+  parseSpeedUnit,
   type SetKind,
   type SizeKey,
   type SpeedPeriod,
+  type SpeedUnit,
   type Stage,
   type StageStat,
 } from '../../../../lib/processSpeed';
@@ -17,9 +19,9 @@ import {
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// GET /api/db/process-speed?period=week|month&basis=shipment|confirmed
+// GET /api/db/process-speed?period=day|week|month&basis=shipment|confirmed
 //
-// 처리속도 — 배송·입고·포장·출고 단계별 평균 소요일 (주간/월간)
+// 처리속도 — 배송·입고·포장·출고 단계별 평균 소요일 (일간/주간/월간)
 //   집계: rpc db_process_speed (supabase/db/001_process_speed.sql)
 //     · 모든 테이블 1000행 초과 → 행을 내려받지 않고 DB 에서 한 번에 집계
 //     · 반환은 jsonb 1개 (PostgREST 1000행 응답 제한 회피)
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
     if (denied) return denied;
 
     const { searchParams } = new URL(request.url);
-    const period: Period = parsePeriod(searchParams.get('period'));
+    const period: SpeedUnit = parseSpeedUnit(searchParams.get('period'));
     const basis: Basis = searchParams.get('basis') === 'confirmed' ? 'confirmed' : 'shipment';
 
     // ── 1) 집계 + 마지막 배송상황 업로드 시각 (병렬) ──
@@ -82,7 +84,9 @@ export async function GET(request: NextRequest) {
 
       let p = byPeriod.get(r.period_start);
       if (!p) {
-        p = { periodStart: r.period_start, periodEnd: periodEndOf(r.period_start, period), cells: emptyCells() };
+        // 일간은 하루짜리 구간 (시작 = 종료)
+        const periodEnd = period === 'day' ? r.period_start : periodEndOf(r.period_start, period);
+        p = { periodStart: r.period_start, periodEnd, cells: emptyCells() };
         byPeriod.set(r.period_start, p);
       }
 

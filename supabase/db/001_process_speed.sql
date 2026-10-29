@@ -1,9 +1,10 @@
 -- ============================================================
 -- 처리속도 통계 — db_process_speed(p_period, p_basis)
+--   p_period: 'day' | 'week'(기본) | 'month'
 --
 -- 화면: /db/volume [처리속도] 탭 ← GET /api/db/process-speed
 --
--- 단계 (단위: 일, 버킷 = 단계가 "끝난" 시각의 KST 주(월요일 시작)/월)
+-- 단계 (단위: 일, 버킷 = 단계가 "끝난" 시각의 KST 일/주(월요일 시작)/월)
 --   delivery  배송   1688 주문일시 → 배송완료(추정)            항목(ft_order_items) 단위
 --   arrival   입고   배송완료(추정) → 첫 ARRIVAL                항목 단위
 --   packing   포장   포장 직전 마지막 ARRIVAL → PACKED          PACKED 행 단위
@@ -34,6 +35,7 @@
 --   PostgREST 최대 응답 1000행 제한을 피하고, 집계를 한 번만 실행하기 위해 jsonb 로 묶는다.
 --
 -- 권한: service role 전용 / 적용 상태: 운영 DB(mkcxpkblohioqboemmah) 적용 (2026-09-28)
+--   2026-10-29: p_period='day'(일간) 추가 — 주간/월간 결과는 그대로
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.db_process_speed(
@@ -47,7 +49,7 @@ SET search_path = public
 AS $$
 WITH
 params AS (
-  SELECT CASE WHEN p_period = 'month' THEN 'month' ELSE 'week' END      AS unit,
+  SELECT CASE WHEN p_period IN ('day', 'month') THEN p_period ELSE 'week' END AS unit,
          CASE WHEN p_basis = 'confirmed' THEN 'confirmed' ELSE 'shipment' END AS basis
 ),
 

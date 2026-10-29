@@ -4,6 +4,21 @@
 //   화면 : app/db/volume/components/ProcessSpeedTab.tsx
 // ============================================================
 
+// ── 집계 단위: 일간 / 주간(월요일 시작) / 월간 — 모두 KST ──
+//   주간·월간 공용 helper(lib/periodBucket)는 다른 통계 API 도 쓰므로 일간은 여기서만 정의
+export const SPEED_UNITS = ['day', 'week', 'month'] as const;
+export type SpeedUnit = (typeof SPEED_UNITS)[number];
+
+export const SPEED_UNIT_LABEL: Record<SpeedUnit, string> = {
+  day: '일간',
+  week: '주간',
+  month: '월간',
+};
+
+/** 쿼리스트링 값 → SpeedUnit (모르는 값은 주간) */
+export const parseSpeedUnit = (value: string | null): SpeedUnit =>
+  (SPEED_UNITS as readonly string[]).includes(value ?? '') ? (value as SpeedUnit) : 'week';
+
 // ── 단계 ──
 export const STAGES = ['delivery', 'arrival', 'packing', 'outbound'] as const;
 export type Stage = (typeof STAGES)[number];
@@ -51,7 +66,7 @@ export interface SpeedPeriod {
 export interface ProcessSpeedResponse {
   success: boolean;
   error?: string;
-  period: 'week' | 'month';
+  period: SpeedUnit;
   basis: 'shipment' | 'confirmed';
   periods: SpeedPeriod[];
   meta: {

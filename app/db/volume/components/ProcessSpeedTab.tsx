@@ -5,6 +5,8 @@ import {
   SET_KINDS,
   SET_KIND_LABEL,
   SIZE_KEYS,
+  SPEED_UNITS,
+  SPEED_UNIT_LABEL,
   STAGES,
   STAGE_LABEL,
   addStat,
@@ -12,15 +14,16 @@ import {
   emptyStageStats,
   type SetKind,
   type SizeKey,
+  type SpeedUnit,
   type Stage,
   type StageStat,
   type StageStats,
 } from '../../../../lib/processSpeed';
 import { useProcessSpeed, type SpeedBasis } from '../hooks/useProcessSpeed';
-import { PERIOD_LABEL, periodLabel, shortDate, type Period } from '../utils/periodLabel';
+import { dayLabel, periodLabel, shortDate } from '../utils/periodLabel';
 
 // ============================================================
-// [처리속도] 탭 — 단계별 평균 소요일 (주간/월간)
+// [처리속도] 탭 — 단계별 평균 소요일 (일간/주간/월간)
 //
 //   배송  1688 주문일시 → 배송완료(추정)        항목(부품) 단위
 //   입고  배송완료(추정) → 첫 입고 스캔          항목(부품) 단위
@@ -100,7 +103,8 @@ interface ProcessSpeedTabProps {
 }
 
 const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
-  const [period, setPeriod] = useState<Period>('week');
+  const [period, setPeriod] = useState<SpeedUnit>('week');
+  const isDaily = period === 'day';
   const [basis, setBasis] = useState<SpeedBasis>('shipment');
   const [setKind, setSetKind] = useState<SetKind>('ALL');
   const [size, setSize] = useState<SizeKey>('ALL');
@@ -134,13 +138,13 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
         <div className="vm-controls">
           <div className="vm-basis">
             <span className="vm-basis-label">단위</span>
-            {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
+            {SPEED_UNITS.map((p) => (
               <button
                 key={p}
                 className={`vm-basis-btn ${period === p ? 'active' : ''}`}
                 onClick={() => setPeriod(p)}
               >
-                {PERIOD_LABEL[p]}
+                {SPEED_UNIT_LABEL[p]}
               </button>
             ))}
           </div>
@@ -229,8 +233,8 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
             <table className="vm-table vm-speed-table">
               <thead>
                 <tr>
-                  <th className="vm-col-week">{period === 'month' ? '월' : '주차'}</th>
-                  <th className="vm-col-range">기간</th>
+                  <th className="vm-col-week">{isDaily ? '일자' : period === 'month' ? '월' : '주차'}</th>
+                  {!isDaily && <th className="vm-col-range">기간</th>}
                   {STAGES.map((s) => (
                     <th key={s} className="vm-col-speed">{STAGE_LABEL[s]}</th>
                   ))}
@@ -242,10 +246,14 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
                   const total = totalOfStages(r.stats);
                   return (
                     <tr key={r.periodStart}>
-                      <td className="vm-col-week">{periodLabel(r.periodStart, period)}</td>
-                      <td className="vm-col-range">
-                        {shortDate(r.periodStart)} ~ {shortDate(r.periodEnd)}
+                      <td className="vm-col-week">
+                        {isDaily ? dayLabel(r.periodStart) : periodLabel(r.periodStart, period)}
                       </td>
+                      {!isDaily && (
+                        <td className="vm-col-range">
+                          {shortDate(r.periodStart)} ~ {shortDate(r.periodEnd)}
+                        </td>
+                      )}
                       {STAGES.map((s) => (
                         <td key={s} className="vm-col-speed">
                           <StageCell stat={r.stats[s]} stage={s} />
@@ -272,7 +280,8 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
         <b>배송</b> = 1688 주문일시 → 배송완료, <b>입고</b> = 배송완료 → 첫 입고 스캔,{' '}
         <b>포장</b> = 포장 직전 마지막 입고 → 포장 스캔, <b>출고</b> = 포장 스캔 → 출고 처리
         (기준 <b>확정일</b>이면 출고 확정 시각). 각 기간은 단계가 <b>끝난 날(KST)</b> 기준이며 주간은
-        월요일 시작입니다. 배송완료 시각은 1688 에서 제공되지 않아 배송상황 CSV 업로드 시점으로
+        월요일 시작입니다. 그래서 오래 밀려 있던 물량을 몰아서 처리한 기간은 그만큼 오래 기다린 건이
+        한꺼번에 잡혀 평균이 올라갑니다. 배송완료 시각은 1688 에서 제공되지 않아 배송상황 CSV 업로드 시점으로
         추정합니다 — 직전 업로드와의 중간값이며, 이력 시작(2026-09-22) 전부터 배송완료였던 주문은
         처음 확인된 업로드 시각을 그대로 써서 <b>추정</b>으로 따로 표시합니다. 업로드 간격만큼
         오차가 생기므로 매일 업로드해 주세요. <b>세트</b>는 배송·입고를 부품(항목)마다, 포장·출고를
