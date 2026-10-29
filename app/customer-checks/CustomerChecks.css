@@ -322,136 +322,134 @@
 .cc-bulk-actions { display: flex; gap: 8px; margin-left: auto; }
 
 /* ============================================================ */
-/* 카드 그리드                                                     */
+/* 목록 테이블                                                     */
+/*   한 행 = 확인요청 1건. 행 클릭(또는 Enter) → 상세 패널           */
+/*   선택된 행 = 왼쪽 검정 막대 + 연회색 바탕 (카드 시절 검정 테두리와 같은 뜻) */
+/*   좁은 화면에서는 표만 가로로 스크롤 (페이지는 가로 스크롤 없음)       */
 /* ============================================================ */
-.cc-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 12px;
-  transition: opacity 0.15s;
-}
-
-.cc-grid.is-loading { opacity: 0.55; pointer-events: none; }
-
-.cc-card {
-  width: 100%;
-  height: 100%;
-  text-align: left;
-  display: flex;
-  gap: 14px;
-  padding: 14px;
+.cc-table-wrap {
+  flex-shrink: 0;   /* 세로 flex 안에서 줄어들어 표 안에 세로 스크롤이 생기지 않도록 */
   background: #ffffff;
   border: 1px solid #e4e4e7;
   border-radius: 16px;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
+  overflow-x: auto;
+  transition: opacity 0.15s;
 }
 
-.cc-card:hover { border-color: #a1a1aa; }
-.cc-card.is-selected,
-.cc-card.is-picked { border-color: #18181b; box-shadow: 0 0 0 1px #18181b; }
+.cc-table-wrap.is-loading { opacity: 0.55; pointer-events: none; }
 
-.cc-card-img {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f4f4f5;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.cc-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  color: #18181b;
 }
 
-.cc-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cc-card-noimg { font-size: 11px; color: #71717a; }
-
-.cc-card-imgn {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: rgba(24, 24, 27, 0.75);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-/* 다중선택 체크 */
-.cc-card-check {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  border: 1.5px solid #ffffff;
-  background: rgba(24, 24, 27, 0.35);
-  color: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cc-card-check.is-on { background: #18181b; border-color: #18181b; color: #ffffff; }
-
-.cc-card-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.cc-card-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
-.cc-card-ago {
-  margin-left: auto;
+/* ── 헤더 ── */
+.cc-table thead th {
+  padding: 10px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e4e7;
   font-size: 12px;
-  color: #a1a1aa;
+  font-weight: 600;
+  color: #71717a;
+  text-align: left;
   white-space: nowrap;
 }
 
-.cc-card-name {
-  font-size: 14px;
+/* ── 행 ── */
+.cc-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f4f4f5;
+  vertical-align: middle;
+}
+
+.cc-table tbody tr:last-child td { border-bottom: none; }
+
+.cc-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.cc-table tbody tr:hover { background: #fafafa; }
+.cc-table tbody tr:focus-visible { outline: 2px solid #18181b; outline-offset: -2px; }
+
+.cc-table tbody tr.is-selected,
+.cc-table tbody tr.is-picked { background: #f4f4f5; }
+
+.cc-table tbody tr.is-selected td:first-child,
+.cc-table tbody tr.is-picked td:first-child { box-shadow: inset 3px 0 0 #18181b; }
+
+/* ── 열 너비 ── */
+.cc-table .cc-col-pick   { width: 36px; text-align: center; }
+.cc-table .cc-col-img    { width: 64px; }
+.cc-table .cc-col-team   { width: 96px; }
+.cc-table .cc-col-itemno { width: 150px; white-space: nowrap; color: #3f3f46; }
+.cc-table .cc-col-num    { width: 56px; text-align: right; white-space: nowrap; }
+.cc-table .cc-col-status { width: 110px; }
+.cc-table .cc-col-ago    { width: 84px; text-align: right; white-space: nowrap; color: #a1a1aa; font-size: 12px; }
+
+.cc-table .cc-col-pick input { width: 16px; height: 16px; cursor: pointer; accent-color: #18181b; }
+.cc-table .cc-col-num.is-strong { font-weight: 700; }
+
+/* ── 사진 ── */
+.cc-thumb {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f4f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cc-thumb-none { font-size: 10px; color: #a1a1aa; text-align: center; line-height: 1.2; padding: 2px; }
+
+.cc-thumb-n {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: rgba(24, 24, 27, 0.75);
+  color: #ffffff;
+  font-size: 10px;
   font-weight: 700;
-  color: #18181b;
+  line-height: 15px;
+}
+
+/* ── 배지 묶음 (팀·사이즈 / 단계·고객 선택) ── */
+.cc-cell-badges { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.cc-cell-badges.is-stack { flex-direction: column; align-items: flex-start; }
+
+/* ── 상품 칸 ── */
+.cc-col-product > span { display: block; }
+.cc-col-product > span + span { margin-top: 3px; }
+
+.cc-row-name {
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.35;
   word-break: break-word;
-  display: -webkit-box;
+  display: -webkit-box !important;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.cc-card-option {
-  font-size: 13px;
+.cc-row-option {
+  font-size: 12px;
   font-weight: 600;
-  color: #3f3f46;
+  color: #52525b;
   word-break: break-word;
 }
 
-.cc-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: #71717a;
-}
-
-.cc-card-meta b { color: #18181b; font-variant-numeric: tabular-nums; }
-.cc-card-cm { display: inline-flex; align-items: center; gap: 3px; }
-
-.cc-card-foot { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.cc-row-attrs { display: flex !important; align-items: center; gap: 4px; flex-wrap: wrap; }
 
 .cc-attr {
   padding: 2px 7px;
@@ -465,18 +463,16 @@
 .cc-attr.is-lg { padding: 4px 10px; border-radius: 8px; font-size: 12px; background: #ffffff; border: 1px solid #e4e4e7; color: #18181b; }
 
 /* 재문의 — 고객이 마지막에 남긴 말 */
-.cc-card-ask {
-  margin-top: 2px;
-  padding: 8px 10px;
+.cc-row-ask {
+  margin-top: 6px !important;
+  padding: 7px 10px;
   border-radius: 10px;
   background: #f4f4f5;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  border-left: 3px solid #8b5cf6;
 }
 
-.cc-card-ask-label {
-  display: inline-flex;
+.cc-row-ask-label {
+  display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
@@ -484,19 +480,23 @@
   color: #3f3f46;
 }
 
-.cc-card-ask-body {
-  font-size: 13px;
-  color: #18181b;
+.cc-row-ask-body {
+  display: -webkit-box;
+  margin-top: 2px;
+  font-size: 12px;
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.cc-card-wait { font-size: 11px; color: #a1a1aa; }
+.cc-row-wait { font-size: 11px; color: #a1a1aa; }
+
+/* ── 댓글 수 ── */
+.cc-row-cm { display: inline-flex; align-items: center; gap: 3px; color: #3f3f46; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cc-row-none { color: #d4d4d8; }
 
 /* ── 빈 상태 · 페이지 ── */
 .cc-state {
@@ -1023,7 +1023,6 @@
 /* ============================================================ */
 @media (max-width: 640px) {
   .cc-scroll { padding: 20px 16px 32px; }
-  .cc-grid { grid-template-columns: minmax(0, 1fr); }
   .cc-search { width: 100%; }
   .cc-header-tools { width: 100%; }
   .cc-toolbar-right { margin-left: 0; }

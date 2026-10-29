@@ -870,7 +870,7 @@ const OrderStatusV2: React.FC = () => {
                           </td>
                           {/* 상품정보 (item_name + option_name) — 클릭 시 처리 로그 드로워 오픈
                               드래그 복사 시 클릭 액션 skip
-                              오른쪽 끝: 1688 구매 계정 배지 (N 노랑 / Y 파랑, [1688 XLSX] 매칭) */}
+                              오른쪽 끝: 1688 구매 계정 배지 (N 초록 / Y 핑크, [1688 XLSX] 매칭) */}
                           <td
                             className="os-v2-clickable"
                             onClick={() => {

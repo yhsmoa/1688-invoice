@@ -713,6 +713,30 @@
   word-break: break-word;
 }
 
+/* note_cn 강조 (상품입고 V2) — 빨간 배지 + 깜빡임
+   · 바탕이 진한 빨강 ↔ 연한 빨강으로 오가며 눈에 띄게 (글씨는 항상 읽히도록 대비 유지)
+   · 움직임 줄이기 설정한 PC 에서는 깜빡이지 않고 진한 빨강 배지로 고정 */
+.v2-note-cn.is-alert {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  box-sizing: border-box;
+  animation: v2-note-cn-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes v2-note-cn-blink {
+  0%, 100% { background: #dc2626; color: #ffffff; }
+  50%      { background: #fee2e2; color: #b91c1c; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-note-cn.is-alert { animation: none; }
+}
+
 /* 세트상품 배지 (set_total > 1) — 주황색 배경 */
 .v2-set-badge {
   display: inline-block;

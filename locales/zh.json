@@ -299,6 +299,18 @@
       "waitingCustomer": "等待客户确定",
       "customerAsked": "客户再次咨询 — 需仓库回复"
     },
+    "table": {
+      "photo": "图片",
+      "team": "团队",
+      "product": "商品",
+      "itemNo": "商品编号",
+      "confirm": "确认",
+      "arrival": "入库",
+      "status": "阶段",
+      "comments": "评论",
+      "requested": "申请",
+      "pickAll": "全选本页"
+    },
     "detail": {
       "panelLabel": "确认请求详情",
       "stepsLabel": "进度阶段",

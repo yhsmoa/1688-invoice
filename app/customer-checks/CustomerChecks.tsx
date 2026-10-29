@@ -32,10 +32,12 @@ import './CustomerChecks.css';
 //   화면 (미니멀 톤 — 고객 화면과 같은 규칙: 회색·검정 + 단계 색은 점 하나)
 //     · 단계 타일 4개 = 탭, 사이에 › (진행 순서), 건수는 두 번째 줄에 크게
 //     · 도구줄: 왼쪽 팀 칩 / 오른쪽 [출고]·[취소](답변완료 탭 — 모아 보기) + [다중선택]
-//     · 다중선택: 카드를 눌러 고르고 일괄 [처리완료] (처리완료 탭에는 없음)
-//     · 카드: 상품 사진 · item_name · 중국어 옵션 (중국 작업자용 — 한글 옵션명은 표시하지 않음)
-//             재문의에서 마지막 댓글이 고객이면 그 내용을 카드에 바로 보여 준다
-//     · 카드 클릭 → 오른쪽 상세 패널 (components/CheckDetailPanel)
+//     · 다중선택: 행(또는 맨 앞 체크)을 눌러 고르고 일괄 [처리완료] (처리완료 탭에는 없음)
+//     · 목록 테이블: 사진 · 팀/사이즈 · 상품(item_name + 중국어 옵션 + 속성) · 아이템번호
+//                    · 확인/입고 수량 · 단계/고객 선택 · 댓글 · 요청 시각
+//             (중국 작업자용 — 한글 옵션명은 표시하지 않음)
+//             재문의에서 마지막 댓글이 고객이면 그 내용을 상품 칸에 바로 보여 준다
+//     · 행 클릭(또는 Enter) → 오른쪽 상세 패널 (components/CheckDetailPanel)
 //   검색 = 주문번호·아이템번호·상품명 부분 일치 (Enter). 서버 페이지네이션 50건.
 // ============================================================
 
@@ -209,8 +211,8 @@ const CustomerChecks: React.FC = () => {
     [answeredByDecision]
   );
 
-  // ── 카드 클릭 — 다중선택 중이면 고르기, 아니면 상세 ──
-  const onCardClick = (r: CustomerCheckListRow) => {
+  // ── 행 클릭 — 다중선택 중이면 고르기, 아니면 상세 ──
+  const onRowClick = (r: CustomerCheckListRow) => {
     if (multiMode) togglePick(r.id);
     else setSelectedId(r.id);
   };
@@ -388,7 +390,7 @@ const CustomerChecks: React.FC = () => {
             )}
 
             {/* ============================================================
-                카드 그리드
+                목록 테이블
                 ============================================================ */}
             {error && <div className="cc-state is-error">{error}</div>}
 
@@ -410,80 +412,144 @@ const CustomerChecks: React.FC = () => {
             )}
 
             {rows.length > 0 && (
-              <ul className={`cc-grid ${isLoading ? 'is-loading' : ''}`}>
-                {rows.map((r) => {
-                  const img = proxiedImage(r.img_url);
-                  const sub = chinaOptions(r.china_option1, r.china_option2);
-                  const isPicked = picked.has(r.id);
-                  // 재문의 — 마지막 댓글이 고객이면 창고가 답할 차례: 고객이 남긴 말을 카드에 보여 준다
-                  const customerAsks = r.status === '재문의' && r.last_comment_role === 'customer' && r.last_comment_body;
-                  const waitingCustomer = r.status === '재문의' && r.last_comment_role !== 'customer';
-                  return (
-                    <li key={r.id}>
-                      <button
-                        type="button"
-                        className={`cc-card ${selectedId === r.id && !multiMode ? 'is-selected' : ''} ${isPicked ? 'is-picked' : ''}`}
-                        onClick={() => onCardClick(r)}
-                        aria-pressed={multiMode ? isPicked : undefined}
-                      >
-                        <span className="cc-card-img">
-                          {img ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={img} alt="" loading="lazy" />
-                          ) : (
-                            <span className="cc-card-noimg">{t('customerChecks.noImage')}</span>
-                          )}
-                          {r.image_count > 0 && <span className="cc-card-imgn">+{r.image_count}</span>}
+              <div className={`cc-table-wrap ${isLoading ? 'is-loading' : ''}`}>
+                <table className="cc-table">
+                  <thead>
+                    <tr>
+                      {multiMode && (
+                        <th className="cc-col-pick">
+                          <input
+                            type="checkbox"
+                            checked={allPicked}
+                            onChange={togglePickAll}
+                            disabled={bulkBusy}
+                            aria-label={t('customerChecks.table.pickAll')}
+                          />
+                        </th>
+                      )}
+                      <th className="cc-col-img">{t('customerChecks.table.photo')}</th>
+                      <th className="cc-col-team">{t('customerChecks.table.team')}</th>
+                      <th>{t('customerChecks.table.product')}</th>
+                      <th className="cc-col-itemno">{t('customerChecks.table.itemNo')}</th>
+                      <th className="cc-col-num">{t('customerChecks.table.confirm')}</th>
+                      <th className="cc-col-num">{t('customerChecks.table.arrival')}</th>
+                      <th className="cc-col-status">{t('customerChecks.table.status')}</th>
+                      <th className="cc-col-num">{t('customerChecks.table.comments')}</th>
+                      <th className="cc-col-ago">{t('customerChecks.table.requested')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => {
+                      const img = proxiedImage(r.img_url);
+                      const sub = chinaOptions(r.china_option1, r.china_option2);
+                      const isPicked = picked.has(r.id);
+                      const isSelected = selectedId === r.id && !multiMode;
+                      // 재문의 — 마지막 댓글이 고객이면 창고가 답할 차례: 고객이 남긴 말을 행에 바로 보여 준다
+                      const customerAsks = r.status === '재문의' && r.last_comment_role === 'customer' && r.last_comment_body;
+                      const waitingCustomer = r.status === '재문의' && r.last_comment_role !== 'customer';
+                      return (
+                        <tr
+                          key={r.id}
+                          className={`${isSelected ? 'is-selected' : ''} ${isPicked ? 'is-picked' : ''}`}
+                          onClick={() => onRowClick(r)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onRowClick(r);
+                            }
+                          }}
+                          tabIndex={0}
+                          aria-selected={multiMode ? isPicked : isSelected}
+                        >
+                          {/* ── 다중선택 체크 (행 클릭과 같은 동작) ── */}
                           {multiMode && (
-                            <span className={`cc-card-check ${isPicked ? 'is-on' : ''}`} aria-hidden="true">
-                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg>
-                            </span>
+                            <td className="cc-col-pick">
+                              <input
+                                type="checkbox"
+                                checked={isPicked}
+                                onChange={() => togglePick(r.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                tabIndex={-1}
+                                aria-label={r.item_no || r.id}
+                              />
+                            </td>
                           )}
-                        </span>
-                        <span className="cc-card-body">
-                          <span className="cc-card-top">
-                            <TeamBadge code={r.team_code} />
-                            <SizeBadge code={r.size_code} />
-                            <StatusBadge status={r.status} />
-                            {r.status !== '확인요청' && r.status !== '재문의' && <DecisionBadge decision={r.decision} />}
-                            <span className="cc-card-ago">{fmtAgo(r.created_at, t)}</span>
-                          </span>
-                          <span className="cc-card-name">{r.item_name || t('customerChecks.detail.noName')}</span>
-                          {sub && <span className="cc-card-option">{sub}</span>}
-                          <span className="cc-card-meta">
-                            <span className="cc-mono">{r.item_no || '–'}</span>
-                            <span>{t('customerChecks.card.confirm')} <b>{r.confirm_qty ?? '–'}</b></span>
-                            <span>{t('customerChecks.card.arrival')} <b>{r.arrival_qty ?? 0}</b></span>
-                            {r.comment_count > 0 && (
-                              <span className="cc-card-cm">
+
+                          {/* ── 사진 + 추가 사진 수 ── */}
+                          <td className="cc-col-img">
+                            <span className="cc-thumb">
+                              {img ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={img} alt="" loading="lazy" />
+                              ) : (
+                                <span className="cc-thumb-none">{t('customerChecks.noImage')}</span>
+                              )}
+                              {r.image_count > 0 && <span className="cc-thumb-n">+{r.image_count}</span>}
+                            </span>
+                          </td>
+
+                          {/* ── 팀 · 사이즈 ── */}
+                          <td className="cc-col-team">
+                            <span className="cc-cell-badges">
+                              <TeamBadge code={r.team_code} />
+                              <SizeBadge code={r.size_code} />
+                            </span>
+                          </td>
+
+                          {/* ── 상품 — 이름 · 중국어 옵션 · 속성 · 재문의 내용 ── */}
+                          <td className="cc-col-product">
+                            <span className="cc-row-name">{r.item_name || t('customerChecks.detail.noName')}</span>
+                            {sub && <span className="cc-row-option">{sub}</span>}
+                            {r.attributes.length > 0 && (
+                              <span className="cc-row-attrs">
+                                {r.attributes.map((a, i) => <span key={`${a}-${i}`} className="cc-attr">{a}</span>)}
+                              </span>
+                            )}
+                            {customerAsks && (
+                              <span className="cc-row-ask">
+                                <span className="cc-row-ask-label">
+                                  <span className="cc-dot dot-violet" aria-hidden="true" />
+                                  {t('customerChecks.card.customerAsked')}
+                                </span>
+                                <span className="cc-row-ask-body">{r.last_comment_body}</span>
+                              </span>
+                            )}
+                            {waitingCustomer && (
+                              <span className="cc-row-wait">{t('customerChecks.card.waitingCustomer')}</span>
+                            )}
+                          </td>
+
+                          {/* ── 아이템번호 · 수량 ── */}
+                          <td className="cc-col-itemno cc-mono">{r.item_no || '–'}</td>
+                          <td className="cc-col-num cc-mono is-strong">{r.confirm_qty ?? '–'}</td>
+                          <td className="cc-col-num cc-mono">{r.arrival_qty ?? 0}</td>
+
+                          {/* ── 단계 · 고객 선택 ── */}
+                          <td className="cc-col-status">
+                            <span className="cc-cell-badges is-stack">
+                              <StatusBadge status={r.status} />
+                              {r.status !== '확인요청' && r.status !== '재문의' && <DecisionBadge decision={r.decision} />}
+                            </span>
+                          </td>
+
+                          {/* ── 댓글 수 · 요청 시각 ── */}
+                          <td className="cc-col-num">
+                            {r.comment_count > 0 ? (
+                              <span className="cc-row-cm">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                                 {r.comment_count}
                               </span>
+                            ) : (
+                              <span className="cc-row-none">–</span>
                             )}
-                          </span>
-                          {r.attributes.length > 0 && (
-                            <span className="cc-card-foot">
-                              {r.attributes.map((a, i) => <span key={`${a}-${i}`} className="cc-attr">{a}</span>)}
-                            </span>
-                          )}
-                          {customerAsks && (
-                            <span className="cc-card-ask">
-                              <span className="cc-card-ask-label">
-                                <span className="cc-dot dot-violet" aria-hidden="true" />
-                                {t('customerChecks.card.customerAsked')}
-                              </span>
-                              <span className="cc-card-ask-body">{r.last_comment_body}</span>
-                            </span>
-                          )}
-                          {waitingCustomer && (
-                            <span className="cc-card-wait">{t('customerChecks.card.waitingCustomer')}</span>
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                          </td>
+                          <td className="cc-col-ago">{fmtAgo(r.created_at, t)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
 
             {/* 페이지네이션 */}

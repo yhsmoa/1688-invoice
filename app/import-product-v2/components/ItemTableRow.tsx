@@ -251,9 +251,9 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           {/* ── 3번째 줄: option_name ── */}
           {item.option_name && <div>{item.option_name}</div>}
 
-          {/* ── 맨 아래: note_cn (빨간색) ── */}
+          {/* ── 맨 아래: note_cn — 깜빡이는 빨간 배지 (V2 전용 is-alert, V3 는 빨간 글씨 그대로) ── */}
           {item.note_cn && String(item.note_cn).trim() && (
-            <div className="v2-note-cn">{item.note_cn}</div>
+            <div className="v2-note-cn is-alert">{item.note_cn}</div>
           )}
         </div>
       </td>

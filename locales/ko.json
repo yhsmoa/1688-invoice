@@ -305,6 +305,18 @@
       "waitingCustomer": "고객 확정 대기",
       "customerAsked": "고객 재문의 — 창고 답변 필요"
     },
+    "table": {
+      "photo": "사진",
+      "team": "팀",
+      "product": "상품",
+      "itemNo": "아이템번호",
+      "confirm": "확인",
+      "arrival": "입고",
+      "status": "단계",
+      "comments": "댓글",
+      "requested": "요청",
+      "pickAll": "이 페이지 전체 선택"
+    },
     "detail": {
       "panelLabel": "확인요청 상세",
       "stepsLabel": "진행 단계",

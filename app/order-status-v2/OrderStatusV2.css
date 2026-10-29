@@ -556,7 +556,7 @@
 /* ============================================================
    상품정보 열 — 1688 구매 계정 배지 (오른쪽 끝)
    · 계정 → 배지 글자는 env BUYER_ACCOUNT_BADGES (lib/buyerAccountBadge)
-   · N = 노랑, Y = 파랑, 그 외(설정 누락 → 계정 ID 그대로) = 회색
+   · N = 초록, Y = 핑크, 그 외(설정 누락 → 계정 ID 그대로) = 회색
    ============================================================ */
 .order-status-v2-table .os-v2-product-cell {
   display: flex;
@@ -585,12 +585,12 @@
 }
 
 .order-status-v2-table .os-v2-account-badge[data-badge="N"] {
-  background: #facc15;
-  color: #422006;
+  background: #16a34a;
+  color: #ffffff;
 }
 
 .order-status-v2-table .os-v2-account-badge[data-badge="Y"] {
-  background: #2563eb;
+  background: #ec4899;
   color: #ffffff;
 }
 
