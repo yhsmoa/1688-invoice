@@ -55,6 +55,22 @@
   align-items: center;
 }
 
+/* [불러오기] — 쉽먼트에서 한 번에 (구글 시트 등록 왼쪽) */
+.customs-document-load-btn {
+  background-color: #0f766e;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.customs-document-load-btn:hover {
+  background-color: #115e59;
+}
+
 .customs-document-google-sheet-btn {
   background-color: #805ad5;
   color: white;
@@ -588,4 +604,14 @@ button:disabled {
 .delivery-download-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* 위치 머리 — 상자 사이즈 (엑셀 CBM 칸에 들어가는 값) */
+.customs-document-location-size {
+  font-size: 12px;
+  color: #475569;
+  background: #eef0f3;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
 }

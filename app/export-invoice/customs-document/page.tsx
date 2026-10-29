@@ -1,32 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import GoogleSheetModal from '../../../component/GoogleSheetModal';
 import LocationMoveModal from '../../../component/LocationMoveModal';
+import ShipmentLoadModal from './components/ShipmentLoadModal';
+import { loadShipmentRows, isUnknownCategory, type VenderPick } from './utils/loadShipmentRows';
+import type { CustomsDocumentData } from './types';
 import './customs-document.css';
 
-interface CustomsDocumentData {
-  id: string;
-  location?: string;
-  order_number?: string;
-  barcode?: string;
-  product_name?: string;
-  option_name?: string;
-  out_quantity?: string;
-  in_quantity?: string;
-  note?: string;
-  unit_price?: string;
-  image?: string;
-  item_category?: string;
-  blend_ratio?: string;
-}
-
 const CustomsDocument: React.FC = () => {
+  // orderData = 지금 목록 전체 (엑셀 다운 대상) · filteredData = 검색어로 거른 화면 표시분
   const [orderData, setOrderData] = useState<CustomsDocumentData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredData, setFilteredData] = useState<CustomsDocumentData[]>([]);
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [viewMode, setViewMode] = useState<string>('상품별');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -35,7 +23,10 @@ const CustomsDocument: React.FC = () => {
   const [showLocationMoveModal, setShowLocationMoveModal] = useState(false);
   const [currentMoveLocation, setCurrentMoveLocation] = useState<string>('');
   const [isExcelDownloading, setIsExcelDownloading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+
+  // [불러오기] — 쉽먼트 V2 출고준비 목록(사업자별) → 통관서류 행
+  const [showShipmentLoadModal, setShowShipmentLoadModal] = useState(false);
+  const [isShipmentLoading, setIsShipmentLoading] = useState(false);
 
   // 택배사 정리 모달 관련 상태
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -43,6 +34,19 @@ const CustomsDocument: React.FC = () => {
   const [isProcessingDelivery, setIsProcessingDelivery] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const deliveryFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================
+  // 검색 — 지금 목록에서 상품명·옵션·바코드·주문번호·위치·품목으로 거른다 (빈 검색 = 전체)
+  //   예전 검색은 결과를 비워 버려 넣어 둔 데이터가 사라졌다 (2026-10-29 교체)
+  // ============================================================
+  const filteredData = useMemo(() => {
+    const term = appliedSearch.toLowerCase();
+    if (!term) return orderData;
+    return orderData.filter((item) =>
+      [item.product_name, item.option_name, item.barcode, item.order_number, item.location, item.item_category]
+        .some((v) => (v || '').toLowerCase().includes(term))
+    );
+  }, [orderData, appliedSearch]);
 
   // 위치별로 데이터 그룹화
   const groupedDataByLocation = filteredData.reduce((acc, item) => {
@@ -86,64 +90,8 @@ const CustomsDocument: React.FC = () => {
     return items;
   };
 
-  const preprocessOrderNumber = (orderNumber: string): string => {
-    const trimmed = orderNumber.trim();
-    if (trimmed.includes('#')) {
-      const parts = trimmed.split('#');
-      if (parts.length === 2) {
-        const beforeHash = parts[0];
-        const afterHash = parts[1].split('-')[0];
-        return `${beforeHash}#${afterHash}`;
-      }
-      return trimmed;
-    } else {
-      const parts = trimmed.split('-');
-      if (parts.length > 3) {
-        return parts.slice(0, 3).join('-');
-      }
-      return trimmed;
-    }
-  };
-
-  const performSearch = async () => {
-    if (!searchTerm.trim()) {
-      setFilteredData([]);
-      setOrderData([]);
-      setCurrentPage(1);
-      return;
-    }
-
-    if (viewMode === '주문번호') {
-      try {
-        const processedOrderNumber = preprocessOrderNumber(searchTerm);
-        const response = await fetch('/api/search-order-info', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ searchTerm: processedOrderNumber }),
-        });
-
-        const result = await response.json();
-        if (result.success && result.data) {
-          const dataWithId = result.data.map((item: any, index: number) => ({
-            ...item,
-            id: `${item.order_id || index}`,
-          }));
-          setOrderData(dataWithId);
-          setFilteredData(dataWithId);
-        } else {
-          setOrderData([]);
-          setFilteredData([]);
-        }
-        setCurrentPage(1);
-      } catch (error) {
-        console.error('검색 오류:', error);
-        setOrderData([]);
-        setFilteredData([]);
-      }
-    } else {
-      setFilteredData([]);
-      setOrderData([]);
-    }
+  const performSearch = () => {
+    setAppliedSearch(searchTerm.trim());
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,6 +155,10 @@ const CustomsDocument: React.FC = () => {
   };
 
   const handleExcelDownload = async () => {
+    if (orderData.length === 0) {
+      alert('내려받을 데이터가 없습니다. [불러오기] 또는 [구글 시트 등록]으로 먼저 넣어주세요.');
+      return;
+    }
     setIsExcelDownloading(true);
     try {
       const response = await fetch('/api/export-customs-excel', {
@@ -215,7 +167,7 @@ const CustomsDocument: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          data: filteredData
+          data: orderData
         }),
       });
 
@@ -353,6 +305,50 @@ const CustomsDocument: React.FC = () => {
     }
   };
 
+  // ============================================================
+  // [불러오기] — 고른 사업자의 쉽먼트 V2 출고준비 목록을 통관서류 행으로 (지금 목록을 바꾼다)
+  //   품목 '알 수 없음' 이 있으면 구글 시트 등록과 같이 막는다 → 쉽먼트 V2 에서 품목을 고친 뒤 다시
+  // ============================================================
+  const handleShipmentLoad = async (picks: VenderPick[]) => {
+    setIsShipmentLoading(true);
+    try {
+      const loaded = await loadShipmentRows(picks);
+      if (loaded.rows.length === 0) {
+        alert('선택한 사업자의 쉽먼트 V2 출고준비 상품이 없습니다.');
+        return;
+      }
+      if (loaded.unknownRows.length > 0) {
+        const sample = loaded.unknownRows.slice(0, 10)
+          .map(r => `· ${r.location} ${r.barcode || r.order_number} ${r.product_name}`).join('\n');
+        alert(`"알 수 없음" 품목이 ${loaded.unknownRows.length}건 있어 불러오지 않았습니다.\n쉽먼트 V2에서 품목을 고친 뒤 다시 불러와 주세요.\n\n${sample}${loaded.unknownRows.length > 10 ? '\n…' : ''}`);
+        return;
+      }
+      if (orderData.length > 0 &&
+          !window.confirm(`지금 목록 ${orderData.length}건을 지우고 불러온 ${loaded.rows.length}건으로 바꿀까요?`)) {
+        return;
+      }
+
+      setOrderData(loaded.rows);
+      setSelectedRows(new Set());
+      setSearchTerm('');
+      setAppliedSearch('');
+      setShowShipmentLoadModal(false);
+
+      const boxes = new Set(loaded.rows.map(r => r.location)).size;
+      const notes: string[] = [];
+      if (loaded.sizeMissingBoxes.length) notes.push(`상자 사이즈 없는 상자 ${loaded.sizeMissingBoxes.length}개 (엑셀 CBM 칸이 비어요): ${loaded.sizeMissingBoxes.slice(0, 5).join(', ')}${loaded.sizeMissingBoxes.length > 5 ? ' …' : ''}`);
+      if (loaded.emptyVenders.length) notes.push(`출고준비 상품이 없는 사업자: ${loaded.emptyVenders.join(', ')}`);
+      if (loaded.emptyCategory) notes.push(`품목이 비어 있는 상품 ${loaded.emptyCategory}건 (엑셀 영문품명·HS CODE 가 비어요)`);
+      alert(`${picks.map(p => p.venderName).join(' · ')} — 상자 ${boxes}개 · 상품 ${loaded.rows.length}건을 불러왔습니다.`
+        + (notes.length ? `\n\n⚠ ${notes.join('\n⚠ ')}` : ''));
+    } catch (error) {
+      console.error('쉽먼트 불러오기 오류:', error);
+      alert(`쉽먼트를 불러오지 못했습니다.\n${(error as Error).message}`);
+    } finally {
+      setIsShipmentLoading(false);
+    }
+  };
+
   const handleGoogleSheetOpen = () => {
     setShowGoogleSheetModal(true);
   };
@@ -392,15 +388,14 @@ const CustomsDocument: React.FC = () => {
         });
 
       // '알 수 없음' 품목 검증
-      const unknownItems = parsedData.filter(item => item.item_category === '알 수 없음');
+      const unknownItems = parsedData.filter(item => isUnknownCategory(item.item_category));
       if (unknownItems.length > 0) {
         alert(`"알 수 없음" 품목이 ${unknownItems.length}건 존재합니다. 확인해주세요.`);
         return;
       }
 
       // 기존 데이터에 추가
-      setOrderData([...orderData, ...parsedData]);
-      setFilteredData([...filteredData, ...parsedData]);
+      setOrderData(prev => [...prev, ...parsedData]);
 
       // 모달 닫기 및 데이터 초기화
       setPasteData('');
@@ -434,17 +429,14 @@ const CustomsDocument: React.FC = () => {
     const itemsToMove = filteredData.filter(
       item => item.location === currentMoveLocation && selectedRows.has(item.id)
     );
+    const moveIds = new Set(itemsToMove.map(item => item.id));
+    // 옮겨 간 상자의 사이즈 — 엑셀 CBM 은 상자(위치) 단위라 옮긴 행도 그 상자 사이즈를 따른다
+    const destSize = orderData.find(item => item.location === newLocation && !moveIds.has(item.id))?.box_size || '';
 
-    // 위치 변경
-    const updatedData = filteredData.map(item => {
-      if (itemsToMove.find(moveItem => moveItem.id === item.id)) {
-        return { ...item, location: newLocation };
-      }
-      return item;
-    });
-
-    setFilteredData(updatedData);
-    setOrderData(updatedData);
+    // 위치 변경 (검색으로 가려진 행도 잃지 않도록 전체 목록에서)
+    setOrderData(prev => prev.map(item =>
+      moveIds.has(item.id) ? { ...item, location: newLocation, box_size: destSize } : item
+    ));
 
     // 체크 해제
     const newSelected = new Set(selectedRows);
@@ -469,6 +461,13 @@ const CustomsDocument: React.FC = () => {
             <div className="customs-document-control-section">
               <div className="customs-document-left-controls"></div>
               <div className="customs-document-right-controls">
+                <button
+                  className="customs-document-load-btn"
+                  onClick={() => setShowShipmentLoadModal(true)}
+                  title="쉽먼트 V2 의 지금 출고준비 목록을 사업자별로 불러옵니다"
+                >
+                  불러오기
+                </button>
                 <button className="customs-document-google-sheet-btn" onClick={handleGoogleSheetOpen}>
                   구글 시트 등록
                 </button>
@@ -542,7 +541,9 @@ const CustomsDocument: React.FC = () => {
             </div>
 
             {filteredData.length === 0 ? (
-              <div className="customs-document-empty-data">검색 결과가 없습니다.</div>
+              <div className="customs-document-empty-data">
+                {orderData.length === 0 ? '[불러오기] 또는 [구글 시트 등록]으로 데이터를 넣어주세요.' : '검색 결과가 없습니다.'}
+              </div>
             ) : (
               Object.entries(groupedDataByLocation).map(([location, items]) => {
                 const processedItems = processDataByViewMode(items);
@@ -553,6 +554,9 @@ const CustomsDocument: React.FC = () => {
                     <div className="customs-document-location-info">
                       <div className="customs-document-location-left">
                         <h3 className="customs-document-location-title">위치: {location}</h3>
+                        {items.find(item => item.box_size) && (
+                          <span className="customs-document-location-size">{items.find(item => item.box_size)?.box_size}</span>
+                        )}
                         <span className="customs-document-location-count">
                           {viewMode === '품목별' ? `(${processedItems.length}개 품목)` : `(${items.length}건)`}
                         </span>
@@ -702,6 +706,13 @@ const CustomsDocument: React.FC = () => {
         onSave={handleGoogleSheetSave}
         pasteData={pasteData}
         setPasteData={setPasteData}
+      />
+
+      <ShipmentLoadModal
+        isOpen={showShipmentLoadModal}
+        loading={isShipmentLoading}
+        onClose={() => setShowShipmentLoadModal(false)}
+        onLoad={handleShipmentLoad}
       />
 
       <LocationMoveModal

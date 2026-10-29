@@ -207,6 +207,33 @@ export async function POST(request: NextRequest) {
         locationGroups[location][itemKey].push(item);
       });
 
+      // ── 상자 사이즈 → CBM 칸 (2026-10-29) ──
+      //   [불러오기] 로 온 행만 box_size(`60x50x40`)가 있다. 위치(상자) 단위라 그 위치의 첫 사이즈를 쓰고,
+      //   양식에 손으로 적던 모양(`60*50*40`)으로 바꾼다. 구글 시트 등록 행은 예전처럼 비워 둔다.
+      const sizeByLocation: Record<string, string> = {};
+      data.forEach((item: any) => {
+        const location = item.location || '미지정';
+        const size = String(item.box_size || '').trim();
+        if (size && !sizeByLocation[location]) sizeByLocation[location] = size.replace(/\s*[xX×*]\s*/g, '*');
+      });
+
+      // ── 받는곳·사업자명 — 사업자명(ft_users.vender_name)이 하나뿐일 때만 (여러 브랜드면 손으로) ──
+      const venderNames = [...new Set(data.map((item: any) => String(item.vender_name || '').trim()).filter(Boolean))];
+      const allHaveVender = data.every((item: any) => String(item.vender_name || '').trim());
+      const venderName = venderNames.length === 1 && allHaveVender ? (venderNames[0] as string) : '';
+
+      // ── 품목 정보 (invoiceManager-Customs, 20행) — 한 번만 읽는다 ──
+      //   예전엔 위치×품목마다 조회해 상자가 많으면(쉽먼트 [불러오기] 140상자 ≈ 700행) 1분 가까이 걸렸다.
+      //   같은 한글 품명이 여러 행이면 예전처럼 첫 행만 쓴다
+      const { data: customsRows, error: customsError } = await supabase
+        .from('invoiceManager-Customs')
+        .select('item_name_ko, item_name_en, HS_code, CO');
+      if (customsError) throw customsError;
+      const customsByKo = new Map<string, { item_name_en: string | null; HS_code: string | null; CO: string | null }>();
+      for (const c of customsRows || []) {
+        if (c.item_name_ko != null && !customsByKo.has(c.item_name_ko)) customsByKo.set(c.item_name_ko, c);
+      }
+
       let currentRow = 9;
       const startRow = 9; // 데이터 시작 행 기록
       const locationMergeRanges: { location: string; startRow: number; endRow: number }[] = [];
@@ -227,19 +254,13 @@ export async function POST(request: NextRequest) {
           const unitPriceUSD = Math.round((globalUnitPrices[itemKey] || 0) * 100) / 100;
           const totalPriceUSD = unitPriceUSD * totalQuantity;
 
-          // Supabase에서 품목 정보 조회 (여러 개 있을 경우 첫 번째만 사용)
-          const { data: customsDataArray } = await supabase
-            .from('invoiceManager-Customs')
-            .select('item_name_en, HS_code, CO')
-            .eq('item_name_ko', firstItem.item_category)
-            .limit(1);
-
-          const customsData = customsDataArray && customsDataArray.length > 0 ? customsDataArray[0] : null;
+          // 품목 정보 (위에서 한 번 읽은 것)
+          const customsData = customsByKo.get(firstItem.item_category) ?? null;
 
           const row = itemSheet.getRow(currentRow);
           row.values = [
             'HD무역',                    // A: 보내는곳
-            '',                          // B: 받는곳 (비워두기)
+            venderName,                  // B: 받는곳 (사업자명이 하나일 때만, 아니면 비움)
             firstItem.item_category,     // C: 품명
             customsData?.item_name_en || '', // D: 영어품명
             customsData?.HS_code || '',  // E: HS CODE
@@ -247,14 +268,14 @@ export async function POST(request: NextRequest) {
             '',                          // G: 파레트마킹
             '1',                         // H: C/T (위치별로 1)
             '',                          // I: KG
-            '',                          // J: CBM
+            sizeByLocation[location] || '', // J: CBM (상자 사이즈 60*50*40)
             '',                          // K: 박스별수량
             '',                          // L: 단위
             totalQuantity,               // M: 총수량 (동일품목 개수)
             'EA',                        // N: 단위
             unitPriceUSD.toFixed(2),     // O: 단가 (달러로 환산)
             totalPriceUSD.toFixed(2),    // P: 합계 (달러로 환산)
-            '',                          // Q: 사업자명
+            venderName,                  // Q: 사업자명 (사업자명이 하나일 때만, 아니면 비움)
             '',                          // R: 비고
             '',                          // S: 재질
             customsData?.CO || '',       // T: 원산지발급
