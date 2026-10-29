@@ -68,10 +68,18 @@ const formatKst = (iso: string): string =>
     hour12: false,
   });
 
-/** 네 단계 평균이 모두 있을 때만 합계 (주문 → 출고) */
+/**
+ * 합계에 넣는 단계 — 배송·입고·포장 (주문 → 포장 완료)
+ *   출고는 정해진 출고 요일(화·목)까지 기다리는 시간이라 처리속도 합계에서 뺀다.
+ *   화면 순서: [합계 단계들] [합계] [합계 밖 단계(출고)]
+ */
+const TOTAL_STAGES: readonly Stage[] = STAGES.filter((s) => s !== 'outbound');
+const AFTER_TOTAL_STAGES: readonly Stage[] = STAGES.filter((s) => !TOTAL_STAGES.includes(s));
+
+/** 합계 단계 평균이 모두 있을 때만 합계 */
 const totalOfStages = (stats: StageStats): number | null => {
   let sum = 0;
-  for (const s of STAGES) {
+  for (const s of TOTAL_STAGES) {
     const avg = avgDays(stats[s]);
     if (avg === null) return null;
     sum += avg;
@@ -123,6 +131,21 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
     for (const r of rows) for (const s of STAGES) addStat(acc[s], r.stats[s]);
     return acc;
   }, [rows]);
+
+  // ── 요약 카드 1장 (단계별 전체 기간 평균) ──
+  const renderSumCard = (s: Stage) => {
+    const avg = avgDays(totals[s]);
+    return (
+      <div key={s} className="vm-sum-card">
+        <span className="vm-sum-label">{STAGE_LABEL[s]} 평균</span>
+        <span className="vm-sum-value">{avg ?? '—'}</span>
+        <span className="vm-sum-unit">
+          일 · n={nf(totals[s].n)}
+          {DELIVERY_STAGES.has(s) && totals[s].nUpperOnly > 0 && ` · 추정 ${nf(totals[s].nUpperOnly)}`}
+        </span>
+      </div>
+    );
+  };
 
   const skippedTotal = STAGES.reduce((n, s) => n + totals[s].nSkipped, 0);
 
@@ -199,24 +222,13 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
       {/* ── 요약 카드: 단계별 전체 기간 평균 ── */}
       {!loading && !error && rows.length > 0 && (
         <div className="vm-summary">
-          {STAGES.map((s) => {
-            const avg = avgDays(totals[s]);
-            return (
-              <div key={s} className="vm-sum-card">
-                <span className="vm-sum-label">{STAGE_LABEL[s]} 평균</span>
-                <span className="vm-sum-value">{avg ?? '—'}</span>
-                <span className="vm-sum-unit">
-                  일 · n={nf(totals[s].n)}
-                  {DELIVERY_STAGES.has(s) && totals[s].nUpperOnly > 0 && ` · 추정 ${nf(totals[s].nUpperOnly)}`}
-                </span>
-              </div>
-            );
-          })}
+          {TOTAL_STAGES.map((s) => renderSumCard(s))}
           <div className="vm-sum-card vm-sum-card-accent">
-            <span className="vm-sum-label">합계 (주문 → 출고)</span>
+            <span className="vm-sum-label">합계 (주문 → 포장)</span>
             <span className="vm-sum-value">{totalOfStages(totals) ?? '—'}</span>
-            <span className="vm-sum-unit">일 · 단계 평균의 합</span>
+            <span className="vm-sum-unit">일 · 배송+입고+포장 (출고 제외)</span>
           </div>
+          {AFTER_TOTAL_STAGES.map((s) => renderSumCard(s))}
         </div>
       )}
 
@@ -235,10 +247,13 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
                 <tr>
                   <th className="vm-col-week">{isDaily ? '일자' : period === 'month' ? '월' : '주차'}</th>
                   {!isDaily && <th className="vm-col-range">기간</th>}
-                  {STAGES.map((s) => (
+                  {TOTAL_STAGES.map((s) => (
                     <th key={s} className="vm-col-speed">{STAGE_LABEL[s]}</th>
                   ))}
                   <th className="vm-col-speed">합계</th>
+                  {AFTER_TOTAL_STAGES.map((s) => (
+                    <th key={s} className="vm-col-speed">{STAGE_LABEL[s]}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -254,7 +269,7 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
                           {shortDate(r.periodStart)} ~ {shortDate(r.periodEnd)}
                         </td>
                       )}
-                      {STAGES.map((s) => (
+                      {TOTAL_STAGES.map((s) => (
                         <td key={s} className="vm-col-speed">
                           <StageCell stat={r.stats[s]} stage={s} />
                         </td>
@@ -266,6 +281,11 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
                           <span className="vm-none">—</span>
                         )}
                       </td>
+                      {AFTER_TOTAL_STAGES.map((s) => (
+                        <td key={s} className="vm-col-speed">
+                          <StageCell stat={r.stats[s]} stage={s} />
+                        </td>
+                      ))}
                     </tr>
                   );
                 })}
@@ -286,7 +306,8 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
         처음 확인된 업로드 시각을 그대로 써서 <b>추정</b>으로 따로 표시합니다. 업로드 간격만큼
         오차가 생기므로 매일 업로드해 주세요. <b>세트</b>는 배송·입고를 부품(항목)마다, 포장·출고를
         세트 1건으로 세므로 단계별 n 이 다릅니다. 세트의 포장 시간은 부품이 모두 입고된 시각부터
-        잽니다. <b>합계</b>는 네 단계 평균을 더한 값으로, 모든 단계에 표본이 있을 때만 표시합니다.
+        잽니다. <b>합계</b>는 배송·입고·포장 세 단계 평균을 더한 값으로, 세 단계 모두 표본이 있을 때만
+        표시합니다. 출고는 정해진 출고 요일(화·목)까지 기다리는 시간이라 합계에서 빼고 합계 오른쪽에 따로 둡니다.
         {skippedTotal > 0 && (
           <span className="vm-warn"> · 시각이 뒤바뀐 데이터 {nf(skippedTotal)}건은 제외했습니다.</span>
         )}
