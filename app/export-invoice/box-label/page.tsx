@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
+import { downloadBoxLabelPdf } from '../../../lib/boxLabelPdf';
 import './box-label.css';
 
 interface BoxLabelData {
@@ -13,10 +13,6 @@ interface BoxLabelData {
   location: string;
   weight: string;
 }
-
-// 10x15cm를 mm로 변환
-const PAGE_WIDTH_MM = 100;
-const PAGE_HEIGHT_MM = 150;
 
 const BoxLabel: React.FC = () => {
   // 상태 관리
@@ -161,69 +157,18 @@ const BoxLabel: React.FC = () => {
     return result;
   };
 
-  // PDF 생성 및 다운로드
+  // PDF 생성 및 다운로드 — 레이아웃은 lib/boxLabelPdf.ts (쉽먼트 V2 [박스라벨] 과 공유)
   const generatePdf = async () => {
     if (!isPrintEnabled) return;
 
     setIsGeneratingPdf(true);
 
     try {
-      // PDF 생성 (세로 방향, 10x15cm)
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM]
-      });
-
-      // 각 데이터에 대해 페이지 생성
-      tableData.forEach((item, index) => {
-        if (index > 0) {
-          pdf.addPage([PAGE_WIDTH_MM, PAGE_HEIGHT_MM], 'portrait');
-        }
-
-        // 세로 용지에 가로 텍스트 (90도 회전)
-        // 용지: 100mm(가로) x 150mm(세로) - portrait
-        // 90도 회전 시 텍스트 영역: 가로 150mm, 세로 100mm
-
-        // 폰트 크기 설정
-        const fontSize = 72;
-        const lineSpacing = 28; // 줄 간격 (mm)
-
-        pdf.setFontSize(fontSize);
-        pdf.setFont('helvetica', 'bold');
-
-        // 텍스트 준비
-        const dateText = item.date;
-        const locationText = item.location;
-        const weightText = item.weight || '';
-
-        // 90도 회전 텍스트에서:
-        // x좌표 = 회전 후 세로 위치 (원래 페이지의 가로 위치)
-        // y좌표 = 회전 후 가로 위치 (원래 페이지의 세로 위치, 위에서 시작)
-
-        // 3줄을 페이지 가로(100mm) 중앙에 배치
-        // 첫줄, 둘째줄, 셋째줄 위치 계산
-        const line1X = 30;  // 첫 번째 줄 (위쪽)
-        const line2X = 30 + lineSpacing;  // 두 번째 줄
-        const line3X = 30 + lineSpacing * 2;  // 세 번째 줄 (아래쪽)
-
-        // 텍스트 시작 위치 (좌측 정렬 - 회전 후 상단)
-        const textY = PAGE_HEIGHT_MM - 15;
-
-        // 첫 번째 줄: 날짜
-        pdf.text(dateText, line1X, textY, { angle: 90 });
-
-        // 두 번째 줄: 위치
-        pdf.text(locationText, line2X, textY, { angle: 90 });
-
-        // 세 번째 줄: 부피
-        pdf.text(weightText, line3X, textY, { angle: 90 });
-      });
-
-      // PDF 저장
       const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      pdf.save(`박스라벨_${dateInput}_${timestamp}.pdf`);
-
+      downloadBoxLabelPdf(
+        tableData.map((item) => ({ date: item.date, location: item.location, weight: item.weight })),
+        `박스라벨_${dateInput}_${timestamp}.pdf`
+      );
     } catch (error) {
       console.error('PDF 생성 오류:', error);
       alert('PDF 생성 중 오류가 발생했습니다.');

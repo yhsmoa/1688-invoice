@@ -128,13 +128,18 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         route: '/shipment-v2',
         file: 'app/shipment-v2/ShipmentV2.tsx',
         apis: [
-          { route: '/api/ft/shipment-v2', tables: ['ft_order_items', 'ft_box_info', 'ft_fulfillment_outbounds'] },
+          { route: '/api/ft/shipment-v2', tables: ['ft_order_items', 'ft_shipment_manual_items', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_fulfillment_inbounds', 'ft_move_requests', 'invoiceManager-Customs', 'ft_cp_item', 'ft_cp_shipment_size'] },
           { route: '/api/ft/shipment-v2/move', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
+          { route: '/api/ft/shipment-v2/manual', tables: ['ft_shipment_manual_items', 'ft_fulfillment_outbounds', 'ft_box_info'] },
+          { route: '/api/ft/move-requests/[id]/complete', tables: ['ft_move_requests', 'ft_fulfillment_outbounds', 'ft_box_info'] },
           { route: '/api/ft/order-items', tables: ['ft_order_items'] },
           { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
-          { route: '/api/ft/shipments', tables: ['ft_shipments', 'ft_box_info', 'ft_fulfillment_outbounds'] },
+          { route: '/api/ft/shipments', tables: ['ft_shipments', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_move_requests'] },
           { route: '/api/ft/classify-products', tables: ['ft_order_items'] },
+          { route: '/api/get-customs-data', tables: ['invoiceManager-Customs'] },
+          { route: '/api/hr/workers', tables: ['invoiceManager_employees'] },
         ],
+        note: '카드(A/B/C/P/X/요청) · 영문 품목 · 박스 사이즈 수정 · 고객 이동요청 처리완료(rpc ft_move_request_complete) · [생성] 부자재 행(rpc ft_shipment_manual_create) · [박스라벨] PDF',
       },
       {
         name: '출고완료',
@@ -143,7 +148,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         apis: [
           { route: '/api/ft/shipments', tables: ['ft_shipments', 'ft_box_info', 'ft_fulfillment_outbounds'] },
           { route: '/api/ft/shipment-details', tables: ['ft_shipment_details'] },
-          { route: '/api/ft/shipment-v2', tables: ['ft_order_items', 'ft_box_info', 'ft_fulfillment_outbounds'] },
+          { route: '/api/ft/shipment-v2', tables: ['ft_order_items', 'ft_shipment_manual_items', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_fulfillment_inbounds', 'ft_move_requests', 'invoiceManager-Customs', 'ft_cp_item', 'ft_cp_shipment_size'] },
         ],
       },
       {

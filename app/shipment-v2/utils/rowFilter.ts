@@ -1,13 +1,39 @@
 // ============================================================
-// 쉽먼트 V2 — 요약 보드 필터 (품목 / 쉽먼트에러)
+// 쉽먼트 V2 — 필터 (두 축을 AND 로 결합)
+//
+//   ① 보드 필터 (상단 카드)  : [전체] [A] [B] [C] [P] [X] [요청]
+//        · type     — 행이 담긴 박스의 타입 (box_code 둘째 토막, 합배송돼도 자기 박스 기준)
+//        · requests — 고객 미처리 이동요청이 있는 행
+//   ② 칩 필터 (품목 / 쉽먼트에러, SummaryFilterBar)
+//        · category — 품목(customs_category, 한글 저장값) 일치 — 미분류는 UNCATEGORIZED
+//        · error    — 쉽먼트에러: code 가 null 이면 에러 전체, 아니면 해당 상품 사이즈만
 // ============================================================
 import type { ShipmentV2Row } from '../types';
-import type { ShipmentSizeCode } from './shipmentCodes';
+import { getBoxType, type ShipmentSizeCode } from './shipmentCodes';
 
-// ── 필터 상태 ──
-//   all      : 전체
-//   category : 품목(customs_category) 일치 — 미분류는 UNCATEGORIZED
-//   error    : 쉽먼트에러 — code 가 null 이면 에러 전체, 아니면 해당 상품 사이즈만
+// ── ① 보드 필터 ──
+export type BoardFilter =
+  | { kind: 'all' }
+  | { kind: 'type'; type: ShipmentSizeCode }
+  | { kind: 'requests' };
+
+export const BOARD_ALL: BoardFilter = { kind: 'all' };
+
+export const matchesBoard = (row: ShipmentV2Row, board: BoardFilter): boolean => {
+  switch (board.kind) {
+    case 'all':      return true;
+    case 'type':     return getBoxType(row.box_code || '') === board.type;
+    case 'requests': return row.move_request !== null;
+  }
+};
+
+export const isSameBoard = (a: BoardFilter, b: BoardFilter): boolean => {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'type' && b.kind === 'type') return a.type === b.type;
+  return true;
+};
+
+// ── ② 칩 필터 ──
 export type RowFilter =
   | { kind: 'all' }
   | { kind: 'category'; category: string }
@@ -19,9 +45,8 @@ export const FILTER_ALL: RowFilter = { kind: 'all' };
 export const UNCATEGORIZED = '';
 
 export const getCategoryKey = (row: Pick<ShipmentV2Row, 'customs_category'>): string =>
-  row.customs_category || UNCATEGORIZED;
+  (row.customs_category || '').trim() || UNCATEGORIZED;
 
-// ── 행 일치 여부 ──
 export const matchesFilter = (
   row: ShipmentV2Row,
   error: ShipmentSizeCode | null,

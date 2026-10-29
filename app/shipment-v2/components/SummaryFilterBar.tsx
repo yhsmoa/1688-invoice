@@ -11,10 +11,13 @@ import {
   isSameFilter,
   type RowFilter,
 } from '../utils/rowFilter';
+import CategoryLabel from './CategoryLabel';
 
 // ============================================================
-// 요약 보드 — [전체] [품목별 개수…] | [쉽먼트에러] [A] [B] [C] [P] [X]
+// 칩 필터 — [전체] [품목별 개수…] | [쉽먼트에러] [A] [B] [C] [P] [X]
 //   태그 클릭 → 해당 행만 보기, 같은 태그 재클릭 → 전체
+//   품목은 한글 저장값으로 묶고 화면엔 영문(통관정보) / ❓ 로 표시
+//   rows 는 상단 카드 보드 필터가 적용된 행 — 개수가 카드 선택과 함께 움직인다
 // ============================================================
 interface SummaryFilterBarProps {
   rows: ShipmentV2Row[];
@@ -27,14 +30,15 @@ interface SummaryFilterBarProps {
 const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, filter, onFilterChange }) => {
   const { t } = useTranslation();
 
-  // ── 품목별 개수 (많은 순) ──
+  // ── 품목별 개수 (많은 순) + 영문명 ──
   const categorySummary = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { count: number; en: string | null }>();
     rows.forEach((r) => {
       const key = getCategoryKey(r);
-      map.set(key, (map.get(key) ?? 0) + 1);
+      const prev = map.get(key);
+      map.set(key, { count: (prev?.count ?? 0) + 1, en: prev?.en ?? r.customs_category_en });
     });
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
   }, [rows]);
 
   // ── 쉽먼트에러 개수 (상품 사이즈별) ──
@@ -53,30 +57,34 @@ const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, fi
   };
 
   const tagClass = (target: RowFilter, extra = '') =>
-    ['shipment-v2-category-tag', extra, isSameFilter(filter, target) ? 'shipment-v2-category-tag--active' : '']
+    ['sv2-chip', extra, isSameFilter(filter, target) ? 'is-active' : '']
       .filter(Boolean)
       .join(' ');
 
   return (
-    <div className="shipment-v2-category-summary">
+    <div className="sv2-chips">
       {/* ── 전체 ── */}
       <button type="button" className={tagClass(FILTER_ALL)} onClick={() => onFilterChange(FILTER_ALL)}>
         {t('shipmentV2.summary.all')}
-        <span className="shipment-v2-category-count">({rows.length})</span>
+        <span className="sv2-chip-count">{rows.length}</span>
       </button>
 
       {/* ── 품목별 ── */}
-      {categorySummary.map(([category, count]) => {
+      {categorySummary.map(([category, { count, en }]) => {
         const target: RowFilter = { kind: 'category', category };
         return (
           <button key={category || '__uncategorized'} type="button" className={tagClass(target)} onClick={() => handleClick(target)}>
-            {category === UNCATEGORIZED ? t('shipmentV2.summary.uncategorized') : category}
-            <span className="shipment-v2-category-count">({count})</span>
+            <CategoryLabel
+              raw={category === UNCATEGORIZED ? null : category}
+              en={en}
+              emptyText={t('shipmentV2.summary.uncategorized')}
+            />
+            <span className="sv2-chip-count">{count}</span>
           </button>
         );
       })}
 
-      <span className="shipment-v2-summary-divider" aria-hidden="true" />
+      <span className="sv2-chips-divider" aria-hidden="true" />
 
       {/* ── 쉽먼트에러: 전체 + 사이즈별 ── */}
       {(() => {
@@ -84,12 +92,12 @@ const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, fi
         return (
           <button
             type="button"
-            className={tagClass(target, errorSummary.total > 0 ? 'shipment-v2-error-tag--has' : 'shipment-v2-error-tag--none')}
+            className={tagClass(target, errorSummary.total > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
             onClick={() => handleClick(target)}
             title={t('shipmentV2.summary.shipmentErrorHint')}
           >
             {t('shipmentV2.summary.shipmentError')}
-            <span className="shipment-v2-error-count">({errorSummary.total})</span>
+            <span className="sv2-chip-count">{errorSummary.total}</span>
           </button>
         );
       })()}
@@ -100,11 +108,11 @@ const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, fi
           <button
             key={code}
             type="button"
-            className={tagClass(target, count > 0 ? 'shipment-v2-error-tag--has' : 'shipment-v2-error-tag--none')}
+            className={tagClass(target, count > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
             onClick={() => handleClick(target)}
           >
             {code}
-            <span className="shipment-v2-error-count">({count})</span>
+            <span className="sv2-chip-count">{count}</span>
           </button>
         );
       })}

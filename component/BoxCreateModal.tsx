@@ -15,7 +15,7 @@ import './BoxCreateModal.css';
 //     · 같은 user_id + 미출고(shipment_id IS NULL) 에 같은 box_code 가 있으면 409
 //
 //   i18n 은 기존 exportProduct.box.* 키를 그대로 사용한다 (ko/zh 모두 존재).
-//   사용처: app/shipment-v2/components/MoveModal.tsx
+//   사용처: app/shipment-v2/components/MoveModal.tsx, ManualItemModal.tsx
 // ============================================================
 
 // ── 박스 타입 배지 — globals.css .size-badge--* 와 같은 팔레트 ──
@@ -38,8 +38,8 @@ export const padBoxNo = (no: string): string => {
   return digits.length === 1 ? `0${digits}` : digits;
 };
 
-// ── 크기 프리셋 (export-product-v2 와 동일) ──
-const SIZE_PRESETS = [
+// ── 크기 프리셋 (export-product-v2 와 동일) — 쉽먼트 V2 박스 사이즈 수정(BoxSizeEditor)도 공유 ──
+export const SIZE_PRESETS = [
   { label: '150', value: '60x50x40' },
   { label: '145', value: '50x50x45' },
   { label: '120', value: '50x40x30' },
