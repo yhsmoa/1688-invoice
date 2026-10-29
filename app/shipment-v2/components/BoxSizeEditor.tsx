@@ -74,10 +74,18 @@ const BoxSizeEditor: React.FC<BoxSizeEditorProps> = ({ boxInfoId, size, onSaved 
     }
   };
 
-  const label = size ? size.replace(/x/g, '×') : t('shipmentV2.boxSize.empty');
+  const label = size ? size.replace(/x/g, ' × ') : t('shipmentV2.boxSize.empty');
+
+  // ── 상자 아이콘 (선 아이콘, 장식) ──
+  const boxIcon = (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 8 12 3 3 8v8l9 5 9-5z" />
+      <path d="m3 8 9 5 9-5M12 13v8" />
+    </svg>
+  );
 
   if (!boxInfoId) {
-    return <span className={`sv2-box-size ${size ? '' : 'is-empty'}`}>{label}</span>;
+    return <span className={`sv2-box-size ${size ? '' : 'is-empty'}`}>{boxIcon}{label}</span>;
   }
 
   return (
@@ -94,6 +102,7 @@ const BoxSizeEditor: React.FC<BoxSizeEditorProps> = ({ boxInfoId, size, onSaved 
         }}
         title={t('shipmentV2.boxSize.editHint')}
       >
+        {boxIcon}
         {label}
       </button>
 

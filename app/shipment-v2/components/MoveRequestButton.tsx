@@ -44,8 +44,10 @@ const MoveRequestButton: React.FC<MoveRequestButtonProps> = ({ request, complete
   if (!request && completed) {
     return (
       <span className="sv2-req sv2-req--done">
-        <span aria-hidden="true">✓</span>
-        <span className={`sv2-type-chip sv2-type-chip--${completed.target_type.toLowerCase()}`}>{completed.target_type}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+        <span className={`sv2-chip-type sv2-tone--${completed.target_type.toLowerCase()}`}>{completed.target_type}</span>
         {t('shipmentV2.moveRequest.done')}
       </span>
     );
@@ -96,7 +98,7 @@ const MoveRequestButton: React.FC<MoveRequestButtonProps> = ({ request, complete
       })}
     >
       <span className="sv2-req-dot" aria-hidden="true" />
-      <span className={`sv2-type-chip sv2-type-chip--${type.toLowerCase()}`}>{type}</span>
+      <span className={`sv2-chip-type sv2-tone--${type.toLowerCase()}`}>{type}</span>
       {t('shipmentV2.moveRequest.pending')}
     </button>
   );

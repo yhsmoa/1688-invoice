@@ -15,6 +15,7 @@ import ShipModal from './components/ShipModal';
 import ShipmentTable from './components/ShipmentTable';
 import SummaryFilterBar from './components/SummaryFilterBar';
 import TypeBoardCards from './components/TypeBoardCards';
+import { useCustomsOptions } from './hooks/useCustomsOptions';
 import { useShipmentRows } from './hooks/useShipmentRows';
 import { useWorkers, workerLabel } from './hooks/useWorkers';
 import type { ShipmentV2Row } from './types';
@@ -34,10 +35,11 @@ import './ShipmentV2.css';
 // 쉽먼트 V2 — 미출고 포장 행 관리
 //
 //   [헤더]   제목 · 총 건수 · 처리 담당자 · 사용자
-//   [카드]   전체 / A / B / C / P / X / 요청          components/TypeBoardCards
-//   [액션]   품목 · 엑셀 · 이동 · 합배송 · 생성 · 박스라벨 | 저장 · 출고
-//   [칩]     품목별 · 쉽먼트에러                         components/SummaryFilterBar
-//   [표]                                                 components/ShipmentTable
+//   [타입 바] 전체 / A / B / C / P / X / 이동요청      components/TypeBoardCards
+//   [액션]   품목 분류 · 엑셀 | 이동 · 합배송 | 생성 · 박스라벨 …… 저장 · 출고
+//   [필터]   품목 / 사이즈 불일치                        components/SummaryFilterBar
+//   [표]     박스별 묶음, 페이지와 함께 스크롤           components/ShipmentTable
+//   디자인: 클로드 디자인 캔버스 "쉽먼트 V2 화면 디자인"
 //
 //   필터는 카드(보드) AND 칩. 편집은 원본 rows 인덱스 기준, 체크는 행 id(포장 행 id) 기준 —
 //   재조회(품목 분류·저장) 뒤에도 같은 행이 체크된 채로 남고, 사라진 행은 빠진다.
@@ -51,6 +53,7 @@ const ShipmentV2: React.FC = () => {
   const { users: ftUsers } = useFtUsers();
   const workers = useWorkers();
   const { rows, setRows, loading, loadError, fetchRows } = useShipmentRows();
+  const { options: customsOptions, enByKo, loadError: customsError } = useCustomsOptions();
 
   // ============================================================
   // 상태
@@ -159,15 +162,6 @@ const ShipmentV2: React.FC = () => {
   // 행 로컬 패치 (스캔 수량 · 품목 · 박스 사이즈 · 이동요청 처리완료)
   // ============================================================
 
-  /** 화면에 있는 한글 → 영문 품목 매핑 (편집 직후 표시용, 저장 후 재조회 전까지) */
-  const knownCategoryEn = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of rows) {
-      if (r.customs_category && r.customs_category_en) map.set(r.customs_category.trim(), r.customs_category_en);
-    }
-    return map;
-  }, [rows]);
-
   const handleQuantityChange = useCallback((idx: number, quantity: number) => {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity } : r)));
   }, [setRows]);
@@ -176,13 +170,14 @@ const ShipmentV2: React.FC = () => {
     const row = rows[idx];
     if (!row?.order_item_id) return; // 부자재 행은 주문 항목이 없어 저장 대상 아님
     const orderItemId = row.order_item_id;
-    const en = category ? (knownCategoryEn.get(category) ?? null) : null;
+    // 영문 표시는 통관정보 목록에서 (저장값은 한글 키)
+    const en = category ? (enByKo.get(category) ?? null) : null;
     // 같은 주문 항목의 다른 포장 행도 같은 품목이므로 함께 갱신
     setRows((prev) => prev.map((r) =>
       r.order_item_id === orderItemId ? { ...r, customs_category: category, customs_category_en: en } : r
     ));
     setDirtyCategories((prev) => new Map(prev).set(orderItemId, category));
-  }, [rows, knownCategoryEn, setRows]);
+  }, [rows, enByKo, setRows]);
 
   const handleBoxSizeSaved = useCallback((boxInfoId: string, size: string | null) => {
     setRows((prev) => prev.map((r) => (r.box_info_id === boxInfoId ? { ...r, box_size: size } : r)));
@@ -381,7 +376,7 @@ const ShipmentV2: React.FC = () => {
         <main className="shipment-v2-content">
           <div className="sv2-page">
 
-            {/* ── 헤더: 제목 / 담당자 · 사용자 ── */}
+            {/* ── 헤더: 제목 / 총 건수 · 처리 담당자 · 사용자 ── */}
             <header className="sv2-header">
               <div className="sv2-header-title">
                 <h1>{t('shipmentV2.title')}</h1>
@@ -391,77 +386,88 @@ const ShipmentV2: React.FC = () => {
                 {rows.length > 0 && (
                   <span className="sv2-total">{t('shipmentV2.totalCount', { count: rows.length })}</span>
                 )}
-                <select
-                  className={`sv2-select ${selectedWorker ? '' : 'is-placeholder'}`}
-                  value={selectedWorker}
-                  onChange={(e) => setSelectedWorker(e.target.value)}
-                  aria-label={t('shipmentV2.worker.placeholder')}
-                >
-                  <option value="">{t('shipmentV2.worker.placeholder')}</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={workerLabel(w)}>{workerLabel(w)}</option>
-                  ))}
-                </select>
-                <select
-                  className="sv2-select sv2-select--user"
-                  value={selectedUserId}
-                  onChange={handleUserChange}
-                  aria-label={t('shipmentV2.selectUser')}
-                >
-                  <option value="">{t('shipmentV2.selectUser')}</option>
-                  {ftUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.vender_name || user.full_name} {user.user_code}
-                    </option>
-                  ))}
-                </select>
+                <label className="sv2-field-pill">
+                  <span className="sv2-field-pill-label">{t('shipmentV2.worker.label')}</span>
+                  <select
+                    className={selectedWorker ? '' : 'is-placeholder'}
+                    value={selectedWorker}
+                    onChange={(e) => setSelectedWorker(e.target.value)}
+                  >
+                    <option value="">{t('shipmentV2.worker.placeholder')}</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={workerLabel(w)}>{workerLabel(w)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="sv2-field-pill sv2-field-pill--strong">
+                  <span className="sv2-field-pill-label">{t('shipmentV2.userLabel')}</span>
+                  <select value={selectedUserId} onChange={handleUserChange}>
+                    <option value="">{t('shipmentV2.selectUser')}</option>
+                    {ftUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.vender_name || user.full_name} {user.user_code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </header>
 
-            {/* ── 타입 카드 보드 ── */}
+            {/* ── 타입 바 ── */}
             {hasUser && (
               <TypeBoardCards summary={boardSummary} board={board} onBoardChange={setBoard} />
             )}
 
-            {/* ── 액션 바 ── */}
+            {/* ── 액션 바: [품목 분류 · 엑셀] [이동 · 합배송] [생성 · 박스라벨]  ……  [저장] [출고] ── */}
             <div className="sv2-toolbar">
               <div className="sv2-toolbar-group">
-                <button className="sv2-btn" onClick={handleClassifyProducts} disabled={isClassifying || rows.length === 0}>
-                  {isClassifying ? t('shipmentV2.buttons.classifying') : t('shipmentV2.buttons.classify')}
-                </button>
-                <button className="sv2-btn" onClick={handleExcelDownload} disabled={rows.length === 0}>
-                  {t('shipmentV2.buttons.excel')}
-                </button>
-                <span className="sv2-toolbar-divider" aria-hidden="true" />
-                <button className="sv2-btn" onClick={openMove} disabled={checkedIds.size === 0}>
-                  {t('shipmentV2.buttons.move')}{checkedIds.size > 0 ? ` (${checkedIds.size})` : ''}
-                </button>
-                <button className="sv2-btn" onClick={() => setModal('merge')} disabled={!hasUser}>
-                  {t('shipmentV2.buttons.merge')}
-                </button>
-                <span className="sv2-toolbar-divider" aria-hidden="true" />
-                <button className="sv2-btn" onClick={() => setModal('manual')} disabled={!hasUser}>
-                  + {t('shipmentV2.buttons.create')}
-                </button>
-                <button className="sv2-btn" onClick={() => setModal('boxLabel')} disabled={rows.length === 0}>
-                  {t('shipmentV2.buttons.boxLabel')}
-                </button>
+                <div className="sv2-btn-group">
+                  <button className="sv2-btn" onClick={handleClassifyProducts} disabled={isClassifying || rows.length === 0}>
+                    {isClassifying ? t('shipmentV2.buttons.classifying') : t('shipmentV2.buttons.classify')}
+                  </button>
+                  <button className="sv2-btn" onClick={handleExcelDownload} disabled={rows.length === 0}>
+                    {t('shipmentV2.buttons.excel')}
+                  </button>
+                </div>
+                <div className="sv2-btn-group">
+                  <button className="sv2-btn" onClick={openMove} disabled={checkedIds.size === 0}>
+                    {t('shipmentV2.buttons.move')}
+                    {checkedIds.size > 0 && <span className="sv2-btn-count">{checkedIds.size}</span>}
+                  </button>
+                  <button className="sv2-btn" onClick={() => setModal('merge')} disabled={!hasUser}>
+                    {t('shipmentV2.buttons.merge')}
+                  </button>
+                </div>
+                <div className="sv2-btn-group">
+                  <button className="sv2-btn" onClick={() => setModal('manual')} disabled={!hasUser}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    {t('shipmentV2.buttons.create')}
+                  </button>
+                  <button className="sv2-btn" onClick={() => setModal('boxLabel')} disabled={rows.length === 0}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z" />
+                    </svg>
+                    {t('shipmentV2.buttons.boxLabel')}
+                  </button>
+                </div>
               </div>
               <div className="sv2-toolbar-group">
                 <button
-                  className={`sv2-btn ${dirtyCategories.size > 0 ? 'sv2-btn--success' : ''}`}
+                  className={`sv2-btn sv2-btn--solo ${dirtyCategories.size > 0 ? 'sv2-btn--success' : ''}`}
                   onClick={handleSaveAll}
                   disabled={dirtyCategories.size === 0}
                 >
-                  {t('shipmentV2.buttons.save')}{dirtyCategories.size > 0 ? ` (${dirtyCategories.size})` : ''}
+                  {t('shipmentV2.buttons.save')}{dirtyCategories.size > 0 ? ` ${dirtyCategories.size}` : ''}
                 </button>
-                <button className="sv2-btn sv2-btn--danger" onClick={openShip} disabled={checkedIds.size === 0}>
-                  {t('shipmentV2.buttons.ship')}{checkedIds.size > 0 ? ` (${checkedIds.size})` : ''}
+                <button className="sv2-btn sv2-btn--solo sv2-btn--danger" onClick={openShip} disabled={checkedIds.size === 0}>
+                  {t('shipmentV2.buttons.ship')}{checkedIds.size > 0 ? ` ${checkedIds.size}` : ''}
                 </button>
               </div>
             </div>
 
-            {/* ── 칩 필터: 품목 / 쉽먼트에러 (카드 필터 적용된 행 기준) ── */}
+            {/* ── 필터 패널: 품목 / 사이즈 불일치 (타입 바 필터 적용된 행 기준) ── */}
             {rows.length > 0 && (
               <SummaryFilterBar
                 rows={boardRows}
@@ -478,6 +484,7 @@ const ShipmentV2: React.FC = () => {
               rowErrors={rowErrors}
               checkedIds={checkedIds}
               completedRequests={completedRequests}
+              customsOptions={customsOptions}
               doneBy={selectedWorker}
               loading={loading}
               loadError={loadError}
@@ -523,6 +530,8 @@ const ShipmentV2: React.FC = () => {
           userId={selectedUserId}
           userCode={selectedUserCode}
           operatorName={selectedWorker}
+          customsOptions={customsOptions}
+          customsError={customsError}
           onClose={() => setModal(null)}
           onCreated={handleManualCreated}
         />

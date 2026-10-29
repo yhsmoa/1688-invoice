@@ -553,7 +553,7 @@
     "selectUser": "选择用户",
     "totalCount": "共 {{count}} 条",
     "buttons": {
-      "classify": "品类",
+      "classify": "品类分类",
       "classifying": "分类中...",
       "excel": "Excel",
       "move": "移动",
@@ -580,7 +580,10 @@
       "all": "全部",
       "uncategorized": "未分类",
       "shipmentError": "发货尺寸错误",
-      "shipmentErrorHint": "商品尺寸与箱子不一致的行 (A-A、B-B、C-C、P-P、X-X 箱为正常)"
+      "shipmentErrorHint": "商品尺寸与箱子不一致的行 (A-A、B-B、C-C、P-P、X-X 箱为正常)",
+      "categoryLabel": "品类",
+      "mismatchLabel": "尺寸不符",
+      "mismatchHelp": "商品尺寸(A/B/C/P/X)与所装箱子类型不同的行 — 数字按商品尺寸统计"
     },
     "modal": {
       "boxMove": "箱子移动",
@@ -635,21 +638,22 @@
     },
     "subtitle": "待出库箱子 · 移动请求 · 出库",
     "worker": {
-      "placeholder": "处理人",
-      "required": "请先选择处理人。"
+      "placeholder": "请选择",
+      "required": "请先选择处理人。",
+      "label": "处理人"
     },
     "board": {
       "all": "全部",
-      "requests": "请求",
+      "requests": "移动请求",
       "boxes": "箱",
       "rows": "商品 {{count}}行",
-      "requestsHint": "客户移动请求未处理",
+      "requestsHint": "客户请求待处理",
       "requestUnit": "件"
     },
     "category": {
       "unknown": "未知 — 需确认品类 (原文: {{raw}})",
       "unmapped": "报关信息中没有英文名的品类",
-      "editHint": "点击用韩文品类名修改"
+      "editHint": "点击更改品类"
     },
     "boxSize": {
       "empty": "无尺寸",
@@ -706,6 +710,14 @@
       "cancel": "取消",
       "error": "生成 PDF 时出错。",
       "invalidDate": "日期请输入 6 位数字 (YYMMDD)。"
+    },
+    "userLabel": "用户",
+    "boxGroup": {
+      "meta": "{{rows}}行 · 扫描 {{qty}}件",
+      "merged": "合并发货",
+      "selectBox": "全选此箱",
+      "selectRow": "选择行",
+      "selectAll": "全选可见行"
     }
   },
   "shipmentCompleteV2": {

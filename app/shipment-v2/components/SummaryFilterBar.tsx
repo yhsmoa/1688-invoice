@@ -14,14 +14,16 @@ import {
 import CategoryLabel from './CategoryLabel';
 
 // ============================================================
-// 칩 필터 — [전체] [품목별 개수…] | [쉽먼트에러] [A] [B] [C] [P] [X]
-//   태그 클릭 → 해당 행만 보기, 같은 태그 재클릭 → 전체
-//   품목은 한글 저장값으로 묶고 화면엔 영문(통관정보) / ❓ 로 표시
-//   rows 는 상단 카드 보드 필터가 적용된 행 — 개수가 카드 선택과 함께 움직인다
+// 필터 패널 — 두 줄, 줄마다 무엇을 거르는지 라벨
+//   [품목]          전체 · T SHIRT 184 · JACKET 151 … · ? 2 · 미분류 5
+//   [사이즈 불일치] 전체 · A · B · C · P · X   (상품 사이즈 ≠ 담긴 박스 타입, 숫자는 상품 사이즈 기준)
+//
+//   칩 클릭 → 해당 행만, 같은 칩 재클릭 → 전체. 두 줄은 같은 칩 필터라 한 번에 하나만 켜진다.
+//   rows 는 상단 타입 바 필터가 적용된 행 — 개수가 타입 바 선택과 함께 움직인다.
 // ============================================================
 interface SummaryFilterBarProps {
   rows: ShipmentV2Row[];
-  /** rows 와 같은 순서의 쉽먼트 에러 코드 */
+  /** rows 와 같은 순서의 사이즈 불일치(쉽먼트 에러) 코드 */
   rowErrors: (ShipmentSizeCode | null)[];
   filter: RowFilter;
   onFilterChange: (filter: RowFilter) => void;
@@ -30,7 +32,7 @@ interface SummaryFilterBarProps {
 const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, filter, onFilterChange }) => {
   const { t } = useTranslation();
 
-  // ── 품목별 개수 (많은 순) + 영문명 ──
+  // ── 품목별 개수 (많은 순, 미분류는 맨 뒤) + 영문명 ──
   const categorySummary = useMemo(() => {
     const map = new Map<string, { count: number; en: string | null }>();
     rows.forEach((r) => {
@@ -38,10 +40,14 @@ const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, fi
       const prev = map.get(key);
       map.set(key, { count: (prev?.count ?? 0) + 1, en: prev?.en ?? r.customs_category_en });
     });
-    return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === UNCATEGORIZED) return 1;
+      if (b[0] === UNCATEGORIZED) return -1;
+      return b[1].count - a[1].count;
+    });
   }, [rows]);
 
-  // ── 쉽먼트에러 개수 (상품 사이즈별) ──
+  // ── 사이즈 불일치 개수 (상품 사이즈별) ──
   const errorSummary = useMemo(() => {
     const counts = new Map<ShipmentSizeCode, number>(SHIPMENT_SIZE_CODES.map((c) => [c, 0]));
     rowErrors.forEach((code) => {
@@ -51,71 +57,75 @@ const SummaryFilterBar: React.FC<SummaryFilterBarProps> = ({ rows, rowErrors, fi
     return { counts, total };
   }, [rowErrors]);
 
-  // ── 태그 클릭: 같은 필터면 해제 ──
   const handleClick = (next: RowFilter) => {
     onFilterChange(isSameFilter(filter, next) ? FILTER_ALL : next);
   };
 
-  const tagClass = (target: RowFilter, extra = '') =>
-    ['sv2-chip', extra, isSameFilter(filter, target) ? 'is-active' : '']
-      .filter(Boolean)
-      .join(' ');
+  const chipClass = (target: RowFilter, extra = '') =>
+    ['sv2-chip', extra, isSameFilter(filter, target) ? 'is-active' : ''].filter(Boolean).join(' ');
+
+  const errorAll: RowFilter = { kind: 'error', code: null };
 
   return (
-    <div className="sv2-chips">
-      {/* ── 전체 ── */}
-      <button type="button" className={tagClass(FILTER_ALL)} onClick={() => onFilterChange(FILTER_ALL)}>
-        {t('shipmentV2.summary.all')}
-        <span className="sv2-chip-count">{rows.length}</span>
-      </button>
+    <div className="sv2-filters">
+      {/* ── 품목 ── */}
+      <div className="sv2-filter-row">
+        <span className="sv2-filter-label">{t('shipmentV2.summary.categoryLabel')}</span>
+        <button type="button" className={chipClass(FILTER_ALL)} onClick={() => onFilterChange(FILTER_ALL)}>
+          {t('shipmentV2.summary.all')}
+          <span className="sv2-chip-count">{rows.length}</span>
+        </button>
+        {categorySummary.map(([category, { count, en }]) => {
+          const target: RowFilter = { kind: 'category', category };
+          return (
+            <button key={category || '__uncategorized'} type="button" className={chipClass(target)} onClick={() => handleClick(target)}>
+              <CategoryLabel
+                raw={category === UNCATEGORIZED ? null : category}
+                en={en}
+                emptyText={t('shipmentV2.summary.uncategorized')}
+              />
+              <span className="sv2-chip-count">{count}</span>
+            </button>
+          );
+        })}
+      </div>
 
-      {/* ── 품목별 ── */}
-      {categorySummary.map(([category, { count, en }]) => {
-        const target: RowFilter = { kind: 'category', category };
-        return (
-          <button key={category || '__uncategorized'} type="button" className={tagClass(target)} onClick={() => handleClick(target)}>
-            <CategoryLabel
-              raw={category === UNCATEGORIZED ? null : category}
-              en={en}
-              emptyText={t('shipmentV2.summary.uncategorized')}
-            />
-            <span className="sv2-chip-count">{count}</span>
-          </button>
-        );
-      })}
+      <div className="sv2-filters-divider" aria-hidden="true" />
 
-      <span className="sv2-chips-divider" aria-hidden="true" />
-
-      {/* ── 쉽먼트에러: 전체 + 사이즈별 ── */}
-      {(() => {
-        const target: RowFilter = { kind: 'error', code: null };
-        return (
-          <button
-            type="button"
-            className={tagClass(target, errorSummary.total > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
-            onClick={() => handleClick(target)}
-            title={t('shipmentV2.summary.shipmentErrorHint')}
-          >
-            {t('shipmentV2.summary.shipmentError')}
-            <span className="sv2-chip-count">{errorSummary.total}</span>
-          </button>
-        );
-      })()}
-      {SHIPMENT_SIZE_CODES.map((code) => {
-        const count = errorSummary.counts.get(code) ?? 0;
-        const target: RowFilter = { kind: 'error', code };
-        return (
-          <button
-            key={code}
-            type="button"
-            className={tagClass(target, count > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
-            onClick={() => handleClick(target)}
-          >
-            {code}
-            <span className="sv2-chip-count">{count}</span>
-          </button>
-        );
-      })}
+      {/* ── 사이즈 불일치 (상품 사이즈 ≠ 박스 타입) ── */}
+      <div className="sv2-filter-row">
+        <span className="sv2-filter-label">{t('shipmentV2.summary.mismatchLabel')}</span>
+        <button
+          type="button"
+          className={chipClass(errorAll, errorSummary.total > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
+          onClick={() => handleClick(errorAll)}
+        >
+          {t('shipmentV2.summary.all')}
+          <span className="sv2-chip-count">{errorSummary.total}</span>
+        </button>
+        {SHIPMENT_SIZE_CODES.map((code) => {
+          const count = errorSummary.counts.get(code) ?? 0;
+          const target: RowFilter = { kind: 'error', code };
+          return (
+            <button
+              key={code}
+              type="button"
+              className={chipClass(target, count > 0 ? 'sv2-chip--error' : 'sv2-chip--muted')}
+              onClick={() => handleClick(target)}
+            >
+              {code}
+              <span className="sv2-chip-count">{count}</span>
+            </button>
+          );
+        })}
+        <span className="sv2-filter-help">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 8h.01" />
+          </svg>
+          {t('shipmentV2.summary.mismatchHelp')}
+        </span>
+      </div>
     </div>
   );
 };

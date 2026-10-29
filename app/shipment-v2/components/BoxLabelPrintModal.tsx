@@ -122,7 +122,7 @@ const BoxLabelPrintModal: React.FC<BoxLabelPrintModalProps> = ({ allRows, target
                 key={code}
                 className={`sv2-label-count ${complete ? 'is-complete' : ''} ${total === 0 ? 'is-zero' : ''}`}
               >
-                <span className={`sv2-type-chip sv2-type-chip--${code.toLowerCase()}`}>{code}</span>
+                <span className={`sv2-chip-type sv2-tone--${code.toLowerCase()}`}>{code}</span>
                 <span className="sv2-label-count-num">
                   <strong>{printed}</strong>
                   <span>/ {total}</span>

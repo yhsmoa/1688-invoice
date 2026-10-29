@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { getCategoryDisplay } from '../utils/customsDisplay';
 
 // ============================================================
-// 품목 표시 — 통관정보 영문명 / 알 수 없음 ❓ / 미등록 한글
-//   규칙은 utils/customsDisplay.ts. 테이블 셀과 요약 칩이 같이 쓴다.
+// 품목 표시 — 통관정보 영문명 / 알 수 없음(빨간 ? 원) / 미등록 한글
+//   규칙은 utils/customsDisplay.ts. 테이블 셀과 품목 칩이 같이 쓴다.
+//   '알 수 없음' 은 이모지 대신 빨간 원 안의 ? — 글꼴·OS 에 따라 이모지 모양이 달라지지 않도록
 // ============================================================
 interface CategoryLabelProps {
   raw: string | null | undefined;
@@ -25,12 +26,12 @@ const CategoryLabel: React.FC<CategoryLabelProps> = ({ raw, en, emptyText }) => 
     case 'unknown':
       return (
         <span
-          className="sv2-cat sv2-cat--unknown"
+          className="sv2-cat-unknown"
           role="img"
           aria-label={t('shipmentV2.category.unknown', { raw: display.raw })}
           title={t('shipmentV2.category.unknown', { raw: display.raw })}
         >
-          ❓
+          ?
         </span>
       );
     case 'en':

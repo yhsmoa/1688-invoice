@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import BoxCreateModal, { type CreatedBox } from '../../../component/BoxCreateModal';
+import type { CustomsOption } from '../hooks/useCustomsOptions';
 import type { BoxInfoItem } from '../types';
 import { SHIPMENT_SIZE_CODES, type ShipmentSizeCode } from '../utils/shipmentCodes';
 
@@ -12,7 +13,7 @@ import { SHIPMENT_SIZE_CODES, type ShipmentSizeCode } from '../utils/shipmentCod
 //   입력: 박스 · 주문번호 · 바코드 · 상품정보 · 주문옵션 · 단가 · 품목 · 쉽먼트사이즈 · 입고 · 스캔
 //     · 박스: 열린 박스(PACKING & 미출고) 드롭다운 + [+ 새 박스] (이동 모달과 같은 방식)
 //             — 포장 행은 박스 없이 존재할 수 없으므로 필수
-//     · 품목: 통관정보(invoiceManager-Customs) 한글 품목 드롭다운 — 영문 표시·통관서류와 같은 키
+//     · 품목: 통관정보(invoiceManager-Customs) 드롭다운 — 영문으로 보이고 저장값은 한글 키(통관서류와 같은 키)
 //     · 스캔: 입고 이하. 입고를 바꾸면 스캔을 손대기 전까지 같은 값으로 따라간다
 //   저장: POST /api/ft/shipment-v2/manual → DB 함수가 부자재 1행 + 포장 1행을 한 트랜잭션으로
 // ============================================================
@@ -22,19 +23,19 @@ interface ManualItemModalProps {
   userCode: string;
   /** 처리 담당자 — created_by / operator_name 으로 기록 (선택) */
   operatorName: string;
+  /** 통관 품목 목록 — 페이지(useCustomsOptions)가 한 번 불러와 넘긴다 */
+  customsOptions: CustomsOption[];
+  customsError: boolean;
   onClose: () => void;
   onCreated: (boxCode: string, itemName: string) => void;
-}
-
-interface CustomsOption {
-  ko: string;
-  en: string | null;
 }
 
 const POSITIVE_INT = /^[1-9]\d*$/;
 const PRICE_PATTERN = /^\d+(\.\d{1,4})?$/;
 
-const ManualItemModal: React.FC<ManualItemModalProps> = ({ userId, userCode, operatorName, onClose, onCreated }) => {
+const ManualItemModal: React.FC<ManualItemModalProps> = ({
+  userId, userCode, operatorName, customsOptions, customsError, onClose, onCreated,
+}) => {
   const { t } = useTranslation();
 
   // ============================================================
@@ -44,9 +45,6 @@ const ManualItemModal: React.FC<ManualItemModalProps> = ({ userId, userCode, ope
   const [boxesLoading, setBoxesLoading] = useState(true);
   const [boxId, setBoxId] = useState('');
   const [showBoxCreate, setShowBoxCreate] = useState(false);
-
-  const [customs, setCustoms] = useState<CustomsOption[]>([]);
-  const [customsError, setCustomsError] = useState(false);
 
   const [productNo, setProductNo] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -61,7 +59,7 @@ const ManualItemModal: React.FC<ManualItemModalProps> = ({ userId, userCode, ope
   const [submitting, setSubmitting] = useState(false);
 
   // ============================================================
-  // 열린 박스 / 통관 품목 조회
+  // 열린 박스 조회
   // ============================================================
   useEffect(() => {
     let cancelled = false;
@@ -76,26 +74,6 @@ const ManualItemModal: React.FC<ManualItemModalProps> = ({ userId, userCode, ope
         if (!cancelled) console.error('생성 모달 박스 조회 오류:', err);
       } finally {
         if (!cancelled) setBoxesLoading(false);
-      }
-    })();
-    (async () => {
-      try {
-        const res = await fetch('/api/get-customs-data');
-        const json = await res.json();
-        if (cancelled) return;
-        if (!json.success) throw new Error(json.error || 'customs');
-        // 같은 한글 품목이 HS CODE 별로 여러 행일 수 있어(가방 3종) 한글 기준으로 하나만
-        const map = new Map<string, string | null>();
-        for (const r of (json.data || []) as { item_name_ko?: string | null; item_name_en?: string | null }[]) {
-          const ko = (r.item_name_ko || '').trim();
-          if (ko && !map.has(ko)) map.set(ko, (r.item_name_en || '').trim() || null);
-        }
-        setCustoms(Array.from(map.entries()).map(([ko, en]) => ({ ko, en })).sort((a, b) => a.ko.localeCompare(b.ko)));
-      } catch (err) {
-        if (!cancelled) {
-          console.error('통관 품목 조회 오류:', err);
-          setCustomsError(true);
-        }
       }
     })();
     return () => { cancelled = true; };
@@ -250,8 +228,8 @@ const ManualItemModal: React.FC<ManualItemModalProps> = ({ userId, userCode, ope
             <label>{t('shipmentV2.manual.category')}</label>
             <select className="shipment-v2-modal-select" value={category} onChange={(e) => setCategory(e.target.value)} disabled={submitting}>
               <option value="">{t('shipmentV2.manual.categoryNone')}</option>
-              {customs.map((c) => (
-                <option key={c.ko} value={c.ko}>{c.en ? `${c.en} · ${c.ko}` : c.ko}</option>
+              {customsOptions.map((c) => (
+                <option key={c.ko} value={c.ko}>{c.en}</option>
               ))}
             </select>
             {customsError && <div className="shipment-v2-move-hint shipment-v2-move-hint--error">{t('shipmentV2.manual.customsLoadError')}</div>}

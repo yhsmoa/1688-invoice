@@ -559,7 +559,7 @@
     "selectUser": "사용자 선택",
     "totalCount": "총 {{count}}건",
     "buttons": {
-      "classify": "품목",
+      "classify": "품목 분류",
       "classifying": "분류 중...",
       "excel": "엑셀",
       "move": "이동",
@@ -586,7 +586,10 @@
       "all": "전체",
       "uncategorized": "미분류",
       "shipmentError": "쉽먼트에러",
-      "shipmentErrorHint": "상품 사이즈와 박스가 다른 행 (A-A, B-B, C-C, P-P, X-X 박스가 정상)"
+      "shipmentErrorHint": "상품 사이즈와 박스가 다른 행 (A-A, B-B, C-C, P-P, X-X 박스가 정상)",
+      "categoryLabel": "품목",
+      "mismatchLabel": "사이즈 불일치",
+      "mismatchHelp": "상품 사이즈(A/B/C/P/X)와 담긴 박스 타입이 다른 행 — 숫자는 상품 사이즈 기준"
     },
     "modal": {
       "boxMove": "박스 이동",
@@ -641,21 +644,22 @@
     },
     "subtitle": "출고 대기 박스 · 이동요청 · 출고",
     "worker": {
-      "placeholder": "처리 담당자",
-      "required": "처리 담당자를 먼저 선택해주세요."
+      "placeholder": "선택",
+      "required": "처리 담당자를 먼저 선택해주세요.",
+      "label": "처리 담당자"
     },
     "board": {
       "all": "전체",
-      "requests": "요청",
+      "requests": "이동요청",
       "boxes": "박스",
       "rows": "상품 {{count}}행",
-      "requestsHint": "고객 이동요청 미처리",
+      "requestsHint": "고객 요청 대기",
       "requestUnit": "건"
     },
     "category": {
       "unknown": "알 수 없음 — 품목 확인 필요 (원문: {{raw}})",
       "unmapped": "통관정보에 영문명이 없는 품목",
-      "editHint": "클릭해서 한글 품목명으로 수정"
+      "editHint": "클릭해서 품목 변경"
     },
     "boxSize": {
       "empty": "사이즈 없음",
@@ -712,6 +716,14 @@
       "cancel": "취소",
       "error": "PDF 생성 중 오류가 발생했습니다.",
       "invalidDate": "날짜는 6자리 숫자(YYMMDD)로 입력해주세요."
+    },
+    "userLabel": "사용자",
+    "boxGroup": {
+      "meta": "{{rows}}행 · 스캔 {{qty}}개",
+      "merged": "합배송",
+      "selectBox": "박스 전체 선택",
+      "selectRow": "행 선택",
+      "selectAll": "보이는 행 전체 선택"
     }
   },
   "shipmentCompleteV2": {
