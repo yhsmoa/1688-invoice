@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
 // POST /api/ft/shipments
 // 출고 처리: ft_shipments 생성 → ft_box_info.shipment_id 업데이트
 //          → ft_fulfillments.shipment_no + shipment_id + shipment=true 업데이트
+//          → 출고된 포장 행의 미처리 이동요청(ft_move_requests) CANCELLED(note='shipped')
 //
 // Body: {
 //   user_id: string,
@@ -129,6 +130,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`ft_fulfillment_outbounds 출고 업데이트 완료: ${updateCount}건`);
+
+    // ── 4단계: 출고된 행의 미처리 이동요청 닫기 ──
+    //   출고 후엔 박스를 옮길 수 없으므로 요청이 열린 채 남으면 고객 화면 집계가 틀어진다.
+    //   출고 자체는 이미 끝났으므로 실패해도 롤백하지 않고 로그만 남긴다.
+    for (let i = 0; i < fulfillment_ids.length; i += BATCH) {
+      const batch = fulfillment_ids.slice(i, i + BATCH);
+      const { error: reqErr } = await supabase
+        .from('ft_move_requests')
+        .update({ status: 'CANCELLED', note: 'shipped', done_at: new Date().toISOString() })
+        .in('outbound_id', batch)
+        .eq('status', 'REQUESTED');
+      if (reqErr) console.error('ft_move_requests 출고 정리 오류:', reqErr);
+    }
 
     return NextResponse.json({
       success: true,

@@ -145,6 +145,18 @@ export async function DELETE(request: NextRequest) {
       throw ffDeleteErr;
     }
 
+    // ── Step 3-b: 포장(outbound) 철회 → 그 행의 미처리 이동요청 닫기 ──
+    //   행이 사라지면 요청을 처리할 수 없으므로 CANCELLED(note='unpacked') 로 남긴다.
+    //   삭제는 이미 끝났으므로 실패해도 롤백하지 않고 로그만 남긴다.
+    if (sourceTable === OUTBOUND_TABLE) {
+      const { error: reqErr } = await supabase
+        .from('ft_move_requests')
+        .update({ status: 'CANCELLED', note: 'unpacked', done_at: new Date().toISOString() })
+        .eq('outbound_id', id)
+        .eq('status', 'REQUESTED');
+      if (reqErr) console.error('ft_move_requests 포장 철회 정리 오류:', reqErr);
+    }
+
     // ── Step 4: ft_order_items status 재계산 (CANCEL 또는 RETURN 철회 시) ──
     // 시나리오: CANCEL/RETURN 철회 시 DONE이었던 항목이 PROCESSING으로 복구될 수 있음
     //

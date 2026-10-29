@@ -207,26 +207,60 @@ export async function DELETE(request: NextRequest) {
 
 // ============================================================
 // PATCH /api/ft/box-info
-// 박스 정보 수정 (status, size, weight 등)
+// 박스 정보 수정 — 허용 컬럼만 (합배송: master_box_*, 쉽먼트 V2 사이즈 수정: size)
+//
+//   · 허용 목록 밖 컬럼이 하나라도 있으면 400 (id·user_id·box_code 등 식별 컬럼 보호)
+//   · size 는 "가로x세로x높이" (cm, 숫자 1~3자리) 또는 null(비우기)
 // ============================================================
+const PATCHABLE_BOX_FIELDS = new Set([
+  'size', 'weight', 'status', 'master_box_id', 'master_box_code', 'shipment_id',
+]);
+const BOX_SIZE_PATTERN = /^\d{1,3}x\d{1,3}x\d{1,3}$/;
+
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const { id, fields } = body;
 
-    if (!id || !fields || typeof fields !== 'object') {
+    if (!id || !fields || typeof fields !== 'object' || Array.isArray(fields)) {
       return NextResponse.json(
         { success: false, error: 'id와 fields가 필요합니다.' },
         { status: 400 }
       );
     }
 
-    const { error } = await supabase
+    const keys = Object.keys(fields);
+    const invalidKey = keys.find((k) => !PATCHABLE_BOX_FIELDS.has(k));
+    if (keys.length === 0 || invalidKey) {
+      return NextResponse.json(
+        { success: false, error: invalidKey ? `수정할 수 없는 항목입니다: ${invalidKey}` : '수정할 항목이 없습니다.' },
+        { status: 400 }
+      );
+    }
+
+    if ('size' in fields) {
+      const size = fields.size;
+      if (size !== null && (typeof size !== 'string' || !BOX_SIZE_PATTERN.test(size))) {
+        return NextResponse.json(
+          { success: false, error: '박스 사이즈는 가로x세로x높이 숫자로 입력해주세요. (예: 60x50x40)' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const { data: updated, error } = await supabase
       .from('ft_box_info')
       .update(fields)
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw error;
+    if (!updated || updated.length === 0) {
+      return NextResponse.json(
+        { success: false, error: '해당 박스를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
