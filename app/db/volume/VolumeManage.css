@@ -143,6 +143,16 @@
   border-color: #ddd6fe;
 }
 
+.vm-sum-card-warn {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.vm-sum-card-warn .vm-sum-value {
+  color: #b91c1c;
+  font-size: 20px;
+}
+
 .vm-sum-card-accent2 .vm-sum-value {
   color: #6d28d9;
 }
@@ -338,6 +348,149 @@
 
 .vm-speed-upload--stale {
   color: #b45309;
+}
+
+/* ============================================================
+   물량예측 탭
+   ============================================================ */
+
+/* ── 섹션 제목 ── */
+.vm-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 22px 0 10px;
+}
+
+.vm-section-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.vm-section-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: #71717a;
+}
+
+/* ── 넓은 카드 (포장 대기 + 대기 일수 막대) ── */
+.vm-sum-card-wide {
+  grid-column: span 2;
+}
+
+.vm-wait {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vm-wait-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vm-wait-label {
+  font-size: 11px;
+  color: #71717a;
+}
+
+.vm-wait-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: #e4e4e7;
+  overflow: hidden;
+}
+
+.vm-wait-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #7c3aed;
+}
+
+.vm-wait-item.is-old .vm-wait-fill {
+  background: #dc2626;
+}
+
+.vm-wait-num {
+  font-size: 11px;
+  color: #3f3f46;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── 입력 (인원 · 인당 근무 · 처리속도) ── */
+.vm-inputs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vm-input-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #71717a;
+}
+
+.vm-input {
+  width: 72px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  color: #18181b;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-input:focus {
+  outline: none;
+  border-color: #18181b;
+}
+
+/* ── 표 ── */
+.vm-forecast-table {
+  min-width: 720px;
+}
+
+.vm-col-text,
+.vm-table th.vm-col-text {
+  text-align: left;
+}
+
+.vm-row-current td {
+  background: #eff6ff;
+  font-weight: 700;
+}
+
+.vm-row-off td {
+  color: #a1a1aa;
+}
+
+.vm-pos {
+  color: #15803d;
+}
+
+.vm-neg {
+  color: #b91c1c;
 }
 
 /* ============================================================

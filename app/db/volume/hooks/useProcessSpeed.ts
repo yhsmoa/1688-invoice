@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { dbAccessHeaders } from '../../../../component/DbAccessGate';
-import type { ProcessSpeedResponse, SpeedPeriod, SpeedUnit } from '../../../../lib/processSpeed';
+import type { PeriodUnit } from '../../../../lib/periodBucket';
+import type { ProcessSpeedResponse, SpeedPeriod } from '../../../../lib/processSpeed';
 
 // ============================================================
 // useProcessSpeed — GET /api/db/process-speed 조회
@@ -10,13 +11,13 @@ import type { ProcessSpeedResponse, SpeedPeriod, SpeedUnit } from '../../../../l
 
 export type SpeedBasis = 'shipment' | 'confirmed';
 
-export function useProcessSpeed(period: SpeedUnit, basis: SpeedBasis) {
+export function useProcessSpeed(period: PeriodUnit, basis: SpeedBasis) {
   const [periods, setPeriods] = useState<SpeedPeriod[]>([]);
   const [lastDeliveryUploadAt, setLastDeliveryUploadAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (p: SpeedUnit, b: SpeedBasis, signal: { cancelled: boolean }) => {
+  const load = useCallback(async (p: PeriodUnit, b: SpeedBasis, signal: { cancelled: boolean }) => {
     setLoading(true);
     setError(null);
     try {

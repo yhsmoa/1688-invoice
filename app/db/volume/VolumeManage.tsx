@@ -5,39 +5,45 @@ import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import ThroughputTab from './components/ThroughputTab';
 import ProcessSpeedTab from './components/ProcessSpeedTab';
+import ForecastTab from './components/ForecastTab';
 import './VolumeManage.css';
 
 // ============================================================
 // 물량관리 — 탭 셸
 //   [물량처리] components/ThroughputTab   — 주간/월간 출고·입고·근무시간 대비 처리량
 //   [처리속도] components/ProcessSpeedTab — 배송·입고·포장·출고 단계별 평균 소요일
+//   [물량예측] components/ForecastTab     — 파이프라인·처리 능력·소진/유입 예측·확인 필요
 //
-//   탭은 ?tab=speed 로 딥링크 가능. useSearchParams 는 Suspense 경계가 필요하므로
+//   탭은 ?tab=speed / ?tab=forecast 로 딥링크 가능. useSearchParams 는 Suspense 경계가 필요하므로
 //   마운트 후 window.location 에서 읽고, 전환 시 history.replaceState 로만 반영한다.
 // ============================================================
 
-type Tab = 'throughput' | 'speed';
+type Tab = 'throughput' | 'speed' | 'forecast';
 
 const TAB_LABEL: Record<Tab, string> = {
   throughput: '물량처리',
   speed: '처리속도',
+  forecast: '물량예측',
 };
 
-const TAB_QUERY_VALUE = 'speed';
+/** ?tab= 값 ↔ 탭 (기본 탭은 쿼리 없음) */
+const TAB_QUERY: Partial<Record<Tab, string>> = { speed: 'speed', forecast: 'forecast' };
 
 const VolumeManage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('throughput');
 
-  // ── 딥링크: ?tab=speed ──
+  // ── 딥링크: ?tab=speed | forecast ──
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q === TAB_QUERY_VALUE) setTab('speed');
+    const found = (Object.keys(TAB_QUERY) as Tab[]).find((t) => TAB_QUERY[t] === q);
+    if (found) setTab(found);
   }, []);
 
   const changeTab = (next: Tab) => {
     setTab(next);
     const url = new URL(window.location.href);
-    if (next === 'speed') url.searchParams.set('tab', TAB_QUERY_VALUE);
+    const q = TAB_QUERY[next];
+    if (q) url.searchParams.set('tab', q);
     else url.searchParams.delete('tab');
     window.history.replaceState(null, '', url.toString());
   };
@@ -70,11 +76,9 @@ const VolumeManage: React.FC = () => {
             <h1 className="vm-page-title">물량관리</h1>
           </div>
 
-          {tab === 'throughput' ? (
-            <ThroughputTab tabSwitcher={tabSwitcher} />
-          ) : (
-            <ProcessSpeedTab tabSwitcher={tabSwitcher} />
-          )}
+          {tab === 'throughput' && <ThroughputTab tabSwitcher={tabSwitcher} />}
+          {tab === 'speed' && <ProcessSpeedTab tabSwitcher={tabSwitcher} />}
+          {tab === 'forecast' && <ForecastTab tabSwitcher={tabSwitcher} />}
         </main>
       </div>
     </div>

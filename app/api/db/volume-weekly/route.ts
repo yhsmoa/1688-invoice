@@ -1,39 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import {
-  parsePeriod,
+  parsePeriodUnit,
   periodEndOf,
   periodStartOf,
   toKstDate,
-  type Period,
+  type PeriodUnit,
 } from '../../../../lib/periodBucket';
 import { guardDbRoute } from '../../../../lib/dbAccess';
 
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// GET /api/db/volume-weekly?basis=shipment|confirmed&period=week|month
+// GET /api/db/volume-weekly?basis=packed|shipment|confirmed&period=day|week|month
 //
-// 주간(월~일) / 월간 단위 물량 집계
-//   1. ft_shipment_details.quantity 합 → 주간 출고량
-//   2. ft_fulfillment_inbounds → 주간 입고량(ARRIVAL) / 취소·반품(CANCEL, RETURN)
-//   3. invoiceManager_emplyee_records.total_minutes 합 → 주간 근무시간
+// 일간 / 주간(월~일) / 월간 단위 물량 집계
+//   1. 출고 단계 수량 (shipmentQty / shipmentRows) — basis 로 세는 사건이 바뀐다
+//        packed    (기본) : ft_fulfillment_outbounds PACKED 스캔 — 포장한 날 (매일 발생)
+//        shipment         : ft_shipment_details.quantity — ft_shipments.date 실제 출고일
+//        confirmed        : ft_shipment_details.quantity — confirmed_at(KST) 확정 시각
+//      출고(쉽먼트)는 주 2회 출고일에 한꺼번에 잡혀 주·일 단위 편차가 크다.
+//      실제 노동은 매일 하는 포장 스캔이므로 포장일을 기본으로 둔다.
+//   2. ft_fulfillment_inbounds → 입고량(ARRIVAL) / 취소·반품(CANCEL, RETURN)
+//   3. invoiceManager_emplyee_records.total_minutes 합 → 근무시간
 //      + invoiceManager_employees.role 로 포장/검수 시간 분리
 //
 // 파생 지표(출고/h, 총처리/h, 라인/h)는 분모(직책) 선택이 프론트에 있으므로
 // 프론트에서 계산한다. 본 API 는 원시 합계만 반환.
 //
-// basis (출고 주차를 결정하는 기준일 — 입고는 항상 created_at KST 기준)
-//   · shipment  (기본) : ft_shipments.date      — 실제 출고일
-//   · confirmed        : ft_shipment_details.confirmed_at (KST 변환) — 확정 시각
+// 입고는 basis 와 무관하게 항상 created_at KST 기준.
 //
-// ⚠️ ft_shipment_details 1.3만 행, ft_fulfillment_inbounds 1.9만 행
-//    → range() 페이지네이션 필수
+// ⚠️ ft_fulfillment_outbounds 2.9만 행, ft_shipment_details 2.8만 행,
+//    ft_fulfillment_inbounds 4.3만 행 (2026-10-30) → range() 페이지네이션 필수
 // ============================================================
 
 const PAGE = 1000;
 
-type Basis = 'shipment' | 'confirmed';
+type Basis = 'packed' | 'shipment' | 'confirmed';
+
+function parseBasis(value: string | null): Basis {
+  return value === 'shipment' || value === 'confirmed' ? value : 'packed';
+}
 
 // ── 전체 조회 helper (1000행 limit 우회) ──
 async function fetchAll<T>(
@@ -58,7 +65,27 @@ async function fetchAll<T>(
   return rows;
 }
 
-// ── 구간(주/월) 누적 버킷 ──
+// ── 포장 스캔 전체 조회 (type = PACKED 만, 1000행 limit 우회) ──
+async function fetchAllPacked(): Promise<{ id: string; quantity: number | null; created_at: string | null }[]> {
+  const rows: { id: string; quantity: number | null; created_at: string | null }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('ft_fulfillment_outbounds')
+      .select('id, quantity, created_at')
+      .eq('type', 'PACKED')
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
+// ── 구간(일/주/월) 누적 버킷 ──
 interface PeriodBucket {
   periodStart: string;
   shipmentQty: number;
@@ -101,8 +128,8 @@ export async function GET(request: NextRequest) {
     if (denied) return denied;
 
     const { searchParams } = new URL(request.url);
-    const basis: Basis = searchParams.get('basis') === 'confirmed' ? 'confirmed' : 'shipment';
-    const period: Period = parsePeriod(searchParams.get('period'));
+    const basis: Basis = parseBasis(searchParams.get('basis'));
+    const period: PeriodUnit = parsePeriodUnit(searchParams.get('period'));
 
     // ── 1. 원본 데이터 병렬 조회 ──
     type ShipmentRow = { id: string; date: string | null };
@@ -124,11 +151,17 @@ export async function GET(request: NextRequest) {
       quantity: number | null;
       created_at: string | null;
     };
+    type PackedRow = { id: string; quantity: number | null; created_at: string | null };
     type EmployeeRow = { id: string; role: string | null };
 
-    const [shipments, details, works, inbounds, employees] = await Promise.all([
-      fetchAll<ShipmentRow>('ft_shipments', 'id, date', 'id'),
-      fetchAll<DetailRow>('ft_shipment_details', 'id, shipment_id, quantity, confirmed_at', 'id'),
+    // 출고 단계 원본 — basis 에 따라 포장 스캔 또는 쉽먼트 상세만 읽는다
+    const usePacked = basis === 'packed';
+    const [shipments, details, packed, works, inbounds, employees] = await Promise.all([
+      usePacked ? Promise.resolve([] as ShipmentRow[]) : fetchAll<ShipmentRow>('ft_shipments', 'id, date', 'id'),
+      usePacked
+        ? Promise.resolve([] as DetailRow[])
+        : fetchAll<DetailRow>('ft_shipment_details', 'id, shipment_id, quantity, confirmed_at', 'id'),
+      usePacked ? fetchAllPacked() : Promise.resolve([] as PackedRow[]),
       fetchAll<WorkRow>(
         'invoiceManager_emplyee_records',
         'id, employee_id, work_date, total_minutes',
@@ -148,7 +181,15 @@ export async function GET(request: NextRequest) {
     const buckets = new Map<string, PeriodBucket>();
     let skippedDetails = 0;
 
-    // 출고 (기준일: basis 선택)
+    // 출고 단계 — 포장 스캔 (기준일: 스캔 시각 KST)
+    packed.forEach((p) => {
+      if (!p.created_at) return;
+      const b = bucketOf(buckets, periodStartOf(toKstDate(p.created_at), period));
+      b.shipmentQty += p.quantity ?? 0;
+      b.shipmentRows += 1;
+    });
+
+    // 출고 단계 — 쉽먼트 상세 (기준일: basis 선택)
     details.forEach((d) => {
       let baseDate: string | null = null;
       if (basis === 'shipment') {
@@ -219,7 +260,7 @@ export async function GET(request: NextRequest) {
       weeks,
       meta: {
         weekCount: weeks.length,
-        detailRows: details.length,
+        detailRows: usePacked ? packed.length : details.length,
         inboundRows: inbounds.length,
         skippedDetails,
       },

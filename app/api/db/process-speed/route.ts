@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { periodEndOf } from '../../../../lib/periodBucket';
+import { parsePeriodUnit, periodEndOf, type PeriodUnit } from '../../../../lib/periodBucket';
 import { guardDbRoute } from '../../../../lib/dbAccess';
 import { resolveScanSizeCode } from '../../../../lib/sizeCode';
 import {
   STAGES,
   addStat,
   emptyCells,
-  parseSpeedUnit,
   type SetKind,
   type SizeKey,
   type SpeedPeriod,
-  type SpeedUnit,
   type Stage,
   type StageStat,
 } from '../../../../lib/processSpeed';
@@ -57,7 +55,7 @@ export async function GET(request: NextRequest) {
     if (denied) return denied;
 
     const { searchParams } = new URL(request.url);
-    const period: SpeedUnit = parseSpeedUnit(searchParams.get('period'));
+    const period: PeriodUnit = parsePeriodUnit(searchParams.get('period'));
     const basis: Basis = searchParams.get('basis') === 'confirmed' ? 'confirmed' : 'shipment';
 
     // ── 1) 집계 + 마지막 배송상황 업로드 시각 (병렬) ──
@@ -84,9 +82,7 @@ export async function GET(request: NextRequest) {
 
       let p = byPeriod.get(r.period_start);
       if (!p) {
-        // 일간은 하루짜리 구간 (시작 = 종료)
-        const periodEnd = period === 'day' ? r.period_start : periodEndOf(r.period_start, period);
-        p = { periodStart: r.period_start, periodEnd, cells: emptyCells() };
+        p = { periodStart: r.period_start, periodEnd: periodEndOf(r.period_start, period), cells: emptyCells() };
         byPeriod.set(r.period_start, p);
       }
 

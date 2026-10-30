@@ -2,12 +2,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { dbAccessHeaders } from '../../../../component/DbAccessGate';
-import { PERIOD_LABEL, periodLabel, shortDate, type Period } from '../utils/periodLabel';
+import {
+  PERIOD_COLUMN_LABEL,
+  PERIOD_LABEL,
+  PERIOD_UNITS,
+  periodLabel,
+  shortDate,
+  type PeriodUnit,
+} from '../utils/periodLabel';
 
 // ============================================================
-// [물량처리] 탭 — 주간(월~일) 출고·입고·근무시간 및 시간당 처리 지표
+// [물량처리] 탭 — 일간/주간(월~일)/월간 출고·입고·근무시간 및 시간당 처리 지표
 //   데이터: GET /api/db/volume-weekly
-//     · 출고량     ft_shipment_details.quantity
+//     · 출고 단계  기준일 포장일(기본) = ft_fulfillment_outbounds PACKED 스캔 (매일 발생)
+//                  기준일 출고일/확정일 = ft_shipment_details.quantity (주 2회 출고일에 몰림)
 //     · 입고량     ft_fulfillment_inbounds (ARRIVAL)
 //     · 취소·반품  ft_fulfillment_inbounds (CANCEL, RETURN)
 //     · 근무시간   invoiceManager_emplyee_records.total_minutes (직책별 분리)
@@ -21,7 +29,16 @@ import { PERIOD_LABEL, periodLabel, shortDate, type Period } from '../utils/peri
 // ============================================================
 
 // ── 타입 ──
-type Basis = 'shipment' | 'confirmed';
+type Basis = 'packed' | 'shipment' | 'confirmed';
+
+const BASIS_LABEL: Record<Basis, string> = {
+  packed: '포장일',
+  shipment: '출고일',
+  confirmed: '확정일',
+};
+
+/** 출고 단계 이름 — 포장일 기준이면 '포장', 쉽먼트 기준이면 '출고' */
+const outLabelOf = (b: Basis) => (b === 'packed' ? '포장' : '출고');
 type Denom = 'all' | 'packInspect' | 'pack';
 
 interface WeekRow {
@@ -76,8 +93,10 @@ interface ThroughputTabProps {
 }
 
 const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
-  const [basis, setBasis] = useState<Basis>('shipment');
-  const [period, setPeriod] = useState<Period>('week');
+  const [basis, setBasis] = useState<Basis>('packed');
+  const outLabel = outLabelOf(basis);
+  const [period, setPeriod] = useState<PeriodUnit>('week');
+  const isDaily = period === 'day';
   const [denom, setDenom] = useState<Denom>('all');
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -85,7 +104,7 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
   const [error, setError] = useState<string | null>(null);
 
   // ── 데이터 조회 ──
-  const load = useCallback(async (b: Basis, p: Period) => {
+  const load = useCallback(async (b: Basis, p: PeriodUnit) => {
     setLoading(true);
     setError(null);
     try {
@@ -161,7 +180,7 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
         <div className="vm-controls">
           <div className="vm-basis">
             <span className="vm-basis-label">단위</span>
-            {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
+            {PERIOD_UNITS.map((p) => (
               <button
                 key={p}
                 className={`vm-basis-btn ${period === p ? 'active' : ''}`}
@@ -173,18 +192,15 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
           </div>
           <div className="vm-basis">
             <span className="vm-basis-label">기준일</span>
-            <button
-              className={`vm-basis-btn ${basis === 'shipment' ? 'active' : ''}`}
-              onClick={() => setBasis('shipment')}
-            >
-              출고일
-            </button>
-            <button
-              className={`vm-basis-btn ${basis === 'confirmed' ? 'active' : ''}`}
-              onClick={() => setBasis('confirmed')}
-            >
-              확정일
-            </button>
+            {(Object.keys(BASIS_LABEL) as Basis[]).map((b) => (
+              <button
+                key={b}
+                className={`vm-basis-btn ${basis === b ? 'active' : ''}`}
+                onClick={() => setBasis(b)}
+              >
+                {BASIS_LABEL[b]}
+              </button>
+            ))}
           </div>
           <div className="vm-basis">
             <span className="vm-basis-label">근무시간</span>
@@ -205,7 +221,7 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
       {!loading && !error && rows.length > 0 && (
         <div className="vm-summary">
           <div className="vm-sum-card">
-            <span className="vm-sum-label">총 출고량</span>
+            <span className="vm-sum-label">총 {outLabel}량</span>
             <span className="vm-sum-value">{nf(totals.shipmentQty)}</span>
             <span className="vm-sum-unit">개</span>
           </div>
@@ -220,14 +236,14 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
             <span className="vm-sum-unit">시간</span>
           </div>
           <div className="vm-sum-card vm-sum-card-accent">
-            <span className="vm-sum-label">출고량 / 시간</span>
+            <span className="vm-sum-label">{outLabel}량 / 시간</span>
             <span className="vm-sum-value">{totals.qtyPerHour ?? '—'}</span>
             <span className="vm-sum-unit">개 / 시간</span>
           </div>
           <div className="vm-sum-card vm-sum-card-accent2">
             <span className="vm-sum-label">총처리량 / 시간</span>
             <span className="vm-sum-value">{totals.handledPerHour ?? '—'}</span>
-            <span className="vm-sum-unit">입고+출고+취소반품</span>
+            <span className="vm-sum-unit">입고+{outLabel}+취소반품</span>
           </div>
         </div>
       )}
@@ -245,15 +261,15 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
             <table className="vm-table">
               <thead>
                 <tr>
-                  <th className="vm-col-week">{period === 'month' ? '월' : '주차'}</th>
-                  <th className="vm-col-range">기간</th>
-                  <th className="vm-col-num">출고량</th>
+                  <th className="vm-col-week">{PERIOD_COLUMN_LABEL[period]}</th>
+                  {!isDaily && <th className="vm-col-range">기간</th>}
+                  <th className="vm-col-num">{outLabel}량</th>
                   <th className="vm-col-num">입고량</th>
                   <th className="vm-col-num">취소·반품</th>
                   <th className="vm-col-num">총처리량</th>
                   <th className="vm-col-num">근무시간</th>
                   <th className="vm-col-num">인원</th>
-                  <th className="vm-col-rate">출고/h</th>
+                  <th className="vm-col-rate">{outLabel}/h</th>
                   <th className="vm-col-num">총처리/h</th>
                   <th className="vm-col-num">라인/h</th>
                 </tr>
@@ -262,9 +278,11 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
                 {rows.map((w) => (
                   <tr key={w.weekStart}>
                     <td className="vm-col-week">{periodLabel(w.weekStart, period)}</td>
-                    <td className="vm-col-range">
-                      {shortDate(w.weekStart)} ~ {shortDate(w.weekEnd)}
-                    </td>
+                    {!isDaily && (
+                      <td className="vm-col-range">
+                        {shortDate(w.weekStart)} ~ {shortDate(w.weekEnd)}
+                      </td>
+                    )}
                     <td className="vm-col-num vm-strong">{nf(w.shipmentQty)}</td>
                     <td className="vm-col-num">{nf(w.arrivalQty)}</td>
                     <td className="vm-col-num vm-muted">{nf(w.cancelReturnQty)}</td>
@@ -299,15 +317,18 @@ const ThroughputTab: React.FC<ThroughputTabProps> = ({ tabSwitcher }) => {
 
       {/* ── 안내 ── */}
       <p className="vm-footer-note">
-        출고량은 <code>ft_shipment_details.quantity</code>, 입고량·취소반품은{' '}
+        <b>포장량</b>(기준일 포장일)은 <code>ft_fulfillment_outbounds</code> PACKED 스캔,{' '}
+        <b>출고량</b>(기준일 출고일·확정일)은 <code>ft_shipment_details.quantity</code>, 입고량·취소반품은{' '}
         <code>ft_fulfillment_inbounds</code>(ARRIVAL / CANCEL·RETURN), 근무시간은{' '}
         <code>invoiceManager_emplyee_records</code> 합계입니다. 주간은 월요일 시작(월~일),
-        월간은 달력 월 기준으로 원본 날짜에서 직접 집계합니다(주간 합산이 아니므로 월 경계를
+        일간은 하루 단위, 월간은 달력 월 기준으로 원본 날짜에서 직접 집계합니다(주간 합산이 아니므로 월 경계를
         걸친 주가 중복되지 않습니다). 기준일{' '}
-        <b>출고일</b>은 <code>ft_shipments.date</code>, <b>확정일</b>은 <code>confirmed_at</code>
-        (KST), 입고는 항상 스캔 시각(KST) 기준입니다. <b>총처리량</b> = 입고 + 출고 + 취소·반품,{' '}
-        <b>라인/h</b> = (입고행 + 출고행) ÷ 근무시간 — 스캔 노동은 수량보다 행(라인) 수에
-        비례하므로 실제 작업 속도에 가장 가깝습니다.
+        <b>포장일</b>은 포장 스캔 시각(KST), <b>출고일</b>은 <code>ft_shipments.date</code>,{' '}
+        <b>확정일</b>은 <code>confirmed_at</code>(KST), 입고는 항상 스캔 시각(KST) 기준입니다.{' '}
+        <b>총처리량</b> = 입고 + {outLabel} + 취소·반품, <b>라인/h</b> = (입고행 + {outLabel}행) ÷ 근무시간 —
+        스캔 노동은 수량보다 행(라인) 수에 비례하므로 실제 작업 속도에 가장 가깝습니다. 포장은 매일
+        일어나지만 출고(쉽먼트)는 주 2회 출고일에 한꺼번에 잡히므로, 작업 속도는 <b>포장일</b> 기준으로
+        보세요. 출고일·확정일 기준에서는 출고가 없는 날·주의 수치가 낮게 나옵니다.
         {meta && meta.skippedDetails > 0 && (
           <span className="vm-warn"> · 기준일 없음으로 제외된 출고 {nf(meta.skippedDetails)}건</span>
         )}

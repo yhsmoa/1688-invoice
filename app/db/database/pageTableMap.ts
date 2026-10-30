@@ -358,9 +358,22 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
               'im_1688_delivery_history',
             ],
           },
+          {
+            route: '/api/db/volume-forecast',
+            tables: [
+              'ft_order_items',
+              'ft_fulfillment_inbounds',
+              'ft_fulfillment_outbounds',
+              'ft_shipment_details',
+              'im_1688_delivery_history',
+              'invoiceManager_emplyee_records',
+              'invoiceManager_employees',
+              'ft_users',
+            ],
+          },
           { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
         ],
-        note: '[물량처리] 주간/월간 출고·입고량 및 근무시간 대비 처리량 / [처리속도] 배송·입고·포장·출고 단계별 평균 소요일 (rpc db_process_speed). 접근 범위 volume — 직책 기업·매니저',
+        note: '[물량처리] 일간/주간/월간 입고·포장(또는 출고)량 및 근무시간 대비 처리량 / [처리속도] 배송·입고·포장·출고 단계별 평균 소요일 (rpc db_process_speed) / [물량예측] 파이프라인·처리 능력·소진/유입 예측 (rpc db_volume_pipeline). 접근 범위 volume — 직책 기업·매니저',
       },
       {
         name: '데이터베이스 관리',

@@ -5,8 +5,6 @@ import {
   SET_KINDS,
   SET_KIND_LABEL,
   SIZE_KEYS,
-  SPEED_UNITS,
-  SPEED_UNIT_LABEL,
   STAGES,
   STAGE_LABEL,
   addStat,
@@ -14,13 +12,20 @@ import {
   emptyStageStats,
   type SetKind,
   type SizeKey,
-  type SpeedUnit,
   type Stage,
   type StageStat,
   type StageStats,
 } from '../../../../lib/processSpeed';
 import { useProcessSpeed, type SpeedBasis } from '../hooks/useProcessSpeed';
-import { dayLabel, periodLabel, shortDate } from '../utils/periodLabel';
+import {
+  PERIOD_COLUMN_LABEL,
+  PERIOD_LABEL,
+  PERIOD_UNITS,
+  formatKstDateTime,
+  periodLabel,
+  shortDate,
+  type PeriodUnit,
+} from '../utils/periodLabel';
 
 // ============================================================
 // [처리속도] 탭 — 단계별 평균 소요일 (일간/주간/월간)
@@ -56,17 +61,6 @@ const DELIVERY_STAGES = new Set<Stage>(['delivery', 'arrival']);
 /** 마지막 배송상황 업로드가 이 일수보다 오래되면 경고 (운영 규칙: 하루 1회 업로드) */
 const DELIVERY_UPLOAD_STALE_DAYS = 2;
 const DAY_MS = 86_400_000;
-
-/** ISO → 'MM.DD HH:mm' (KST) */
-const formatKst = (iso: string): string =>
-  new Date(iso).toLocaleString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
 
 /**
  * 합계에 넣는 단계 — 배송·입고·포장 (주문 → 포장 완료)
@@ -111,7 +105,7 @@ interface ProcessSpeedTabProps {
 }
 
 const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
-  const [period, setPeriod] = useState<SpeedUnit>('week');
+  const [period, setPeriod] = useState<PeriodUnit>('week');
   const isDaily = period === 'day';
   const [basis, setBasis] = useState<SpeedBasis>('shipment');
   const [setKind, setSetKind] = useState<SetKind>('ALL');
@@ -161,13 +155,13 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
         <div className="vm-controls">
           <div className="vm-basis">
             <span className="vm-basis-label">단위</span>
-            {SPEED_UNITS.map((p) => (
+            {PERIOD_UNITS.map((p) => (
               <button
                 key={p}
                 className={`vm-basis-btn ${period === p ? 'active' : ''}`}
                 onClick={() => setPeriod(p)}
               >
-                {SPEED_UNIT_LABEL[p]}
+                {PERIOD_LABEL[p]}
               </button>
             ))}
           </div>
@@ -214,7 +208,7 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
       {!loading && !error && (
         <div className={`vm-speed-upload ${uploadStale ? 'vm-speed-upload--stale' : ''}`}>
           마지막 배송상황 업로드:{' '}
-          <b>{lastDeliveryUploadAt ? formatKst(lastDeliveryUploadAt) : '기록 없음'}</b>
+          <b>{lastDeliveryUploadAt ? formatKstDateTime(lastDeliveryUploadAt) : '기록 없음'}</b>
           {uploadStale && ` — ${DELIVERY_UPLOAD_STALE_DAYS}일 넘게 업로드되지 않아 배송·입고 시각 오차가 커집니다.`}
         </div>
       )}
@@ -245,7 +239,7 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
             <table className="vm-table vm-speed-table">
               <thead>
                 <tr>
-                  <th className="vm-col-week">{isDaily ? '일자' : period === 'month' ? '월' : '주차'}</th>
+                  <th className="vm-col-week">{PERIOD_COLUMN_LABEL[period]}</th>
                   {!isDaily && <th className="vm-col-range">기간</th>}
                   {TOTAL_STAGES.map((s) => (
                     <th key={s} className="vm-col-speed">{STAGE_LABEL[s]}</th>
@@ -261,9 +255,7 @@ const ProcessSpeedTab: React.FC<ProcessSpeedTabProps> = ({ tabSwitcher }) => {
                   const total = totalOfStages(r.stats);
                   return (
                     <tr key={r.periodStart}>
-                      <td className="vm-col-week">
-                        {isDaily ? dayLabel(r.periodStart) : periodLabel(r.periodStart, period)}
-                      </td>
+                      <td className="vm-col-week">{periodLabel(r.periodStart, period)}</td>
                       {!isDaily && (
                         <td className="vm-col-range">
                           {shortDate(r.periodStart)} ~ {shortDate(r.periodEnd)}
