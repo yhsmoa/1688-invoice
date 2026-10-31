@@ -15,15 +15,19 @@ export const dynamic = 'force-dynamic';
 //   A열(0)  주문번호   ┐
 //   D열(3)  판매자명   │ 주문 단위 — 같은 주문이면 병합되어 첫 행에만 값이 있음
 //   I열(8)  결제금액   │
-//   K열(10) 주문일시   ┘
-//   S열(18) 주문내역   ← 상품 단위 (병합 없음, 주문당 여러 행)
+//   J열(9)  주문상태   │ → 한국어 라벨 + 거래/환불/취소 구분 (ORDER_STATUS)
+//   K열(10) 주문일시   │
+//   N열(13) 받는 사람  │
+//   AD열(29) 구매자 메모┘
+//   S열(18) 주문내역   ┐ 상품 단위 (병합 없음, 주문당 여러 행)
+//   U열(20) 수량       ┘
 //
 //   → 병합 셀은 첫 행에만 값이 있으므로 forward-fill 로 주문 단위 값을 이어받는다.
 //
 // 주문번호는 19자리 숫자라 JS number 로 읽으면 정밀도가 깨진다.
 //   → sheet_to_json({ raw: false }) 로 항상 문자열로 읽는다.
 //
-// 주문내역(S열)은 중국어이므로 Google Cloud Translation API 로 한국어 번역.
+// 주문내역(S열)·사전에 없는 주문상태는 중국어이므로 Google Cloud Translation API 로 한국어 번역.
 //   API 미활성/실패 시에도 원문을 그대로 반환한다 (기능 중단 없음).
 // ============================================================
 
@@ -31,9 +35,30 @@ const COL = {
   ORDER_NO: 0,   // A
   SHOP: 3,       // D
   AMOUNT: 8,     // I
+  STATUS: 9,     // J
   ORDERED_AT: 10, // K
+  RECEIVER: 13,  // N
   DETAIL: 18,    // S
+  QTY: 20,       // U
+  MEMO: 29,      // AD
 } as const;
+
+// ============================================================
+// 1688 주문상태(J열) → 한국어 라벨 + 구분
+//   tone: active(실거래) / refund(환불 진행) / cancel(취소·종료) / etc(사전에 없음)
+//   사전에 없는 값은 번역 API 결과를 라벨로 쓰고 tone 은 etc 로 둔다.
+// ============================================================
+type StatusTone = 'active' | 'refund' | 'cancel' | 'etc';
+
+const ORDER_STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  等待买家付款:     { label: '결제 대기', tone: 'etc' },
+  等待卖家发货:     { label: '발송 대기', tone: 'active' },
+  等待买家确认收货: { label: '발송됨 (수령확인 대기)', tone: 'active' },
+  交易成功:         { label: '거래 완료', tone: 'active' },
+  退款中:           { label: '환불 진행중', tone: 'refund' },
+  交易关闭:         { label: '거래 취소', tone: 'cancel' },
+  terminated:       { label: '거래 종료', tone: 'cancel' },
+};
 
 const IN_BATCH = 200;      // Supabase .in() 배치 크기
 const TRANSLATE_BATCH = 100; // Translate API 배치 크기
@@ -41,13 +66,19 @@ const TRANSLATE_BATCH = 100; // Translate API 배치 크기
 interface InspectItem {
   detail: string;
   detailKo: string;
+  qty: string;         // U열 표시값 (예: "100")
 }
 
 interface InspectOrder {
   orderNo: string;
   shop: string;
   amount: string;
+  status: string;      // J열 원문
+  statusKo: string;    // 한국어 라벨
+  statusTone: StatusTone;
   orderedAt: string;
+  receiver: string;    // N열
+  memo: string;        // AD열
   items: InspectItem[];
 }
 
@@ -142,7 +173,10 @@ export async function POST(request: NextRequest) {
     let curNo = '';
     let curShop = '';
     let curAmount = '';
+    let curStatus = '';
     let curOrderedAt = '';
+    let curReceiver = '';
+    let curMemo = '';
     let totalItemRows = 0;
 
     for (const raw of dataRows) {
@@ -151,19 +185,29 @@ export async function POST(request: NextRequest) {
       const no = cellText(row[COL.ORDER_NO]);
       const shop = cellText(row[COL.SHOP]);
       const amount = cellText(row[COL.AMOUNT]);
+      const status = cellText(row[COL.STATUS]);
       const orderedAt = cellText(row[COL.ORDERED_AT]);
+      const receiver = cellText(row[COL.RECEIVER]);
+      const memo = cellText(row[COL.MEMO]);
       const detail = cellText(row[COL.DETAIL]);
+      const qty = cellText(row[COL.QTY]);
 
       // 병합 셀: 값이 있으면 갱신, 없으면 직전 주문 값을 이어받음
       if (no) {
         curNo = no;
         curShop = shop;
         curAmount = amount;
+        curStatus = status;
         curOrderedAt = orderedAt;
+        curReceiver = receiver;
+        curMemo = memo;
       } else {
         if (shop) curShop = shop;
         if (amount) curAmount = amount;
+        if (status) curStatus = status;
         if (orderedAt) curOrderedAt = orderedAt;
+        if (receiver) curReceiver = receiver;
+        if (memo) curMemo = memo;
       }
 
       if (!curNo) continue;          // 주문번호 나오기 전 행
@@ -174,14 +218,19 @@ export async function POST(request: NextRequest) {
           orderNo: curNo,
           shop: curShop,
           amount: curAmount,
+          status: curStatus,
+          statusKo: ORDER_STATUS[curStatus]?.label ?? curStatus,
+          statusTone: ORDER_STATUS[curStatus]?.tone ?? 'etc',
           orderedAt: curOrderedAt,
+          receiver: curReceiver,
+          memo: curMemo,
           items: [],
         });
         orderSeq.push(curNo);
       }
 
       if (detail) {
-        orderMap.get(curNo)!.items.push({ detail, detailKo: detail });
+        orderMap.get(curNo)!.items.push({ detail, detailKo: detail, qty });
         totalItemRows++;
       }
     }
@@ -216,11 +265,15 @@ export async function POST(request: NextRequest) {
       .filter((no) => !matched.has(no))
       .map((no) => orderMap.get(no)!);
 
-    // ── 5. 주문내역(S열) 중국어 → 한국어 번역 ──
+    // ── 5. 주문내역(S열) + 사전에 없는 주문상태(J열) 중국어 → 한국어 번역 ──
     const details = unmatched.flatMap((o) => o.items.map((it) => it.detail));
-    const { map: koMap, error: translateError } = await translateToKo(details);
+    const unknownStatuses = unmatched
+      .map((o) => o.status)
+      .filter((st) => st && !ORDER_STATUS[st]);
+    const { map: koMap, error: translateError } = await translateToKo([...details, ...unknownStatuses]);
 
     for (const o of unmatched) {
+      if (o.status && !ORDER_STATUS[o.status]) o.statusKo = koMap.get(o.status) ?? o.status;
       for (const it of o.items) {
         it.detailKo = koMap.get(it.detail) ?? it.detail;
       }

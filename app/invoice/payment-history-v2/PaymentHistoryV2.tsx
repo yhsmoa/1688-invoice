@@ -6,6 +6,21 @@ import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import type { UserTxDisplayRow, LedgerWriteResult } from '../../../lib/userTransactions';
 import { fetchTodayRate } from '../../../lib/exchangeRate';
+import DeductForm from './components/DeductForm';
+import {
+  deductAmounts,
+  deductConfirmText,
+  deductRequestBody,
+  EMPTY_DEDUCT_FORM,
+  fmtYuan,
+  todayKST,
+  userLabel,
+  validateDeductForm,
+  writeResultText,
+  type FtUserOption,
+  type LedgerResponse,
+  type WriteResponse,
+} from './utils/customerLedger';
 import './PaymentHistoryV2.css';
 
 // ============================================================
@@ -36,71 +51,15 @@ const fmt = (n: number | null | undefined): string => {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
-/** 위안 표기 */
-const fmtYuan = (n: number) => `¥${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-
-/** 오늘 (KST, YYYY-MM-DD) — 모달 날짜 기본값 */
-const todayKST = (): string =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
-
 /** 표시·월 필터에 쓰는 날짜 — 적용일 우선, 없으면 기록일 */
 const rowDateOf = (r: UserTxDisplayRow): string =>
   r.applied_date ? String(r.applied_date).slice(0, 10) : (r.created_at ? r.created_at.slice(0, 10) : '');
 
-/** 드롭다운 항목 — /api/ft/users 응답 */
-interface FtUserOption {
-  id: string;
-  user_code: string | null;
-  vender_name: string | null;
-  full_name: string | null;
-  username: string | null;
-}
-
-/** 드롭다운 표시명 — "아이엠몽 BZ" */
-const userLabel = (u: FtUserOption): string =>
-  [u.vender_name || u.full_name || u.username, u.user_code].filter(Boolean).join(' ');
-
-/** /api/ft/user-transactions GET 응답 */
-interface LedgerResponse {
-  success: boolean;
-  error?: string;
-  balanceId: string | null;
-  ledger: {
-    rows: UserTxDisplayRow[];
-    accounts: string[];
-    sumBalance: number;
-    snapshotBalance: number | null;
-    lastDate: string | null;
-    hasOpening: boolean;
-  };
-}
-
-/** 기록 API 공통 응답 */
-interface WriteResponse {
-  success: boolean;
-  error?: string;
-  committed?: boolean;
-  transactionId?: string | null;
-  result?: LedgerWriteResult & { orderCode?: string; itemQty?: number; orderNos1688?: number };
-}
+// 사용자·원장 응답 타입, 위안 포맷, 차감 폼 상태·검증은 utils/customerLedger.ts (주문 검사 [비용처리] 와 공용)
 
 type AddModalType = 'charge' | 'deduct' | '1688order';
 
-/**
- * 차감 항목 프리셋 — 과거 수동 차감 기록(주문코드 차감 제외)에서 자주 쓰인 순.
- *   부자재(포장재·라벨)는 1688 주문번호 + 비고에 "규격-수량" 을 적는 패턴,
- *   공임비는 월말 적용일 + 주문번호 없이 기록하는 패턴이다.
- */
-const DEDUCT_PRESETS: { group: string; items: string[] }[] = [
-  { group: '포장재', items: ['속포장 비닐', '폴리백 지퍼 포장지', '택배박스', '겉포장 비닐'] },
-  { group: '라벨', items: ['감열지 라벨', '케어라벨', '케어라벨 리본', '봉제 라벨', '브랜드 라벨', '로켓그로스 라벨 스티커'] },
-  { group: '기타', items: ['공임비', '누락 운임비'] },
-];
-
 const EMPTY_CHARGE_FORM = { date: '', description: '', amount: '', krwAmount: '', adminNote: '' };
-const EMPTY_DEDUCT_FORM = {
-  date: '', description: '', amount: '', order1688Id: '', deliveryFee: '', serviceFee: '', extraFee: '', adminNote: '',
-};
 
 const PaymentHistoryV2: React.FC = () => {
   const { t } = useTranslation();
@@ -321,16 +280,7 @@ const PaymentHistoryV2: React.FC = () => {
 
   /** 기록 성공 후 공통 처리 — 알림 + 원장 새로고침 + 모달 닫기 */
   const afterWrite = async (title: string, r: LedgerWriteResult, extra = '') => {
-    alert(
-      `${title}\n\n` +
-      `사업자: ${selectedUser ? userLabel(selectedUser) : ''}\n` +
-      `금액: ${fmtYuan(r.amount)}\n` +
-      `이전 잔액: ${fmtYuan(r.prevBalance)}\n` +
-      `이후 잔액: ${fmtYuan(r.newBalance)}\n` +
-      `적용일: ${r.appliedDate}\n` +
-      (extra ? `${extra}\n` : '') +
-      `거래ID: ${r.transactionId}`,
-    );
+    alert(writeResultText(title, selectedUser ? userLabel(selectedUser) : '', r, extra));
     setIsSaving(false);
     setShowAddModal(false);
     resetModalForms();
@@ -397,25 +347,10 @@ const PaymentHistoryV2: React.FC = () => {
   // ── 차감 ──
   const handleSaveDeduct = async () => {
     if (!selectedUser) return alert('쿠팡 사용자를 선택해주세요.');
-    const amount = Number(deductForm.amount);
-    if (!deductForm.amount || !(amount > 0)) return alert('전체금액을 입력해주세요.');
-    const description = deductForm.description.trim();
-    if (!description) return alert('항목을 입력해주세요.');
-    if (!deductForm.date) return alert('적용일을 입력해주세요.');
-    const fee = (v: string) => (v ? Number(v) : 0);
-    const ship = fee(deductForm.deliveryFee);
-    const svc = fee(deductForm.serviceFee);
-    const other = fee(deductForm.extraFee);
-    if ([ship, svc, other].some(v => !Number.isFinite(v) || v < 0)) return alert('배송비·서비스비·기타비용은 0 이상이어야 합니다.');
-    const itemAmount = Math.round((amount - ship - svc - other) * 100) / 100;
-    if (itemAmount < 0) return alert('배송비·서비스비·기타비용 합계가 전체금액을 초과합니다.');
+    const checked = validateDeductForm(deductForm);
+    if (!checked.ok) return alert(checked.error);
 
-    const ok = confirm(
-      `차감을 기록합니다.\n\n사업자: ${userLabel(selectedUser)}\n항목: ${description}\n전체금액: ${fmtYuan(amount)}\n` +
-      `  지출 ${fmtYuan(itemAmount)} + 배송비 ${fmtYuan(ship)} + 서비스비 ${fmtYuan(svc)} + 기타 ${fmtYuan(other)}\n` +
-      (deductForm.order1688Id ? `1688 주문번호: ${deductForm.order1688Id}\n` : '') +
-      `적용일: ${deductForm.date}\n\n진행할까요?`,
-    );
+    const ok = confirm(deductConfirmText(userLabel(selectedUser), deductForm, checked.values));
     if (!ok) return;
 
     setIsSaving(true);
@@ -423,19 +358,7 @@ const PaymentHistoryV2: React.FC = () => {
       const response = await fetch('/api/ft/user-transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind: 'deduct',
-          user_id: selectedUser.id,
-          amount,
-          applied_date: deductForm.date,
-          description,
-          reference_id: refKeyFor('deduct'),
-          order_no_1688: deductForm.order1688Id || null,
-          shipping_fee: ship,
-          service_fee: svc,
-          other_fee: other,
-          admin_note: deductForm.adminNote || null,
-        }),
+        body: JSON.stringify(deductRequestBody(selectedUser.id, deductForm, checked.values, refKeyFor('deduct'))),
       });
       const result = (await response.json()) as WriteResponse;
       if (result.success && result.result) await afterWrite('차감 완료', result.result);
@@ -504,10 +427,7 @@ const PaymentHistoryV2: React.FC = () => {
   const chargeAmt = numOf(chargeForm.amount);
   const chargeKrw = numOf(chargeForm.krwAmount);
   const chargeRate = chargeAmt > 0 && chargeKrw > 0 ? chargeKrw / chargeAmt : null;
-  const deductAmt = numOf(deductForm.amount);
-  const deductFees = numOf(deductForm.deliveryFee) + numOf(deductForm.serviceFee) + numOf(deductForm.extraFee);
-  const deductItemAmt = Math.round((deductAmt - deductFees) * 100) / 100;
-  const isLaborItem = deductForm.description.includes('공임비');
+  const { amount: deductAmt } = deductAmounts(deductForm);
   /** 기록 후 예상 잔액 — 충전(+) / 차감(−). 1688 주문은 서버가 금액을 계산하므로 미리보기 없음 */
   const previewDelta = addModalType === 'charge' ? chargeAmt : addModalType === 'deduct' ? -deductAmt : 0;
   const previewBalance = snapshotBalance != null && previewDelta !== 0
@@ -855,95 +775,14 @@ const PaymentHistoryV2: React.FC = () => {
                 </div>
               )}
 
-              {/* ── 차감 폼 ── */}
+              {/* ── 차감 폼 — components/DeductForm (주문 검사 [비용처리] 와 공용) ── */}
               {addModalType === 'deduct' && (
-                <div className="phv2-form">
-                  <div className="phv2-form-item">
-                    <label>항목 <em>*</em></label>
-                    <input type="text" placeholder="아래에서 선택하거나 직접 입력" value={deductForm.description} onChange={(e) => setDeductForm({ ...deductForm, description: e.target.value })} />
-                    <div className="phv2-presets">
-                      {DEDUCT_PRESETS.map(g => (
-                        <div className="phv2-preset-group" key={g.group}>
-                          <span className="phv2-preset-label">{g.group}</span>
-                          <div className="phv2-preset-chips">
-                            {g.items.map(label => (
-                              <button
-                                key={label}
-                                type="button"
-                                className={`phv2-chip ${deductForm.description === label ? 'active' : ''}`}
-                                onClick={() => setDeductForm({ ...deductForm, description: label })}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="phv2-form-row">
-                    <div className="phv2-form-item">
-                      <label>전체금액 <em>*</em></label>
-                      <div className="phv2-input-affix">
-                        <span>¥</span>
-                        <input type="number" min="0" step="0.01" placeholder="0.00" value={deductForm.amount} onChange={(e) => setDeductForm({ ...deductForm, amount: e.target.value })} />
-                      </div>
-                    </div>
-                    <div className="phv2-form-item">
-                      <label>적용일 <em>*</em></label>
-                      <input type="date" value={deductForm.date} max={todayKST()} onChange={(e) => setDeductForm({ ...deductForm, date: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="phv2-form-item">
-                    <label>1688 주문번호 <span className="phv2-form-optional">선택</span></label>
-                    <input
-                      type="text"
-                      placeholder={isLaborItem ? '공임비는 비워둡니다' : '부자재를 구매한 1688 주문번호'}
-                      value={deductForm.order1688Id}
-                      onChange={(e) => setDeductForm({ ...deductForm, order1688Id: e.target.value })}
-                    />
-                  </div>
-                  <div className="phv2-form-item">
-                    <label>관리자 비고 <span className="phv2-form-optional">선택</span></label>
-                    <textarea
-                      placeholder={isLaborItem ? '예: 검수 24, 포장 22' : '규격-수량  예: 30*30-10000, 25*20-3000'}
-                      rows={2}
-                      value={deductForm.adminNote}
-                      onChange={(e) => setDeductForm({ ...deductForm, adminNote: e.target.value })}
-                    />
-                  </div>
-
-                  {/* 비용 상세 — 수동 차감은 대부분 쓰지 않아 기본 접힘 */}
-                  <div className="phv2-fee-detail">
-                    <button type="button" className="phv2-fee-toggle" onClick={() => setShowFeeDetail(v => !v)}>
-                      <span>{showFeeDetail ? '▾' : '▸'} 비용 상세 (배송비 · 서비스비 · 기타)</span>
-                      {deductFees > 0 && <span className="phv2-fee-sum">합계 {fmtYuan(deductFees)}</span>}
-                    </button>
-                    {showFeeDetail && (
-                      <>
-                        <div className="phv2-form-row">
-                          <div className="phv2-form-item">
-                            <label>배송비</label>
-                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.deliveryFee} onChange={(e) => setDeductForm({ ...deductForm, deliveryFee: e.target.value })} />
-                          </div>
-                          <div className="phv2-form-item">
-                            <label>서비스비</label>
-                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.serviceFee} onChange={(e) => setDeductForm({ ...deductForm, serviceFee: e.target.value })} />
-                          </div>
-                          <div className="phv2-form-item">
-                            <label>기타비용</label>
-                            <input type="number" min="0" step="0.01" placeholder="0" value={deductForm.extraFee} onChange={(e) => setDeductForm({ ...deductForm, extraFee: e.target.value })} />
-                          </div>
-                        </div>
-                        <div className={`phv2-form-hint ${deductItemAmt < 0 ? 'is-error' : ''}`}>
-                          {deductItemAmt < 0
-                            ? '비용 합계가 전체금액을 초과합니다.'
-                            : `전체금액에 포함된 비용입니다. 지출금액 = ${fmtYuan(deductAmt)} − ${fmtYuan(deductFees)} = ${fmtYuan(deductItemAmt)}`}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <DeductForm
+                  form={deductForm}
+                  onChange={setDeductForm}
+                  showFeeDetail={showFeeDetail}
+                  onToggleFeeDetail={() => setShowFeeDetail(v => !v)}
+                />
               )}
 
               {/* ── 1688 주문 — 엑셀 업로드 ── */}

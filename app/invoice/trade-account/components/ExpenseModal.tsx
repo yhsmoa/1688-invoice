@@ -14,23 +14,41 @@ import { tradeFetch } from '../hooks/useTradeApi';
 // ============================================================
 // ExpenseModal — 회사 행 입력: 경비 · 인출 · 자본투입 · 환차 · 보정
 //   저장 시도마다 참조키(TRADE-{구분}-{ts})를 만들고 재시도에는 같은 키 → 서버가 중복 차단
+//   다른 화면(주문 검사 [비용처리])에서 열 때는 initial 로 값을 미리 채우고
+//   referenceId 로 참조키를 고정한다 (같은 건 재기록은 서버가 차단).
 // ============================================================
+
+/** 미리 채울 값 — 모두 선택 */
+export interface ExpenseInitial {
+  date?: string;
+  category?: CompanyCategory;
+  direction?: 'in' | 'out';
+  amount?: string;
+  krw?: string;
+  description?: string;
+  note?: string;
+}
 
 interface Props {
   onClose: () => void;
   onSaved: () => void;
+  initial?: ExpenseInitial;
+  /** 고정 참조키 — 주면 저장 시도마다 새로 만들지 않고 이 키로만 기록 */
+  referenceId?: string;
+  /** 폼 위에 보여줄 맥락 (예: 1688 주문 요약) */
+  context?: React.ReactNode;
 }
 
-const ExpenseModal: React.FC<Props> = ({ onClose, onSaved }) => {
-  const [date, setDate] = useState(todayKST());
-  const [category, setCategory] = useState<CompanyCategory>('전기세');
-  const [direction, setDirection] = useState<'in' | 'out'>('out');
-  const [amount, setAmount] = useState('');
-  const [krw, setKrw] = useState('');
-  const [description, setDescription] = useState('');
-  const [note, setNote] = useState('');
+const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId, context }) => {
+  const [date, setDate] = useState(initial?.date ?? todayKST());
+  const [category, setCategory] = useState<CompanyCategory>(initial?.category ?? '전기세');
+  const [direction, setDirection] = useState<'in' | 'out'>(initial?.direction ?? 'out');
+  const [amount, setAmount] = useState(initial?.amount ?? '');
+  const [krw, setKrw] = useState(initial?.krw ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [note, setNote] = useState(initial?.note ?? '');
   const [saving, setSaving] = useState(false);
-  const refKey = useRef<string | null>(null);
+  const refKey = useRef<string | null>(referenceId ?? null);
 
   const adjust = isAdjustCategory(category);
   const fixedDirection = CATEGORY_DIRECTION[category] ?? null;
@@ -63,7 +81,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved }) => {
           }],
         }),
       });
-      refKey.current = null;
+      refKey.current = referenceId ?? null;
       onSaved();
     } catch (e) {
       alert(e instanceof Error ? e.message : '기록 실패');
@@ -77,6 +95,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved }) => {
       <div className="ta-modal" onClick={(e) => e.stopPropagation()}>
         <h3 className="ta-modal-title">회사 거래 추가</h3>
         <p className="ta-modal-desc">급여는 [급여 반영]에서, 고객 거래는 고객계좌(신)에서 기록합니다.</p>
+        {context}
 
         <div className="ta-field-row">
           <div className="ta-field">

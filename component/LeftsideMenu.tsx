@@ -241,6 +241,12 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">invoice</span>
                   </Link>
                 </li>
+                {/* 주문 검사 — 1688 주문 엑셀 ↔ 상품입고 V2 매칭 (경로는 /db 유지, DB 관리 접근 코드 필요) */}
+                <li className="submenu-item">
+                  <Link href="/db/order-inspect" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/order-inspect')}>
+                    <span className="submenu-text">주문 검사</span>
+                  </Link>
+                </li>
                 {/* ── 구분선 아래: 구 원장 (조회 전용) ── */}
                 <li className="submenu-divider" aria-hidden="true" />
                 <li className="submenu-item">
@@ -332,11 +338,6 @@ const LeftsideMenu: React.FC = () => {
                 <li className="submenu-item">
                   <Link href="/db/database" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/database')}>
                     <span className="submenu-text">데이터베이스 관리</span>
-                  </Link>
-                </li>
-                <li className="submenu-item">
-                  <Link href="/db/order-inspect" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/order-inspect')}>
-                    <span className="submenu-text">주문 검사</span>
                   </Link>
                 </li>
               </ul>

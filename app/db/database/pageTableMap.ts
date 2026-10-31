@@ -228,6 +228,19 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         external: ['엑셀 처리 전용'],
         note: 'PROFORMA INVOICE 생성 — assets/trade-invoice 템플릿에 금액·저장일을 넣어 엑셀(원본/개정본 EXCEL2)·JPG·PDF 저장. 테이블 접근 없음, DB 관리 접근 코드 필요',
       },
+      {
+        name: '주문 검사',
+        route: '/db/order-inspect',
+        file: 'app/db/order-inspect/OrderInspect.tsx',
+        apis: [
+          { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
+          { route: '/api/db/order-inspect', tables: ['ft_order_items'] },
+          { route: '/api/ft/users', tables: ['ft_users'] },
+          { route: '/api/ft/user-transactions', tables: ['ft_user_transactions', 'ft_balances'] },
+          { route: '/api/trade-account/transactions', tables: ['ft_trade_transactions'] },
+        ],
+        note: '1688 주문 엑셀(A열 주문번호) ↔ ft_order_items.1688_order_id 매칭 — 미매칭 주문만 표시. J열 주문상태(거래/환불/취소 탭)·N열 받는 사람·U열 수량·AD열 구매자 메모 함께 표시. [비용처리] → 무역계좌(회사 거래 추가 모달) 또는 고객기업 계좌(고객계좌(신) 차감 폼)에 결제금액 기록, 참조키는 1688 주문번호 고정. DB 관리 접근 코드 필요',
+      },
     ],
   },
 
