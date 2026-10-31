@@ -17,7 +17,7 @@ import {
 } from '../../../invoice/payment-history-v2/utils/customerLedger';
 
 // ============================================================
-// CustomerDeductModal — [비용처리] → 고객기업 계좌에서 차감
+// CustomerDeductModal — [비용처리] → 고객 부담 (고객 충전금에서 차감)
 //
 //   고객계좌(신) [추가] 모달의 '차감' 탭과 같은 폼(DeductForm)·같은 API 로 기록한다.
 //   차이점: 사업자를 이 모달 안에서 고르고, 고르면 원장을 조회해

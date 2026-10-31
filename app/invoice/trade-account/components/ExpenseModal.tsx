@@ -60,7 +60,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId,
   const handleSave = async () => {
     if (!valid || saving) return;
     const ok = window.confirm(
-      `무역계좌에 기록합니다.\n\n구분: ${category} (${effDirection === 'in' ? '입금' : '출금'})\n금액: ${fmtYuan(amountNum)}\n내용: ${description.trim()}\n적용일: ${date}\n\n진행할까요?`,
+      `${effDirection === 'in' ? '회사 입금으로 기록합니다 (통장 +, 회사자산 +).' : '회사 비용으로 기록합니다 (통장 −, 회사자산 −).'}\n\n구분: ${category} (${effDirection === 'in' ? '입금' : '출금'})\n금액: ${fmtYuan(amountNum)}\n내용: ${description.trim()}\n적용일: ${date}\n\n진행할까요?`,
     );
     if (!ok) return;
     if (!refKey.current) refKey.current = `TRADE-${category}-${Date.now()}`;

@@ -35,6 +35,6 @@ export interface Summary {
 export type CostTarget = 'trade' | 'customer';
 
 export const COST_TARGET_LABEL: Record<CostTarget, string> = {
-  trade: '무역계좌',
-  customer: '고객 차감',
+  trade: '회사 부담',
+  customer: '고객 부담',
 };

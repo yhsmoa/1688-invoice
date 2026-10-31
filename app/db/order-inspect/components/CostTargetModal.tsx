@@ -4,10 +4,11 @@ import React from 'react';
 import type { CostTarget, InspectOrder } from '../types';
 
 // ============================================================
-// CostTargetModal — [비용처리] 1단계: 어느 계좌에서 차감할지 고른다
+// CostTargetModal — [비용처리] 1단계: 결제금액을 누가 부담하는지 고른다
 //
-//   무역계좌      → 회사 비용 (ExpenseModal, /api/trade-account/transactions)
-//   고객기업 계좌 → 고객 차감 (CustomerDeductModal, /api/ft/user-transactions)
+//   통장(무역계좌) 출금은 양쪽 모두 같다. 차이는 몫의 구분뿐:
+//   회사 부담 → 회사자산 − · 손익 −  (ExpenseModal, /api/trade-account/transactions)
+//   고객 부담 → 고객 충전금 −        (CustomerDeductModal, /api/ft/user-transactions)
 // ============================================================
 
 /** 주문 요약 — 선택 모달과 두 기록 모달 상단에 공통으로 표시 */
@@ -52,18 +53,18 @@ const CostTargetModal: React.FC<Props> = ({ order, onPick, onClose }) => (
   <div className="oi-choice-overlay" onClick={onClose}>
     <div className="oi-choice-modal" role="dialog" aria-label="비용처리 대상 선택" onClick={(e) => e.stopPropagation()}>
       <h3 className="oi-choice-title">비용처리</h3>
-      <p className="oi-choice-desc">이 주문의 결제금액을 어느 계좌에서 차감할지 고르세요.</p>
+      <p className="oi-choice-desc">이 주문의 결제금액을 누가 부담하는지 고르세요. 통장 출금은 양쪽 모두 같습니다.</p>
 
       <CostOrderSummary order={order} />
 
       <div className="oi-choice-options">
         <button type="button" className="oi-choice-option oi-choice-option--trade" onClick={() => onPick('trade')}>
-          <span className="oi-choice-name">무역계좌</span>
-          <span className="oi-choice-hint">회사 비용으로 기록 — 무역계좌 [회사 거래 추가]</span>
+          <span className="oi-choice-name">회사 부담 (회사자산 −)</span>
+          <span className="oi-choice-hint">소모품 등 회사 경비로 기록 · 손익에 반영</span>
         </button>
         <button type="button" className="oi-choice-option oi-choice-option--customer" onClick={() => onPick('customer')}>
-          <span className="oi-choice-name">고객기업 계좌</span>
-          <span className="oi-choice-hint">고객 잔액에서 차감 — 고객계좌(신) [추가 › 차감]</span>
+          <span className="oi-choice-name">고객 부담 (고객 충전금 −)</span>
+          <span className="oi-choice-hint">해당 고객의 충전금에서 차감 · 회사자산 변동 없음</span>
         </button>
       </div>
 
