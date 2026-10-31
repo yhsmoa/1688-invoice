@@ -80,6 +80,8 @@ export interface TradeRow {
   krw_amount: number | null;
   description: string;
   reference_id: string;
+  /** 1688 주문번호 — 회사가 직접 부담한 주문(주문 검사 비용처리) 또는 미러 원본 고객 행의 주문번호 */
+  order_no_1688: string | null;
   user_tx_id: string | null;
   balance_id: string | null;
   reverses_id: string | null;

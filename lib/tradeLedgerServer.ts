@@ -21,7 +21,7 @@ const ROW_SELECT = [
   'id', 'created_at', 'applied_date', 'kind', 'category',
   'bank_delta', 'customer_delta', 'asset_delta', 'pnl_delta',
   'bank_balance', 'customer_balance', 'asset_balance',
-  'amount', 'krw_amount', 'description', 'reference_id',
+  'amount', 'krw_amount', 'description', 'reference_id', 'order_no_1688',
   'user_tx_id', 'balance_id', 'reverses_id',
   'employee_id', 'payroll_month', 'expected_amount', 'admin_note', 'created_by',
 ].join(', ');
@@ -254,6 +254,8 @@ export interface CompanyRowInput {
   description: string;
   reference_id: string;
   admin_note?: string | null;
+  /** 1688 주문번호 (선택) — 회사가 직접 부담한 1688 주문일 때 */
+  order_no_1688?: string | null;
 }
 
 export function recordCompanyRows(rows: CompanyRowInput[], createdBy: string): Promise<string[]> {

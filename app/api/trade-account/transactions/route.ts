@@ -6,10 +6,12 @@ import { COMPANY_CATEGORIES, isAdjustCategory, todayKST } from '../../../../lib/
 export const dynamic = 'force-dynamic';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** 1688 주문번호 — 숫자만 (현재 19자리). 자릿수는 고정하지 않는다 */
+const ORDER_NO_RE = /^\d{1,40}$/;
 
 // ============================================================
 // POST /api/trade-account/transactions
-//   Body: { rows: [{ applied_date, category, type?, amount, krw_amount?, description, reference_id, admin_note? }] }
+//   Body: { rows: [{ applied_date, category, type?, amount, krw_amount?, description, reference_id, admin_note?, order_no_1688? }] }
 //   경비·인출·자본투입·환차·보정 기록 (rpc trade_record — 한 트랜잭션)
 //   급여는 /payroll/commit
 // ============================================================
@@ -37,6 +39,8 @@ export async function POST(request: NextRequest) {
       if (krw != null && !(Number.isFinite(krw) && krw > 0)) throw new TradeError(`${i + 1}번째 행: 원화 금액은 0보다 커야 합니다.`);
       const type = r.type === 'in' || r.type === 'out' ? r.type : null;
       const adminNote = r.admin_note != null ? String(r.admin_note).trim() || null : null;
+      const orderNo = r.order_no_1688 != null ? String(r.order_no_1688).trim() || null : null;
+      if (orderNo && !ORDER_NO_RE.test(orderNo)) throw new TradeError(`${i + 1}번째 행: 1688 주문번호는 숫자만 입력할 수 있습니다.`);
       if (isAdjustCategory(category)) {
         if (!type) throw new TradeError(`${i + 1}번째 행: 환차·보정은 입금/출금을 골라야 합니다.`);
         if (!adminNote) throw new TradeError(`${i + 1}번째 행: 환차·보정은 사유를 입력해야 합니다.`);
@@ -46,6 +50,7 @@ export async function POST(request: NextRequest) {
         amount: Math.round(amount * 100) / 100,
         krw_amount: krw == null ? null : Math.round(krw * 100) / 100,
         description, reference_id: referenceId, admin_note: adminNote,
+        order_no_1688: orderNo,
       };
     });
 

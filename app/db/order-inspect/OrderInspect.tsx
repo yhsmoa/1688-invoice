@@ -40,7 +40,10 @@ import './OrderInspect.css';
 //     · 회사 부담 → ExpenseModal (무역계좌 [회사 거래 추가] 와 같은 모달, 값만 미리 채움)
 //     · 고객 부담 → CustomerDeductModal (고객계좌(신) [추가 › 차감] 과 같은 폼 + 사업자 선택)
 //   참조키는 1688 주문번호로 고정(utils/costPrefill) → 같은 주문을 두 번 기록하면 서버가 차단.
-//   기록된 주문은 이 화면에 머무는 동안 버튼 대신 "기록됨" 배지로 표시한다 (페이지 상태, 새로고침 시 초기화).
+//   기록된 주문은 버튼 대신 "기록됨" 배지로 표시한다.
+//     · 이 화면에서 방금 기록한 건 → processed (페이지 상태)
+//     · 이전에 기록한 건 → 서버가 업로드 때 두 원장을 조회해 order.recorded 로 돌려준다
+//       (미매칭 주문은 다시 올리면 또 나오므로, 창을 닫았다 다시 올려도 배지가 유지된다)
 // ============================================================
 
 /** 비용처리 진행 상태 — 대상 선택 → 기록 모달 */
@@ -253,7 +256,8 @@ const OrderInspect: React.FC = () => {
                       <tbody>
                         {viewOrders.map((o) => {
                           const rows = o.items.length > 0 ? o.items : [{ detail: '-', detailKo: '-', qty: '' }];
-                          const done = processed[o.orderNo];
+                          /** 기록된 부담 주체 — 방금 기록(processed) 우선, 없으면 서버 조회값(recorded). 둘 다면 배지 2개 */
+                          const done: CostTarget[] = processed[o.orderNo] ? [processed[o.orderNo]] : o.recorded;
                           return rows.map((it, idx) => (
                             <tr key={`${o.orderNo}-${idx}`} className={idx === 0 ? 'oi-order-start' : ''}>
                               {/* 주문 단위 열 — 첫 행에서만 렌더 + rowspan (엑셀 병합과 동일) */}
@@ -290,11 +294,15 @@ const OrderInspect: React.FC = () => {
                               )}
                               {/* 수량(U열) — 상품 단위 */}
                               <td className="oi-td oi-qty">{it.qty || '-'}</td>
-                              {/* 비용처리 — 주문 단위 (결제금액 기준). 기록 후에는 배지 */}
+                              {/* 비용처리 — 주문 단위 (결제금액 기준). 기록된 건은 배지 (방금 기록 + 이전 기록) */}
                               {idx === 0 && (
                                 <td className="oi-td oi-merged oi-cost-cell" rowSpan={rows.length}>
-                                  {done ? (
-                                    <span className={`oi-cost-done oi-cost-done--${done}`}>{COST_TARGET_LABEL[done]} 기록됨</span>
+                                  {done.length > 0 ? (
+                                    <span className="oi-cost-done-list">
+                                      {done.map((t) => (
+                                        <span key={t} className={`oi-cost-done oi-cost-done--${t}`}>{COST_TARGET_LABEL[t]} 기록됨</span>
+                                      ))}
+                                    </span>
                                   ) : (
                                     <button type="button" className="oi-cost-btn" onClick={() => setCost({ order: o, step: 'choose' })}>
                                       비용처리
@@ -337,7 +345,8 @@ const OrderInspect: React.FC = () => {
             category: '소모품',
             amount: amountInputOf(cost.order.amount),
             description: descriptionOf(cost.order),
-            note: `1688 주문 ${cost.order.orderNo}${cost.order.shop ? ` · ${cost.order.shop}` : ''}\n${itemLinesOf(cost.order)}`,
+            note: `${cost.order.shop ? `${cost.order.shop}\n` : ''}${itemLinesOf(cost.order)}`,
+            orderNo1688: cost.order.orderNo,
           }}
           referenceId={tradeReferenceId(cost.order)}
           context={<CostOrderSummary order={cost.order} />}

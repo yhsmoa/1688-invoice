@@ -140,7 +140,8 @@ const LedgerTab: React.FC<Props> = ({ tabSwitcher, refreshKey, onChanged, todayR
                       <td className="ta-num ta-strong">{fmtBal(r.customer_balance)}</td>
                       <td className="ta-num ta-strong ta-asset">{fmtBal(r.asset_balance)}</td>
                       <td className={`ta-num ${r.pnl_delta > 0 ? 'ta-in' : r.pnl_delta < 0 ? 'ta-out' : ''}`}>{r.pnl_delta !== 0 ? fmtSigned(r.pnl_delta) : ''}</td>
-                      <td className="ta-td-ref" title={`${r.reference_id}${r.admin_note ? `\n${r.admin_note}` : ''}`}>
+                      <td className="ta-td-ref" title={`${r.reference_id}${r.order_no_1688 ? `\n1688 주문 ${r.order_no_1688}` : ''}${r.admin_note ? `\n${r.admin_note}` : ''}`}>
+                        {r.order_no_1688 && <span className="ta-order-no">1688 {r.order_no_1688}</span>}
                         {r.admin_note ? <span className="ta-note">📌 {r.admin_note}</span> : <span className="ta-ref">{r.reference_id}</span>}
                       </td>
                       <td>

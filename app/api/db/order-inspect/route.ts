@@ -29,6 +29,13 @@ export const dynamic = 'force-dynamic';
 //
 // 주문내역(S열)·사전에 없는 주문상태는 중국어이므로 Google Cloud Translation API 로 한국어 번역.
 //   API 미활성/실패 시에도 원문을 그대로 반환한다 (기능 중단 없음).
+//
+// 비용처리 기록 여부 (recorded)
+//   미매칭 주문은 ft_order_items 에 안 잡히므로 엑셀을 다시 올리면 또 나온다.
+//   이미 [비용처리] 한 주문을 다시 기록하지 않도록 두 원장을 조회해 돌려준다.
+//     · 회사 부담 → ft_trade_transactions.order_no_1688 = 주문번호, kind = 'company' (취소(reversal)된 행 제외)
+//     · 고객 부담 → ft_user_transactions.order_no_1688 = 주문번호, type = 'out'
+//   (참조키 TRADE-1688-* / MANUAL-차감-1688-* 는 중복 저장 차단용이고 조회에는 쓰지 않는다)
 // ============================================================
 
 const COL = {
@@ -69,6 +76,9 @@ interface InspectItem {
   qty: string;         // U열 표시값 (예: "100")
 }
 
+/** 비용처리 기록 대상 — 화면 types.ts 의 CostTarget 과 동일 */
+type CostTarget = 'trade' | 'customer';
+
 interface InspectOrder {
   orderNo: string;
   shop: string;
@@ -80,7 +90,9 @@ interface InspectOrder {
   receiver: string;    // N열
   memo: string;        // AD열
   items: InspectItem[];
+  recorded: CostTarget[]; // 이미 기록된 비용처리 (없으면 [])
 }
+
 
 // ── 셀 → 문자열 (숫자/날짜 모두 표시값 기준) ──
 const cellText = (v: unknown): string =>
@@ -225,6 +237,7 @@ export async function POST(request: NextRequest) {
           receiver: curReceiver,
           memo: curMemo,
           items: [],
+          recorded: [],
         });
         orderSeq.push(curNo);
       }
@@ -264,6 +277,57 @@ export async function POST(request: NextRequest) {
     const unmatched = allOrderNos
       .filter((no) => !matched.has(no))
       .map((no) => orderMap.get(no)!);
+
+    // ── 4-1. 비용처리 기록 여부 — 두 원장 조회 (주문번호 목록 기준, 200건 배치) ──
+    const unmatchedNos = unmatched.map((o) => o.orderNo);
+    const recordedTrade = new Set<string>();
+    const recordedCustomer = new Set<string>();
+
+    for (let i = 0; i < unmatchedNos.length; i += IN_BATCH) {
+      const batch = unmatchedNos.slice(i, i + IN_BATCH);
+
+      // 회사 부담: 1688 주문번호 컬럼으로 조회 → 취소(reversal)된 행은 제외
+      //   (무역계좌 [회사 거래 추가] 에서 주문번호를 적어 넣은 건도 함께 잡힌다)
+      const { data: tradeRows, error: tradeErr } = await supabase
+        .from('ft_trade_transactions')
+        .select('id, order_no_1688')
+        .eq('kind', 'company')
+        .in('order_no_1688', batch);
+      if (tradeErr) throw tradeErr;
+
+      const tradeIds = (tradeRows ?? []).map((r) => String(r.id));
+      const reversed = new Set<string>();
+      if (tradeIds.length > 0) {
+        const { data: revRows, error: revErr } = await supabase
+          .from('ft_trade_transactions')
+          .select('reverses_id')
+          .in('reverses_id', tradeIds);
+        if (revErr) throw revErr;
+        for (const r of revRows ?? []) if (r.reverses_id) reversed.add(String(r.reverses_id));
+      }
+      for (const r of tradeRows ?? []) {
+        if (reversed.has(String(r.id))) continue;
+        const no = r.order_no_1688 ? String(r.order_no_1688).trim() : '';
+        if (no) recordedTrade.add(no);
+      }
+
+      // 고객 부담: 1688 주문번호 열로 조회 (주문 검사·고객계좌(신) 수동 차감 모두 포함)
+      const { data: custRows, error: custErr } = await supabase
+        .from('ft_user_transactions')
+        .select('order_no_1688')
+        .eq('type', 'out')
+        .in('order_no_1688', batch);
+      if (custErr) throw custErr;
+      for (const r of custRows ?? []) {
+        const no = r.order_no_1688 ? String(r.order_no_1688).trim() : '';
+        if (no) recordedCustomer.add(no);
+      }
+    }
+
+    for (const o of unmatched) {
+      if (recordedTrade.has(o.orderNo)) o.recorded.push('trade');
+      if (recordedCustomer.has(o.orderNo)) o.recorded.push('customer');
+    }
 
     // ── 5. 주문내역(S열) + 사전에 없는 주문상태(J열) 중국어 → 한국어 번역 ──
     const details = unmatched.flatMap((o) => o.items.map((it) => it.detail));

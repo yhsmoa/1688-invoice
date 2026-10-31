@@ -239,7 +239,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/user-transactions', tables: ['ft_user_transactions', 'ft_balances'] },
           { route: '/api/trade-account/transactions', tables: ['ft_trade_transactions'] },
         ],
-        note: '1688 주문 엑셀(A열 주문번호) ↔ ft_order_items.1688_order_id 매칭 — 미매칭 주문만 표시. J열 주문상태(거래/환불/취소 탭)·N열 받는 사람·U열 수량·AD열 구매자 메모 함께 표시. [비용처리] → 무역계좌(회사 거래 추가 모달) 또는 고객기업 계좌(고객계좌(신) 차감 폼)에 결제금액 기록, 참조키는 1688 주문번호 고정. DB 관리 접근 코드 필요',
+        note: '1688 주문 엑셀(A열 주문번호) ↔ ft_order_items.1688_order_id 매칭 — 미매칭 주문만 표시. J열 주문상태(거래/환불/취소 탭)·N열 받는 사람·U열 수량·AD열 구매자 메모 함께 표시. [비용처리] → 회사 부담(무역계좌 회사 거래 추가 모달) 또는 고객 부담(고객계좌(신) 차감 폼)으로 결제금액 기록, 참조키는 1688 주문번호 고정. 업로드 때 두 원장을 조회해 이미 기록된 주문은 배지로 표시. DB 관리 접근 코드 필요',
       },
     ],
   },

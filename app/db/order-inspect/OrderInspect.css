@@ -370,6 +370,14 @@
 .oi-cost-done--trade    { background: #dbeafe; color: #1e40af; }
 .oi-cost-done--customer { background: #fee2e2; color: #b91c1c; }
 
+/* 같은 주문이 양쪽에 기록된 경우 — 배지를 세로로 쌓는다 */
+.oi-cost-done-list {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
 /* ============================================================ */
 /* 비용처리 — 대상 선택 모달                                     */
 /* ============================================================ */

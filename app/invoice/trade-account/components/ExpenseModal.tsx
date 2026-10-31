@@ -27,6 +27,8 @@ export interface ExpenseInitial {
   krw?: string;
   description?: string;
   note?: string;
+  /** 회사가 직접 부담한 1688 주문이면 주문번호 (주문 검사에서 열 때 미리 채움) */
+  orderNo1688?: string;
 }
 
 interface Props {
@@ -47,6 +49,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId,
   const [krw, setKrw] = useState(initial?.krw ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
+  const [orderNo1688, setOrderNo1688] = useState(initial?.orderNo1688 ?? '');
   const [saving, setSaving] = useState(false);
   const refKey = useRef<string | null>(referenceId ?? null);
 
@@ -78,6 +81,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId,
             description: description.trim(),
             reference_id: refKey.current,
             admin_note: note.trim() || null,
+            order_no_1688: orderNo1688.trim() || null,
           }],
         }),
       });
@@ -137,6 +141,18 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId,
             <label>원화 실제 금액 (선택)</label>
             <input type="number" min="0" step="1" value={krw} onChange={(e) => setKrw(e.target.value)} placeholder="환전·송금 건" disabled={saving} />
           </div>
+        </div>
+
+        <div className="ta-field">
+          <label>1688 주문번호 (선택)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={orderNo1688}
+            onChange={(e) => setOrderNo1688(e.target.value.replace(/\D/g, ''))}
+            placeholder="회사가 직접 부담한 1688 주문이면 입력"
+            disabled={saving}
+          />
         </div>
 
         <div className="ta-field">

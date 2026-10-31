@@ -411,6 +411,14 @@
   color: #b45309;
 }
 
+/* 1688 주문번호 — 참조키 위에 한 줄 */
+.ta-order-no {
+  display: block;
+  font-size: 11.5px;
+  color: #1e40af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .ta-cat {
   margin-left: 6px;
 }
