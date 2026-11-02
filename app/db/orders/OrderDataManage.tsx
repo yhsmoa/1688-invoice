@@ -12,6 +12,7 @@ import './OrderDataManage.css';
 //     · 주차 기준 ft_orders.created_at (KST)
 //     · 주문수량 ft_order_items.order_qty 합
 //     · 배송유형 ft_order_items.shipment_type
+//     · 잠재 주문량 ft_carts ORDER(주문요청) / NEW(카트) — 오늘이 속한 구간 막대에 이어 표시
 // ============================================================
 
 // ── 타입 ──
@@ -37,6 +38,19 @@ interface Meta {
   itemRows: number;
   orphanItems: number;
   headerQtyMismatch: number;
+}
+
+/** 아직 ft_orders 로 넘어오지 않은 고객 카트 집계 */
+interface PendingStat {
+  carts: number;
+  items: number;
+  qty: number;
+}
+
+interface Pending {
+  periodStart: string;
+  request: PendingStat;
+  cart: PendingStat;
 }
 
 // ── 표시 helper ──
@@ -67,6 +81,7 @@ const OrderDataManage: React.FC = () => {
   const [period, setPeriod] = useState<Period>('week');
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,10 +97,12 @@ const OrderDataManage: React.FC = () => {
       if (!json.success) throw new Error(json.error || '조회 실패');
       setWeeks(json.weeks || []);
       setMeta(json.meta || null);
+      setPending(json.pending || null);
     } catch (e) {
       setError(e instanceof Error ? e.message : '조회 중 오류가 발생했습니다.');
       setWeeks([]);
       setMeta(null);
+      setPending(null);
     } finally {
       setLoading(false);
     }
@@ -119,8 +136,23 @@ const OrderDataManage: React.FC = () => {
     };
   }, [weeks]);
 
-  // ── 막대 그래프 기준값 (최대 주문수량) ──
-  const maxQty = useMemo(() => weeks.reduce((m, w) => Math.max(m, w.qty), 0), [weeks]);
+  // ── 잠재 주문량 (주문요청 + 카트) — 오늘이 속한 구간 행에만 얹는다 ──
+  const pendingQty = pending ? pending.request.qty + pending.cart.qty : 0;
+  const pendingOf = useCallback(
+    (weekStart: string) => (pending && pendingQty > 0 && pending.periodStart === weekStart ? pending : null),
+    [pending, pendingQty]
+  );
+
+  // ── 막대 그래프 기준값 (주문수량 + 해당 행의 잠재 주문량 중 최대) ──
+  const maxQty = useMemo(
+    () =>
+      weeks.reduce((m, w) => {
+        const p = pendingOf(w.weekStart);
+        return Math.max(m, w.qty + (p ? p.request.qty + p.cart.qty : 0));
+      }, 0),
+    [weeks, pendingOf]
+  );
+  const barPct = (n: number) => (maxQty > 0 ? `${(n / maxQty) * 100}%` : '0%');
 
   return (
     <div className="app-layout">
@@ -184,6 +216,15 @@ const OrderDataManage: React.FC = () => {
                 <span className="odm-sum-value">{nf(totals.amountCny)}</span>
                 <span className="odm-sum-unit">CNY</span>
               </div>
+              {pending && (
+                <div className="odm-sum-card odm-sum-card-pending">
+                  <span className="odm-sum-label">잠재 주문량 (미주문)</span>
+                  <span className="odm-sum-value">{nf(pendingQty)}</span>
+                  <span className="odm-sum-unit">
+                    주문요청 {nf(pending.request.qty)} · 카트 {nf(pending.cart.qty)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -193,6 +234,27 @@ const OrderDataManage: React.FC = () => {
             {error && !loading && <div className="odm-state odm-state-error">{error}</div>}
             {!loading && !error && weeks.length === 0 && (
               <div className="odm-state">데이터가 없습니다.</div>
+            )}
+
+            {/* ── 막대 범례 ── */}
+            {!loading && !error && weeks.length > 0 && (
+              <div className="odm-legend">
+                <span className="odm-legend-item">
+                  <i className="odm-legend-swatch odm-seg-order" />
+                  주문
+                </span>
+                <span className="odm-legend-item">
+                  <i className="odm-legend-swatch odm-seg-request" />
+                  주문요청
+                </span>
+                <span className="odm-legend-item">
+                  <i className="odm-legend-swatch odm-seg-cart" />
+                  카트
+                </span>
+                <span className="odm-legend-note">
+                  주문요청·카트는 아직 주문되지 않은 잠재 주문량으로, 이번 {period === 'month' ? '달' : '주'} 막대에 이어 표시
+                </span>
+              </div>
             )}
 
             {!loading && !error && weeks.length > 0 && (
@@ -215,22 +277,43 @@ const OrderDataManage: React.FC = () => {
                   <tbody>
                     {weeks.map((w) => {
                       const donePct = w.qty > 0 ? round1((w.doneQty / w.qty) * 100) : null;
+                      const p = pendingOf(w.weekStart);
                       return (
-                        <tr key={w.weekStart}>
+                        <tr key={w.weekStart} className={p ? 'odm-row-pending' : undefined}>
                           <td className="odm-col-week">{periodLabel(w.weekStart, period)}</td>
                           <td className="odm-col-range">
                             {shortDate(w.weekStart)} ~ {shortDate(w.weekEnd)}
                           </td>
                           <td className="odm-col-num">{nf(w.orderCount)}</td>
                           <td className="odm-col-num odm-muted">{nf(w.itemRows)}</td>
+                          {/* 주문수량 막대 — 주문(실적) 뒤에 주문요청·카트(잠재)를 이어 붙인다 */}
                           <td className="odm-col-bar">
                             <div className="odm-bar-cell">
                               <span className="odm-bar-value">{nf(w.qty)}</span>
-                              <span
-                                className="odm-bar"
-                                style={{ width: maxQty > 0 ? `${(w.qty / maxQty) * 100}%` : '0%' }}
-                              />
+                              <span className="odm-bar-track">
+                                <span className="odm-bar-seg odm-seg-order" style={{ width: barPct(w.qty) }} />
+                                {p && (
+                                  <>
+                                    <span
+                                      className="odm-bar-seg odm-seg-request"
+                                      style={{ width: barPct(p.request.qty) }}
+                                      title={`주문요청 ${nf(p.request.qty)}개`}
+                                    />
+                                    <span
+                                      className="odm-bar-seg odm-seg-cart"
+                                      style={{ width: barPct(p.cart.qty) }}
+                                      title={`카트 ${nf(p.cart.qty)}개`}
+                                    />
+                                  </>
+                                )}
+                              </span>
                             </div>
+                            {p && (
+                              <div className="odm-bar-pending">
+                                <span className="odm-pending-request">주문요청 +{nf(p.request.qty)}</span>
+                                <span className="odm-pending-cart">카트 +{nf(p.cart.qty)}</span>
+                              </div>
+                            )}
                           </td>
                           {/* 배송유형 — 수량 옆에 해당 구간 주문수량 대비 비중 표시 */}
                           <td className="odm-col-type">
@@ -275,7 +358,9 @@ const OrderDataManage: React.FC = () => {
             구간은 <code>ft_orders.created_at</code>(KST) 기준이며, 주간은 월요일 시작(월~일), 월간은
             달력 월 기준으로 원본 날짜에서 직접 집계합니다(주간 합산이 아니므로 월 경계를 걸친 주가
             중복되지 않습니다). 주문수량은 <code>ft_order_items.order_qty</code> 합계, 완료율은 품목
-            상태가 <code>DONE</code>인 수량의 비율입니다.
+            상태가 <code>DONE</code>인 수량의 비율입니다. 잠재 주문량은 <code>ft_carts</code> 상태가{' '}
+            <code>ORDER</code>(주문요청)·<code>NEW</code>(카트)인 카트의 품목 수량 합계이며, 주문으로
+            불러오는 시점이 주문일이 되므로 오늘이 속한 구간에 표시하고 합계·평균·비중에는 넣지 않습니다.
             {meta && meta.headerQtyMismatch > 0 && (
               <span className="odm-warn">
                 {' '}

@@ -369,7 +369,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         route: '/db/orders',
         file: 'app/db/orders/OrderDataManage.tsx',
         apis: [
-          { route: '/api/db/order-weekly', tables: ['ft_orders', 'ft_order_items'] },
+          { route: '/api/db/order-weekly', tables: ['ft_orders', 'ft_order_items', 'ft_carts', 'ft_cart_items'] },
           { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
         ],
         note: '주간/월간 주문량 — 수량은 ft_orders.total_qty 대신 품목(order_qty) 기준으로 집계',

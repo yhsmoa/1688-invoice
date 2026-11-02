@@ -23,10 +23,21 @@ export const dynamic = 'force-dynamic';
 //   · 배송유형    : ft_order_items.shipment_type (COUPANG / PERSONAL / DIRECT)
 //   · 진행상태    : ft_order_items.status (DONE / 그 외 = 진행중)
 //
+// 잠재 주문량 (pending) — 아직 ft_orders 로 넘어오지 않은 고객 카트
+//   · 주문요청 : ft_carts.status = 'ORDER' (고객이 [주문] 했고 프로그램이 아직 안 불러옴)
+//   · 카트     : ft_carts.status = 'NEW'   (고객 장바구니, 편집 중)
+//   · 'DONE' 카트는 이미 ft_orders 로 전환됐으므로 제외 (이중 집계 방지)
+//   · 불러오면 그 시점이 ft_orders.created_at 이 되므로 "오늘이 속한 구간"에 얹는다.
+//
 // ⚠️ ft_order_items 1.7만 행 → range() 페이지네이션 필수
+//    ft_carts 643 / ft_cart_items 3.1만 (2026-11-02, NEW 3 · ORDER 9 카트)
+//    → 카트·품목 모두 range 루프 + 카트 id 100개 단위 in() 조회
 // ============================================================
 
 const PAGE = 1000;
+const ID_CHUNK = 100;
+const PENDING_CART_STATUSES = ['ORDER', 'NEW'] as const;
+type PendingCartStatus = (typeof PENDING_CART_STATUSES)[number];
 
 // ── 전체 조회 helper (1000행 limit 우회) ──
 async function fetchAll<T>(table: string, select: string, orderColumn: string): Promise<T[]> {
@@ -45,6 +56,77 @@ async function fetchAll<T>(table: string, select: string, orderColumn: string): 
     from += PAGE;
   }
   return rows;
+}
+
+// ── 잠재 주문 카트 (status ORDER / NEW) — id 정렬 range 루프 ──
+type CartRow = { id: string; status: PendingCartStatus };
+type CartItemRow = { id: string; cart_id: string; order_qty: number | null };
+
+async function fetchPendingCarts(): Promise<CartRow[]> {
+  const rows: CartRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('ft_carts')
+      .select('id, status')
+      .in('status', [...PENDING_CART_STATUSES])
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as CartRow[]));
+    if (!data || data.length < PAGE) break;
+  }
+  return rows;
+}
+
+// ── 카트별 품목 (카트 id 100개 단위 × id 정렬 range 루프) ──
+async function fetchCartItems(cartIds: string[]): Promise<CartItemRow[]> {
+  const rows: CartItemRow[] = [];
+  for (let c = 0; c < cartIds.length; c += ID_CHUNK) {
+    const ids = cartIds.slice(c, c + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('ft_cart_items')
+        .select('id, cart_id, order_qty')
+        .in('cart_id', ids)
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      rows.push(...((data ?? []) as CartItemRow[]));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return rows;
+}
+
+// ── 잠재 주문량 집계 (상태별 카트 수 · 품목 수 · 수량) ──
+interface PendingStat {
+  carts: number;
+  items: number;
+  qty: number;
+}
+
+async function loadPending(): Promise<Record<'request' | 'cart', PendingStat>> {
+  const carts = await fetchPendingCarts();
+  const items = carts.length > 0 ? await fetchCartItems(carts.map((c) => c.id)) : [];
+
+  const result = {
+    request: { carts: 0, items: 0, qty: 0 },
+    cart: { carts: 0, items: 0, qty: 0 },
+  };
+  const keyOf = (s: PendingCartStatus) => (s === 'ORDER' ? 'request' : 'cart');
+
+  const statusById = new Map<string, PendingCartStatus>();
+  carts.forEach((c) => {
+    statusById.set(c.id, c.status);
+    result[keyOf(c.status)].carts += 1;
+  });
+  items.forEach((it) => {
+    const s = statusById.get(it.cart_id);
+    if (!s) return;
+    result[keyOf(s)].items += 1;
+    result[keyOf(s)].qty += it.order_qty ?? 0;
+  });
+  return result;
 }
 
 // ── 구간(주/월) 누적 버킷 ──
@@ -106,13 +188,14 @@ export async function GET(request: NextRequest) {
     };
 
     // ── 1. 원본 조회 ──
-    const [orders, items] = await Promise.all([
+    const [orders, items, pending] = await Promise.all([
       fetchAll<OrderRow>('ft_orders', 'id, created_at, user_id, total_qty', 'id'),
       fetchAll<ItemRow>(
         'ft_order_items',
         'id, order_id, order_qty, shipment_type, status, price_total_cny',
         'id'
       ),
+      loadPending(),
     ]);
 
     const orderById = new Map<string, OrderRow>();
@@ -153,6 +236,10 @@ export async function GET(request: NextRequest) {
       if (o.user_id) b.userIds.add(o.user_id);
     });
 
+    // 잠재 주문량이 얹힐 "오늘이 속한 구간" — 아직 주문이 없는 구간이어도 행을 만든다
+    const pendingPeriodStart = periodStartOf(toKstDate(new Date().toISOString()), period);
+    if (pending.request.qty + pending.cart.qty > 0) bucketOf(buckets, pendingPeriodStart);
+
     // ── 3. 헤더 수량(ft_orders.total_qty) 불일치 검증 ──
     const itemQtyByOrder = new Map<string, number>();
     items.forEach((it) => {
@@ -184,6 +271,11 @@ export async function GET(request: NextRequest) {
       success: true,
       period,
       weeks,
+      pending: {
+        periodStart: pendingPeriodStart,
+        request: pending.request,
+        cart: pending.cart,
+      },
       meta: {
         weekCount: weeks.length,
         orderRows: orders.length,
