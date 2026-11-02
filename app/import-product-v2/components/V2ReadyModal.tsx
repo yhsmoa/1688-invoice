@@ -11,22 +11,18 @@ import LabelTemplatePicker from './LabelTemplatePicker';
 import './V2ReadyModal.css';
 
 // ============================================================
-// V2 처리준비 모달 - 수정된 입고 데이터 리스트 표시
+// V2 처리준비 모달 — 작업 수량을 입력한 항목 목록 + 저장·출력
 //
-// "postgre + 저장" / "송장 출력" — 기존 버튼. 이전부터 쓰던 사용자를 위해
-//   그대로 유지한다 (동작 변경 없음).
+// 항목 카드 오른쪽에 "입고 / 진행" 을 크게 보여준다.
+//   입고(import_qty) 가 진행(progress_qty, 테이블 '진행' 공식) 과 같으면 초록, 다르면 주황.
 //
-// [저장] [라벨 스티커] [케어 라벨] [모두] — 새 버튼 행.
-//   저장          : postgre + 저장 과 완전히 같은 동작 (같은 핸들러 공유)
-//   라벨 스티커    : 바코드 감열지 즉시 출력 (QZ Tray)
-//   케어 라벨      : 케어라벨 즉시 출력 (QZ Tray)
-//   모두          : 저장(안 됐으면) → 라벨 스티커 → 케어 라벨 순서로 진행.
-//                   중간 단계가 실패하면 알림만 띄우고 멈춘다 (다음 단계로 넘어가지 않음).
+// 푸터 (위 → 아래 = 작업 순서)
+//   1. 라벨 템플릿   : 종류별·대상(성인/키즈)별로 어떤 템플릿으로 찍는지 확인·변경 (LabelTemplatePicker)
+//   2. [모두]        : 저장(안 됐으면) → 라벨 스티커 → 케어 라벨. 중간 실패 시 알림만 띄우고 멈춘다.
+//      [저장] [라벨 스티커] [케어 라벨] : 한 단계씩 따로 실행
+//      [송장 출력]   : P 상품 운송장 PDF 병합 인쇄 (onPrintInvoices 가 있을 때만)
 //
-// 템플릿 선택 (LabelTemplatePicker + useLabelTemplatePlan)
-//   출력 버튼 위에 종류별로 "어떤 템플릿으로 찍는지" 를 보여주고 드롭다운으로 바꿀 수 있다.
-//   권장연령 있는 상품 → 키즈, 없는 상품 → 성인 템플릿이 자동 선택된다.
-//   필요한 대상에 템플릿이 없으면 그 종류의 출력 버튼은 잠기고 드롭다운에 "없음" 이 뜬다.
+// ※ 예전 [postgre + 저장] 버튼은 [저장] 과 같은 핸들러라 하나로 합쳤다 (동작 변경 없음).
 // ============================================================
 
 /** 출력 성공 표시(플래시) 유지 시간 */
@@ -35,6 +31,8 @@ const PRINT_FLASH_MS = 3000;
 export interface V2ReadyItem {
   item: FtOrderItem;
   import_qty: number;
+  /** 테이블 '진행' 과 같은 값 — order_qty - CANCEL - RETURN - 출고완료 */
+  progress_qty: number;
 }
 
 interface V2ReadyModalProps {
@@ -42,7 +40,7 @@ interface V2ReadyModalProps {
   onClose: () => void;
   readyItems: V2ReadyItem[];
   /**
-   * postgre + 저장 핸들러 (ItemCheck에서 전달).
+   * 저장 핸들러 (ItemCheck에서 전달).
    * 성공하면 true, 실패하면 false — 실패 시 알림은 이 함수 안에서 띄운다.
    * [모두] 버튼이 다음 단계(출력) 진행 여부를 이 반환값으로 판단한다.
    */
@@ -64,6 +62,30 @@ interface V2ReadyModalProps {
   /** Storage 에 PDF 가 존재하는 personal_order_no Set — personal_order_no 인라인 노출 조건 */
   invoicePdfSet?: Set<string>;
 }
+
+// ── 버튼 아이콘 ──
+const ICON = {
+  save: 'M5 3h11l3 3v15H5zM8 3v5h7M8 21v-7h8v7',
+  label: 'M3 12V4h8l10 10-8 8zM7.5 7.5h.01',
+  care: 'M7 3h10v18l-5-3-5 3z',
+  invoice: 'M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z',
+  close: 'M6 6l12 12M18 6L6 18',
+  check: 'M5 12l5 5L19 7',
+} as const;
+
+const Icon: React.FC<{ name: keyof typeof ICON; size?: number }> = ({ name, size = 16 }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+    <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d={ICON[name]} />
+  </svg>
+);
+
+/** 버튼 안 로딩 표시 */
+const Busy: React.FC<{ label: string }> = ({ label }) => (
+  <span className="v2-pr-button-loading">
+    <span className="v2-pr-spinner"></span>
+    {label}
+  </span>
+);
 
 const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   isOpen,
@@ -117,13 +139,13 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
   /** 바코드가 있는 항목이 하나도 없으면 라벨 출력 버튼들을 비활성화 */
   const hasPrintableItems = readyItems.some(({ item }) => item.barcode);
-  /** 새/기존 저장·출력 버튼이 하나라도 동작 중이면 전부 잠근다 (동시 실행 방지) */
+  /** 저장·출력 버튼이 하나라도 동작 중이면 전부 잠근다 (동시 실행 방지) */
   const isBusy = isSaving || isPrintingInvoices || isPrintingBarcode || isPrintingCare || isRunningAll;
 
   // ============================================================
-  // postgre + 저장 클릭 핸들러 — [postgre + 저장] [저장] 버튼 공용
+  // 저장 클릭 핸들러
   // ============================================================
-  const handleSavePostgre = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
       await onSavePostgre();
@@ -196,6 +218,10 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
     }
   };
 
+  const saveLabel = isSaved
+    ? t('importProduct.processReady.saved')
+    : t('importProduct.processReady.save');
+
   return (
     <>
       {/* ============================================================ */}
@@ -208,235 +234,214 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
       {/* ============================================================ */}
       {/* 슬라이드 모달 */}
       {/* ============================================================ */}
-      <div className={`v2-process-ready-modal ${isOpen ? 'open' : ''}`}>
-        {/* 헤더 */}
+      <div className={`v2-process-ready-modal ${isOpen ? 'open' : ''}`} role="dialog" aria-modal="true">
+        {/* ── 헤더 ── */}
         <div className="v2-process-ready-header">
-          <h2>처리준비목록</h2>
-          <button className="v2-pr-close-button" onClick={onClose}>✕</button>
+          <div className="v2-pr-title-wrap">
+            <h2>{t('importProduct.processReady.modalTitle')}</h2>
+            <span className="v2-pr-count">
+              {t('importProduct.processReady.totalItems')} {readyItems.length}{t('importProduct.processReady.itemsCount')}
+            </span>
+          </div>
+          <button className="v2-pr-close-button" onClick={onClose} type="button" aria-label="close">
+            <Icon name="close" size={20} />
+          </button>
         </div>
 
-        {/* 컨텐츠 */}
+        {/* ── 항목 목록 ── */}
         <div className="v2-process-ready-content">
           {readyItems.length === 0 ? (
-            <div className="v2-pr-empty-message">수정된 항목이 없습니다.</div>
+            <div className="v2-pr-empty-message">{t('importProduct.processReady.emptyMessage')}</div>
           ) : (
             <div className="v2-ready-items-list">
-              {readyItems.map(({ item, import_qty }) => (
-                <div key={item.id} className="v2-ready-item">
-                  {/* 이미지 */}
-                  <div className="v2-ready-item-image">
-                    {item.img_url ? (
-                      <img
-                        src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
-                        alt="상품 이미지"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder.svg';
-                        }}
-                      />
-                    ) : (
-                      <div className="v2-pr-no-image">이미지 없음</div>
-                    )}
-                  </div>
+              {readyItems.map(({ item, import_qty, progress_qty }) => {
+                const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+                const showPersonalNo =
+                  item.shipment_type?.trim().toUpperCase() === 'PERSONAL'
+                  && !!item.personal_order_no
+                  && !!invoicePdfSet?.has(item.personal_order_no);
+                // 입고 = 진행 이면 초록(다 들어옴), 아니면 주황(덜 들어옴 / 초과)
+                const qtyTone = import_qty === progress_qty ? 'is-match' : 'is-diff';
 
-                  {/* 상품 정보 */}
-                  <div className="v2-ready-item-info">
-                    {/* 글번호 행: [사이즈 배지] [item_no 회색 배지] | [barcode] | (P+PDF) 운송장 번호
-                         줄바꿈 없이 한 줄에 모두 표시 */}
-                    <div className="v2-pr-order-barcode-row">
-                      {(() => {
-                        const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
-                        return sizeBadge ? (
+                return (
+                  <div key={item.id} className="v2-ready-item">
+                    {/* 이미지 */}
+                    <div className="v2-ready-item-image">
+                      {item.img_url ? (
+                        <img
+                          src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                          alt="상품 이미지"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/placeholder.svg';
+                          }}
+                        />
+                      ) : (
+                        <div className="v2-pr-no-image">이미지 없음</div>
+                      )}
+                    </div>
+
+                    {/* 상품 정보 */}
+                    <div className="v2-ready-item-info">
+                      {/* 글번호 행: [사이즈 배지] [item_no 배지] [barcode] — 한 줄 */}
+                      <div className="v2-pr-order-barcode-row">
+                        {sizeBadge && (
                           <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
-                        ) : null;
-                      })()}
-                      {item.item_no && (
-                        <span className="v2-pr-item-no-badge">{item.item_no}</span>
+                        )}
+                        {item.item_no && (
+                          <span className="v2-pr-item-no-badge">{item.item_no}</span>
+                        )}
+                        {item.barcode && (
+                          <span className="v2-pr-barcode">{item.barcode}</span>
+                        )}
+                      </div>
+
+                      {/* P(PERSONAL) + PDF 존재 시 운송장 번호 (주황) */}
+                      {showPersonalNo && (
+                        <div className="v2-pr-personal-order-no-inline">↳ {item.personal_order_no}</div>
                       )}
-                      {item.barcode && (
-                        <>
-                          <span className="v2-pr-separator">|</span>
-                          <span>{item.barcode}</span>
-                        </>
-                      )}
-                      {/* P(PERSONAL) + PDF 존재 시 운송장 번호 인라인 표시 (주황) */}
-                      {item.shipment_type?.trim().toUpperCase() === 'PERSONAL'
-                        && item.personal_order_no
-                        && invoicePdfSet?.has(item.personal_order_no) && (
-                        <>
-                          <span className="v2-pr-separator">|</span>
-                          <span className="v2-pr-personal-order-no-inline">
-                            {item.personal_order_no}
-                          </span>
-                        </>
+
+                      {/* 상품명 */}
+                      <div className="v2-pr-product-name">
+                        {item.item_name || ''}
+                        {item.option_name && ` ${item.option_name}`}
+                      </div>
+
+                      {/* 주문옵션 배지 */}
+                      {(item.china_option1 || item.china_option2) && (
+                        <div className="v2-pr-order-option-badge">
+                          {item.china_option1 || ''}{item.china_option2 ? ` ${item.china_option2}` : ''}
+                        </div>
                       )}
                     </div>
 
-                    {/* 상품명 */}
-                    <div className="v2-pr-product-name">
-                      {item.item_name || ''}
-                      {item.option_name && ` ${item.option_name}`}
-                    </div>
-
-                    {/* 주문옵션 배지 */}
-                    {(item.china_option1 || item.china_option2) && (
-                      <div className="v2-pr-order-option-badge">
-                        {item.china_option1 || ''}{item.china_option2 ? ` ${item.china_option2}` : ''}
-                      </div>
-                    )}
-
-                    {/* 진행 / 입고 */}
-                    <div className="v2-pr-stats-row">
-                      <div className="v2-pr-stat-item">
-                        <span className="v2-pr-stat-label">진행</span>
-                        <span className={`v2-pr-stat-value ${(item.order_qty || 0) === 0 ? 'zero' : ''}`}>
-                          {item.order_qty || 0}
-                        </span>
-                      </div>
-                      <div className="v2-pr-stat-item">
-                        <span className="v2-pr-stat-label">입고</span>
-                        <span className={`v2-pr-stat-value import ${import_qty === 0 ? 'zero' : ''}`}>
-                          {import_qty}
-                        </span>
-                      </div>
+                    {/* 입고 / 진행 — 같으면 초록, 다르면 주황 */}
+                    <div className={`v2-pr-qty ${qtyTone}`}>
+                      <span className="v2-pr-qty-label">{t('importProduct.processReady.importOverProgress')}</span>
+                      <span className="v2-pr-qty-value">
+                        {import_qty}
+                        <span className="v2-pr-qty-sep">/</span>
+                        {progress_qty}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* 푸터 */}
+        {/* ============================================================ */}
+        {/* 푸터 — 템플릿 확인 → 실행 */}
+        {/* ============================================================ */}
         <div className="v2-process-ready-footer">
-          <div className="v2-pr-footer-info">총 {readyItems.length}개</div>
+          {/* 1. 라벨 템플릿 — 종류별 · 대상(성인/키즈)별, 드롭다운으로 변경 가능 */}
+          {hasPrintableItems && (
+            <section className="v2-pr-template-plan" aria-label={t('importProduct.processReady.templateTitle')}>
+              <div className="v2-pr-template-head">
+                <h3>{t('importProduct.processReady.templateTitle')}</h3>
+                <span className="v2-pr-template-hint">{t('importProduct.processReady.templateHint')}</span>
+              </div>
+              <LabelTemplatePicker
+                plan={plan}
+                labelType="barcode"
+                title={t('importProduct.processReady.labelSticker')}
+                disabled={isBusy}
+              />
+              <LabelTemplatePicker
+                plan={plan}
+                labelType="care"
+                title={t('importProduct.processReady.careLabel')}
+                disabled={isBusy}
+              />
+            </section>
+          )}
 
-          {/* 기존 버튼 — 이전부터 쓰던 사용자를 위해 동작 그대로 유지 */}
-          <div className="v2-pr-save-buttons-row">
+          {/* 출력 성공 플래시 — alert 대신 잠깐 표시 */}
+          {(barcodeFlash || careFlash) && (
+            <div className="v2-pr-flash-row" role="status">
+              {barcodeFlash && <span className="v2-pr-flash"><Icon name="check" size={14} />{barcodeFlash}</span>}
+              {careFlash && <span className="v2-pr-flash"><Icon name="check" size={14} />{careFlash}</span>}
+            </div>
+          )}
+
+          {/* 2. 실행 — [모두] 가 대표, 아래 세 버튼은 한 단계씩 */}
+          <div className="v2-pr-actions">
             <button
-              className="v2-pr-save-button v2-pr-save-postgre"
-              disabled={readyItems.length === 0 || isBusy || isSaved}
-              onClick={handleSavePostgre}
+              type="button"
+              className="v2-pr-all-button"
+              disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing || careMissing}
+              onClick={handleRunAll}
             >
-              {isSaving ? (
-                <span className="v2-pr-button-loading">
-                  <span className="v2-pr-spinner"></span>
-                  저장 중...
-                </span>
-              ) : isSaved ? (
-                '저장 완료'
+              {isRunningAll ? (
+                <Busy label={t('importProduct.processReady.all')} />
               ) : (
-                'postgre + 저장'
+                <>
+                  <span className="v2-pr-all-title">{t('importProduct.processReady.all')}</span>
+                  <span className="v2-pr-all-hint">{t('importProduct.processReady.allHint')}</span>
+                </>
               )}
             </button>
-            {/* [송장 출력] 버튼 — P 상품 PDF 병합 인쇄 */}
-            {onPrintInvoices && (
-              <button
-                className="v2-pr-save-button v2-pr-save-invoice"
-                disabled={!invoicePrintable || isBusy}
-                onClick={handlePrintInvoices}
-              >
-                {isPrintingInvoices ? (
-                  <span className="v2-pr-button-loading">
-                    <span className="v2-pr-spinner"></span>
-                    {t('importProduct.processReady.printInvoices')}
-                  </span>
-                ) : (
-                  t('importProduct.processReady.printInvoices')
-                )}
-              </button>
-            )}
-          </div>
 
-          {/* 새 버튼 — 저장 / 종류별 즉시 출력 / 모두 순서대로 */}
-          <div className="v2-pr-quick-actions-row">
-            {/* 어떤 템플릿으로 찍는지 — 종류별 · 대상(성인/키즈)별, 드롭다운으로 변경 가능 */}
-            {hasPrintableItems && (
-              <div className="v2-pr-template-plan">
-                <LabelTemplatePicker
-                  plan={plan}
-                  labelType="barcode"
-                  title={t('importProduct.processReady.labelSticker')}
-                  disabled={isBusy}
-                />
-                <LabelTemplatePicker
-                  plan={plan}
-                  labelType="care"
-                  title={t('importProduct.processReady.careLabel')}
-                  disabled={isBusy}
-                />
-                <div className="v2-pr-template-hint">{t('importProduct.processReady.templateHint')}</div>
-              </div>
-            )}
-
-            {(barcodeFlash || careFlash) && (
-              <div className="v2-pr-flash-row">
-                {barcodeFlash && <span className="v2-pr-flash">✓ {barcodeFlash}</span>}
-                {careFlash && <span className="v2-pr-flash">✓ {careFlash}</span>}
-              </div>
-            )}
-            <div className="v2-pr-quick-buttons-row">
+            <div className="v2-pr-step-buttons">
               <button
-                className="v2-pr-quick-button v2-pr-quick-save"
+                type="button"
+                className="v2-pr-step-button"
                 disabled={readyItems.length === 0 || isBusy || isSaved}
-                onClick={handleSavePostgre}
+                onClick={handleSave}
               >
                 {isSaving && !isRunningAll ? (
-                  <span className="v2-pr-button-loading">
-                    <span className="v2-pr-spinner"></span>
-                    {t('importProduct.processReady.saving')}
-                  </span>
-                ) : isSaved ? (
-                  t('importProduct.processReady.saved')
+                  <Busy label={t('importProduct.processReady.saving')} />
                 ) : (
-                  t('importProduct.processReady.save')
+                  <><Icon name="save" />{saveLabel}</>
                 )}
               </button>
 
               <button
-                className="v2-pr-quick-button v2-pr-quick-print"
+                type="button"
+                className="v2-pr-step-button"
                 disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing}
                 onClick={() => printOne('barcode')}
               >
                 {isPrintingBarcode && !isRunningAll ? (
-                  <span className="v2-pr-button-loading">
-                    <span className="v2-pr-spinner"></span>
-                    {t('importProduct.processReady.printing')}
-                  </span>
+                  <Busy label={t('importProduct.processReady.printing')} />
                 ) : (
-                  t('importProduct.processReady.labelSticker')
+                  <><Icon name="label" />{t('importProduct.processReady.labelSticker')}</>
                 )}
               </button>
 
               <button
-                className="v2-pr-quick-button v2-pr-quick-print"
+                type="button"
+                className="v2-pr-step-button"
                 disabled={!hasPrintableItems || isBusy || plan.loading || careMissing}
                 onClick={() => printOne('care')}
               >
                 {isPrintingCare && !isRunningAll ? (
-                  <span className="v2-pr-button-loading">
-                    <span className="v2-pr-spinner"></span>
-                    {t('importProduct.processReady.printing')}
-                  </span>
+                  <Busy label={t('importProduct.processReady.printing')} />
                 ) : (
-                  t('importProduct.processReady.careLabel')
-                )}
-              </button>
-
-              <button
-                className="v2-pr-quick-button v2-pr-quick-all"
-                disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing || careMissing}
-                onClick={handleRunAll}
-              >
-                {isRunningAll ? (
-                  <span className="v2-pr-button-loading">
-                    <span className="v2-pr-spinner"></span>
-                    {t('importProduct.processReady.all')}
-                  </span>
-                ) : (
-                  t('importProduct.processReady.all')
+                  <><Icon name="care" />{t('importProduct.processReady.careLabel')}</>
                 )}
               </button>
             </div>
+
+            {/* 송장 출력 — P 상품 PDF 병합 인쇄 */}
+            {onPrintInvoices && (
+              <button
+                type="button"
+                className="v2-pr-invoice-button"
+                disabled={!invoicePrintable || isBusy}
+                onClick={handlePrintInvoices}
+              >
+                {isPrintingInvoices ? (
+                  <Busy label={t('importProduct.processReady.printInvoices')} />
+                ) : (
+                  <>
+                    <Icon name="invoice" />
+                    {t('importProduct.processReady.printInvoices')}
+                    <span className="v2-pr-invoice-hint">· {t('importProduct.processReady.invoiceHint')}</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

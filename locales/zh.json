@@ -125,7 +125,11 @@
       "templateNone": "无模板 — 请先在[标签设置]中创建",
       "templateMissing": "无{{audience}}模板 — 请在[标签设置]中创建对象为{{audience}}的模板，或选择其他模板",
       "templateNoDescription": "(无说明)",
-      "templateHint": "有建议年龄的商品自动选用儿童模板，没有的选用成人模板。可在下拉框中更改。"
+      "templateHint": "有建议年龄的商品自动选用儿童模板，没有的选用成人模板。可在下拉框中更改。",
+      "templateTitle": "标签模板",
+      "allHint": "保存 → 条码标签 → 洗唛",
+      "importOverProgress": "入库 / 进度",
+      "invoiceHint": "P 商品运单 PDF"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",
@@ -471,7 +475,8 @@
       "first": "首页",
       "last": "末页",
       "searchAll": "搜索结果 {{count}}条（全部显示）",
-      "searchTooMany": "搜索结果 {{count}}条 — 超过{{max}}条，分页显示"
+      "searchTooMany": "搜索结果 {{count}}条 — 超过{{max}}条，分页显示",
+      "searchPaged": "搜索结果 {{count}}条 — 每页{{size}}条"
     },
     "alerts": {
       "selectUser": "请选择用户。",
@@ -484,6 +489,10 @@
       "invoiceDownloadFailed": "运单PDF下载失败。",
       "invoicePrintFailed": "运单PDF处理失败。",
       "invoicePrintError": "运单打印时发生错误。"
+    },
+    "set": {
+      "label": "套装",
+      "mixed": "不同卖家"
     }
   },
   "importProductV3": {

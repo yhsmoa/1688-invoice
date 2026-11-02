@@ -353,6 +353,13 @@ export function useFtFulfillmentSummary(items: FtOrderItem[], userId: string) {
 export const SEARCH_SHOW_ALL_MAX = 500;
 
 // ============================================================
+// 상품입고 V2 — 검색했을 때 한 페이지에 보여줄 건수
+//   작업자 요청: 검색 결과는 페이지를 넘기지 않고 보고 싶다. 다만 처음 접속(검색 전)에
+//   전체를 그리면 무거우므로 검색 중에만 100건 단위로 넓힌다 (100건 이하면 사실상 한 화면).
+// ============================================================
+export const SEARCH_PAGE_SIZE = 100;
+
+// ============================================================
 // useFtPagination — 간단한 페이지네이션
 //   showAll=true 면 페이지 없이 전체 (검색 결과 표시용)
 //   [처음] [끝] 이동: goToFirstPage / goToLastPage
@@ -367,10 +374,10 @@ export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20, showAll 
     setCurrentPage(1);
   }, [data.length]);
 
-  // 전체 표시 ↔ 페이지 표시 전환 시에도 첫 페이지로
+  // 전체 표시 ↔ 페이지 표시 전환, 페이지 크기(20 ↔ 검색 100) 전환 시에도 첫 페이지로
   useEffect(() => {
     setCurrentPage(1);
-  }, [showAll]);
+  }, [showAll, itemsPerPage]);
 
   const paginatedData = useMemo(() => {
     if (showAll) return data;

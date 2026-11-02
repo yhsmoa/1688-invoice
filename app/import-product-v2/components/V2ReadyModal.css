@@ -1,5 +1,6 @@
 /* ============================================================ */
-/* V2 처리준비 모달 - ProcessReadyModal과 동일한 스타일 (v2- 접두사) */
+/* V2 처리준비 모달 — 오른쪽 슬라이드 패널 (폭 520px 고정)        */
+/*   헤더 → 항목 카드 목록(스크롤) → 푸터(템플릿 → 실행 버튼)    */
 /* ============================================================ */
 
 /* 배경 오버레이 */
@@ -9,7 +10,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(17, 24, 39, 0.45);
   z-index: 999;
 }
 
@@ -17,99 +18,120 @@
 .v2-process-ready-modal {
   position: fixed;
   top: 0;
-  right: -33.33%;
-  width: 33.33%;
+  right: -540px;
+  width: 520px;
+  max-width: 100vw;
   height: 100vh;
-  background-color: white;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -12px 0 32px rgba(17, 24, 39, 0.10);
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  transition: right 0.3s ease-in-out;
+  transition: right 0.25s ease-in-out;
+  color: #111827;
 }
 
 .v2-process-ready-modal.open {
   right: 0;
 }
 
-/* 헤더 */
+/* ============================================================ */
+/* 헤더                                                         */
+/* ============================================================ */
 .v2-process-ready-header {
+  flex: none;
+  height: 64px;
+  padding: 0 16px 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.v2-pr-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .v2-process-ready-header h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* 항목 수 배지 */
+.v2-pr-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 3px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
 .v2-pr-close-button {
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
-  font-size: 24px;
+  border-radius: 10px;
+  color: #6b7280;
   cursor: pointer;
-  color: #666;
-  padding: 0;
-  width: 30px;
-  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .v2-pr-close-button:hover {
-  background-color: #e0e0e0;
-  color: #333;
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
-/* 컨텐츠 영역 */
+/* ============================================================ */
+/* 항목 목록                                                     */
+/* ============================================================ */
 .v2-process-ready-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px;
+  padding: 16px 24px;
+  background: #f9fafb;
 }
 
 .v2-pr-empty-message {
   text-align: center;
-  color: #999;
+  color: #9ca3af;
   padding: 40px 20px;
   font-size: 14px;
 }
 
-/* 아이템 리스트 */
 .v2-ready-items-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
 }
 
-/* 개별 아이템 */
+/* 개별 아이템 카드 — [이미지] [정보] [입고 / 진행] */
 .v2-ready-item {
   display: flex;
-  gap: 12px;
-  padding: 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fff;
-  transition: box-shadow 0.2s;
-}
-
-.v2-ready-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background-color: #ffffff;
 }
 
 /* 이미지 */
 .v2-ready-item-image {
-  width: 120px;
-  height: 120px;
+  width: 72px;
+  height: 72px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -120,8 +142,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .v2-pr-no-image {
@@ -130,259 +152,165 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  color: #999;
-  font-size: 12px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 11px;
 }
 
-/* 상품 정보 — container query 컨텍스트 (카드 너비 기준) */
+/* 상품 정보 */
 .v2-ready-item-info {
   flex: 1;
   min-width: 0;                 /* flex 부모에서 축소 허용 */
-  container-type: inline-size;
-  container-name: pr-item;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: center;
+  gap: 4px;
   font-size: 13px;
 }
 
-/* 글번호 행: 무조건 1줄 — 컨테이너 좁아지면 단계적 폰트 축소 (아래 @container) */
+/* 글번호 행: [사이즈 배지] [item_no 배지] [barcode] — 한 줄 */
 .v2-pr-order-barcode-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;            /* 줄바꿈 방지 */
+  gap: 6px;
+  flex-wrap: wrap;
   min-width: 0;
-  font-size: 14px;
   line-height: 1.4;
-  color: #666;
+}
+
+/* item_no 회색 미니 배지 (고정폭 글꼴) */
+.v2-pr-item-no-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #f3f4f6;
+  color: #374151;
+  border-radius: 5px;
+  font-size: 11.5px;
   font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
-/* 컨테이너 폭 단계별 폰트 축소 — 모달 너비/화면 크기 변화에 따라 자동 조정 */
-@container pr-item (max-width: 380px) {
-  .v2-pr-order-barcode-row { font-size: 12px; gap: 6px; }
-  .v2-pr-item-no-badge { font-size: 12px; padding: 1px 6px; }
-}
-@container pr-item (max-width: 300px) {
-  .v2-pr-order-barcode-row { font-size: 11px; gap: 4px; }
-  .v2-pr-item-no-badge { font-size: 11px; padding: 1px 5px; }
+.v2-pr-barcode {
+  font-size: 11.5px;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
 }
 
-.v2-pr-separator {
-  color: #ccc;
-}
-
-/* ── item_no 회색 미니멀 배지 — 폰트 14px (부모 row 와 동일) ── */
-.v2-pr-item-no-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  background-color: #f3f4f6;
-  color: #4b5563;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.2px;
-  line-height: 1.4;
-}
-
-/* ── P(PERSONAL) personal_order_no 인라인 값 — P 배지 색상(주황) 통일 ── */
+/* P(PERSONAL) personal_order_no — P 배지 색상(주황) 통일 */
 .v2-pr-personal-order-no-inline {
-  color: #ea580c;            /* size-badge--orange */
+  font-size: 12px;
   font-weight: 600;
+  color: #c2410c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* 상품명 */
 .v2-pr-product-name {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
-  line-height: 1.4;
+  color: #111827;
+  line-height: 1.35;
   word-break: break-word;
 }
 
 /* 주문옵션 배지 */
 .v2-pr-order-option-badge {
   display: inline-flex;
-  padding: 4px 12px;
-  background-color: #dbeafe;
-  color: #1e40af;
-  border-radius: 12px;
-  font-size: 14px;
+  align-self: flex-start;
+  padding: 1px 7px;
+  background-color: #f9fafb;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  font-size: 12px;
   font-weight: 500;
-  width: fit-content;
 }
 
-/* 진행 / 입고 행 */
-.v2-pr-stats-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding-top: 4px;
-}
-
-.v2-pr-stat-item {
+/* ── 입고 / 진행 — 카드 오른쪽, 같으면 초록 · 다르면 주황 ── */
+.v2-pr-qty {
+  flex: none;
+  min-width: 84px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: center;
   gap: 2px;
-  min-width: 40px;
+  border-left: 1px solid #f1f2f4;
+  padding-left: 12px;
 }
 
-.v2-pr-stat-label {
-  font-size: 12px;
-  color: #999;
-  font-weight: 500;
-}
-
-.v2-pr-stat-value {
-  font-size: 16px;
-  color: #333;
+.v2-pr-qty-label {
+  font-size: 11px;
   font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
 }
 
-.v2-pr-stat-value.zero {
+.v2-pr-qty-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.v2-pr-qty-sep {
+  margin: 0 4px;
+  font-size: 18px;
+  font-weight: 500;
   color: #d1d5db;
 }
 
-.v2-pr-stat-value.import {
-  color: #2563eb;
-}
+.v2-pr-qty.is-match .v2-pr-qty-value { color: #15803d; }
+.v2-pr-qty.is-diff  .v2-pr-qty-value { color: #c2410c; }
 
-/* 푸터 */
+/* ============================================================ */
+/* 푸터 — 템플릿 확인 → 실행                                     */
+/* ============================================================ */
 .v2-process-ready-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #e0e0e0;
-  background-color: #f8f9fa;
+  flex: none;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-.v2-pr-footer-info {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.v2-pr-save-buttons-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.v2-pr-save-button {
-  flex: 1;
-  color: white;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  min-height: 40px;
-}
-
-.v2-pr-save-postgre {
-  background-color: #3b82f6;
-}
-
-.v2-pr-save-postgre:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-/* 송장 출력 버튼: 보라색 */
-.v2-pr-save-invoice {
-  background-color: #8b5cf6;
-}
-
-.v2-pr-save-invoice:hover:not(:disabled) {
-  background-color: #7c3aed;
-}
-
-.v2-pr-save-button:disabled {
-  background-color: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* ============================================================ */
-/* 빠른 실행 버튼 행 — [저장] [라벨 스티커] [케어 라벨] [모두]      */
-/* 기존 [postgre + 저장] [송장 출력] 은 그대로 두고 그 아래에 둔다   */
-/* ============================================================ */
-.v2-pr-quick-actions-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px dashed #d1d5db;
-}
-
-/* 템플릿 선택 블록 — 종류별 두 줄 드롭다운 (LabelTemplatePicker.css) */
+/* ── 1. 라벨 템플릿 (LabelTemplatePicker 두 블록) ── */
 .v2-pr-template-plan {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 12px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+}
+
+.v2-pr-template-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.v2-pr-template-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .v2-pr-template-hint {
   font-size: 11px;
-  color: #9ca3af;
+  color: #6b7280;
   line-height: 1.5;
 }
 
-.v2-pr-quick-buttons-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.v2-pr-quick-button {
-  flex: 1;
-  color: white;
-  padding: 10px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  min-height: 40px;
-  /* 모달 폭이 좁아져도 "스티커" 같은 단어가 음절 중간에서 잘리지 않게 */
-  word-break: keep-all;
-}
-
-.v2-pr-quick-button:disabled {
-  background-color: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* 저장 — 기존 postgre+저장 버튼과 같은 파랑 계열 */
-.v2-pr-quick-save { background-color: #3b82f6; }
-.v2-pr-quick-save:hover:not(:disabled) { background-color: #2563eb; }
-
-/* 라벨 스티커 / 케어 라벨 — 즉시 출력(QZ Tray) 계열, 어두운 톤으로 구분 */
-.v2-pr-quick-print { background-color: #18181b; }
-.v2-pr-quick-print:hover:not(:disabled) { background-color: #27272a; }
-
-/* 모두 — 한 번에 전부 진행하는 대표 버튼, 눈에 띄는 색으로 구분 */
-.v2-pr-quick-all { background-color: #0d9488; }
-.v2-pr-quick-all:hover:not(:disabled) { background-color: #0f766e; }
-
-/* 출력 성공 플래시 — alert 대신 잠깐 표시 후 사라짐 */
+/* ── 출력 성공 플래시 — alert 대신 잠깐 표시 후 사라짐 ── */
 .v2-pr-flash-row {
   display: flex;
   flex-wrap: wrap;
@@ -390,12 +318,15 @@
 }
 
 .v2-pr-flash {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: #15803d;
-  background: #dcfce7;
-  border-radius: 999px;
-  padding: 4px 10px;
+  color: #166534;
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 7px 12px;
   white-space: nowrap;
   animation: v2-pr-flash-in 0.2s ease-out;
 }
@@ -403,6 +334,116 @@
 @keyframes v2-pr-flash-in {
   from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ── 2. 실행 버튼 ── */
+.v2-pr-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* [모두] — 대표 버튼 (저장 → 라벨 스티커 → 케어 라벨) */
+.v2-pr-all-button {
+  height: 56px;
+  border: none;
+  border-radius: 12px;
+  background-color: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s;
+}
+
+.v2-pr-all-button:hover:not(:disabled) { background-color: #1d4ed8; }
+
+.v2-pr-all-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.v2-pr-all-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #dbeafe;
+}
+
+/* [저장] [라벨 스티커] [케어 라벨] — 한 단계씩 */
+.v2-pr-step-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-pr-step-button {
+  height: 46px;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  word-break: keep-all;          /* "스티커" 같은 단어가 음절 중간에서 잘리지 않게 */
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.v2-pr-step-button:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* [송장 출력] — P 상품 운송장 PDF (있을 때만) */
+.v2-pr-invoice-button {
+  height: 40px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #6d28d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.v2-pr-invoice-button:hover:not(:disabled) {
+  background-color: #f5f3ff;
+  border-color: #c4b5fd;
+}
+
+.v2-pr-invoice-hint {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* 공통 비활성 */
+.v2-pr-all-button:disabled,
+.v2-pr-step-button:disabled,
+.v2-pr-invoice-button:disabled {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.v2-pr-all-button:disabled .v2-pr-all-hint,
+.v2-pr-invoice-button:disabled .v2-pr-invoice-hint {
+  color: #c4c7cd;
 }
 
 /* 로딩 스피너 (버튼 내부) */
@@ -415,8 +456,8 @@
 .v2-pr-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
+  border: 2px solid rgba(17, 24, 39, 0.15);
+  border-top: 2px solid currentColor;
   border-radius: 50%;
   animation: v2-pr-spin 0.8s linear infinite;
 }
@@ -425,17 +466,10 @@
   to { transform: rotate(360deg); }
 }
 
-/* 반응형 */
-@media (max-width: 1200px) {
+/* 반응형 — 좁은 화면에서는 화면 폭 전부 */
+@media (max-width: 600px) {
   .v2-process-ready-modal {
-    width: 40%;
-    right: -40%;
-  }
-}
-
-@media (max-width: 768px) {
-  .v2-process-ready-modal {
-    width: 80%;
-    right: -80%;
+    width: 100vw;
+    right: -100vw;
   }
 }

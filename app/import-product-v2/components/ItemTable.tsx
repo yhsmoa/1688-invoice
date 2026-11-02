@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import ItemTableRow from './ItemTableRow';
+import ItemTableRow, { type SetGroupPos } from './ItemTableRow';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { getSetGroupKey } from '../utils/setGroupPalette';
 
@@ -92,22 +92,48 @@ const ItemTable: React.FC<ItemTableProps> = ({
   //
   //   1. 각 행의 set group key 사전 계산 (rowKeys)
   //   2. 고유 key에 색상 인덱스 부여 (setGroupColorIndex)
+  //   3. 그룹 안에 1688 주문번호가 2개 이상이면 "다른 판매자" 세트 (mixedSellerKeys)
   //
   // 행별 용도:
   //   - 색상 인덱스: setGroupColorIndex.get(rowKeys[idx])
   //   - 가로 border 제거: rowKeys[idx] !== null && rowKeys[idx] === rowKeys[idx+1]
+  //   - 묶음선 위치(first/mid/last/only): 앞뒤 행의 key 비교
+  //
+  // ※ 현재 페이지 안의 행만 본다 — 페이지 경계에 걸친 세트는 잘려 보일 수 있다 (기존과 동일)
   // ============================================================
-  const { rowKeys, setGroupColorIndex } = useMemo(() => {
+  const { rowKeys, setGroupColorIndex, mixedSellerKeys } = useMemo(() => {
     const rowKeys: (string | null)[] = paginatedData.map(getSetGroupKey);
     const colorMap = new Map<string, number>();
+    const orderIdsByKey = new Map<string, Set<string>>();
     let counter = 0;
-    for (const key of rowKeys) {
-      if (key !== null && !colorMap.has(key)) {
-        colorMap.set(key, counter++);
-      }
-    }
-    return { rowKeys, setGroupColorIndex: colorMap };
+    paginatedData.forEach((item, idx) => {
+      const key = rowKeys[idx];
+      if (key === null) return;
+      if (!colorMap.has(key)) colorMap.set(key, counter++);
+      const orderId = item['1688_order_id']?.trim();
+      if (!orderId) return;                       // 아직 매칭 안 된 행은 판정에서 제외
+      const ids = orderIdsByKey.get(key) ?? new Set<string>();
+      ids.add(orderId);
+      orderIdsByKey.set(key, ids);
+    });
+    const mixed = new Set<string>();
+    orderIdsByKey.forEach((ids, key) => {
+      if (ids.size > 1) mixed.add(key);
+    });
+    return { rowKeys, setGroupColorIndex: colorMap, mixedSellerKeys: mixed };
   }, [paginatedData]);
+
+  /** 세트 그룹 안 위치 — 체크박스 옆 묶음선을 어디서 시작·끝낼지 */
+  const setGroupPosOf = (idx: number): SetGroupPos | undefined => {
+    const key = rowKeys[idx];
+    if (key === null) return undefined;
+    const samePrev = idx > 0 && rowKeys[idx - 1] === key;
+    const sameNext = idx < rowKeys.length - 1 && rowKeys[idx + 1] === key;
+    if (samePrev && sameNext) return 'mid';
+    if (sameNext) return 'first';
+    if (samePrev) return 'last';
+    return 'only';
+  };
 
   return (
     <div className="v2-table-board">
@@ -132,9 +158,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
             <th>{t('importProduct.table.quantity')}</th>
             <th>{t('importProduct.table.cost')}</th>
             <th>{t('importProduct.table.progress')}</th>
-            <th className="v2-work-cell">작업</th>
-            <th>입고</th>
-            <th>포장</th>
+            <th className="v2-work-cell">{t('importProductV2.table.work')}</th>
+            <th>{t('importProductV2.table.arrival')}</th>
+            <th>{t('importProductV2.table.packed')}</th>
             <th>{t('importProduct.table.cancel')}</th>
             <th>{t('importProduct.table.export')}</th>
           </tr>
@@ -161,6 +187,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 item={item}
                 sameGroupAsNext={sameGroupAsNext}
                 setColorIndex={setColorIdx}
+                setGroupPos={setGroupPosOf(idx)}
+                setMixedSeller={thisKey !== null && mixedSellerKeys.has(thisKey)}
                 isSelected={selectedRows.has(item.id)}
                 mousePosition={mousePosition}
                 editingCell={editingCell}

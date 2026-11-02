@@ -7,8 +7,12 @@ import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import TypeBadge from '../../../component/TypeBadge';
 import { resolveSetGroupColor } from '../utils/setGroupPalette';
+import { resolveQtyStatus, type QtyCell } from '../utils/qtyStatus';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
+
+/** 세트 그룹 안에서의 위치 — 체크박스 옆 중괄호 묶음선(first/mid/last/only) 그리기용 */
+export type SetGroupPos = 'first' | 'mid' | 'last' | 'only';
 
 interface ItemTableRowProps {
   item: FtOrderItem;
@@ -17,6 +21,10 @@ interface ItemTableRowProps {
   sameGroupAsNext: boolean;
   /** 세트 그룹 색상 인덱스 (set_total > 1 인 행에만 지정). undefined면 기본 주황 fallback */
   setColorIndex?: number;
+  /** 세트 그룹 안 위치 (세트가 아니면 undefined) */
+  setGroupPos?: SetGroupPos;
+  /** 같은 세트인데 1688 주문번호가 서로 다름 (다른 판매자에게서 옴) */
+  setMixedSeller?: boolean;
   mousePosition: { x: number; y: number };
   editingCell: { id: string; field: string } | null;
   cellValue: string;
@@ -51,11 +59,21 @@ interface ItemTableRowProps {
   onFinishCategoryEdit: () => void;
 }
 
+// ── 수량 칸 배지 — 색은 utils/qtyStatus 의 tone 으로만 정한다 ──
+const QtyBadge: React.FC<{ cell: QtyCell }> = ({ cell }) =>
+  cell.tone === 'none' ? (
+    <span className="v2-qty-none" aria-hidden="true">–</span>
+  ) : (
+    <span className={`v2-qty-badge v2-qty--${cell.tone}`}>{cell.value}</span>
+  );
+
 const ItemTableRow: React.FC<ItemTableRowProps> = ({
   item,
   isSelected,
   sameGroupAsNext,
   setColorIndex,
+  setGroupPos,
+  setMixedSeller = false,
   mousePosition,
   editingCell,
   cellValue,
@@ -83,25 +101,31 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw, 종결 잔여 의미)
-  //   - CANCEL: 주문 취소 (단순 접수도 차감 — raw)
-  //   - RETURN: 반품 접수 (입고 후 돌려보냄, 단순 접수도 차감 — raw)
-  //   - 출고완료PACKED: shipment_id 부여된 PACKED (출고 V2 → 쉽먼트 V2 [출고] 시점)
-  const progressQty =
-    (item.order_qty ?? 0) - cancelQty - returnQty - shippedItemQty;
-
-  // 취소 컬럼 표시값 — CANCEL + RETURN 합산 (사용자 결정: 단일 컬럼 합산)
-  const cancelDisplayQty = cancelQty + returnQty;
+  // 진행·입고·포장·취소·출고 — 값과 색을 한 곳(utils/qtyStatus)에서 판정
+  //   진행 = order_qty - CANCEL - RETURN - 출고완료PACKED (raw, 종결 잔여 의미)
+  //   취소 = CANCEL + RETURN 합산 표시 (사용자 결정: 단일 컬럼 합산)
+  const qty = resolveQtyStatus({
+    orderQty: item.order_qty ?? 0,
+    arrivalQty,
+    packedQty,
+    cancelQty,
+    returnQty,
+    shippedItemQty,
+    shipmentDisplayQty: shipmentQty,
+  });
 
   // 입고 열에 표시할 값: 수정값 > 0이면 수정값, 아니면 빈칸
   const displayImportQty = importQtyValue != null ? importQtyValue : null;
 
-  // 세트상품 여부 (🎁 배지 표시 조건과 동일)
+  // 세트상품 여부 (세트 배지 표시 조건과 동일)
   const isSetProduct = item.set_total != null && item.set_total > 1;
 
   const rowClasses = [
     sameGroupAsNext ? 'v2-same-product-group' : '',
     isSetProduct ? 'v2-set-product-row' : '',
+    isSetProduct && setGroupPos ? `v2-set-pos-${setGroupPos}` : '',
+    isSelected ? 'v2-row-selected' : '',
+    displayImportQty != null && displayImportQty > 0 ? 'v2-row-has-work' : '',
   ].filter(Boolean).join(' ');
 
   // ── 세트 그룹 색상 CSS 변수 (인덱스 기반 팔레트 순환) ──
@@ -166,11 +190,13 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
       {/* 글번호 (item_no) — 세트상품 배지 / item_no / barcode / 1688_order_id */}
       <td>
         <div className="v2-order-number-text">
-          {/* 세트상품 배지: set_total > 1 인 경우 글번호 위에 표시 */}
-          {item.set_total != null && item.set_total > 1 && (
+          {/* 세트상품 배지: set_total > 1 인 경우 글번호 위에 표시
+               같은 세트인데 1688 주문번호가 다르면 (다른 판매자) 를 붙이고 색을 바꾼다 */}
+          {isSetProduct && (
             <>
-              <span className="v2-set-badge">
-                🎁 {item.set_total} 中 {item.set_seq ?? '?'}
+              <span className={`v2-set-badge ${setMixedSeller ? 'is-mixed' : ''}`}>
+                {t('importProductV2.set.label')} {item.set_total}中{item.set_seq ?? '?'}
+                {setMixedSeller && ` (${t('importProductV2.set.mixed')})`}
               </span>
               <br />
             </>
@@ -289,11 +315,9 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         </div>
       </td>
 
-      {/* 진행 = 개수 - 입고 - 취소 */}
+      {/* 진행 = 개수 - 취소 - 반품 - 출고완료 (아직 들어올 게 있으면 주황, 다 들어왔으면 회색) */}
       <td className="v2-qty-cell">
-        {progressQty > 0 && (
-          <span className="v2-qty-badge v2-progress-qty">{progressQty}</span>
-        )}
+        <QtyBadge cell={qty.progress} />
       </td>
 
       {/* 작업 — 편집 가능 셀, 파스텔 노란 배경 */}
@@ -311,32 +335,24 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         className="v2-qty-cell v2-editable-qty-cell v2-work-cell"
       />
 
-      {/* 입고 — ft_fulfillments type=ARRIVAL quantity 합계 */}
-      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
-        {arrivalQty > 0 && (
-          <span className="v2-qty-badge v2-import-qty">{arrivalQty}</span>
-        )}
+      {/* 입고 — ARRIVAL 합계 (다 들어오면 초록, 덜 들어오면 주황) */}
+      <td className="v2-qty-cell">
+        <QtyBadge cell={qty.arrival} />
       </td>
 
-      {/* 포장 — ft_fulfillments type=PACKED quantity 합계 */}
-      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
-        {packedQty > 0 && (
-          <span className="v2-qty-badge v2-packed-qty">{packedQty}</span>
-        )}
+      {/* 포장 — PACKED 합계 (손에 있는 수량을 다 포장하면 초록) */}
+      <td className="v2-qty-cell">
+        <QtyBadge cell={qty.packed} />
       </td>
 
-      {/* 취소 — CANCEL + RETURN 합산 표시 (사용자 결정: 단일 컬럼) */}
-      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
-        {cancelDisplayQty > 0 && (
-          <span className="v2-qty-badge v2-cancel-qty">{cancelDisplayQty}</span>
-        )}
+      {/* 취소 — CANCEL + RETURN 합산 (항상 빨강) */}
+      <td className="v2-qty-cell">
+        <QtyBadge cell={qty.cancel} />
       </td>
 
-      {/* 출고 — ft_fulfillments type=SHIPMENT quantity 합계 */}
-      <td className="v2-qty-cell" style={{ textAlign: 'center' }}>
-        {shipmentQty > 0 && (
-          <span className="v2-qty-badge v2-export-qty">{shipmentQty}</span>
-        )}
+      {/* 출고 — 출고완료 합계 (출고가 남았으면 주황, 끝나면 회색) */}
+      <td className="v2-qty-cell">
+        <QtyBadge cell={qty.ship} />
       </td>
     </tr>
   );

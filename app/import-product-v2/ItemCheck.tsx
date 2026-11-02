@@ -22,7 +22,7 @@ import {
   useFtOrderItems,
   useFtSearch,
   useFtPagination,
-  SEARCH_SHOW_ALL_MAX,
+  SEARCH_PAGE_SIZE,
   useFtFulfillmentSummary,
   type FtOrderItem,
 } from './hooks/useFtData';
@@ -124,12 +124,11 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 4) 페이지네이션
-  //    처음 화면은 페이지(20건) 표시. 검색했을 때는 결과 전체를 한 화면에 —
-  //    단 SEARCH_SHOW_ALL_MAX 를 넘으면 렌더·이미지 부담 때문에 페이지 표시 유지.
+  //    처음 화면은 페이지(20건) 표시. 검색했을 때는 SEARCH_PAGE_SIZE(100건) 단위로 넓혀
+  //    결과가 100건 이하면 페이지를 넘길 일이 없게 한다 (전체를 그리면 렌더·이미지가 무거움).
   // ============================================================
   const isSearchActive =
     searchType === '배송번호' ? deliveryItems !== null : searchTerm.trim() !== '';
-  const showAllResults = isSearchActive && filteredItems.length <= SEARCH_SHOW_ALL_MAX;
 
   const {
     currentPage,
@@ -138,7 +137,7 @@ const ItemCheck: React.FC = () => {
     totalPages,
     goToFirstPage,
     goToLastPage,
-  } = useFtPagination(filteredItems, undefined, showAllResults);
+  } = useFtPagination(filteredItems, isSearchActive ? SEARCH_PAGE_SIZE : undefined);
 
   // ============================================================
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
@@ -438,16 +437,23 @@ const ItemCheck: React.FC = () => {
 
   // ============================================================
   // 11) readyItems — 수정된 입고 데이터 목록
+  //     progress_qty 는 테이블 '진행' 공식과 같다 (order - CANCEL - RETURN - 출고완료)
+  //     → 모달에서 "입고 / 진행" 으로 보여주고 둘이 같으면 초록, 다르면 주황.
   // ============================================================
   const readyItems: V2ReadyItem[] = useMemo(() => {
     return Array.from(modifiedImportQty.entries())
       .map(([id, qty]) => {
         const item = items.find((i) => i.id === id);
         if (!item) return null;
-        return { item, import_qty: qty };
+        const progress_qty =
+          (item.order_qty ?? 0)
+          - (cancelMap.get(id) ?? 0)
+          - (returnMap.get(id) ?? 0)
+          - (shippedItemMap.get(id) ?? 0);
+        return { item, import_qty: qty, progress_qty };
       })
       .filter((v): v is V2ReadyItem => v !== null);
-  }, [modifiedImportQty, items]);
+  }, [modifiedImportQty, items, cancelMap, returnMap, shippedItemMap]);
 
   // ============================================================
   // 11-1) P 상품 송장 출력 — personal_order_no dedup + Storage check
@@ -898,46 +904,56 @@ const ItemCheck: React.FC = () => {
                   selectedWorker={selectedWorker}
                 />
               </div>
+              {/* 작업 설정 — 각 드롭다운 위에 작은 라벨을 달아 한 묶음으로 보이게 */}
               <div className="v2-title-dropdowns">
                 {/* Worker 선택 (invoiceManager_employees) */}
-                <select
-                  className="v2-coupang-user-dropdown"
-                  value={selectedWorker}
-                  onChange={(e) => setSelectedWorker(e.target.value)}
-                >
-                  <option value="">{t('importProductV2.worker')}</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={`${w.name} ${w.name_kr}`}>
-                      {w.name} {w.name_kr}
-                    </option>
-                  ))}
-                </select>
+                <label className="v2-field">
+                  <span className="v2-field-label">{t('importProductV2.worker')}</span>
+                  <select
+                    className="v2-coupang-user-dropdown"
+                    value={selectedWorker}
+                    onChange={(e) => setSelectedWorker(e.target.value)}
+                  >
+                    <option value="">{t('importProductV2.worker')}</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={`${w.name} ${w.name_kr}`}>
+                        {w.name} {w.name_kr}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 {/* PC-NO 선택 (라벨 프린터 번호) */}
-                <select
-                  className="v2-coupang-user-dropdown"
-                  value={selectedPcNo ?? ''}
-                  onChange={(e) => setSelectedPcNo(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">{t('importProductV2.pcNo')}</option>
-                  {PC_NO_OPTIONS.map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
+                <label className="v2-field v2-field-narrow">
+                  <span className="v2-field-label">{t('importProductV2.pcNo')}</span>
+                  <select
+                    className="v2-coupang-user-dropdown"
+                    value={selectedPcNo ?? ''}
+                    onChange={(e) => setSelectedPcNo(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="">{t('importProductV2.pcNo')}</option>
+                    {PC_NO_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
 
                 {/* ft_users 선택 → 자동 데이터 조회 */}
-                <select
-                  className="v2-coupang-user-dropdown"
-                  value={selectedUserId}
-                  onChange={handleUserChange}
-                >
-                  <option value="">{t('importProductV2.selectUser')}</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.vender_name || user.full_name} {user.user_code}
-                    </option>
-                  ))}
-                </select>
+                <label className="v2-field v2-field-wide">
+                  <span className="v2-field-label">{t('importProductV2.selectUser')}</span>
+                  <select
+                    className={`v2-coupang-user-dropdown ${selectedUserId ? 'is-set' : ''}`}
+                    value={selectedUserId}
+                    onChange={handleUserChange}
+                  >
+                    <option value="">{t('importProductV2.selectUser')}</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.vender_name || user.full_name} {user.user_code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -1005,67 +1021,70 @@ const ItemCheck: React.FC = () => {
             {/* ============================================================ */}
             {/* 페이지네이션 */}
             {/* ============================================================ */}
-            {/* 검색 결과 전체 표시 중 — 페이지 버튼 대신 건수만 */}
-            {!loading && showAllResults && filteredItems.length > 0 && (
-              <div className="v2-pagination">
-                <span className="v2-page-info">
-                  {t('importProductV2.pagination.searchAll', { count: filteredItems.length })}
-                </span>
-              </div>
-            )}
-
-            {!loading && !showAllResults && filteredItems.length > 0 && (
-              <div className="v2-pagination">
+            {/* 검색 중: 결과 건수 안내 (100건 이하면 한 화면, 넘으면 100건씩 페이지) */}
+            {/* 검색 전: 20건 단위 페이지. 한 페이지뿐이면 버튼 없이 건수만 */}
+            {!loading && filteredItems.length > 0 && (
+              <nav className="v2-pagination" aria-label="pagination">
                 {isSearchActive && (
-                  <span className="v2-page-info">
-                    {t('importProductV2.pagination.searchTooMany', { count: filteredItems.length, max: SEARCH_SHOW_ALL_MAX })}
+                  <span className="v2-page-info v2-page-info-search">
+                    {totalPages > 1
+                      ? t('importProductV2.pagination.searchPaged', { count: filteredItems.length, size: SEARCH_PAGE_SIZE })
+                      : t('importProductV2.pagination.searchAll', { count: filteredItems.length })}
                   </span>
                 )}
-                <button
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
-                  className="v2-pagination-button"
-                >
-                  {t('importProductV2.pagination.first')}
-                </button>
 
-                <div className="v2-page-numbers">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
+                {totalPages > 1 && (
+                  <>
+                    <button
+                      onClick={goToFirstPage}
+                      disabled={currentPage === 1}
+                      className="v2-pagination-button"
+                    >
+                      {t('importProductV2.pagination.first')}
+                    </button>
 
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`v2-page-number ${currentPage === pageNum ? 'active' : ''}`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
+                    <div className="v2-page-numbers">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
 
-                <button
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
-                  className="v2-pagination-button"
-                >
-                  {t('importProductV2.pagination.last')}
-                </button>
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`v2-page-number ${currentPage === pageNum ? 'active' : ''}`}
+                            aria-current={currentPage === pageNum ? 'page' : undefined}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                <span className="v2-page-info">
-                  {t('importProductV2.pagination.pageInfo', { current: currentPage, total: totalPages, count: filteredItems.length })}
-                </span>
-              </div>
+                    <button
+                      onClick={goToLastPage}
+                      disabled={currentPage === totalPages}
+                      className="v2-pagination-button"
+                    >
+                      {t('importProductV2.pagination.last')}
+                    </button>
+                  </>
+                )}
+
+                {!isSearchActive && (
+                  <span className="v2-page-info">
+                    {t('importProductV2.pagination.pageInfo', { current: currentPage, total: totalPages, count: filteredItems.length })}
+                  </span>
+                )}
+              </nav>
             )}
 
             {/* 데이터 없음 안내 */}
@@ -1080,7 +1099,10 @@ const ItemCheck: React.FC = () => {
             {/* ============================================================ */}
             <div className="v2-label-settings-entry">
               <a href="/label-settings" className="v2-label-settings-link">
-                🏷️ 라벨 설정
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                  <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 12V4h8l10 10-8 8zM7.5 7.5h.01" />
+                </svg>
+                라벨 설정
               </a>
               <span className="v2-label-settings-hint">
                 라벨 양식(템플릿)과 PC-NO별 프린터를 지정하면 [라벨] 모달에서 바로 출력할 수 있습니다.

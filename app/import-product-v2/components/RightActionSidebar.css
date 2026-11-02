@@ -3,7 +3,8 @@
 /*                                                              */
 /* 구조: v2-item-main-content 의 flex item (LeftsideMenu 와 대칭) */
 /*   - TopsideMenu 아래, Left/Right 두 사이드바가 탑메뉴 양 옆에 대칭 배치 */
-/*   - 너비 70px, 검정 배경, 이모지+라벨 5개 버튼 세로 가운데 정렬 */
+/*   - 너비 88px, 흰 바탕 레일, 선 아이콘 + 라벨 버튼 세로 가운데 정렬 */
+/*   - 색은 [입고] 하나만 (파랑) — 나머지는 회색 글자, hover 시 연회색 배경 */
 /* ============================================================ */
 
 /*
@@ -16,96 +17,114 @@
   position: sticky;
   top: 68px;
   align-self: flex-start;
-  width: 70px;
+  width: 88px;
   height: calc(100vh - 68px);
-  flex-shrink: 0;                   /* flex 부모가 줄여도 70px 유지 */
-  background-color: #111827;
-  border-left: 1px solid #1f2937;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;                   /* flex 부모가 줄여도 88px 유지 */
+  background-color: #ffffff;
+  border-left: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  justify-content: center;          /* 버튼 5개 뷰포트 기준 세로 가운데 정렬 */
-  padding: 16px 0;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;          /* 버튼 묶음 뷰포트 기준 세로 가운데 정렬 */
+  padding: 16px 8px;
+  gap: 6px;
 }
 
-/* ── 액션 버튼 (이모지 + 라벨 세로 스택) ── */
+/* ── 액션 버튼 (아이콘 + 라벨 세로 스택) ── */
 .v2-right-action-btn {
   position: relative;
-  width: 100%;
-  padding: 12px 4px;
+  width: 72px;
+  height: 64px;
+  padding: 0;
   background: transparent;
   border: none;
-  color: #e5e7eb;
+  border-radius: 12px;
+  color: #374151;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
   transition: background-color 0.15s ease, color 0.15s ease;
   font-family: inherit;
 }
 
 .v2-right-action-btn:hover:not(:disabled) {
-  background-color: #1f2937;
-  color: #ffffff;
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
 .v2-right-action-btn:active:not(:disabled) {
-  background-color: #374151;
+  background-color: #e5e7eb;
 }
 
 .v2-right-action-btn:disabled {
-  opacity: 0.4;
+  color: #c4c7cd;
   cursor: not-allowed;
+}
+
+/* ── [입고] — 레일에서 유일하게 색을 쓰는 대표 버튼 ── */
+.v2-right-action-btn.is-primary {
+  height: 72px;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.v2-right-action-btn.is-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.v2-right-action-btn.is-primary:active:not(:disabled) {
+  background-color: #1e40af;
+}
+
+.v2-right-action-btn.is-primary:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
 }
 
 /* ── 고객확인 구분선 (기존 액션 ↔ 고객확인 분리) ── */
 .v2-right-action-divider {
-  width: 60%;
+  width: 40px;
   height: 1px;
-  margin: 8px auto;
-  background-color: #374151;
+  margin: 6px 0;
+  background-color: #e5e7eb;
 }
 
-/* ── 이모지 ── */
-.v2-right-action-emoji {
-  font-size: 22px;
-  line-height: 1;
-  /* 이모지 색상 렌더링 일관성 */
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+/* ── 아이콘 ── */
+.v2-right-action-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
-/* ── 라벨 (작은 폰트) ── */
+/* ── 라벨 ── */
 .v2-right-action-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: -0.2px;
   line-height: 1.1;
   text-align: center;
   word-break: keep-all;
 }
 
-/* ── 입고 뱃지 (readyItems.length 표시) ── */
+/* ── 입고 뱃지 (readyItems.length 표시) — 버튼 모서리 바깥쪽에 걸침 ── */
 .v2-right-action-badge {
   position: absolute;
-  top: 6px;
-  right: 10px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background-color: #ef4444;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  border: 2px solid #ffffff;
+  background-color: #dc2626;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 18px;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-/* 뱃지 활성 시 입고 버튼 강조 (border 가 아닌 내부 색상) */
-.v2-right-action-btn.has-items .v2-right-action-emoji {
-  /* 약간의 강조 — 이모지는 그대로, 주변 색만 변경 */
-  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
 }

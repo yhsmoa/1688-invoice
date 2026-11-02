@@ -207,6 +207,24 @@ const LeftsideMenu: React.FC = () => {
               <span className="menu-text">상품출고</span>
             </Link>
           </li>
+          <li className="menu-item">
+            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
+              <span className="menu-icon">{Icons.shipment}</span>
+              <span className="menu-text">쉽먼트</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
+              <span className="menu-icon">{Icons.shipmentComplete}</span>
+              <span className="menu-text">출고완료</span>
+            </Link>
+          </li>
+          <li className="menu-item">
+            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
+              <span className="menu-icon">{Icons.returnProduct}</span>
+              <span className="menu-text">반품접수</span>
+            </Link>
+          </li>
           {/* 재고(보관) — 보관(STOCK) 상품: 입고 → 위치 배치 → 재고 → 쉽먼트 (docs/PLAN_stock-type-S.md) */}
           <li className="menu-item">
             <div className="menu-link" onClick={toggleStorageMenu}>
@@ -228,24 +246,6 @@ const LeftsideMenu: React.FC = () => {
                 </li>
               </ul>
             )}
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
-              <span className="menu-icon">{Icons.shipment}</span>
-              <span className="menu-text">쉽먼트</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
-              <span className="menu-icon">{Icons.shipmentComplete}</span>
-              <span className="menu-text">출고완료</span>
-            </Link>
-          </li>
-          <li className="menu-item">
-            <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
-              <span className="menu-icon">{Icons.returnProduct}</span>
-              <span className="menu-text">반품접수</span>
-            </Link>
           </li>
 
           {/* ============================================================ */}

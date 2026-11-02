@@ -126,7 +126,11 @@
       "templateNone": "템플릿 없음 — [라벨 설정]에서 먼저 만들어주세요",
       "templateMissing": "{{audience}} 템플릿 없음 — [라벨 설정]에서 대상을 {{audience}}로 둔 템플릿을 만들거나 다른 템플릿을 고르세요",
       "templateNoDescription": "(설명 없음)",
-      "templateHint": "권장연령이 있는 상품은 키즈, 없는 상품은 성인 템플릿이 자동 선택됩니다. 드롭다운에서 바꿀 수 있습니다."
+      "templateHint": "권장연령이 있는 상품은 키즈, 없는 상품은 성인 템플릿이 자동 선택됩니다. 드롭다운에서 바꿀 수 있습니다.",
+      "templateTitle": "라벨 템플릿",
+      "allHint": "저장 → 라벨 스티커 → 케어 라벨",
+      "importOverProgress": "입고 / 진행",
+      "invoiceHint": "P 상품 운송장 PDF"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",
@@ -477,7 +481,8 @@
       "first": "처음",
       "last": "끝",
       "searchAll": "검색 결과 {{count}}건 (전체 표시)",
-      "searchTooMany": "검색 결과 {{count}}건 — {{max}}건을 넘어 페이지로 나눠 표시합니다"
+      "searchTooMany": "검색 결과 {{count}}건 — {{max}}건을 넘어 페이지로 나눠 표시합니다",
+      "searchPaged": "검색 결과 {{count}}건 — {{size}}건씩 나눠 표시"
     },
     "alerts": {
       "selectUser": "사용자를 선택해주세요.",
@@ -490,6 +495,10 @@
       "invoiceDownloadFailed": "송장 PDF 다운로드에 실패했습니다.",
       "invoicePrintFailed": "송장 PDF 처리에 실패했습니다.",
       "invoicePrintError": "송장 출력 중 오류가 발생했습니다."
+    },
+    "set": {
+      "label": "세트",
+      "mixed": "다른 판매자"
     }
   },
   "importProductV3": {

@@ -30,24 +30,44 @@
   width: 100%;
 }
 
-/* 타이틀 행: 제목 + 드롭박스 */
+/* 타이틀 행: 제목 + 드롭박스 (작업자 · PC-NO · 사업자) */
 .v2-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .v2-title-dropdowns {
   display: flex;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 10px;
   margin-left: auto;
+  flex-wrap: wrap;
 }
 .v2-item-title {
-  color: #333;
-  font-size: 2rem;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   margin-bottom: 0;
   margin-top: 0;
 }
+
+/* ── 드롭다운 위 작은 라벨 (작업자 / PC-NO / 사업자) ── */
+.v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.v2-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+.v2-field .v2-coupang-user-dropdown { min-width: 160px; }
+.v2-field-narrow .v2-coupang-user-dropdown { min-width: 84px; }
+.v2-field-wide .v2-coupang-user-dropdown { min-width: 240px; }
 
 /* ── 왼쪽 영역: 제목 + [V2 이전] 버튼 ─────────────────── */
 .v2-title-left {
@@ -178,40 +198,64 @@
 }
 
 .v2-coupang-user-dropdown {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background: white;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
   cursor: pointer;
   outline: none;
   min-width: 180px;
 }
 
 .v2-coupang-user-dropdown:focus {
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+  border-color: #111827;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12);
 }
 
-/* 엑셀 업로드 버튼 - 검정 계열 (크기 통일: 고정폭 + 가운데 정렬) */
+/* 사업자가 선택돼 있으면 진한 테두리 — 지금 어느 사업자 데이터인지 한눈에 */
+.v2-coupang-user-dropdown.is-set {
+  border-color: #111827;
+  font-weight: 600;
+}
+
+/* 데이터 도구 버튼 (1688 XLSX · 배송상황 csv · XLSX 다운 · 주문 ID) — 조용한 테두리 버튼 + 선 아이콘 */
 .v2-excel-upload-btn {
-  background-color: #18181b;
-  color: white;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
+  height: 34px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  width: 130px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
-.v2-excel-upload-btn:hover {
-  background-color: #27272a;
+.v2-excel-upload-btn:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.v2-excel-upload-btn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.v2-btn-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 /* 엑셀 다운로드 버튼 */
@@ -239,163 +283,129 @@
   background-color: #27272a;
 }
 
-/* 검색 영역 */
+/* ============================================================
+   검색 영역 — 흰 카드 안에 [필터 행] + [검색 컨트롤 한 덩어리]
+   ============================================================ */
 .v2-search-section {
-  margin-bottom: 20px;
-}
-
-.v2-search-board {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.v2-search-form-container {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   display: flex;
-  gap: 16px;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.v2-search-dropdown {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.v2-search-input {
-  flex: 2;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-/* 검색 버튼 - 검정 계열 */
-.v2-search-button {
-  flex: 1;
-  padding: 10px 16px;
-  background-color: #18181b;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.v2-search-button:hover {
-  background-color: #27272a;
-}
-
-/* 배송번호(검색유형, 좌) + 알약 입력(우) — 같은 행 */
-.v2-search-bottom-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.v2-search-bottom-row .v2-search-dropdown {
-  flex: 0 0 auto;
-  min-width: 140px;
-}
-.v2-search-bottom-row .v2-search-pill {
-  flex: 1;
-  width: auto;
-  margin-top: 0;
-}
-/* 액션 버튼들 — 필터행 오른쪽 (입력폼 위) */
+/* 액션 버튼들 — 필터행 오른쪽 */
 .v2-search-action-buttons {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-/* ── 알약형 검색 입력 (아이콘 버튼 + 큰 라운드 입력) — 보드 밖, 높이 1.5배 ── */
-.v2-search-pill {
+/* ── 검색 컨트롤 — [검색유형 ▾ | 입력 | 검색] 테두리 하나로 묶음, 스캔하기 좋게 높이 48px ── */
+.v2-search-control {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 0;
-  padding: 21px 24px;
+  align-items: stretch;
+  height: 48px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 9999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  box-sizing: border-box;
+  overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.v2-search-pill:focus-within {
-  border-color: #c7d2fe;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.12);
+.v2-search-control:focus-within {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12);
 }
-.v2-search-pill-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+.v2-search-control-type {
+  flex: none;
+  padding: 0 32px 0 14px;
   border: none;
-  padding: 0;
-  color: #9ca3af;
+  border-right: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: #f9fafb url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
   cursor: pointer;
-  flex-shrink: 0;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
-.v2-search-pill-icon-btn:hover:not(:disabled) { color: #4b5563; }
-.v2-search-pill-icon-btn:disabled { cursor: default; }
-.v2-search-pill-input {
+.v2-search-control-input {
   flex: 1;
   min-width: 0;
+  padding: 0 14px;
   border: none;
   outline: none;
   background: transparent;
-  font-size: 16px;
-  color: #374151;
+  font-family: inherit;
+  font-size: 15px;
+  color: #111827;
 }
-.v2-search-pill-input::placeholder { color: #b9b9c3; }
+.v2-search-control-input::placeholder { color: #9ca3af; }
+.v2-search-control-btn {
+  flex: none;
+  width: 96px;
+  border: none;
+  background: #111827;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.v2-search-control-btn:hover:not(:disabled) { background: #27272a; }
+.v2-search-control-btn:disabled { cursor: default; }
+.v2-search-control-btn .v2-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
 
 /* ── 라벨 설정 진입점 (페이지 하단) ── */
 .v2-label-settings-entry {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 24px;
-  padding: 14px 16px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .v2-label-settings-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: #18181b;
-  color: #fff;
-  border-radius: 6px;
-  font-size: 14px;
+  color: #2563eb;
+  font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  transition: background-color 0.15s;
   flex-shrink: 0;
 }
 
-.v2-label-settings-link:hover { background: #27272a; }
+.v2-label-settings-link:hover { color: #1d4ed8; text-decoration: underline; }
 
 .v2-label-settings-hint {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
 }
 
 /* 테이블 */
 .v2-table-board {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -409,9 +419,10 @@
 /* 테이블 열 너비 조정 */
 .v2-item-table th:nth-child(1),
 .v2-item-table td:nth-child(1) {
-  width: 40px;
-  padding: 8px 0 8px 8px; /* 상 우 하 좌 */
+  width: 44px;
+  padding: 8px 0 8px 12px; /* 상 우 하 좌 — 왼쪽은 세트 묶음선 자리 */
   text-align: center; /* 체크박스 가운데 정렬 */
+  position: relative;
 }
 
 /* 이미지 열 */
@@ -471,29 +482,37 @@
 .v2-item-table td:nth-child(12),
 .v2-item-table th:nth-child(13),
 .v2-item-table td:nth-child(13) {
-  width: 35px;
+  width: 46px;
   text-align: center;
   padding: 0 !important;
 }
 
 .v2-item-table th {
-  background-color: #f8f9fa;
-  padding: 16px;
+  background-color: #f9fafb;
+  padding: 10px 12px;
   text-align: left;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #e2e8f0;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
   white-space: nowrap;
 }
 
 /* 테이블 셀 내용 처리 */
 .v2-item-table td {
-  padding: 16px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 12px;
+  border-bottom: 1px solid #f1f2f4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: normal;
   word-break: break-all;
+  vertical-align: middle;
+}
+
+/* 체크된 행 · 작업 수량이 입력된 행 — 연한 파랑 배경 */
+.v2-item-table tr.v2-row-selected td,
+.v2-item-table tr.v2-row-has-work td {
+  background-color: #f5f8ff;
 }
 
 /* 같은 product_id 그룹: 행 사이 border 제거 */
@@ -502,19 +521,57 @@
 }
 
 /* ============================================================
-   세트상품 행: 양쪽 바깥 border + 🎁 배지 색상 (팔레트 순환)
+   세트상품 행: 체크박스 왼쪽 묶음선 + 세트 배지 색상 (팔레트 순환)
    · 각 행의 tr inline style로 --set-accent / --set-bg / --set-text 주입
    · 미지정 시 기본 주황(#e65100, #fff3e0) fallback
+   · 묶음선은 첫 행(위 모서리) ~ 끝 행(아래 모서리) 로 이어져 "{" 처럼 보인다
+     (v2-set-pos-first / mid / last / only 는 ItemTable 이 앞뒤 행을 보고 붙인다)
    ============================================================ */
-.v2-item-table tr.v2-set-product-row td:first-child {
-  border-left: 3px solid var(--set-accent, #e65100);
+.v2-item-table tr.v2-set-product-row td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  width: 6px;
+  border-left: 2px solid var(--set-accent, #e65100);
+  pointer-events: none;
 }
-.v2-item-table tr.v2-set-product-row td:last-child {
-  border-right: 3px solid var(--set-accent, #e65100);
+.v2-item-table tr.v2-set-pos-first td:first-child::before {
+  top: 50%;
+  bottom: -1px;
+  border-top: 2px solid var(--set-accent, #e65100);
+  border-top-left-radius: 6px;
+}
+.v2-item-table tr.v2-set-pos-mid td:first-child::before {
+  top: -1px;
+  bottom: -1px;
+}
+.v2-item-table tr.v2-set-pos-last td:first-child::before {
+  top: -1px;
+  bottom: 50%;
+  border-bottom: 2px solid var(--set-accent, #e65100);
+  border-bottom-left-radius: 6px;
+}
+.v2-item-table tr.v2-set-pos-only td:first-child::before {
+  top: 30%;
+  bottom: 30%;
+  border-top: 2px solid var(--set-accent, #e65100);
+  border-bottom: 2px solid var(--set-accent, #e65100);
+  border-radius: 6px 0 0 6px;
 }
 .v2-item-table tr.v2-set-product-row .v2-set-badge {
   background-color: var(--set-bg, #fff3e0);
   color: var(--set-text, #e65100);
+}
+/* 같은 세트인데 1688 주문번호가 다름(다른 판매자) — 팔레트 대신 보라색으로 구분 */
+.v2-item-table tr.v2-set-product-row .v2-set-badge.is-mixed {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+/* V2 테이블 안에서는 세트 배지를 조금 크게 (V3 는 .v2-set-badge 기본값 그대로) */
+.v2-item-table .v2-set-badge {
+  font-size: 12.5px;
+  padding: 2px 9px;
+  letter-spacing: 0;
 }
 
 /* 진행 > 입고인 행 노란색 처리 */
@@ -614,17 +671,6 @@
 /* 쉽먼트 사이즈 배지(.size-badge*) 스타일은 app/globals.css 로 이전됨 (공용 visual primitive) */
 
 
-/* 진행, 입고, 취소, 출고 열을 개수, 비용 열 폰트 크기에 맞춤 (기본 16px) */
-.v2-item-table td:nth-child(8),  /* 진행 열 */
-.v2-item-table td:nth-child(10), /* 입고 열 */
-.v2-item-table td:nth-child(12), /* 취소 열 */
-.v2-item-table td:nth-child(13)  /* 출고 열 */
-{
-  font-size: 16px !important;
-  font-weight: normal !important;
-  font-family: Arial, sans-serif !important;
-}
-
 /* 주문옵션 열도 개수, 비용과 같은 크기로 조정 */
 .v2-item-table .v2-china-options,
 .v2-china-options {
@@ -632,13 +678,6 @@
   line-height: 1.4 !important;
   font-size: 16px !important;
   color: #333 !important;
-  font-weight: normal !important;
-  font-family: Arial, sans-serif !important;
-}
-
-/* 수량 배지 폰트 크기를 기본 크기에 맞춤 */
-.v2-qty-badge {
-  font-size: 16px !important;
   font-weight: normal !important;
   font-family: Arial, sans-serif !important;
 }
@@ -770,14 +809,30 @@
 /* 수량 배지 기본 스타일 */
 .v2-qty-badge {
   display: inline-block;
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  border-radius: 6px;
   font-size: 13px;
-  font-weight: 500;
-  min-width: 28px;
+  font-weight: 600;
+  min-width: 30px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
+/* ── 상태 톤 (utils/qtyStatus.ts 가 정한다) — 상품입고 V2 테이블 ──
+   pending 주황 = 남은 단계 · done 초록 = 끝난 단계 · idle 회색 = 할 일 없음 · cancel 빨강 = 취소·반품 */
+.v2-qty--pending { background-color: #fef3c7; color: #92400e; }
+.v2-qty--done    { background-color: #dcfce7; color: #166534; }
+.v2-qty--idle    { background-color: #f3f4f6; color: #6b7280; }
+.v2-qty--cancel  { background-color: #fee2e2; color: #b91c1c; }
+
+/* 0 — 흐린 대시 */
+.v2-qty-none {
+  color: #d1d5db;
+  font-size: 13px;
+}
+
+/* ── 아래 5개 색 클래스는 상품입고 V3(OrderRowTable) 가 아직 쓴다 — 유지 ── */
 /* 진행 - 회색 배경 */
 .v2-progress-qty {
   background-color: #e2e2e2;
@@ -1048,65 +1103,79 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 20px;
-  padding: 10px 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 4px 0;
 }
 
 .v2-pagination-button {
-  padding: 8px 15px;
-  margin: 0 5px;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  font-family: inherit;
+  font-size: 13px;
+  transition: background-color 0.15s;
 }
 
-.v2-pagination-button:hover {
-  background-color: #e0e0e0;
+.v2-pagination-button:hover:not(:disabled) {
+  background-color: #f3f4f6;
 }
 
 .v2-pagination-button:disabled {
-  background-color: #f9f9f9;
-  color: #aaa;
+  color: #9ca3af;
   cursor: not-allowed;
 }
 
 .v2-page-numbers {
   display: flex;
-  margin: 0 10px;
+  gap: 6px;
 }
 
 .v2-page-number {
-  width: 35px;
-  height: 35px;
-  margin: 0 3px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background-color: #fff;
+  color: #374151;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 13px;
+  transition: background-color 0.15s;
 }
 
 .v2-page-number:hover {
-  background-color: #f0f0f0;
+  background-color: #f3f4f6;
 }
 
 /* 페이지 번호 활성 상태 - 검정 계열 */
 .v2-page-number.active {
-  background-color: #18181b;
+  background-color: #111827;
   color: white;
-  border-color: #18181b;
+  border-color: #111827;
+  font-weight: 600;
 }
 
 .v2-page-info {
-  margin-left: 15px;
-  font-size: 14px;
-  color: #666;
+  margin-left: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* 검색 중 건수 안내 — 버튼 앞에 둔다 */
+.v2-page-info-search {
+  margin-left: 0;
+  margin-right: 8px;
+  font-weight: 600;
+  color: #374151;
 }
 
 /* 액션 버튼 스타일 */
@@ -1157,16 +1226,50 @@
   position: relative;
   cursor: pointer;
   transition: background-color 0.2s;
-  padding: 16px !important; /* 전체 셀 영역을 클릭 가능하게 */
+  padding: 8px 4px !important; /* 전체 셀 영역을 클릭 가능하게 */
 }
 
-/* 작업 열 — 입력 가능한 셀임을 파스텔 노란색으로 표시 */
+/* 작업 열 — 입력 가능한 셀임을 파스텔 노란색으로 표시 (헤더 포함) */
 .v2-work-cell {
-  background-color: #fffde7 !important;
+  background-color: #fffbeb !important;
+}
+.v2-item-table th.v2-work-cell {
+  color: #92400e;
+  text-align: center;
 }
 
 .v2-editable-qty-cell:hover {
-  background-color: #fff9c4 !important; /* hover 시 조금 더 진한 노란색 */
+  background-color: #fef3c7 !important; /* hover 시 조금 더 진한 노란색 */
+}
+
+/* 작업 칸 안 값 상자 — 빈 칸은 점선, 값이 있으면 파란 테두리 + 굵은 숫자 */
+.v2-editable-qty-cell .v2-qty-display-seamless {
+  width: 52px;
+  height: 32px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  border: 1px dashed #e5c77a;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+.v2-item-table tr.v2-row-has-work .v2-editable-qty-cell .v2-qty-display-seamless {
+  border: 1.5px solid #2563eb;
+}
+.v2-editable-qty-cell .v2-qty-input-seamless {
+  width: 52px;
+  height: 32px;
+  margin: 0 auto;
+  display: block;
+  box-sizing: border-box;
+  border: 1.5px solid #2563eb;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1d4ed8;
 }
 
 /* 시각적으로 보이지 않는 디스플레이 */
@@ -1677,55 +1780,74 @@
   margin-bottom: 8px;
 }
 
-.v2-status-filter-radio {
-  display: flex;
+/* ── 상태 세그먼트 (PROCESSING / ALL) — 회색 트랙 위에 흰 알약이 선택 ── */
+.v2-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.v2-seg-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.v2-seg-btn:hover {
+  color: #111827;
+}
+
+.v2-seg-btn.active {
+  background-color: #fff;
+  color: #111827;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.v2-seg-btn input[type="radio"] {
+  display: none;
+}
+
+/* ── 체크박스 라벨 (상품별로 보기) ── */
+.v2-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   font-weight: 500;
   color: #374151;
   cursor: pointer;
-  transition: all 0.15s;
   user-select: none;
 }
 
-.v2-status-filter-radio:hover {
-  border-color: #9ca3af;
-  background-color: #f9fafb;
-}
-
-.v2-status-filter-radio.active {
-  border-color: #18181b;
-  background-color: #18181b;
-  color: #fff;
-}
-
-.v2-status-filter-radio input[type="radio"] {
-  display: none;
+.v2-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2563eb;
 }
 
 .v2-status-filter-count {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
-  margin-left: 4px;
 }
 
-/* ── 검색보드 내 필터 행 ── */
+/* ── 검색 카드 안 필터 행 ── */
 .v2-search-filter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.v2-filter-divider {
-  color: #d1d5db;
-  font-size: 14px;
-  margin: 0 2px;
-  user-select: none;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .v2-filter-btn {
