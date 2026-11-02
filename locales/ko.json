@@ -799,7 +799,10 @@
       "dpiSmaller": "작게",
       "dpiLarger": "크게"
     },
-    "newName": { "barcode": "새 바코드 라벨", "care": "새 케어라벨" },
+    "newName": {
+      "barcode": "새 바코드 라벨",
+      "care": "새 케어라벨"
+    },
     "empty": {
       "pickTemplate": "왼쪽에서 템플릿을 선택하거나 새로 만드세요.",
       "pickTemplateFirst": "템플릿을 먼저 선택하세요.",
@@ -812,13 +815,24 @@
       "delete": "삭제 (Delete)"
     },
     "canvasFoot": "미리보기는 실제 인쇄와 같은 방식으로 그립니다 ({{dpi}}dpi). 빈 곳을 끌면 여러 개를 한 번에 선택하고, Shift/Ctrl+클릭으로 선택을 더하거나 뺍니다.",
-    "tabs": { "list": "템플릿", "info": "기본정보", "sample": "미리보기 데이터", "printer": "프린터" },
+    "tabs": {
+      "list": "템플릿",
+      "info": "기본정보",
+      "sample": "미리보기 데이터",
+      "printer": "프린터"
+    },
     "board": {
       "needPick": "템플릿 탭에서 먼저 선택하거나 새로 만드세요.",
       "needPickSample": "템플릿을 선택하면 미리보기 데이터를 편집할 수 있습니다."
     },
-    "types": { "barcode": "바코드 감열지", "care": "케어라벨" },
-    "typeShort": { "barcode": "바코드", "care": "케어" },
+    "types": {
+      "barcode": "바코드 감열지",
+      "care": "케어라벨"
+    },
+    "typeShort": {
+      "barcode": "바코드",
+      "care": "케어"
+    },
     "list": {
       "allTypes": "전체 종류",
       "allUsers": "전체 사용자",
@@ -870,9 +884,19 @@
       "continuous": "틈이 없는 롤. 틈 설정으로 찍으면 용지를 찾다가 빨간불로 멈춥니다.",
       "blackmark": "뒷면 검은 띠로 라벨을 구분합니다."
     },
-    "cutter": { "off": "절단 안 함", "each": "매 장 절단", "batch": "묶음 끝에 한 번 절단" },
-    "audience": { "adult": "성인", "kids": "키즈" },
-    "audienceHint": { "adult": "권장연령 없음", "kids": "권장연령 있음" },
+    "cutter": {
+      "off": "절단 안 함",
+      "each": "매 장 절단",
+      "batch": "묶음 끝에 한 번 절단"
+    },
+    "audience": {
+      "adult": "성인",
+      "kids": "키즈"
+    },
+    "audienceHint": {
+      "adult": "권장연령 없음",
+      "kids": "권장연령 있음"
+    },
     "sample": {
       "title": "미리보기 데이터",
       "searchHint": "아이템번호 · 상품번호(QR) · 바코드로 주문을 찾아 고르면 그 주문 값으로 미리보기·테스트 출력이 그려집니다 (실제 인쇄와 같은 값).",
@@ -962,7 +986,14 @@
       "help": "[라벨 설정] > 프린터 탭에서 이 템플릿을 이 PC 의 어떤 프린터로 뽑을지 먼저 지정해주세요."
     },
     "toolbar": {
-      "add": { "text": "텍스트", "barcode": "바코드", "qr": "QR", "box": "박스", "line": "선", "image": "이미지·기호" },
+      "add": {
+        "text": "텍스트",
+        "barcode": "바코드",
+        "qr": "QR",
+        "box": "박스",
+        "line": "선",
+        "image": "이미지·기호"
+      },
       "align": {
         "left": "라벨 왼쪽에 붙이기",
         "hcenter": "가로 가운데",
@@ -994,7 +1025,14 @@
       "symbolCaption": "기호 {{name}}",
       "uploadImage": "업로드 이미지"
     },
-    "elType": { "text": "텍스트", "barcode": "바코드", "qr": "QR", "box": "박스", "line": "선", "image": "이미지" },
+    "elType": {
+      "text": "텍스트",
+      "barcode": "바코드",
+      "qr": "QR",
+      "box": "박스",
+      "line": "선",
+      "image": "이미지"
+    },
     "props": {
       "title": "{{type}} 속성",
       "name": "요소 이름 (목록 표시용)",
@@ -1253,7 +1291,8 @@
     "summary": {
       "pending": "{{lines}}건 · 미배치 {{qty}}개",
       "stock": "{{locations}}위치 · {{qty}}개",
-      "agedLabel": "{{days}}일 이상 보관"
+      "agedLabel": "{{days}}일 이상 보관",
+      "requests": "{{count}}건"
     },
     "needWorker": "담당자를 먼저 선택하세요.",
     "needUser": "사용자를 선택하세요.",
@@ -1344,7 +1383,17 @@
       "forceHint": "→ [타입이 달라도 담기]를 체크하고 다시 저장하세요.",
       "confirm": "박스에 담기",
       "done": "{{box}} 에 {{qty}}개 담음",
-      "error": "쉽먼트 처리 중 오류가 발생했습니다."
+      "error": "쉽먼트 처리 중 오류가 발생했습니다.",
+      "type": "타입",
+      "typeFixedHint": "이미 정해진 타입 — 미출고 박스가 있는 동안은 바꿀 수 없습니다",
+      "sizePlaceholder": "쿠팡 사이즈",
+      "personalNoPlaceholder": "개인 주문번호"
+    },
+    "request": {
+      "label": "쉽먼트 요청",
+      "summary": "{{qty}}개 · {{type}} {{detail}} · {{at}}",
+      "badge": "요청 {{qty}} · {{type}} {{detail}}",
+      "doneBadge": "처리완료"
     }
   }
 }

@@ -37,6 +37,10 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   PICK_ITEM_INVALID: '쉽먼트로 보낼 수 없는 상품입니다. (보관 해제 또는 완료된 주문)',
   PICK_BOX_NOT_OPEN: '박스가 이미 출고되었거나 다른 사용자의 박스입니다.',
   PICK_INVALID_QTY: '꺼낼 수량이 위치 재고보다 많거나 올바르지 않습니다.',
+  STOCK_TYPE_REQUIRED: '쉽먼트 타입(COUPANG / PERSONAL / DIRECT)을 정해 주세요.',
+  STOCK_SIZE_REQUIRED: 'COUPANG 은 쿠팡 사이즈(Small / Medium / Large)가 필요합니다.',
+  STOCK_PERSONAL_NO_REQUIRED: 'PERSONAL 은 개인 주문번호가 필요합니다.',
+  STOCK_TYPE_LOCKED: '이미 다른 타입으로 담긴 미출고 박스가 있어 타입을 바꿀 수 없습니다. 출고 후 다시 시도하세요.',
   MOVE_INVALID_LOCATION: '옮길 위치를 입력해 주세요.',
   MOVE_SAME_LOCATION: '같은 위치로는 옮길 수 없습니다.',
   MOVE_INVALID_QTY: '옮길 수량이 위치 재고보다 많거나 올바르지 않습니다.',
@@ -141,6 +145,7 @@ interface ItemRow {
   '1688_offer_id': string | null;
   shipment_type: string | null;
   coupang_shipment_size: string | null;
+  personal_order_no: string | null;
   set_total: number | null;
   set_seq: number | null;
   status: string | null;
@@ -148,7 +153,7 @@ interface ItemRow {
 
 const ITEM_SELECT =
   'id, user_id, product_id, product_no, item_no, item_name, option_name, china_option1, china_option2, ' +
-  'img_url, barcode, 1688_offer_id, shipment_type, coupang_shipment_size, set_total, set_seq, status';
+  'img_url, barcode, 1688_offer_id, shipment_type, coupang_shipment_size, personal_order_no, set_total, set_seq, status';
 
 const toInfo = (r: ItemRow): StorageProductInfo => ({
   product_id: r.product_id ?? '',
@@ -164,6 +169,7 @@ const toInfo = (r: ItemRow): StorageProductInfo => ({
   offer_id: r['1688_offer_id'],
   shipment_type: r.shipment_type,
   coupang_shipment_size: r.coupang_shipment_size,
+  personal_order_no: r.personal_order_no,
   set_total: r.set_total,
   status: r.status,
 });

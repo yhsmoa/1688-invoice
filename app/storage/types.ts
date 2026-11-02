@@ -21,6 +21,8 @@ export interface StorageProductInfo {
   offer_id: string | null;
   shipment_type: string | null;
   coupang_shipment_size: string | null;
+  /** PERSONAL 로 꺼낼 때 기본값 (보존값) */
+  personal_order_no: string | null;
   set_total: number | null;
   status: string | null;
 }
@@ -76,4 +78,31 @@ export interface LedgerRow {
 export interface PickInput {
   location_id: string;
   qty: number;
+}
+
+// ── 꺼낼 때 정하는 타입 (S 상품) — DB 함수 ft_storage_resolve_type 의 입력 ──
+export type StorageShipmentType = 'COUPANG' | 'PERSONAL' | 'DIRECT';
+
+export interface PickTypeInput {
+  shipment_type: StorageShipmentType | null;
+  coupang_shipment_size: string | null;
+  personal_order_no: string | null;
+}
+
+// ── 고객 쉽먼트 요청 (ft_storage_requests) ──
+export interface StorageRequest {
+  id: string;
+  user_id: string;
+  product_id: string;
+  qty: number;
+  shipment_type: StorageShipmentType;
+  coupang_shipment_size: string | null;
+  personal_order_no: string | null;
+  status: 'REQUESTED' | 'DONE' | 'CANCELLED';
+  requested_by: string | null;
+  requested_at: string;
+  done_by: string | null;
+  done_at: string | null;
+  done_outbound_id: string | null;
+  note: string | null;
 }

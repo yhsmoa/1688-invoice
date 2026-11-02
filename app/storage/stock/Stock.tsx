@@ -20,7 +20,7 @@ import './Stock.css';
 // ============================================================
 const Stock: React.FC = () => {
   const { t } = useTranslation();
-  const { userId, stock, reloadAll } = useStorage();
+  const { userId, stock, requests, reloadAll } = useStorage();
 
   const [search, setSearch] = useState('');
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -129,6 +129,7 @@ const Stock: React.FC = () => {
       ) : (
         <StockTable
           rows={filtered}
+          requests={requests}
           checked={checked}
           onToggle={toggle}
           onToggleAll={toggleAll}
@@ -138,7 +139,7 @@ const Stock: React.FC = () => {
 
       {detailRow && <StockDetailModal row={detailRow} onClose={() => setDetailRow(null)} />}
       {moveRow && <StockMoveModal row={moveRow} onClose={handleMoveClose} />}
-      {pickRows && <PickToShipmentModal rows={pickRows} onClose={handlePickClose} />}
+      {pickRows && <PickToShipmentModal rows={pickRows} requests={requests} onClose={handlePickClose} />}
     </section>
   );
 };

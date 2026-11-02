@@ -15,11 +15,11 @@ import {
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import DeliveryStatusTools from './components/DeliveryStatusTools';
 import NewOrderStatusButton from './components/NewOrderStatusButton';
-import StockChip from '../../component/StockChip';
+import TypeBadge from '../../component/TypeBadge';
 import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import { evaluateOrderMissing, type OrderMissing } from './utils/orderMissing';
-import TypeChangePopup from './components/TypeChangePopup';
+import TypeChangePopup, { type TypeCode } from './components/TypeChangePopup';
 import V2CancelModal from '../import-product-v2/components/V2CancelModal';
 import { SEARCH_SHOW_ALL_MAX } from '../import-product-v2/hooks/useFtData';
 import ImportUploadButtons, { V2MigrationButton } from '../import-product-v2/components/ImportUploadButtons';
@@ -31,7 +31,6 @@ import {
   getDeliveryStatusMeaning,
   mergeDeliveryCodes,
 } from './utils/deliveryStatusMap';
-import { resolveSizeBadge, isStockRoute } from '../../lib/sizeCode';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './OrderStatusV2.css';
 
@@ -496,67 +495,42 @@ const OrderStatusV2: React.FC = () => {
     setTypePopup({ item, x: e.clientX, y: e.clientY });
   }, []);
 
-  // ── 타입 코드 → DB 필드 매핑 ──
-  const TYPE_FIELD_MAP: Record<string, { shipment_type: string; coupang_shipment_size?: string }> = {
+  // ── 타입 코드 → DB 필드 매핑 (X 는 쿠팡 사이즈를 비운다 — 화면과 DB 가 같게) ──
+  const TYPE_FIELD_MAP: Record<string, { shipment_type: string; coupang_shipment_size: string | null }> = {
     A: { shipment_type: 'COUPANG', coupang_shipment_size: 'Small' },
     B: { shipment_type: 'COUPANG', coupang_shipment_size: 'Medium' },
     C: { shipment_type: 'COUPANG', coupang_shipment_size: 'Large' },
-    X: { shipment_type: 'DIRECT' },
+    X: { shipment_type: 'DIRECT', coupang_shipment_size: null },
   };
 
-  const handleTypeChange = useCallback(async (code: 'A' | 'B' | 'C' | 'X') => {
+  // ── 타입 변경 — 상품(세트 구성품 전체) 단위, 서버가 실제로 바꾼 행만 로컬 반영 ──
+  //   A~X : 포장 타입 기록 + 경로 SHIPMENT (재고가 남아 있으면 서버 409 — 트리거)
+  //   S   : 경로 STOCK + shipment_type 비움 (쿠팡사이즈·P번호는 보존 → 꺼낼 때 바로 A/B/C)
+  const handleTypeChange = useCallback(async (code: TypeCode) => {
     if (!typePopup) return;
     const { item } = typePopup;
     setTypePopup(null);
 
-    const fields = TYPE_FIELD_MAP[code];
-    if (!fields) return;
+    const body = code === 'S'
+      ? { arrival_route: 'STOCK', fields: { shipment_type: null } }
+      : { arrival_route: 'SHIPMENT', fields: TYPE_FIELD_MAP[code] };
+    if (!body.fields) return;
 
-    // ── optimistic 로컬 업데이트 ──
-    const prevShipmentType = item.shipment_type;
-    const prevSize = item.coupang_shipment_size;
-    patchItem(item.id, fields);
-
-    // ── PATCH /api/ft/order-items ──
-    try {
-      const res = await fetch('/api/ft/order-items', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, fields }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        patchItem(item.id, { shipment_type: prevShipmentType, coupang_shipment_size: prevSize });
-        alert('타입 변경 실패: ' + (json.error || '알 수 없는 오류'));
-      }
-    } catch (err) {
-      patchItem(item.id, { shipment_type: prevShipmentType, coupang_shipment_size: prevSize });
-      alert('타입 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
-    }
-  }, [typePopup, patchItem]);
-
-  // ── 보관(입고 후 경로) 토글 — 상품 단위 (세트 구성품 전체) ──
-  //   서버가 실제로 바꾼 행 id 들을 돌려준다 → 그 행들만 로컬 반영 (optimistic 아님:
-  //   STOCK → SHIPMENT 는 재고 잔량이 있으면 409 로 거절되므로 성공 후 반영)
-  const handleToggleStock = useCallback(async () => {
-    if (!typePopup) return;
-    const { item } = typePopup;
-    setTypePopup(null);
-    const next = isStockRoute(item) ? 'SHIPMENT' : 'STOCK';
     try {
       const res = await fetch('/api/ft/order-items/arrival-route', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId, item_id: item.id, arrival_route: next }),
+        body: JSON.stringify({ user_id: selectedUserId, item_id: item.id, ...body }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        alert(json.error || '보관 설정 변경 실패');
+        alert('타입 변경 실패: ' + (json.error || '알 수 없는 오류'));
         return;
       }
-      for (const id of (json.ids as string[]) ?? []) patchItem(id, { arrival_route: next });
+      const patch = json.patch as Partial<FtOrderItem>;
+      for (const id of (json.ids as string[]) ?? []) patchItem(id, patch);
     } catch (err) {
-      alert('보관 설정 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
+      alert('타입 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
     }
   }, [typePopup, patchItem, selectedUserId]);
 
@@ -848,12 +822,6 @@ const OrderStatusV2: React.FC = () => {
                       // 취소 컬럼 표시 — CANCEL + RETURN 합산 (단일 컬럼)
                       const cancelDisplayQty = cancelQty + returnQty;
 
-                      // ── 타입 배지 ──
-                      const typeBadge = resolveSizeBadge(
-                        item.shipment_type,
-                        item.coupang_shipment_size
-                      );
-
                       const isChecked = selectedRows.has(item.id);
 
                       // ── 세트 그룹: 다음 행과 같은 그룹이면 현재 행의 행 사이 border 제거 ──
@@ -949,12 +917,7 @@ const OrderStatusV2: React.FC = () => {
                             className="os-v2-col-type os-v2-clickable"
                             onClick={(e) => handleTypeCellClick(e, item)}
                           >
-                            {typeBadge ? (
-                              <span className={`size-badge ${typeBadge.colorClass}`}>
-                                {typeBadge.code}
-                              </span>
-                            ) : ''}
-                            <StockChip item={item} />
+                            <TypeBadge item={item} />
                           </td>
                           {/* 배송 (im_1688_orders_delivery_status 조인) */}
                           {/*   · 마우스를 올리면 배송 상태의 뜻 (한국어 화면만 — 중국어 화면은 원문 자체가 뜻) */}
@@ -1161,7 +1124,7 @@ const OrderStatusV2: React.FC = () => {
       )}
 
       {/* ============================================================ */}
-      {/* 타입 변경 팝업 — A/B/C/X 선택                                  */}
+      {/* 타입 변경 팝업 — A/B/C/X/S 선택 (상품 단위)                     */}
       {/* ============================================================ */}
       {typePopup && (
         <TypeChangePopup
@@ -1170,7 +1133,6 @@ const OrderStatusV2: React.FC = () => {
           y={typePopup.y}
           onClose={() => setTypePopup(null)}
           onSelect={handleTypeChange}
-          onToggleStock={handleToggleStock}
         />
       )}
     </div>

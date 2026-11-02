@@ -793,7 +793,10 @@
       "dpiSmaller": "偏小",
       "dpiLarger": "偏大"
     },
-    "newName": { "barcode": "新条码标签", "care": "新洗唛" },
+    "newName": {
+      "barcode": "新条码标签",
+      "care": "新洗唛"
+    },
     "empty": {
       "pickTemplate": "请在左侧选择模板或新建。",
       "pickTemplateFirst": "请先选择模板。",
@@ -806,13 +809,24 @@
       "delete": "删除 (Delete)"
     },
     "canvasFoot": "预览与实际打印方式相同（{{dpi}}dpi）。拖动空白处可框选多个，Shift/Ctrl+点击可增减选择。",
-    "tabs": { "list": "模板", "info": "基本信息", "sample": "预览数据", "printer": "打印机" },
+    "tabs": {
+      "list": "模板",
+      "info": "基本信息",
+      "sample": "预览数据",
+      "printer": "打印机"
+    },
     "board": {
       "needPick": "请先在模板页选择或新建。",
       "needPickSample": "选择模板后可以编辑预览数据。"
     },
-    "types": { "barcode": "条码热敏标签", "care": "洗唛" },
-    "typeShort": { "barcode": "条码", "care": "洗唛" },
+    "types": {
+      "barcode": "条码热敏标签",
+      "care": "洗唛"
+    },
+    "typeShort": {
+      "barcode": "条码",
+      "care": "洗唛"
+    },
     "list": {
       "allTypes": "全部类型",
       "allUsers": "全部用户",
@@ -864,9 +878,19 @@
       "continuous": "无间隙的卷纸。按间隙设置打印会找不到纸而红灯停机。",
       "blackmark": "以背面的黑色标记区分标签。"
     },
-    "cutter": { "off": "不切", "each": "每张切", "batch": "整批结束切一次" },
-    "audience": { "adult": "成人", "kids": "儿童" },
-    "audienceHint": { "adult": "无建议年龄", "kids": "有建议年龄" },
+    "cutter": {
+      "off": "不切",
+      "each": "每张切",
+      "batch": "整批结束切一次"
+    },
+    "audience": {
+      "adult": "成人",
+      "kids": "儿童"
+    },
+    "audienceHint": {
+      "adult": "无建议年龄",
+      "kids": "有建议年龄"
+    },
     "sample": {
       "title": "预览数据",
       "searchHint": "用商品项编号 · 商品编号(QR) · 条码查找订单并选择后，预览和测试打印会使用该订单的数据（与实际打印相同）。",
@@ -956,7 +980,14 @@
       "help": "请先在[标签设置] > 打印机页指定该模板在本机使用哪台打印机。"
     },
     "toolbar": {
-      "add": { "text": "文本", "barcode": "条码", "qr": "QR", "box": "方框", "line": "线", "image": "图片·符号" },
+      "add": {
+        "text": "文本",
+        "barcode": "条码",
+        "qr": "QR",
+        "box": "方框",
+        "line": "线",
+        "image": "图片·符号"
+      },
       "align": {
         "left": "靠标签左边",
         "hcenter": "水平居中",
@@ -988,7 +1019,14 @@
       "symbolCaption": "符号 {{name}}",
       "uploadImage": "上传的图片"
     },
-    "elType": { "text": "文本", "barcode": "条码", "qr": "QR", "box": "方框", "line": "线", "image": "图片" },
+    "elType": {
+      "text": "文本",
+      "barcode": "条码",
+      "qr": "QR",
+      "box": "方框",
+      "line": "线",
+      "image": "图片"
+    },
     "props": {
       "title": "{{type}}属性",
       "name": "元素名称（列表显示用）",
@@ -1247,7 +1285,8 @@
     "summary": {
       "pending": "{{lines}}条 · 未上架 {{qty}}个",
       "stock": "{{locations}}个库位 · {{qty}}个",
-      "agedLabel": "保管 {{days}}天以上"
+      "agedLabel": "保管 {{days}}天以上",
+      "requests": "{{count}}件"
     },
     "needWorker": "请先选择负责人。",
     "needUser": "请选择用户。",
@@ -1338,7 +1377,17 @@
       "forceHint": "→ 请勾选[类型不同也装入]后重新保存。",
       "confirm": "装箱",
       "done": "已装入 {{box}} {{qty}}个",
-      "error": "出货处理时发生错误。"
+      "error": "出货处理时发生错误。",
+      "type": "类型",
+      "typeFixedHint": "类型已确定 — 有未出库箱子时不能更改",
+      "sizePlaceholder": "Coupang 尺寸",
+      "personalNoPlaceholder": "个人订单号"
+    },
+    "request": {
+      "label": "出货请求",
+      "summary": "{{qty}}个 · {{type}} {{detail}} · {{at}}",
+      "badge": "请求 {{qty}} · {{type}} {{detail}}",
+      "doneBadge": "已处理"
     }
   }
 }

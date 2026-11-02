@@ -25,6 +25,46 @@
   background: #fef2f2;
 }
 
+/* ── 꺼낼 때 정하는 타입 ── */
+.storage-pick-type {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.storage-pick-type-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.storage-pick-type-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.storage-pick-type-opt.is-on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.storage-pick-type-fixed {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* ── 위치별 수량 ── */
 .storage-pick-cells {
   display: flex;

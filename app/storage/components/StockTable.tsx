@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StockRow } from '../types';
+import type { StockRow, StorageRequest } from '../types';
 import ProductCell from './ProductCell';
 import { AGED_DAYS } from '../hooks/StorageContext';
 import { daysSince, formatDateTime } from '../utils/storageFormat';
@@ -19,13 +19,15 @@ export const stockKey = (r: Pick<StockRow, 'product_id' | 'location_id'>) => `${
 
 interface StockTableProps {
   rows: StockRow[];
+  /** 고객 쉽먼트 요청 (product_id 기준 배지) */
+  requests: StorageRequest[];
   checked: Set<string>;
   onToggle: (key: string) => void;
   onToggleAll: (checked: boolean) => void;
   onOpenDetail: (row: StockRow) => void;
 }
 
-const StockTable: React.FC<StockTableProps> = ({ rows, checked, onToggle, onToggleAll, onOpenDetail }) => {
+const StockTable: React.FC<StockTableProps> = ({ rows, requests, checked, onToggle, onToggleAll, onOpenDetail }) => {
   const { t } = useTranslation();
   const selectable = rows.filter((r) => r.qty > 0);
   const allChecked = selectable.length > 0 && selectable.every((r) => checked.has(stockKey(r)));
@@ -43,6 +45,7 @@ const StockTable: React.FC<StockTableProps> = ({ rows, checked, onToggle, onTogg
           <th className="col-num">{t('storage.col.qty')}</th>
           <th className="col-date">{t('storage.col.firstPutaway')}</th>
           <th className="col-num">{t('storage.col.days')}</th>
+          <th className="col-request">{t('storage.request.label')}</th>
         </tr>
       </thead>
       <tbody>
@@ -50,6 +53,7 @@ const StockTable: React.FC<StockTableProps> = ({ rows, checked, onToggle, onTogg
           const key = stockKey(r);
           const days = daysSince(r.first_putaway_at, now);
           const aged = days !== null && days >= AGED_DAYS;
+          const req = requests.find((q) => q.product_id === r.product_id);
           return (
             <tr
               key={key}
@@ -69,6 +73,15 @@ const StockTable: React.FC<StockTableProps> = ({ rows, checked, onToggle, onTogg
               <td className={`col-num is-strong ${r.qty < 0 ? 'is-negative' : ''}`}>{r.qty}</td>
               <td className="col-date">{formatDateTime(r.first_putaway_at)}</td>
               <td className={`col-num ${aged ? 'is-aged' : ''}`}>{days ?? ''}</td>
+              <td className="col-request">
+                {req && (
+                  <span className={`storage-request-badge is-${req.status.toLowerCase()}`} title={formatDateTime(req.requested_at)}>
+                    {req.status === 'REQUESTED'
+                      ? t('storage.request.badge', { qty: req.qty, type: req.shipment_type, detail: req.coupang_shipment_size || req.personal_order_no || '' })
+                      : t('storage.request.doneBadge')}
+                  </span>
+                )}
+              </td>
             </tr>
           );
         })}

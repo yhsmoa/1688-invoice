@@ -58,18 +58,39 @@ body {
 .size-badge--gray   { background: #9ca3af; }
 
 /* ============================================================
-   입고 후 경로 칩 [S] — 보관(STOCK) 상품. 사이즈 배지 옆에 붙인다
-   판정: lib/sizeCode.ts → isStockRoute() / 렌더: component/StockChip.tsx
-   P(주황)와 구분되는 노랑 — purchase-agent 와 같은 색
+   S(보관) 타입 배지 — 사이즈 배지 자리에 단독으로 선다
+   판정: lib/sizeCode.ts → resolveTypeBadge() / 렌더: component/TypeBadge.tsx
+   P(주황)와 구분되는 노랑 — purchase-agent 와 같은 색.
+   신규 기능 표시로 은은한 반짝임(빛이 한 번 쓸고 지나감) — 움직임 줄이기 설정이면 끔
    ============================================================ */
-.route-chip--stock {
-  display: inline-block;
-  margin-left: 3px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
+.size-badge--stock {
+  position: relative;
+  overflow: hidden;
   color: #1f2937;
   background: #eab308;
-  vertical-align: middle;
+}
+.size-badge--stock::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.75) 50%, rgba(255,255,255,0) 100%);
+  animation: size-badge-shimmer 2.6s ease-in-out infinite;
+}
+@keyframes size-badge-shimmer {
+  0%   { left: -75%; }
+  45%  { left: 125%; }
+  100% { left: 125%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .size-badge--stock::after { animation: none; display: none; }
+}
+/* 꺼낼 때 정해진 타입 — S 옆의 작은 보조 배지 */
+.size-badge--secondary {
+  margin-left: 2px;
+  padding: 0 4px;
+  font-size: 9px;
+  opacity: 0.85;
 }

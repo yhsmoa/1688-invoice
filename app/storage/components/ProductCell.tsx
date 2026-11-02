@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { resolveSizeBadge } from '../../../lib/sizeCode';
-import StockChip from '../../../component/StockChip';
+import TypeBadge from '../../../component/TypeBadge';
 import type { StorageProductInfo } from '../types';
 import { joinOptions } from '../utils/storageFormat';
 
@@ -19,7 +18,6 @@ interface ProductCellProps {
 }
 
 const ProductCell: React.FC<ProductCellProps> = ({ info, large }) => {
-  const badge = resolveSizeBadge(info.shipment_type, info.coupang_shipment_size);
   const isSet = (info.set_total ?? 0) > 1;
 
   return (
@@ -33,8 +31,8 @@ const ProductCell: React.FC<ProductCellProps> = ({ info, large }) => {
       )}
       <div className="storage-product-text">
         <div className="storage-product-badges">
-          {badge && <span className={`size-badge ${badge.colorClass}`}>{badge.code}</span>}
-          <StockChip item={{ arrival_route: 'STOCK' }} />
+          {/* 보관 화면의 상품은 전부 S — 꺼낼 때 정해진 타입이 있으면 보조 배지로 */}
+          <TypeBadge item={{ ...info, arrival_route: 'STOCK' }} />
           {isSet && <span className="storage-set-badge">SET {info.set_total}</span>}
           <span className="storage-product-no">{info.product_no}</span>
         </div>

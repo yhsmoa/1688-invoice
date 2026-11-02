@@ -23,7 +23,7 @@ const TABS = [
 const StorageHeader: React.FC = () => {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const { ftUsers, userId, setUserId, workers, worker, setWorker, pending, stock, reloadAll } = useStorage();
+  const { ftUsers, userId, setUserId, workers, worker, setWorker, pending, stock, requests, reloadAll } = useStorage();
 
   // ── 요약 수치 ──
   const summary = useMemo(() => {
@@ -36,8 +36,9 @@ const StorageHeader: React.FC = () => {
       locations: new Set(positive.map((r) => r.location_id)).size,
       stockQty: positive.reduce((s, r) => s + r.qty, 0),
       aged: positive.filter((r) => (daysSince(r.first_putaway_at, now) ?? 0) >= AGED_DAYS).length,
+      requested: requests.filter((q) => q.status === 'REQUESTED').length,
     };
-  }, [pending.rows, stock.rows]);
+  }, [pending.rows, stock.rows, requests]);
 
   const loading = pending.loading || stock.loading;
 
@@ -102,6 +103,10 @@ const StorageHeader: React.FC = () => {
           <div className={`storage-card ${summary.aged > 0 ? 'is-warn' : ''}`}>
             <span className="storage-card-label">{t('storage.summary.agedLabel', { days: AGED_DAYS })}</span>
             <strong>{summary.aged}</strong>
+          </div>
+          <div className={`storage-card ${summary.requested > 0 ? 'is-request' : ''}`}>
+            <span className="storage-card-label">{t('storage.request.label')}</span>
+            <strong>{t('storage.summary.requests', { count: summary.requested })}</strong>
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useFtUsers, type FtUser } from '../../import-product-v2/hooks/useFtData';
 import { useWorkers, workerLabel } from '../../shipment-v2/hooks/useWorkers';
 import type { Worker } from '../../shipment-v2/types';
-import type { PendingRow, StockRow } from '../types';
+import type { PendingRow, StockRow, StorageRequest } from '../types';
 import { useStorageRows } from './useStorageRows';
 
 // ============================================================
@@ -32,6 +32,8 @@ interface StorageContextValue {
   setWorker: (label: string) => void;
   pending: { rows: PendingRow[]; loading: boolean; loadError: boolean };
   stock: { rows: StockRow[]; loading: boolean; loadError: boolean };
+  /** 고객 쉽먼트 요청 — 미처리 + 24h 내 완료 */
+  requests: StorageRequest[];
   reloadAll: () => void;
 }
 
@@ -68,13 +70,16 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const pending = useStorageRows<PendingRow>('/api/ft/storage/pending');
   const stock = useStorageRows<StockRow>('/api/ft/storage/stock');
+  const requests = useStorageRows<StorageRequest>('/api/ft/storage/requests');
   const fetchPending = pending.fetchRows;
   const fetchStock = stock.fetchRows;
+  const fetchRequests = requests.fetchRows;
 
   const reloadAll = useCallback(() => {
     fetchPending(userId);
     fetchStock(userId);
-  }, [userId, fetchPending, fetchStock]);
+    fetchRequests(userId);
+  }, [userId, fetchPending, fetchStock, fetchRequests]);
 
   useEffect(() => { reloadAll(); }, [reloadAll]);
 
@@ -84,11 +89,13 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ftUsers, userId, setUserId, userCode, workers, worker, setWorker,
     pending: { rows: pending.rows, loading: pending.loading, loadError: pending.loadError },
     stock: { rows: stock.rows, loading: stock.loading, loadError: stock.loadError },
+    requests: requests.rows,
     reloadAll,
   }), [
     ftUsers, userId, setUserId, userCode, workers, worker, setWorker,
     pending.rows, pending.loading, pending.loadError,
     stock.rows, stock.loading, stock.loadError,
+    requests.rows,
     reloadAll,
   ]);
 

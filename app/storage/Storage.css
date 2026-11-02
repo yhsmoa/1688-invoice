@@ -114,6 +114,34 @@
   border-color: #fcd34d;
 }
 
+.storage-card.is-request {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+}
+
+/* ── 고객 쉽먼트 요청 배지 (재고 표) / 카드 (담기 모달) ── */
+.storage-table .col-request { width: 160px; }
+
+.storage-request-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.storage-request-badge.is-requested { background: #ede9fe; color: #5b21b6; }
+.storage-request-badge.is-done      { background: #f3f4f6; color: #6b7280; }
+
+.storage-request-card {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #ede9fe;
+  color: #4c1d95;
+  font-size: 12px;
+}
+
 /* ============================================================
    공용 컨트롤 — 버튼 · 선택 · 입력 · 안내
    ============================================================ */

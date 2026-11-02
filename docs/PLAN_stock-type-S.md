@@ -274,7 +274,7 @@ app/storage/
 | 13 | 장바구니 → 주문 전환 | 실제 전환은 auto-1688-order 프로그램(`renderer.js`)이 한다 → v1.0.91 에서 `arrival_route` 복사(세트는 하나라도 보관이면 전체 보관) | 계획서 §4 의 "전환 코드" 가정과 달랐음 |
 
 ## 7. 범위 밖 (별도 작업 후보)
-- **고객이 재고에서 쉽먼트 요청** (`ft_move_requests` 패턴의 새 테이블 + 창고 [재고] 화면 배지). 지금은 고객 재고관리 화면이 읽기 전용이라 "보내 달라" 는 요청 경로가 앱 밖(구두)에 있다.
+- ~~고객이 재고에서 쉽먼트 요청~~ → **구현 완료 (2026-11-02, `supabase/storage/003_stock_type.sql`)**. S 타입 계획(`D:\project\purchase-agent\docs\PLAN_stock-type-S.md`)과 함께: 박스 타입은 꺼낼 때 정하고(`ft_storage_resolve_type`), 고객 요청 `ft_storage_requests` 를 창고 [재고]·담기 모달이 보여준다.
 - **ADJUST(실사 조정) 함수** — 보관 상품에 반품(RETURN)이 접수되면 원장은 그 수량을 모른다. 위치에 올라간 뒤 반품되면 선반 재고가 유령으로 남고, 주문이 DONE 이 되면 PICK 도 거절(PICK_ITEM_INVALID)되어 **꺼낼 방법이 없다**. 1차에서는 반품접수 모달이 안내만 한다(`V2CancelModal`).
 - ADJUST 함수 + 반품접수 연동 + 재고 실사.
 - 위치 관리 화면(이름·구역·비활성) + 위치 바코드 라벨 출력(`lib/labelRender` 재사용).

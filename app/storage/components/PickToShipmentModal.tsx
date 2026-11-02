@@ -6,17 +6,21 @@ import BoxCreateModal, { type CreatedBox } from '../../../component/BoxCreateMod
 import { resolveScanSizeCode } from '../../../lib/sizeCode';
 import type { BoxInfoItem } from '../../shipment-v2/types';
 import { useStorage } from '../hooks/StorageContext';
-import type { PickInput, StockRow } from '../types';
+import type { PickInput, PickTypeInput, StockRow, StorageRequest, StorageShipmentType } from '../types';
 import ProductCell from './ProductCell';
-import { playErrorSound } from '../utils/storageFormat';
+import { formatDateTime, playErrorSound } from '../utils/storageFormat';
 
 // ============================================================
 // PickToShipmentModal — 재고 → 쉽먼트
 //
 //   체크한 칸(상품 × 위치)을 상품별로 묶어, 위치별 꺼낼 수량을 받는다 (기본 = 칸 전량)
+//   타입: S 상품은 꺼낼 때 정한다 (supabase/storage/003_stock_type.sql)
+//     · 미처리 고객 요청이 있으면 그 타입·수량을 기본값으로 (요청 카드 표시)
+//     · 상품에 이미 타입이 있으면 고정 표시 (미출고 박스가 있는 동안 서버가 변경을 막는다)
+//     · 없으면 COUPANG / PERSONAL / DIRECT 선택 — COUPANG 은 사이즈(보존값 기본), PERSONAL 은 개인 주문번호
 //   박스: 그 사용자의 열린 박스(PACKING & 미출고) 중 하나 / [+ 새 박스] → BoxCreateModal
 //   저장: 상품마다 POST /api/ft/storage/pick 1회 (상품마다 독립 트랜잭션)
-//     → PICK 원장 + PACKED 행 — 이후 쉽먼트 V2 에서 일반 포장 행과 똑같이 보인다
+//     → 타입 기록 + PICK 원장 + PACKED 행 — 이후 쉽먼트 V2 에서 일반 포장 행과 똑같이 보인다
 //   박스 타입 ≠ 상품 타입: 서버가 PICK_BOX_TYPE_MISMATCH 로 거절
 //     → [타입이 달라도 담기] 체크 후 다시 저장 (상품출고 V2 의 A=B=C=P=X 와 같은 의미)
 //   결과는 상품별 ✅/❌ 로 모달 안에 보여주고, 하나라도 성공하면 목록 재조회
@@ -24,6 +28,7 @@ import { playErrorSound } from '../utils/storageFormat';
 
 interface PickToShipmentModalProps {
   rows: StockRow[];
+  requests: StorageRequest[];
   onClose: (changed: boolean) => void;
 }
 
@@ -31,32 +36,67 @@ interface ProductGroup {
   productId: string;
   rep: StockRow;
   cells: StockRow[];
+  request: StorageRequest | null;
+  /** 상품에 이미 타입이 있으면 true — 선택 UI 대신 고정 표시 */
+  typeFixed: boolean;
 }
 
 type ResultMap = Record<string, { ok: boolean; text: string }>;
 
-const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose }) => {
+const SHIPMENT_TYPES: StorageShipmentType[] = ['COUPANG', 'PERSONAL', 'DIRECT'];
+const SIZES = ['Small', 'Medium', 'Large'];
+
+const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, requests, onClose }) => {
   const { t } = useTranslation();
   const { userId, userCode, worker, reloadAll } = useStorage();
 
-  // ── 상품별 묶음 (화면 순서 유지) ──
+  // ── 상품별 묶음 (화면 순서 유지) + 미처리 요청 ──
   const groups = useMemo<ProductGroup[]>(() => {
     const map = new Map<string, ProductGroup>();
     for (const r of rows) {
-      const g = map.get(r.product_id) ?? { productId: r.product_id, rep: r, cells: [] };
+      const g = map.get(r.product_id) ?? {
+        productId: r.product_id,
+        rep: r,
+        cells: [],
+        request: requests.find((q) => q.product_id === r.product_id && q.status === 'REQUESTED') ?? null,
+        typeFixed: !!r.shipment_type,
+      };
       g.cells.push(r);
       map.set(r.product_id, g);
     }
     return Array.from(map.values());
-  }, [rows]);
+  }, [rows, requests]);
 
   // ============================================================
   // 상태
   // ============================================================
   const cellKey = (r: StockRow) => `${r.product_id}|${r.location_id}`;
-  const [qtyText, setQtyText] = useState<Record<string, string>>(
-    () => Object.fromEntries(rows.map((r) => [cellKey(r), String(r.qty)]))
+
+  // 수량 기본값: 요청이 있으면 요청 수량을 위치 순서대로 배분, 없으면 칸 전량
+  const [qtyText, setQtyText] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const g of groups) {
+      let left = g.request?.qty ?? Infinity;
+      for (const c of g.cells) {
+        const q = Math.max(0, Math.min(c.qty, left));
+        init[cellKey(c)] = String(q);
+        left -= q;
+      }
+    }
+    return init;
+  });
+
+  // 타입 입력: 요청 → 보존값 순으로 기본값
+  const [typeInput, setTypeInput] = useState<Record<string, PickTypeInput>>(() =>
+    Object.fromEntries(groups.map((g) => [g.productId, {
+      shipment_type: (g.request?.shipment_type ?? (g.rep.shipment_type as StorageShipmentType | null)) ?? null,
+      coupang_shipment_size: g.request?.coupang_shipment_size ?? g.rep.coupang_shipment_size ?? null,
+      personal_order_no: g.request?.personal_order_no ?? g.rep.personal_order_no ?? null,
+    }]))
   );
+  const setType = (pid: string, patch: Partial<PickTypeInput>) =>
+    setTypeInput((prev) => ({ ...prev, [pid]: { ...prev[pid], ...patch } }));
+
   const [boxes, setBoxes] = useState<BoxInfoItem[]>([]);
   const [boxesLoading, setBoxesLoading] = useState(true);
   const [boxId, setBoxId] = useState('');
@@ -97,16 +137,30 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose
 
   const box = boxes.find((b) => b.id === boxId);
 
-  // ── 수량 검증 · 타입 미리보기 (최종 판정은 서버) ──
+  // ============================================================
+  // 검증 (최종 판정은 서버)
+  // ============================================================
   const qtyOf = (r: StockRow) => Number(qtyText[cellKey(r)] ?? '');
   const cellValid = (r: StockRow) => {
     const q = qtyOf(r);
     return Number.isInteger(q) && q >= 0 && q <= r.qty;
   };
-  const allValid = rows.every(cellValid) && rows.some((r) => qtyOf(r) > 0);
-  const mismatched = box
-    ? groups.filter((g) => resolveScanSizeCode(g.rep.shipment_type, g.rep.coupang_shipment_size) !== box.type)
-    : [];
+  const typeValid = (g: ProductGroup) => {
+    const ti = typeInput[g.productId];
+    if (!ti?.shipment_type) return false;
+    if (ti.shipment_type === 'COUPANG' && !ti.coupang_shipment_size) return false;
+    if (ti.shipment_type === 'PERSONAL' && !ti.personal_order_no?.trim()) return false;
+    return true;
+  };
+  const allValid =
+    rows.every(cellValid) && rows.some((r) => qtyOf(r) > 0) && groups.every((g) => results[g.productId]?.ok || typeValid(g));
+
+  // 타입 미리보기 (박스 불일치 경고용)
+  const codeOf = (g: ProductGroup) => {
+    const ti = typeInput[g.productId];
+    return ti?.shipment_type ? resolveScanSizeCode(ti.shipment_type, ti.coupang_shipment_size) : null;
+  };
+  const mismatched = box ? groups.filter((g) => codeOf(g) !== null && codeOf(g) !== box.type) : [];
 
   // ============================================================
   // 저장 — 상품마다 1회, 이미 성공한 상품은 다시 보내지 않는다
@@ -122,6 +176,7 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose
         .map((c) => ({ location_id: c.location_id, qty: qtyOf(c) }))
         .filter((p) => p.qty > 0);
       if (picks.length === 0) continue;
+      const ti = typeInput[g.productId];
       try {
         const res = await fetch('/api/ft/storage/pick', {
           method: 'POST',
@@ -134,6 +189,9 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose
             box_info_id: box.id,
             operator_name: worker,
             force,
+            shipment_type: ti.shipment_type,
+            coupang_shipment_size: ti.shipment_type === 'COUPANG' ? ti.coupang_shipment_size : null,
+            personal_order_no: ti.shipment_type === 'PERSONAL' ? ti.personal_order_no?.trim() : null,
           }),
         });
         const json = await res.json();
@@ -172,13 +230,75 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose
           <button type="button" className="storage-modal-x" onClick={() => onClose(changed)} disabled={saving}>✕</button>
         </div>
 
-        {/* ── 상품별 위치·수량 ── */}
+        {/* ── 상품별 타입 · 위치 · 수량 ── */}
         <div className="storage-pick-groups">
           {groups.map((g) => {
             const result = results[g.productId];
+            const ti = typeInput[g.productId];
+            const locked = saving || !!result?.ok;
             return (
               <div key={g.productId} className={`storage-pick-group ${result ? (result.ok ? 'is-ok' : 'is-fail') : ''}`}>
                 <ProductCell info={g.rep} />
+
+                {/* 고객 요청 */}
+                {g.request && (
+                  <div className="storage-request-card">
+                    <strong>{t('storage.request.label')}</strong>{' '}
+                    {t('storage.request.summary', {
+                      qty: g.request.qty,
+                      type: g.request.shipment_type,
+                      detail: g.request.coupang_shipment_size || g.request.personal_order_no || '',
+                      at: formatDateTime(g.request.requested_at),
+                    })}
+                  </div>
+                )}
+
+                {/* 타입 — 꺼낼 때 정한다 */}
+                <div className="storage-pick-type">
+                  <span className="storage-pick-type-label">{t('storage.pick.type')}</span>
+                  {g.typeFixed ? (
+                    <span className="storage-pick-type-fixed" title={t('storage.pick.typeFixedHint')}>
+                      {g.rep.shipment_type}{g.rep.coupang_shipment_size ? ` · ${g.rep.coupang_shipment_size}` : ''}
+                      {g.rep.personal_order_no ? ` · ${g.rep.personal_order_no}` : ''}
+                    </span>
+                  ) : (
+                    <>
+                      {SHIPMENT_TYPES.map((st) => (
+                        <label key={st} className={`storage-pick-type-opt ${ti.shipment_type === st ? 'is-on' : ''}`}>
+                          <input
+                            type="radio"
+                            name={`type-${g.productId}`}
+                            checked={ti.shipment_type === st}
+                            onChange={() => setType(g.productId, { shipment_type: st })}
+                            disabled={locked}
+                          />
+                          {st}
+                        </label>
+                      ))}
+                      {ti.shipment_type === 'COUPANG' && (
+                        <select
+                          className="storage-select"
+                          value={ti.coupang_shipment_size ?? ''}
+                          onChange={(e) => setType(g.productId, { coupang_shipment_size: e.target.value || null })}
+                          disabled={locked}
+                        >
+                          <option value="">{t('storage.pick.sizePlaceholder')}</option>
+                          {SIZES.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
+                        </select>
+                      )}
+                      {ti.shipment_type === 'PERSONAL' && (
+                        <input
+                          className="storage-input"
+                          value={ti.personal_order_no ?? ''}
+                          placeholder={t('storage.pick.personalNoPlaceholder')}
+                          onChange={(e) => setType(g.productId, { personal_order_no: e.target.value })}
+                          disabled={locked}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+
                 <div className="storage-pick-cells">
                   {g.cells.map((c) => (
                     <label key={c.location_id} className="storage-pick-cell">
@@ -190,7 +310,7 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, onClose
                         max={c.qty}
                         value={qtyText[cellKey(c)] ?? ''}
                         onChange={(e) => setQtyText((prev) => ({ ...prev, [cellKey(c)]: e.target.value }))}
-                        disabled={saving || result?.ok}
+                        disabled={locked}
                       />
                       <span className="storage-hint">/ {c.qty}</span>
                     </label>
