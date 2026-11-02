@@ -146,6 +146,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           },
           { route: '/api/ft/storage/move', tables: ['ft_storage_movements', 'ft_storage_locations'] },
           { route: '/api/ft/storage/requests', tables: ['ft_storage_requests'] },
+          { route: '/api/ft/storage/adjust', tables: ['ft_storage_movements', 'ft_order_items'] },
           { route: '/api/ft/storage/locations', tables: ['ft_storage_locations', 'ft_storage_balance'] },
           { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
         ],

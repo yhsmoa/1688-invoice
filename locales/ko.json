@@ -1346,7 +1346,8 @@
       "move": "위치 이동",
       "moveHint": "한 칸만 선택하면 이동할 수 있습니다.",
       "toShipment": "쉽먼트",
-      "empty": "보관 중인 재고가 없습니다."
+      "empty": "보관 중인 재고가 없습니다.",
+      "adjust": "수량 수정"
     },
     "detail": {
       "title": "재고 상세",
@@ -1394,6 +1395,17 @@
       "summary": "{{qty}}개 · {{type}} {{detail}} · {{at}}",
       "badge": "요청 {{qty}} · {{type}} {{detail}}",
       "doneBadge": "처리완료"
+    },
+    "adjust": {
+      "title": "재고 수량 수정",
+      "current": "현재 수량",
+      "newQty": "새 수량",
+      "deltaHint": "원장에 조정 {{delta}} 으로 기록됩니다",
+      "noChange": "현재 수량과 같으면 저장되지 않습니다",
+      "reason": "사유 (필수)",
+      "reasonPlaceholder": "사유를 고르거나 직접 입력",
+      "confirm": "수정",
+      "error": "수량 수정 중 오류가 발생했습니다."
     }
   }
 }

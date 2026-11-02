@@ -25,6 +25,12 @@
   background: #fef2f2;
 }
 
+/* ── 수량 수정: 차이 강조 ── */
+.storage-adjust-delta {
+  color: #b45309;
+  font-weight: 700;
+}
+
 /* ── 꺼낼 때 정하는 타입 ── */
 .storage-pick-type {
   display: flex;

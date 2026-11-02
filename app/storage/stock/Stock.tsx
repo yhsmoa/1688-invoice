@@ -6,6 +6,7 @@ import { useStorage } from '../hooks/StorageContext';
 import StockTable, { stockKey } from '../components/StockTable';
 import StockDetailModal from '../components/StockDetailModal';
 import StockMoveModal from '../components/StockMoveModal';
+import StockAdjustModal from '../components/StockAdjustModal';
 import PickToShipmentModal from '../components/PickToShipmentModal';
 import type { StockRow } from '../types';
 import './Stock.css';
@@ -14,7 +15,7 @@ import './Stock.css';
 // [재고] — 위치별 재고 → 쉽먼트 / 위치 이동
 //
 //   · 검색: 상품명 · 옵션 · 중국어옵션 · 바코드 · 주문번호 · 위치
-//   · 체크 → [쉽먼트] (여러 칸·여러 상품 가능) / [위치 이동] (1칸만)
+//   · 체크 → [쉽먼트] (여러 칸·여러 상품 가능) / [위치 이동] · [수량 수정] (1칸만)
 //   · 행 클릭 → 상세(원장 타임라인)
 //   모달에는 열 때의 행을 넘긴다 — 저장 후 재조회로 목록이 바뀌어도 모달 내용은 유지
 // ============================================================
@@ -26,6 +27,7 @@ const Stock: React.FC = () => {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<StockRow | null>(null);
   const [moveRow, setMoveRow] = useState<StockRow | null>(null);
+  const [adjustRow, setAdjustRow] = useState<StockRow | null>(null);
   const [pickRows, setPickRows] = useState<StockRow[] | null>(null);
 
   // ── 사용자가 바뀌면 체크 해제 ──
@@ -84,6 +86,14 @@ const Stock: React.FC = () => {
     }
   }, [reloadAll]);
 
+  const handleAdjustClose = useCallback((changed: boolean) => {
+    setAdjustRow(null);
+    if (changed) {
+      setChecked(new Set());
+      reloadAll();
+    }
+  }, [reloadAll]);
+
   // ============================================================
   // 렌더
   // ============================================================
@@ -100,6 +110,15 @@ const Stock: React.FC = () => {
         />
         <div className="storage-toolbar-actions">
           <span className="storage-hint">{t('storage.stock.checked', { count: checkedRows.length })}</span>
+          <button
+            type="button"
+            className="storage-btn"
+            onClick={() => setAdjustRow(checkedRows[0])}
+            disabled={checkedRows.length !== 1}
+            title={t('storage.stock.moveHint')}
+          >
+            {t('storage.stock.adjust')}
+          </button>
           <button
             type="button"
             className="storage-btn"
@@ -139,6 +158,7 @@ const Stock: React.FC = () => {
 
       {detailRow && <StockDetailModal row={detailRow} onClose={() => setDetailRow(null)} />}
       {moveRow && <StockMoveModal row={moveRow} onClose={handleMoveClose} />}
+      {adjustRow && <StockAdjustModal row={adjustRow} onClose={handleAdjustClose} />}
       {pickRows && <PickToShipmentModal rows={pickRows} requests={requests} onClose={handlePickClose} />}
     </section>
   );

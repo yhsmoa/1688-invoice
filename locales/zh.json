@@ -1340,7 +1340,8 @@
       "move": "移库",
       "moveHint": "只选择一格时可以移库。",
       "toShipment": "出货",
-      "empty": "没有保管中的库存。"
+      "empty": "没有保管中的库存。",
+      "adjust": "修改数量"
     },
     "detail": {
       "title": "库存详情",
@@ -1388,6 +1389,17 @@
       "summary": "{{qty}}个 · {{type}} {{detail}} · {{at}}",
       "badge": "请求 {{qty}} · {{type}} {{detail}}",
       "doneBadge": "已处理"
+    },
+    "adjust": {
+      "title": "修改库存数量",
+      "current": "当前数量",
+      "newQty": "新数量",
+      "deltaHint": "将以调整 {{delta}} 记入台账",
+      "noChange": "与当前数量相同时不会保存",
+      "reason": "原因 (必填)",
+      "reasonPlaceholder": "选择或直接输入原因",
+      "confirm": "修改",
+      "error": "修改数量时发生错误。"
     }
   }
 }
