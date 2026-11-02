@@ -31,6 +31,13 @@ const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 //
 // type=기타(ARRIVAL/PACKED/SHIPMENT):
 //   ft_fulfillments만 단순 삭제
+//
+// 보관(STOCK) 상품 — 재고 원장(ft_storage_movements)과 어긋나지 않게 (supabase/storage/001_storage.sql)
+//   · ARRIVAL 철회: 철회 수량이 미배치 수량보다 많으면 409
+//       (이미 위치에 배치된 입고분의 기록을 지우면 원장과 현실이 어긋난다 → 재고에서 먼저 빼야 함)
+//   · PACKED 철회: 재고에서 꺼내 담은 행(PICK 링크)이면 ft_storage_unpick_outbound 가
+//       행 삭제 + 꺼냈던 위치로 UNPACK 을 한 트랜잭션으로 처리한다.
+//       링크 없는 행(분할 이동으로 생긴 행 등)은 일반 삭제 → 그 수량은 [작업중]에 다시 나타난다.
 // ============================================================
 export async function DELETE(request: NextRequest) {
   try {
@@ -80,6 +87,34 @@ export async function DELETE(request: NextRequest) {
 
     const { order_item_id, type: ffType } = ffRow;
     const isCancelLike = CANCEL_LIKE_TYPES.has(ffType);
+
+    // ── Step 1-b: 보관(STOCK) 입고 철회 검사 ──
+    if (sourceTable === INBOUND_TABLE && ffType === 'ARRIVAL') {
+      const { data: oi, error: oiErr } = await supabase
+        .from('ft_order_items')
+        .select('user_id, product_id, arrival_route')
+        .eq('id', order_item_id)
+        .maybeSingle();
+      if (oiErr) throw oiErr;
+      if (oi?.arrival_route === 'STOCK' && oi.product_id) {
+        const { data: lines, error: lnErr } = await supabase.rpc('ft_storage_pending_lines', {
+          p_user_id: oi.user_id,
+          p_product_id: oi.product_id,
+        });
+        if (lnErr) throw lnErr;
+        const unplaced = ((lines ?? []) as { line_unplaced: number }[])
+          .reduce((sum, l) => sum + (l.line_unplaced ?? 0), 0);
+        if ((ffRow.quantity ?? 0) > unplaced) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `이미 재고 위치에 배치된 입고 건입니다 (미배치 ${unplaced}개). [재고]에서 먼저 빼 주세요.`,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
 
     // ── Step 2: ft_cancel_details 연동 삭제 (CANCEL 또는 RETURN 타입) ──
     // 주의: 'fulfillments.id' 컬럼은 PostgREST에서 dot(.)을 외래키 join으로 오인식
@@ -134,15 +169,37 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // ── Step 3: 해당 테이블에서 삭제 ─────────────────────────
-    const { error: ffDeleteErr } = await supabase
-      .from(sourceTable)
-      .delete()
-      .eq('id', id);
+    // ── Step 3-a: 재고에서 담은 포장 행 → 위치 복귀 + 삭제 (한 트랜잭션) ──
+    //   링크된 PICK 이 없으면 함수가 아무것도 하지 않고 returned=0 → 아래 일반 삭제
+    let stockReturned = 0;
+    if (sourceTable === OUTBOUND_TABLE) {
+      const { data: unpick, error: unpickErr } = await supabase.rpc('ft_storage_unpick_outbound', {
+        p_outbound_id: id,
+        p_operator_name: null,
+      });
+      if (unpickErr) {
+        if ((unpickErr.message ?? '').includes('UNPICK_ROW_SHIPPED')) {
+          return NextResponse.json(
+            { success: false, error: '이미 출고된 재고(보관) 포장 행은 철회할 수 없습니다.' },
+            { status: 409 }
+          );
+        }
+        throw unpickErr;
+      }
+      stockReturned = Number((unpick as { returned?: number } | null)?.returned ?? 0);
+    }
 
-    if (ffDeleteErr) {
-      console.error(`${sourceTable} 삭제 오류:`, ffDeleteErr);
-      throw ffDeleteErr;
+    // ── Step 3: 해당 테이블에서 삭제 ─────────────────────────
+    if (stockReturned === 0) {
+      const { error: ffDeleteErr } = await supabase
+        .from(sourceTable)
+        .delete()
+        .eq('id', id);
+
+      if (ffDeleteErr) {
+        console.error(`${sourceTable} 삭제 오류:`, ffDeleteErr);
+        throw ffDeleteErr;
+      }
     }
 
     // ── Step 3-b: 포장(outbound) 철회 → 그 행의 미처리 이동요청 닫기 ──
@@ -274,6 +331,7 @@ export async function DELETE(request: NextRequest) {
         cancel_details_count: cancelDetailDeletedCount,
       },
       status_restored: statusRestored,
+      stock_returned: stockReturned,
     });
 
   } catch (error) {

@@ -46,6 +46,8 @@ export interface FtOrderItem {
   '1688_order_id': string | null;
   '1688_offer_id': string | null;
   shipment_type: string | null;
+  /** 입고 후 경로 — SHIPMENT(바로 쉽먼트) / STOCK(재고 보관) */
+  arrival_route?: string | null;
   customs_category: string | null;
   created_at?: string | null;
   note_notice?: string | null;

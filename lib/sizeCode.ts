@@ -81,6 +81,18 @@ export function normalizeSizeCode(raw: string | null | undefined): string | null
 }
 
 // ============================================================
+// 입고 후 경로 — 포장 타입(A/B/C/P/X)과 독립된 두 번째 축
+//
+//   SHIPMENT : 입고 → 상품출고 V2 → 쉽먼트 (기존 흐름)
+//   STOCK    : 입고 → 재고(보관) 위치에 배치 → [재고] 에서 쉽먼트로
+//   화면에서는 타입 배지 옆 노란 [S] 칩 (component/StockChip.tsx)
+//   purchase-agent lib/sizeCode.ts 에 같은 헬퍼 — 바꾸면 양쪽 같이
+// ============================================================
+export function isStockRoute(item: { arrival_route?: string | null } | null | undefined): boolean {
+  return item?.arrival_route === 'STOCK';
+}
+
+// ============================================================
 // 스캔 사이즈 검증용 결합 헬퍼
 //
 // /export-product-v2 바코드 스캔 시, 박스 사이즈와 비교할

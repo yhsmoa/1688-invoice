@@ -623,6 +623,38 @@
   cursor: not-allowed;
 }
 
+/* ── 타입 팝업: 보관 토글 (구분선 아래) ── */
+.os-v2-popup-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: #e5e7eb;
+}
+
+.os-v2-popup-item--stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.os-v2-popup-item--stock .route-chip--stock {
+  margin-left: 0;
+}
+
+.os-v2-popup-toggle {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.os-v2-popup-toggle.is-on {
+  color: #854d0e;
+  background: #fef9c3;
+}
+
 /* 첫 번째(1688_order_no) 항목 — 복사 강조 */
 .os-v2-popup-item--primary {
   color: #2563eb;

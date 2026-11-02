@@ -1,0 +1,58 @@
+/* ============================================================
+   [작업중] — 배치 모달 보조 스타일 (공용은 ../Storage.css)
+   ============================================================ */
+
+/* ── 입고 줄 칩 + 미배치 합계 ── */
+.storage-putaway-lines {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.storage-line-chip {
+  padding: 3px 8px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.storage-putaway-total {
+  margin-left: auto;
+  font-size: 15px;
+  color: #b45309;
+}
+
+/* ── 추천 위치 칩 ── */
+.storage-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.storage-suggest-chip {
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+}
+
+.storage-suggest-chip.is-barcode {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.storage-suggest-chip.is-offer {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.storage-suggest-chip:hover {
+  filter: brightness(0.96);
+}

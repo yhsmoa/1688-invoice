@@ -15,6 +15,7 @@ import {
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import DeliveryStatusTools from './components/DeliveryStatusTools';
 import NewOrderStatusButton from './components/NewOrderStatusButton';
+import StockChip from '../../component/StockChip';
 import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import { evaluateOrderMissing, type OrderMissing } from './utils/orderMissing';
@@ -30,7 +31,7 @@ import {
   getDeliveryStatusMeaning,
   mergeDeliveryCodes,
 } from './utils/deliveryStatusMap';
-import { resolveSizeBadge } from '../../lib/sizeCode';
+import { resolveSizeBadge, isStockRoute } from '../../lib/sizeCode';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './OrderStatusV2.css';
 
@@ -155,6 +156,7 @@ const OrderStatusV2: React.FC = () => {
         packedQty: packedMap.get(item.product_id ?? '') ?? 0,
         lastPackedAt: lastPackedMap.get(item.product_id ?? '') ?? null,
         shipmentQty: exportMap.get(item.product_id ?? '') ?? 0,
+        arrivalRoute: item.arrival_route,
       });
       if (alert) m.set(item.id, alert);
     }
@@ -532,6 +534,31 @@ const OrderStatusV2: React.FC = () => {
       alert('타입 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
     }
   }, [typePopup, patchItem]);
+
+  // ── 보관(입고 후 경로) 토글 — 상품 단위 (세트 구성품 전체) ──
+  //   서버가 실제로 바꾼 행 id 들을 돌려준다 → 그 행들만 로컬 반영 (optimistic 아님:
+  //   STOCK → SHIPMENT 는 재고 잔량이 있으면 409 로 거절되므로 성공 후 반영)
+  const handleToggleStock = useCallback(async () => {
+    if (!typePopup) return;
+    const { item } = typePopup;
+    setTypePopup(null);
+    const next = isStockRoute(item) ? 'SHIPMENT' : 'STOCK';
+    try {
+      const res = await fetch('/api/ft/order-items/arrival-route', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: selectedUserId, item_id: item.id, arrival_route: next }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert(json.error || '보관 설정 변경 실패');
+        return;
+      }
+      for (const id of (json.ids as string[]) ?? []) patchItem(id, { arrival_route: next });
+    } catch (err) {
+      alert('보관 설정 변경 중 오류: ' + (err instanceof Error ? err.message : ''));
+    }
+  }, [typePopup, patchItem, selectedUserId]);
 
   // ============================================================
   // 7) 비고 KR/CN 인라인 편집 (contentEditable + blur 저장)
@@ -917,7 +944,7 @@ const OrderStatusV2: React.FC = () => {
                           <td className="os-v2-col-num os-v2-cell-shipment">
                             {shipmentQty > 0 ? shipmentQty : ''}
                           </td>
-                          {/* 타입 배지 — 클릭 시 A/B/C/X 변경 팝업 */}
+                          {/* 타입 배지 + 보관 [S] — 클릭 시 A/B/C/X · 보관 변경 팝업 */}
                           <td
                             className="os-v2-col-type os-v2-clickable"
                             onClick={(e) => handleTypeCellClick(e, item)}
@@ -927,6 +954,7 @@ const OrderStatusV2: React.FC = () => {
                                 {typeBadge.code}
                               </span>
                             ) : ''}
+                            <StockChip item={item} />
                           </td>
                           {/* 배송 (im_1688_orders_delivery_status 조인) */}
                           {/*   · 마우스를 올리면 배송 상태의 뜻 (한국어 화면만 — 중국어 화면은 원문 자체가 뜻) */}
@@ -1142,6 +1170,7 @@ const OrderStatusV2: React.FC = () => {
           y={typePopup.y}
           onClose={() => setTypePopup(null)}
           onSelect={handleTypeChange}
+          onToggleStock={handleToggleStock}
         />
       )}
     </div>

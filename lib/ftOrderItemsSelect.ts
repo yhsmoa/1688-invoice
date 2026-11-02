@@ -41,6 +41,8 @@ export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   '1688_order_id',
   '1688_offer_id',
   'shipment_type',
+  // 입고 후 경로 (SHIPMENT / STOCK) — 타입 배지 옆 [S] 칩, 상품출고 V2 목록 제외 판단
+  'arrival_route',
   'customs_category',
   'created_at',
   'note_notice',

@@ -1233,5 +1233,112 @@
         "addedButFailed": "员工已添加，但以下图片保存失败：{{kinds}}\n请在详情页重新上传。"
       }
     }
+  },
+  "storage": {
+    "title": "库存(保管)",
+    "tabs": {
+      "pending": "待上架",
+      "stock": "库存"
+    },
+    "selectWorker": "选择负责人",
+    "selectUser": "选择用户",
+    "loading": "加载中...",
+    "refresh": "刷新",
+    "summary": {
+      "pending": "{{lines}}条 · 未上架 {{qty}}个",
+      "stock": "{{locations}}个库位 · {{qty}}个",
+      "agedLabel": "保管 {{days}}天以上"
+    },
+    "needWorker": "请先选择负责人。",
+    "needUser": "请选择用户。",
+    "loadError": "列表加载失败，请点击[刷新]。",
+    "close": "关闭",
+    "saving": "保存中...",
+    "searchPlaceholder": "搜索 (订单号 · 商品名 · 选项 · 条码)",
+    "searchPlaceholderStock": "搜索 (库位 · 订单号 · 商品名 · 选项 · 条码)",
+    "scan": {
+      "placeholder": "扫描订单号标签 (Enter)",
+      "notFound": "待上架列表中没有该订单号: {{code}}",
+      "alreadyPlaced": "该商品已完成上架: {{code}}",
+      "done": "上架完成 — 请扫描下一个标签。"
+    },
+    "col": {
+      "arrivedAt": "入库日",
+      "operator": "入库负责人",
+      "product": "商品",
+      "arrivalQty": "入库",
+      "placed": "已上架",
+      "unplaced": "未上架",
+      "location": "库位",
+      "qty": "数量",
+      "firstPutaway": "首次上架",
+      "days": "保管天数"
+    },
+    "pending": {
+      "place": "上架",
+      "empty": "没有待上架的入库记录。"
+    },
+    "putaway": {
+      "title": "库位上架",
+      "lineQty": "入库 {{qty}} · 未上架 {{unplaced}}",
+      "total": "未上架 {{qty}}个",
+      "suggest": "推荐库位",
+      "noSuggest": "无推荐库位 (没有保管相同条码 · 相同1688商品的库位)",
+      "reason": {
+        "barcode": "保管相同条码商品的库位",
+        "offer": "保管相同1688商品的库位"
+      },
+      "location": "库位 (扫描后 Enter)",
+      "locationPlaceholder": "扫描库位条码",
+      "qty": "数量",
+      "save": "保存",
+      "saved": "已在 {{location}} 上架 {{qty}}个 — 剩余未上架 {{remaining}}个",
+      "invalidQty": "数量请输入 1 ~ {{max}}。",
+      "error": "上架时发生错误。"
+    },
+    "stock": {
+      "checked": "已选 {{count}}格",
+      "move": "移库",
+      "moveHint": "只选择一格时可以移库。",
+      "toShipment": "出货",
+      "empty": "没有保管中的库存。"
+    },
+    "detail": {
+      "title": "库存详情",
+      "itemNo": "订单号",
+      "barcode": "条码",
+      "at": "时间",
+      "kind": "类型",
+      "box": "箱子",
+      "operator": "负责人"
+    },
+    "kind": {
+      "PUTAWAY": "上架",
+      "PICK": "出货",
+      "UNPACK": "撤销装箱返回",
+      "MOVE_OUT": "移库(出)",
+      "MOVE_IN": "移库(入)",
+      "ADJUST": "调整"
+    },
+    "move": {
+      "title": "移库",
+      "from": "当前库位",
+      "to": "目标库位 (扫描后 Enter)",
+      "confirm": "移库",
+      "error": "移库时发生错误。"
+    },
+    "pick": {
+      "title": "库存 → 出货",
+      "box": "装入箱子",
+      "newBox": "+ 新箱子",
+      "noBoxes": "没有打开的箱子，请用[+ 新箱子]创建。",
+      "selectBox": "选择箱子",
+      "mismatch": "有 {{count}}个商品与箱子类型({{box}})不同。",
+      "force": "类型不同也装入 (A=B=C=P=X)",
+      "forceHint": "→ 请勾选[类型不同也装入]后重新保存。",
+      "confirm": "装箱",
+      "done": "已装入 {{box}} {{qty}}个",
+      "error": "出货处理时发生错误。"
+    }
   }
 }

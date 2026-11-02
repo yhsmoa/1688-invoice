@@ -1,0 +1,40 @@
+/* ============================================================
+   [재고] — 쉽먼트 모달 보조 스타일 (공용은 ../Storage.css)
+   ============================================================ */
+
+/* ── 상품별 묶음 ── */
+.storage-pick-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storage-pick-group {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.storage-pick-group.is-ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.storage-pick-group.is-fail {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+/* ── 위치별 수량 ── */
+.storage-pick-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.storage-pick-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import EditableCell from './EditableCell';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
+import StockChip from '../../../component/StockChip';
 import { resolveSetGroupColor } from '../utils/setGroupPalette';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
@@ -211,6 +212,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                   {sizeBadge && (
                     <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
                   )}
+                  {/* 보관 [S] — 입고 작업자가 "이건 재고 위치로" 를 입고 시점에 보게 */}
+                  <StockChip item={item} />
                   {/* ── P(PERSONAL) 전용: 원산지 + 운송장 출력 2개 고정 ──
                        A/B/C/X: composition/order_qty 기반 기존 3-way */}
                   {isPersonal ? (

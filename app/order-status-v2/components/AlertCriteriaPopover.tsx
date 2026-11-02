@@ -26,6 +26,7 @@ const ALERT_CRITERIA: { name: string; rule: string }[] = [
 const ALERT_CRITERIA_NOTES = [
   '수량은 주문수량에서 취소·반품(접수 포함)을 뺀 기준입니다.',
   '완료된 주문과 전량 취소된 주문은 제외됩니다.',
+  '보관(S) 상품은 재고에 두는 동안 포장 지연으로 보지 않습니다.',
 ];
 
 // ── 위치 보정 값 (px) ──

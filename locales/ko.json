@@ -1239,5 +1239,112 @@
         "addedButFailed": "직원은 추가되었지만 다음 이미지 저장에 실패했습니다: {{kinds}}\n상세 화면에서 다시 첨부해주세요."
       }
     }
+  },
+  "storage": {
+    "title": "재고(보관)",
+    "tabs": {
+      "pending": "작업중",
+      "stock": "재고"
+    },
+    "selectWorker": "담당자 선택",
+    "selectUser": "사용자 선택",
+    "loading": "불러오는 중...",
+    "refresh": "새로고침",
+    "summary": {
+      "pending": "{{lines}}건 · 미배치 {{qty}}개",
+      "stock": "{{locations}}위치 · {{qty}}개",
+      "agedLabel": "{{days}}일 이상 보관"
+    },
+    "needWorker": "담당자를 먼저 선택하세요.",
+    "needUser": "사용자를 선택하세요.",
+    "loadError": "목록을 불러오지 못했습니다. [새로고침]을 눌러 주세요.",
+    "close": "닫기",
+    "saving": "저장 중...",
+    "searchPlaceholder": "검색 (주문번호 · 상품명 · 옵션 · 바코드)",
+    "searchPlaceholderStock": "검색 (위치 · 주문번호 · 상품명 · 옵션 · 바코드)",
+    "scan": {
+      "placeholder": "주문번호 라벨 스캔 (Enter)",
+      "notFound": "작업중 목록에 없는 주문번호입니다: {{code}}",
+      "alreadyPlaced": "이미 위치 배치가 끝난 상품입니다: {{code}}",
+      "done": "배치 완료 — 다음 라벨을 스캔하세요."
+    },
+    "col": {
+      "arrivedAt": "입고일",
+      "operator": "입고 담당",
+      "product": "상품",
+      "arrivalQty": "입고",
+      "placed": "배치됨",
+      "unplaced": "미배치",
+      "location": "위치",
+      "qty": "수량",
+      "firstPutaway": "첫 배치",
+      "days": "보관일"
+    },
+    "pending": {
+      "place": "배치",
+      "empty": "배치할 입고 건이 없습니다."
+    },
+    "putaway": {
+      "title": "위치 배치",
+      "lineQty": "입고 {{qty}} · 미배치 {{unplaced}}",
+      "total": "미배치 {{qty}}개",
+      "suggest": "추천 위치",
+      "noSuggest": "추천 위치 없음 (같은 바코드 · 같은 1688 상품이 보관된 곳이 없습니다)",
+      "reason": {
+        "barcode": "같은 바코드 상품이 있는 위치",
+        "offer": "같은 1688 상품이 있는 위치"
+      },
+      "location": "위치 (스캔 후 Enter)",
+      "locationPlaceholder": "위치 바코드 스캔",
+      "qty": "수량",
+      "save": "저장",
+      "saved": "{{location}} 에 {{qty}}개 배치 — 남은 미배치 {{remaining}}개",
+      "invalidQty": "수량은 1 ~ {{max}} 사이로 입력하세요.",
+      "error": "배치 중 오류가 발생했습니다."
+    },
+    "stock": {
+      "checked": "{{count}}칸 선택",
+      "move": "위치 이동",
+      "moveHint": "한 칸만 선택하면 이동할 수 있습니다.",
+      "toShipment": "쉽먼트",
+      "empty": "보관 중인 재고가 없습니다."
+    },
+    "detail": {
+      "title": "재고 상세",
+      "itemNo": "주문번호",
+      "barcode": "바코드",
+      "at": "일시",
+      "kind": "구분",
+      "box": "박스",
+      "operator": "담당자"
+    },
+    "kind": {
+      "PUTAWAY": "배치",
+      "PICK": "쉽먼트",
+      "UNPACK": "포장 철회 복귀",
+      "MOVE_OUT": "이동(출)",
+      "MOVE_IN": "이동(입)",
+      "ADJUST": "조정"
+    },
+    "move": {
+      "title": "위치 이동",
+      "from": "현재 위치",
+      "to": "옮길 위치 (스캔 후 Enter)",
+      "confirm": "이동",
+      "error": "위치 이동 중 오류가 발생했습니다."
+    },
+    "pick": {
+      "title": "재고 → 쉽먼트",
+      "box": "담을 박스",
+      "newBox": "+ 새 박스",
+      "noBoxes": "열린 박스가 없습니다. [+ 새 박스]로 만드세요.",
+      "selectBox": "박스 선택",
+      "mismatch": "박스 타입({{box}})과 다른 상품이 {{count}}개 있습니다.",
+      "force": "타입이 달라도 담기 (A=B=C=P=X)",
+      "forceHint": "→ [타입이 달라도 담기]를 체크하고 다시 저장하세요.",
+      "confirm": "박스에 담기",
+      "done": "{{box}} 에 {{qty}}개 담음",
+      "error": "쉽먼트 처리 중 오류가 발생했습니다."
+    }
   }
 }

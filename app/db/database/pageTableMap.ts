@@ -69,10 +69,12 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/order-items', tables: ['ft_order_items'] },
           {
             route: '/api/ft/fulfillments',
-            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items'],
+            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items', 'ft_storage_movements', 'ft_storage_locations'],
           },
           { route: '/api/ft/1688-delivery-status', tables: ['im_1688_orders_delivery_status'] },
           { route: '/api/ft/delivery-codes', tables: ['1688_invoice_deliveryInfo_check'] },
+          { route: '/api/ft/order-items/arrival-route', tables: ['ft_order_items', 'ft_storage_movements'] },
+          { route: '/api/ft/new-orders', tables: ['ft_carts', 'ft_cart_items', 'ft_users'] },
         ],
       },
       {
@@ -86,7 +88,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/order-items/export-xlsx', tables: ['ft_order_items'] },
           {
             route: '/api/ft/fulfillments',
-            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items'],
+            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items', 'ft_storage_movements', 'ft_storage_locations'],
           },
           { route: '/api/ft/cancel', tables: ['ft_fulfillment_inbounds', 'ft_cancel_details'] },
           { route: '/api/ft/classify-products', tables: ['ft_order_items'] },
@@ -112,7 +114,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/order-items', tables: ['ft_order_items'] },
           {
             route: '/api/ft/fulfillments',
-            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items'],
+            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items', 'ft_storage_movements', 'ft_storage_locations'],
           },
           { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
           { route: '/api/hr/workers', tables: ['invoiceManager_employees'] },
@@ -122,6 +124,31 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/save-scan-data', tables: [] },
         ],
         external: ['Google Sheets'],
+      },
+      {
+        name: '재고(보관)',
+        route: '/storage',
+        file: 'app/storage/layout.tsx',
+        apis: [
+          { route: '/api/ft/users', tables: ['ft_users'] },
+          { route: '/api/hr/workers', tables: ['invoiceManager_employees'] },
+          {
+            route: '/api/ft/storage/pending',
+            tables: ['ft_order_items', 'ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_storage_movements'],
+          },
+          { route: '/api/ft/storage/stock', tables: ['ft_storage_balance', 'ft_storage_locations', 'ft_order_items'] },
+          { route: '/api/ft/storage/ledger', tables: ['ft_storage_movements', 'ft_storage_locations', 'ft_fulfillment_outbounds'] },
+          { route: '/api/ft/storage/suggest', tables: ['ft_storage_balance', 'ft_storage_locations', 'ft_order_items'] },
+          { route: '/api/ft/storage/putaway', tables: ['ft_storage_movements', 'ft_storage_locations', 'ft_fulfillment_inbounds', 'ft_order_items'] },
+          {
+            route: '/api/ft/storage/pick',
+            tables: ['ft_storage_movements', 'ft_storage_locations', 'ft_fulfillment_outbounds', 'ft_box_info', 'ft_order_items'],
+          },
+          { route: '/api/ft/storage/move', tables: ['ft_storage_movements', 'ft_storage_locations'] },
+          { route: '/api/ft/storage/locations', tables: ['ft_storage_locations', 'ft_storage_balance'] },
+          { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
+        ],
+        note: '보관(arrival_route=STOCK) 상품 전용. 원장 ft_storage_movements 쓰기는 DB 함수(supabase/storage/001_storage.sql)로만',
       },
       {
         name: '쉽먼트',
@@ -160,7 +187,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/cancel-details', tables: ['ft_cancel_details'] },
           {
             route: '/api/ft/fulfillments',
-            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items'],
+            tables: ['ft_fulfillment_inbounds', 'ft_fulfillment_outbounds', 'ft_cancel_details', 'ft_order_items', 'ft_storage_movements', 'ft_storage_locations'],
           },
           { route: '/api/hr/workers', tables: ['invoiceManager_employees'] },
         ],

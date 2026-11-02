@@ -21,6 +21,8 @@ import { deliveryPhase } from '../../../lib/deliveryPhase';
 //                                                     근거: 마지막 입고 시각
 //     출고 지연  포장이 목표 수량을 채운 뒤 OUTBOUND_DAYS 지나도 출고 확정이 목표에 못 미침
 //                                                     근거: 마지막 포장 시각
+//     보관(arrival_route=STOCK) 상품은 재고 위치에 두는 것이 정상이므로 포장 지연 판정 제외.
+//       [재고] 에서 쉽먼트로 보내 포장이 다 된 뒤의 출고 지연은 그대로 판정.
 //     취소·반품은 접수만 돼도 수량으로 인정 (DONE 판정은 lib/confirmDone 로 별개)
 //     포장·출고 확정 수량은 product_id 기준 (세트 sibling 공유 — confirmDone 과 동일)
 //
@@ -73,6 +75,8 @@ export interface DeliveryAlertInput {
   lastPackedAt: string | null;
   /** 출고 확정 수량 (PACKED + shipment_id, product_id 기준 — confirmDone 과 동일) */
   shipmentQty: number;
+  /** 입고 후 경로 (SHIPMENT / STOCK) — STOCK 이면 포장 지연 제외 */
+  arrivalRoute?: string | null;
   /** 현재 시각 — 목록을 돌 때 한 번만 만들어 넘긴다 (없으면 호출 시점) */
   now?: Date;
 }
@@ -98,7 +102,7 @@ const label = (status: string) => DELIVERY_STATUS_KR[status] ?? status;
 export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert | null {
   const {
     info, itemStatus, orderQty, arrivalQty, cancelQty, returnQty,
-    lastArrivalAt, packedQty, lastPackedAt, shipmentQty,
+    lastArrivalAt, packedQty, lastPackedAt, shipmentQty, arrivalRoute,
   } = input;
   const now = input.now ?? new Date();
 
@@ -125,6 +129,9 @@ export function evaluateDeliveryAlert(input: DeliveryAlertInput): DeliveryAlert 
       }
       return null;
     }
+
+    // ── 보관 상품: 재고에 두는 동안은 포장 대기가 정상 ──
+    if (arrivalRoute === 'STOCK') return null;
 
     // ── 입고 완료 → 포장 대기: 마지막 입고 시각부터 PACKING_DAYS ──
     const d = elapsedDays(lastArrivalAt ?? undefined, now);

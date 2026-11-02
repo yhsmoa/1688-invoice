@@ -68,10 +68,24 @@ export async function GET(request: NextRequest) {
 // ft_order_items 단건/다건 필드 업데이트
 // Body: { id: string, fields: Record<string, unknown> }
 //    or { updates: { id: string, fields: Record<string, unknown> }[] }
+//
+// arrival_route(보관) 는 받지 않는다 — 상품(세트) 단위로 바꿔야 하므로
+//   PATCH /api/ft/order-items/arrival-route 를 쓴다.
 // ============================================================
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // ── arrival_route 차단 (전용 API 로) ──
+    const allFields: unknown[] = Array.isArray(body.updates)
+      ? body.updates.map((u: { fields?: unknown }) => u?.fields)
+      : [body.fields];
+    if (allFields.some((f) => f && typeof f === 'object' && 'arrival_route' in (f as object))) {
+      return NextResponse.json(
+        { success: false, error: 'arrival_route 는 /api/ft/order-items/arrival-route 로 변경하세요.' },
+        { status: 400 }
+      );
+    }
 
     // 다건 업데이트
     if (body.updates && Array.isArray(body.updates)) {

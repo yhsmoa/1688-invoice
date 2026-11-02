@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../../import-product-v2/hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
+import StockChip from '../../../component/StockChip';
 import type { BatchStatus } from '../hooks/useAllocationBatch';
 
 // ============================================================
@@ -178,6 +179,7 @@ const OrderRowTable: React.FC<OrderRowTableProps> = ({
                     <td className="v3-col-name" onClick={() => onProductNameClick(item)}>
                       <div className="v2-product-name-badges">
                         {sizeBadge && <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>}
+                        <StockChip item={item} />
                         {isPersonal ? (
                           <>
                             <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>

@@ -6,7 +6,7 @@ import TopsideMenu from '../../component/TopsideMenu';
 import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
 import { useFtUsers, type FtOrderItem } from '../import-product-v2/hooks/useFtData';
-import { resolveScanSizeCode } from '../../lib/sizeCode';
+import { resolveScanSizeCode, isStockRoute } from '../../lib/sizeCode';
 import './ExportProduct.css';
 
 // ============================================================
@@ -218,12 +218,15 @@ const ExportProduct: React.FC = () => {
   // ft_order_items(PROCESSING) + fulfillment 기반 출고 준비 데이터
   // ============================================================
   const [exportItems, setExportItems] = useState<ExportOrderItem[]>([]);
+  // 보관(STOCK) 상품의 product_no — 목록에서 빼고, 스캔하면 [재고] 메뉴 안내
+  const [stockProductNos, setStockProductNos] = useState<Set<string>>(new Set());
   const [ftDataLoading, setFtDataLoading] = useState(false);
 
   /** 드롭박스 선택 시 ft_order_items + fulfillment 데이터 로드 */
   const fetchExportData = useCallback(async (userId: string) => {
     if (!userId) {
       setExportItems([]);
+      setStockProductNos(new Set());
       return;
     }
     setFtDataLoading(true);
@@ -287,7 +290,14 @@ const ExportProduct: React.FC = () => {
       }
 
       const result: ExportOrderItem[] = [];
+      const stockNos = new Set<string>();
       for (const [, rows] of byProduct) {
+        // ── 보관(STOCK) 상품은 [재고] 메뉴에서 위치 배치 → 쉽먼트 (이 화면 대상 아님) ──
+        //    경로는 상품 단위로 같게 저장되지만, 하나라도 STOCK 이면 제외 (안전 쪽)
+        if (rows.some(isStockRoute)) {
+          if (rows[0].product_no) stockNos.add(rows[0].product_no);
+          continue;
+        }
         const siblingAvail = rows.map((r) => {
           const a = arrivalByOII.get(r.id) ?? 0;
           const p = packedByOII.get(r.id) ?? 0;
@@ -307,6 +317,7 @@ const ExportProduct: React.FC = () => {
       }
 
       setExportItems(result);
+      setStockProductNos(stockNos);
       console.log(`출고 준비 데이터: ${result.length}개 product_id (전체 ${items.length}개 행 중 available > 0)`);
     } catch (err) {
       console.error('출고 데이터 로드 오류:', err);
@@ -1208,7 +1219,12 @@ const ExportProduct: React.FC = () => {
 
     if (!found) {
       playErrorSound();
-      setAlertMessage('해당 주문번호를 찾을 수 없습니다.');
+      const isStock = stockProductNos.has(normalizedOrderNumber);
+      setAlertMessage(
+        isStock
+          ? '보관 상품입니다. [재고(보관)] 메뉴에서 쉽먼트로 보내주세요.'
+          : '해당 주문번호를 찾을 수 없습니다.'
+      );
       setShowAlert(true);
       setTimeout(() => setShowAlert(false), 2000);
       setCurrentExportItem(null);
@@ -1222,7 +1238,7 @@ const ExportProduct: React.FC = () => {
       setScanHistory(prev => [...prev, {
         box_number: selectedBox,
         order_number: normalizedOrderNumber,
-        product_name: '주문번호를 찾을 수 없음',
+        product_name: isStock ? '보관 상품 — [재고(보관)] 에서 쉽먼트' : '주문번호를 찾을 수 없음',
         option_name: '',
         china_options: '',
         scanned_qty: quantity,

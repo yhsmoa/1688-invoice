@@ -49,6 +49,14 @@ const Icons = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   ),
+  // 재고(보관) — archive(보관함)
+  storage: (
+    <svg {...iconProps}>
+      <rect x="2" y="3" width="20" height="5" rx="1" />
+      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+      <path d="M10 12h4" />
+    </svg>
+  ),
   // 쉽먼트 — truck
   shipment: (
     <svg {...iconProps}>
@@ -131,6 +139,7 @@ const LeftsideMenu: React.FC = () => {
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
   const [isDbMenuOpen, setIsDbMenuOpen] = useState(false);
   const [isV1MenuOpen, setIsV1MenuOpen] = useState(false);
+  const [isStorageMenuOpen, setIsStorageMenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const { checkUnsavedChanges } = useSaveContext();
@@ -138,6 +147,10 @@ const LeftsideMenu: React.FC = () => {
 
   const toggleExportMenu = () => {
     setIsExportMenuOpen(!isExportMenuOpen);
+  };
+
+  const toggleStorageMenu = () => {
+    setIsStorageMenuOpen(!isStorageMenuOpen);
   };
 
   const toggleInvoiceMenu = () => {
@@ -193,6 +206,28 @@ const LeftsideMenu: React.FC = () => {
               <span className="menu-icon">{Icons.exportProduct}</span>
               <span className="menu-text">상품출고</span>
             </Link>
+          </li>
+          {/* 재고(보관) — 보관(STOCK) 상품: 입고 → 위치 배치 → 재고 → 쉽먼트 (docs/PLAN_stock-type-S.md) */}
+          <li className="menu-item">
+            <div className="menu-link" onClick={toggleStorageMenu}>
+              <span className="menu-icon">{Icons.storage}</span>
+              <span className="menu-text">재고(보관)</span>
+              <span className={`dropdown-arrow ${isStorageMenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isStorageMenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/storage/pending" className="submenu-link" onClick={(e) => handleNavigation(e, '/storage/pending')}>
+                    <span className="submenu-text">작업중</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/storage/stock" className="submenu-link" onClick={(e) => handleNavigation(e, '/storage/stock')}>
+                    <span className="submenu-text">재고</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
           <li className="menu-item">
             <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>

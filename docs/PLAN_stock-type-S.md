@@ -1,6 +1,6 @@
 # 작업 계획 — 보관(STOCK) 경로 + 재고 페이지([작업중] · [재고])
 
-작성일: 2026-11-02 · 상태: **계획 확정 (구현 대기)** — 2차 검토 반영. 결정 사항은 §6
+작성일: 2026-11-02 · 상태: **구현 완료 (2026-11-02)** — 구현 중 바뀐 결정은 §6 의 9~13
 대상
 - 1688-invoice: `/storage/*`(신규 2페이지), `/api/ft/storage/*`(신규), `/export-product-v2`(목록 제외), `/order-status-v2`(배지·토글·확인필요), 좌측 메뉴, i18n, pageTableMap
 - purchase-agent: 장바구니 "보관" 선택, 주문 진행 배지·토글·확인필요 (`lib/sizeCode.ts`, `lib/deliveryAlerts.ts`)
@@ -266,6 +266,11 @@ app/storage/
 | 6 | 조정(ADJUST)·반품 자동 차감·위치 편집·라벨 출력 | **1차 제외** | 핵심 흐름(배치→보관→쉽먼트) 먼저. 반품은 안내 문구로 수동 |
 | 7 | 작업중 단위 / 스캔 키 | 입고 건 단위 / 주문번호 라벨만 | 사용자 답변 |
 | 8 | 경로·메뉴명·색 | `/storage`, "재고(보관)", S 칩 노랑 `#eab308` | 로켓 재고(`stock_management`)와 이름 충돌 회피, P 주황과 구분 |
+| 9 | 세트상품 수량 단위 (구현 중 발견) | 원장·미배치 모두 **상품(product_id) 단위, 1세트 = 1**. 미배치 = MIN over sibling(ARRIVAL−RETURN) − PUTAWAY − 미연결 PACKED. [작업중] 한 줄 = "완성 세트 수를 늘린 입고 건"(단품이면 입고 건 그대로), 미배치는 오래된 줄부터 FIFO | ARRIVAL 은 구성품마다, PACKED 는 상품당 1번 기록된다(세트 8,061개 · 진행 행 1,442). 입고 건 단위 배치는 세트를 구성품 수만큼 중복 집계 |
+| 10 | 미배치 계산 위치 | DB 함수 `ft_storage_pending_lines` 한 곳 — [작업중] API 와 `ft_storage_putaway` 검증이 같은 함수를 쓴다. 배치 모달은 상품 단위(줄 선택 칩 없음) | 공식이 두 곳에 있으면 어긋난다. FIFO 라 줄 선택은 의미가 없음 |
+| 11 | 포장 철회 복귀 | 원장 kind `UNPACK` 추가 (PUTAWAY note='unpack' 대신). `ft_storage_unpick_outbound` 가 행 삭제 + 위치 복귀를 한 트랜잭션으로. 링크 없는 분할 행 철회는 경고 대신 **[작업중]에 자동으로 다시 나타남**(미연결 PACKED 가 음수가 되어 미배치 증가) | 배치(입고분)와 복귀를 구분해야 미배치 공식이 맞다. 선반 밖에 나온 물건은 실제로 다시 배치가 필요 |
+| 12 | 보관 토글 API | 일반 `PATCH /api/ft/order-items` 는 arrival_route 거부 → 전용 `PATCH /api/ft/order-items/arrival-route` 가 같은 product_id 전체를 바꾼다 | 세트 구성품끼리 경로가 다르면 원장 단위가 깨진다 |
+| 13 | 장바구니 → 주문 전환 | 실제 전환은 auto-1688-order 프로그램(`renderer.js`)이 한다 → v1.0.91 에서 `arrival_route` 복사(세트는 하나라도 보관이면 전체 보관) | 계획서 §4 의 "전환 코드" 가정과 달랐음 |
 
 ## 7. 범위 밖 (별도 작업 후보)
 - 고객(purchase-agent) 보관 재고 화면 + 재고에서 쉽먼트 요청(`ft_move_requests` 패턴).
