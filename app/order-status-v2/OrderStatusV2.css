@@ -118,6 +118,133 @@
 }
 
 /* ============================================================
+   신규주문 상황 — [신규주문 상황] 버튼 + 드롭다운 패널
+   ============================================================ */
+.os-v2-new-orders {
+  position: relative;
+}
+
+.os-v2-delivery-tool-btn.is-active {
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  color: #3730a3;
+}
+
+.os-v2-new-orders-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  width: 360px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  color: #333;
+}
+
+.os-v2-new-orders-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.os-v2-new-orders-head strong {
+  font-size: 13px;
+}
+
+.os-v2-new-orders-total {
+  color: #666;
+}
+
+.os-v2-new-orders-refresh {
+  margin-left: auto;
+  padding: 3px 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.os-v2-new-orders-refresh:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.os-v2-new-orders-msg {
+  padding: 6px 0;
+  color: #888;
+}
+
+.os-v2-new-orders-msg.is-error {
+  color: #c00;
+}
+
+/* ── 사용자별 목록 ── */
+.os-v2-new-orders-list,
+.os-v2-new-orders-carts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.os-v2-new-orders-user + .os-v2-new-orders-user {
+  margin-top: 8px;
+}
+
+.os-v2-new-orders-user-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.os-v2-new-orders-name {
+  font-weight: 600;
+}
+
+.os-v2-new-orders-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #eef2ff;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ── 카트 목록 ── */
+.os-v2-new-orders-carts {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid #f0f0f0;
+}
+
+.os-v2-new-orders-carts li {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  color: #555;
+}
+
+.os-v2-new-orders-cart-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.os-v2-new-orders-cart-date {
+  color: #999;
+}
+
+/* ============================================================
    검색 바
    ============================================================ */
 .order-status-v2-search-bar {

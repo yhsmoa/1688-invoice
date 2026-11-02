@@ -14,6 +14,7 @@ import {
 } from './hooks/useOrderStatusData';
 import FulfillmentLogModal, { type DeliveryTracking } from './components/FulfillmentLogModal';
 import DeliveryStatusTools from './components/DeliveryStatusTools';
+import NewOrderStatusButton from './components/NewOrderStatusButton';
 import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import { evaluateOrderMissing, type OrderMissing } from './utils/orderMissing';
@@ -669,6 +670,8 @@ const OrderStatusV2: React.FC = () => {
                       : `총 ${items.length}건`}
                   </span>
                 )}
+                {/* 신규주문 상황 — auto-1688-order "신규주문건" 보드와 같은 집계 (ft_carts ORDER) */}
+                <NewOrderStatusButton />
                 {/* 배송상황 갱신 — [배송상황 콘솔] 스크립트 복사 / [배송상황 csv] 업로드 */}
                 <DeliveryStatusTools onUploaded={reloadDeliveryStatus} />
                 {/* 1688 XLSX / XLSX 다운 / 주문 ID */}
