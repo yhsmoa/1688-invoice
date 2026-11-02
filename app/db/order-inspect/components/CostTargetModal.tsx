@@ -50,8 +50,9 @@ interface Props {
 }
 
 const CostTargetModal: React.FC<Props> = ({ order, onPick, onClose }) => (
-  <div className="oi-choice-overlay" onClick={onClose}>
-    <div className="oi-choice-modal" role="dialog" aria-label="비용처리 대상 선택" onClick={(e) => e.stopPropagation()}>
+  // 바깥 클릭으로는 닫지 않는다 — [취소] 로만 닫기 (비용처리 흐름의 모달 공통)
+  <div className="oi-choice-overlay">
+    <div className="oi-choice-modal" role="dialog" aria-label="비용처리 대상 선택">
       <h3 className="oi-choice-title">비용처리</h3>
       <p className="oi-choice-desc">이 주문의 결제금액을 누가 부담하는지 고르세요. 통장 출금은 양쪽 모두 같습니다.</p>
 

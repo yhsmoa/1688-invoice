@@ -39,9 +39,11 @@ interface Props {
   referenceId?: string;
   /** 폼 위에 보여줄 맥락 (예: 1688 주문 요약) */
   context?: React.ReactNode;
+  /** 바깥(오버레이) 클릭으로 닫을지 — 기본 true. 입력 중 실수로 닫히면 안 되는 곳에서 false */
+  closeOnOverlay?: boolean;
 }
 
-const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId, context }) => {
+const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId, context, closeOnOverlay = true }) => {
   const [date, setDate] = useState(initial?.date ?? todayKST());
   const [category, setCategory] = useState<CompanyCategory>(initial?.category ?? '전기세');
   const [direction, setDirection] = useState<'in' | 'out'>(initial?.direction ?? 'out');
@@ -95,7 +97,7 @@ const ExpenseModal: React.FC<Props> = ({ onClose, onSaved, initial, referenceId,
   };
 
   return (
-    <div className="ta-modal-overlay" onClick={() => !saving && onClose()}>
+    <div className="ta-modal-overlay" onClick={() => closeOnOverlay && !saving && onClose()}>
       <div className="ta-modal" onClick={(e) => e.stopPropagation()}>
         <h3 className="ta-modal-title">회사 거래 추가</h3>
         <p className="ta-modal-desc">급여는 [급여 반영]에서, 고객 거래는 고객계좌(신)에서 기록합니다.</p>

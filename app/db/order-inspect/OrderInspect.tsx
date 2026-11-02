@@ -350,6 +350,7 @@ const OrderInspect: React.FC = () => {
           }}
           referenceId={tradeReferenceId(cost.order)}
           context={<CostOrderSummary order={cost.order} />}
+          closeOnOverlay={false}
           onClose={closeCost}
           onSaved={() => markProcessed(cost.order.orderNo, 'trade')}
         />

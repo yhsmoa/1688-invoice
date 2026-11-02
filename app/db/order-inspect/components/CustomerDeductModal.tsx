@@ -166,8 +166,9 @@ const CustomerDeductModal: React.FC<Props> = ({ initial, referenceId, context, o
     : <span className="phv2-pill is-matched">✓ 원장 정합 — 기록 가능</span>;
 
   return (
-    <div className="phv2-modal-overlay" onClick={handleClose}>
-      <div className="phv2-modal is-deduct" onClick={(e) => e.stopPropagation()}>
+    // 바깥 클릭으로는 닫지 않는다 — 입력 중 실수로 닫혀 값이 사라지는 것 방지 (✕ / 취소 로만 닫기)
+    <div className="phv2-modal-overlay">
+      <div className="phv2-modal is-deduct">
 
         {/* ── 헤더: 사업자 선택 + 현재 잔액 ── */}
         <div className="phv2-modal-header">
