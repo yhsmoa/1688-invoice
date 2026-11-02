@@ -229,7 +229,8 @@ app/storage/
 | `lib/sizeCode.ts` | 변경 없음 + 1688 과 같은 S 칩 |
 | `app/progress/orders/components/TypeChangePopup.tsx`, `ItemsTableView` | "보관" 토글 (OFF 는 1688 과 같은 잔량 검사 — anon 이 직접 UPDATE 하므로 **DB 트리거** `ft_order_items_route_guard` 로 막는다: STOCK→SHIPMENT 변경 시 `ft_storage_balance` 잔량 > 0 이면 RAISE) |
 | `lib/deliveryAlerts.ts` + `AlertFilterButton.tsx` | 1688 과 동일한 STOCK 제외·문구 |
-| (후속) `/progress` 보관 재고 화면, 고객이 재고에서 쉽먼트 요청 | `ft_storage_balance`·movements 가 anon 읽기 가능하므로 바로 붙일 수 있음 |
+| `app/inventory/page.tsx` (+ `services/storageService.ts`, `hooks/useStorageData.ts`, `components/Storage*.tsx`) | **재고관리 화면 (구현 완료 2026-11-02)** — [작업중]·[재고]·[이력] 읽기 전용. 창고와 같은 뷰·원장·함수(`ft_storage_pending_lines` anon EXECUTE — `supabase/storage/002_storage_anon_read.sql`)를 읽으므로 숫자가 같다 |
+| (후속) 고객이 재고에서 쉽먼트 요청 | §7 — 요청 테이블이 없어 현재는 창고에 구두로 요청 |
 
 > 트리거는 1688 쪽 PATCH 검사와 중복되지만, 고객 화면이 anon 으로 직접 UPDATE 하는 경로가 있어 **DB 가 최종 방어선**이어야 한다 (`ft_cancel_details_settled_guard` 선례).
 
@@ -273,7 +274,8 @@ app/storage/
 | 13 | 장바구니 → 주문 전환 | 실제 전환은 auto-1688-order 프로그램(`renderer.js`)이 한다 → v1.0.91 에서 `arrival_route` 복사(세트는 하나라도 보관이면 전체 보관) | 계획서 §4 의 "전환 코드" 가정과 달랐음 |
 
 ## 7. 범위 밖 (별도 작업 후보)
-- 고객(purchase-agent) 보관 재고 화면 + 재고에서 쉽먼트 요청(`ft_move_requests` 패턴).
+- **고객이 재고에서 쉽먼트 요청** (`ft_move_requests` 패턴의 새 테이블 + 창고 [재고] 화면 배지). 지금은 고객 재고관리 화면이 읽기 전용이라 "보내 달라" 는 요청 경로가 앱 밖(구두)에 있다.
+- **ADJUST(실사 조정) 함수** — 보관 상품에 반품(RETURN)이 접수되면 원장은 그 수량을 모른다. 위치에 올라간 뒤 반품되면 선반 재고가 유령으로 남고, 주문이 DONE 이 되면 PICK 도 거절(PICK_ITEM_INVALID)되어 **꺼낼 방법이 없다**. 1차에서는 반품접수 모달이 안내만 한다(`V2CancelModal`).
 - ADJUST 함수 + 반품접수 연동 + 재고 실사.
 - 위치 관리 화면(이름·구역·비활성) + 위치 바코드 라벨 출력(`lib/labelRender` 재사용).
 - `POST /api/ft/shipments` 의 `ft_box_info.shipment_id` box_code 갱신 결함(이전 계획 §6) — 이번 기능 영향 없음.

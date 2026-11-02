@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { calcServiceFee, calcTotalRefund } from '../../../lib/cancelAmounts';
+import { isStockRoute } from '../../../lib/sizeCode';
 import './V2CancelModal.css';
 
 // ============================================================
@@ -333,7 +334,17 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         throw new Error(json.error || '취소 접수 실패');
       }
 
-      alert(json.message);
+      // ── 보관(STOCK) 상품 반품: 재고 원장은 RETURN 을 모르므로 위치에 남은 수량은 창고가 직접 정리 ──
+      //    (docs/PLAN_stock-type-S.md §2-6 — ADJUST 는 1차 범위 밖, 안내만)
+      const stockReturned = cancelType === 'RETURN'
+        ? items.filter((it) => isStockRoute(it) && (parseInt(formData.get(it.id)?.qty || '0', 10) || 0) > 0)
+        : [];
+      const stockNotice = stockReturned.length > 0
+        ? `
+
+보관(S) 상품 ${stockReturned.length}건이 포함되어 있습니다. 재고 위치에 올려 둔 수량이면 [재고(보관)] 메뉴에서 꺼내 주세요 (원장은 반품을 자동으로 빼지 않습니다).`
+        : '';
+      alert(json.message + stockNotice);
       onSaveComplete();
     } catch (err) {
       console.error('취소 접수 오류:', err);
