@@ -93,12 +93,10 @@ export function isStockRoute(item: { arrival_route?: string | null } | null | un
 }
 
 // ── 화면의 "타입" 한 축 — S(보관) 이면 S 단독, 아니면 A/B/C/P/X ──
-//   S 상품은 타입을 꺼낼 때 정한다 (shipment_type NULL). 한 번이라도 꺼내 타입이 생기면
-//   secondary 에 그 타입 — "재고에 있던 상품이 어떤 박스로 나가는지" 표시용.
+//   S 상품은 보관 경로인 동안(재고에서 꺼내 타입이 기록된 뒤에도) 화면에는 S 만 보인다.
+//   정해진 박스 타입은 재고 담기 모달·쉽먼트 V2(박스) 에서 본다.
 //   purchase-agent lib/sizeCode.ts 의 같은 함수와 규칙 동일 — 바꾸면 양쪽 같이
-export interface TypeBadgeInfo extends SizeBadge {
-  secondary?: SizeBadge | null;
-}
+export type TypeBadgeInfo = SizeBadge;
 
 export function resolveTypeBadge(item: {
   arrival_route?: string | null;
@@ -106,14 +104,7 @@ export function resolveTypeBadge(item: {
   coupang_shipment_size?: string | null;
 } | null | undefined): TypeBadgeInfo | null {
   if (!item) return null;
-  if (isStockRoute(item)) {
-    // 보존된 쿠팡사이즈만 있고 타입이 없으면 "아직 미정" — resolveSizeBadge 의 레거시 분기
-    // (shipment_type 없이 size 만 → A/B/C) 를 타지 않게 shipment_type 이 있을 때만 보조 배지
-    const secondary = item.shipment_type
-      ? resolveSizeBadge(item.shipment_type, item.coupang_shipment_size)
-      : null;
-    return { code: 'S', colorClass: 'size-badge--stock', secondary };
-  }
+  if (isStockRoute(item)) return { code: 'S', colorClass: 'size-badge--stock' };
   return resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
 }
 

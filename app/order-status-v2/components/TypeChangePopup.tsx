@@ -86,11 +86,7 @@ const TypeChangePopup: React.FC<TypeChangePopupProps> = ({
         >
           <TypeBadge info={{ code: 'S', colorClass: 'size-badge--stock' }} />
           <span>보관 (재고)</span>
-          {currentCode === 'S' && (
-            <span className="os-v2-popup-toggle is-on">
-              {current?.secondary ? `꺼낼 때 ${current.secondary.code}` : '타입 미정'}
-            </span>
-          )}
+          {currentCode === 'S' && <span style={{ marginLeft: 'auto', color: '#2563eb' }}>✓</span>}
         </button>
       </div>
     </>

@@ -87,10 +87,3 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .size-badge--stock::after { animation: none; display: none; }
 }
-/* 꺼낼 때 정해진 타입 — S 옆의 작은 보조 배지 */
-.size-badge--secondary {
-  margin-left: 2px;
-  padding: 0 4px;
-  font-size: 9px;
-  opacity: 0.85;
-}
