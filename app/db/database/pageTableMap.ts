@@ -285,6 +285,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         apis: [
           { route: '/api/get-customs-data', tables: ['invoiceManager-Customs'] },
           { route: '/api/upload-customs-excel', tables: ['invoiceManager-Customs'] },
+          { route: '/api/add-customs-item', tables: ['invoiceManager-Customs'] },
         ],
       },
       {

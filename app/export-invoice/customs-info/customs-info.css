@@ -51,6 +51,21 @@
   align-items: center;
 }
 
+.customs-info-add-btn {
+  background-color: #667eea;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.customs-info-add-btn:hover {
+  background-color: #5a67d8;
+}
+
 .customs-info-excel-download-btn {
   background-color: #3182ce;
   color: white;

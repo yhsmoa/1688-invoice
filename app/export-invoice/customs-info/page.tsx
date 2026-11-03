@@ -4,14 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import * as XLSX from 'xlsx';
+import CustomsAddModal, { type CustomsItem } from './components/CustomsAddModal';
 import './customs-info.css';
 
-interface CustomsInfoData {
-  HS_code: string;
-  item_name_ko?: string;
-  item_name_en?: string;
-  CO?: string;
-}
+type CustomsInfoData = CustomsItem;
 
 const CustomsInfo: React.FC = () => {
   const [customsData, setCustomsData] = useState<CustomsInfoData[]>([]);
@@ -21,10 +17,11 @@ const CustomsInfo: React.FC = () => {
   const itemsPerPage = 20;
   const [paginatedData, setPaginatedData] = useState<CustomsInfoData[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   const updatePaginatedData = (data: CustomsInfoData[]) => {
@@ -115,19 +112,19 @@ const CustomsInfo: React.FC = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = new Set(paginatedData.map(item => item.HS_code));
+      const allIds = new Set(paginatedData.map(item => item.id));
       setSelectedRows(allIds);
     } else {
       setSelectedRows(new Set());
     }
   };
 
-  const handleSelectRow = (hsCode: string, checked: boolean) => {
+  const handleSelectRow = (id: number, checked: boolean) => {
     const newSelected = new Set(selectedRows);
     if (checked) {
-      newSelected.add(hsCode);
+      newSelected.add(id);
     } else {
-      newSelected.delete(hsCode);
+      newSelected.delete(id);
     }
     setSelectedRows(newSelected);
   };
@@ -210,6 +207,15 @@ const CustomsInfo: React.FC = () => {
     }
   };
 
+  // 품목 1건 추가 완료 → 목록 재조회 (검색어는 초기화해 새 행이 보이게)
+  const handleCustomsAdded = (item: CustomsInfoData) => {
+    setShowAddModal(false);
+    setSearchTerm('');
+    setCurrentPage(1);
+    loadCustomsData();
+    alert(`통관 품목이 추가되었습니다: ${item.item_name_ko || ''} (${item.HS_code || 'HS CODE 미입력'})`);
+  };
+
   return (
     <div className="customs-info-layout">
       <TopsideMenu />
@@ -222,6 +228,9 @@ const CustomsInfo: React.FC = () => {
             <div className="customs-info-control-section">
               <div className="customs-info-left-controls"></div>
               <div className="customs-info-right-controls">
+                <button className="customs-info-add-btn" onClick={() => setShowAddModal(true)}>
+                  + 품목 추가
+                </button>
                 <button className="customs-info-excel-download-btn" onClick={handleExcelDownload}>
                   ↓ 엑셀 다운
                 </button>
@@ -286,12 +295,12 @@ const CustomsInfo: React.FC = () => {
                   </thead>
                   <tbody>
                     {paginatedData.map((item) => (
-                      <tr key={item.HS_code}>
+                      <tr key={item.id}>
                         <td>
                           <input
                             type="checkbox"
-                            checked={selectedRows.has(item.HS_code)}
-                            onChange={(e) => handleSelectRow(item.HS_code, e.target.checked)}
+                            checked={selectedRows.has(item.id)}
+                            onChange={(e) => handleSelectRow(item.id, e.target.checked)}
                             className="customs-info-table-checkbox"
                           />
                         </td>
@@ -372,6 +381,14 @@ const CustomsInfo: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {showAddModal && (
+        <CustomsAddModal
+          existing={customsData}
+          onClose={() => setShowAddModal(false)}
+          onAdded={handleCustomsAdded}
+        />
+      )}
 
       {showCopyToast && (
         <div className="customs-info-copy-toast">

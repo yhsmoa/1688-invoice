@@ -1,0 +1,161 @@
+/* ============================================================
+   CustomsAddModal — 통관 품목 추가 모달
+   BoxCreateModal(component/BoxCreateModal.css)과 같은 룩.
+   ============================================================ */
+
+/* ── 오버레이 / 컨테이너 ── */
+.customs-add-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.customs-add-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 96vw);
+  max-height: 90vh;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+/* ============================================================ */
+/* 헤더                                                          */
+/* ============================================================ */
+.customs-add-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.customs-add-head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.customs-add-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.customs-add-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ============================================================ */
+/* 입력                                                          */
+/* ============================================================ */
+.customs-add-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.customs-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.customs-add-field em {
+  font-style: normal;
+  color: #dc2626;
+}
+
+.customs-add-field input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.customs-add-field input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.customs-add-hint {
+  font-weight: 400;
+  color: #b45309;
+}
+
+.customs-add-error-text {
+  font-weight: 400;
+  color: #dc2626;
+}
+
+.customs-add-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+/* ============================================================ */
+/* 하단 버튼                                                     */
+/* ============================================================ */
+.customs-add-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.customs-add-cancel,
+.customs-add-submit {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.customs-add-cancel {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.customs-add-cancel:hover {
+  background: #e2e8f0;
+}
+
+.customs-add-submit {
+  background: #667eea;
+  color: #fff;
+}
+
+.customs-add-submit:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.customs-add-submit:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}

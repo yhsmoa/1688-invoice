@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
     // invoiceManager-Customs 테이블에서 모든 데이터 가져오기
     const { data, error } = await supabase
       .from('invoiceManager-Customs')
-      .select('HS_code, item_name_ko, item_name_en, CO')
+      .select('id, HS_code, item_name_ko, item_name_en, CO')
       .order('HS_code', { ascending: true });
 
     if (error) {
