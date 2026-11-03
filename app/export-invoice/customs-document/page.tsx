@@ -7,6 +7,7 @@ import GoogleSheetModal from '../../../component/GoogleSheetModal';
 import LocationMoveModal from '../../../component/LocationMoveModal';
 import ShipmentLoadModal from './components/ShipmentLoadModal';
 import { loadShipmentRows, isUnknownCategory, type VenderPick } from './utils/loadShipmentRows';
+import { customsItemKey } from '../../../lib/customsItemKey';
 import type { CustomsDocumentData } from './types';
 import './customs-document.css';
 
@@ -58,12 +59,11 @@ const CustomsDocument: React.FC = () => {
     return acc;
   }, {} as Record<string, CustomsDocumentData[]>);
 
-  // 품목별 그룹화 처리 (위치별 내에서 품목+혼용률로 합산)
+  // 품목별 그룹화 처리 (위치별 내에서 품목으로 합산 — 기준은 lib/customsItemKey.ts)
   const processDataByViewMode = (items: CustomsDocumentData[]) => {
     if (viewMode === '품목별') {
-      // 품목 + 혼용률 조합으로 그룹화
       const grouped = items.reduce((acc, item) => {
-        const key = `${item.item_category || ''}_${item.blend_ratio || ''}`;
+        const key = customsItemKey(item);
         if (!acc[key]) {
           acc[key] = {
             ...item,

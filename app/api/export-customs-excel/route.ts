@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { supabase } from '../../../lib/supabase';
+import { customsItemKey } from '../../../lib/customsItemKey';
 
 export async function POST(request: NextRequest) {
   try {
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
       // 전체 데이터에서 품목별 가중합(unit_price × qty)과 총 수량 계산
       const globalItemData: Record<string, { weightedSum: number; totalQty: number }> = {};
       data.forEach((item: any) => {
-        const itemKey = `${item.item_category || ''}_${item.blend_ratio || ''}`;
+        const itemKey = customsItemKey(item);
         if (!globalItemData[itemKey]) {
           globalItemData[itemKey] = { weightedSum: 0, totalQty: 0 };
         }
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
 
       data.forEach((item: any) => {
         const location = item.location || '미지정';
-        const itemKey = `${item.item_category || ''}_${item.blend_ratio || ''}`;
+        const itemKey = customsItemKey(item);
 
         if (!locationGroups[location]) {
           locationGroups[location] = {};
