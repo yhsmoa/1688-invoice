@@ -244,6 +244,127 @@
   color: #999;
 }
 
+.os-v2-new-orders-msg.is-notice {
+  color: #047857;
+}
+
+/* ── 카트 [반려] 버튼 — auto-1688-order 프로그램 [반려](btn-export-fail) 와 같은 붉은 계열 ── */
+.os-v2-new-orders-reject {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  background: #fff;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  color: #b91c1c;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.os-v2-new-orders-reject:hover {
+  background: #fef2f2;
+}
+
+/* ============================================================
+   신규주문 상황 — 반려 확인 모달 (패스워드 입력)
+   ============================================================ */
+.os-v2-reject-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.os-v2-reject-modal {
+  width: 340px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+  color: #333;
+}
+
+.os-v2-reject-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.os-v2-reject-target {
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #475569;
+}
+
+.os-v2-reject-target-user {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.os-v2-reject-desc {
+  margin: 0 0 10px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.os-v2-reject-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 15px;
+  letter-spacing: 4px;
+  text-align: center;
+  outline: none;
+}
+
+.os-v2-reject-input:focus {
+  border-color: #ef4444;
+}
+
+.os-v2-reject-error {
+  margin-top: 8px;
+  color: #b91c1c;
+}
+
+.os-v2-reject-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.os-v2-reject-btn {
+  padding: 6px 16px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.os-v2-reject-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.os-v2-reject-btn--danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.os-v2-reject-btn--danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 /* ============================================================
    검색 바
    ============================================================ */

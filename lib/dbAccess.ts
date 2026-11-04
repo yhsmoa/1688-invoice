@@ -13,6 +13,8 @@ import { supabase } from './supabase';
 //                         → 직책 '기업' 만 (현재 YUHWA 1명)
 //     · 'volume'        : /db/volume (물량관리) + 그 데이터 API
 //                         → 직책 '기업' · '매니저'
+//     · 'cartReject'    : 주문상태 V2 [신규주문 상황] 카트 [반려] (/api/ft/new-orders/reject)
+//                         → 직책 '기업' · '매니저' (화면 잠금 없이 반려할 때마다 코드 입력)
 //
 //   직책·권한 플래그는 모두 DB 값이므로 코드에 이름·ID 를 하드코딩하지 않는다.
 //   (access_authorization 은 직원관리 화면에서 바꿀 수 없는 관리자 전용 플래그)
@@ -27,17 +29,19 @@ export const DB_ACCESS_HEADER = 'x-db-access-code';
 // ============================================================
 // 접근 범위 / 범위별 허용 직책
 // ============================================================
-export const DB_ACCESS_SCOPES = ['db', 'volume'] as const;
+export const DB_ACCESS_SCOPES = ['db', 'volume', 'cartReject'] as const;
 export type DbAccessScope = (typeof DB_ACCESS_SCOPES)[number];
 
 const DB_ACCESS_ROLES: Record<DbAccessScope, readonly string[]> = {
   db: ['기업'],
   volume: ['기업', '매니저'],
+  cartReject: ['기업', '매니저'],
 };
 
 const DB_ACCESS_DENIED_MESSAGE: Record<DbAccessScope, string> = {
   db: 'DB 관리 메뉴 접근 권한이 없습니다.',
   volume: '물량관리 접근 권한이 없습니다.',
+  cartReject: '반려 권한이 없습니다. (기업·매니저만 가능)',
 };
 
 /** 문자열이 허용된 scope 인지 (요청 body 검증용) */

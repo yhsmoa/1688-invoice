@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { NewOrderUserSummary } from '../../api/ft/new-orders/route';
+import CartRejectModal, { type RejectTarget } from './CartRejectModal';
 
 // ============================================================
 // NewOrderStatusButton — [신규주문 상황]
@@ -10,7 +11,9 @@ import type { NewOrderUserSummary } from '../../api/ft/new-orders/route';
 //   주문상태 V2 에서 바로 확인한다.
 //     · 대상: ft_carts.status = 'ORDER' (프로그램에서 아직 불러오지 않은 카트)
 //     · 사용자별 카트 수 · 품목 수 · 총 개수 + 카트 목록
+//     · 카트별 [반려] — 패스워드(기업·매니저 접근 코드) 확인 후 'NEW' 로 되돌림 (CartRejectModal)
 //   열 때마다 새로 조회한다 (/api/ft/new-orders). 바깥 클릭 / Esc 로 닫힘.
+//   반려 모달은 패널 바깥(같은 wrapRef 안)에 띄워 패널의 stacking context 에 갇히지 않게 한다.
 // ============================================================
 
 type LoadState =
@@ -33,6 +36,10 @@ const NewOrderStatusButton: React.FC = () => {
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  // ── 반려 대상 카트 (null = 모달 닫힘) · 직전 반려 안내 ──
+  const [rejectTarget, setRejectTarget] = useState<RejectTarget | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
   // ============================================================
   // 조회
   // ============================================================
@@ -50,24 +57,38 @@ const NewOrderStatusButton: React.FC = () => {
   }, []);
 
   const handleToggle = useCallback(() => {
-    if (!open) load();
+    if (!open) {
+      setNotice(null);
+      load();
+    }
     setOpen(!open);
   }, [open, load]);
 
-  // ── 바깥 클릭 / Esc 로 닫기 ──
+  // ── 반려 성공 → 안내 + 목록 재조회 (반려된 카트는 ORDER 가 아니므로 사라진다) ──
+  const handleRejected = useCallback((target: RejectTarget) => {
+    setRejectTarget(null);
+    setNotice(`'${target.cart_name || '(이름 없음)'}' 반려됨 — 고객 장바구니(NEW)로 되돌렸습니다.`);
+    load();
+  }, [load]);
+
+  // ── 바깥 클릭 / Esc 로 닫기 (반려 모달이 열려 있으면 Esc 는 모달만 닫는다) ──
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (rejectTarget) setRejectTarget(null);
+      else setOpen(false);
+    };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, rejectTarget]);
 
   // ============================================================
   // 렌더
@@ -110,6 +131,7 @@ const NewOrderStatusButton: React.FC = () => {
           </div>
 
           {/* ── 본문 ── */}
+          {notice && <div className="os-v2-new-orders-msg is-notice">{notice}</div>}
           {state.status === 'loading' && <div className="os-v2-new-orders-msg">조회 중...</div>}
           {state.status === 'error' && (
             <div className="os-v2-new-orders-msg is-error">조회 실패 — {state.message}</div>
@@ -133,6 +155,16 @@ const NewOrderStatusButton: React.FC = () => {
                         <span className="os-v2-new-orders-cart-name">{c.cart_name || '(이름 없음)'}</span>
                         <span className="os-v2-new-orders-cart-date">{fmtDateTime(c.created_at)}</span>
                         <span>{fmtCount(c.items)}품목 · {fmtCount(c.qty)}개</span>
+                        <button
+                          type="button"
+                          className="os-v2-new-orders-reject"
+                          onClick={() => {
+                            setNotice(null);
+                            setRejectTarget({ id: c.id, cart_name: c.cart_name, userName: r.name, items: c.items, qty: c.qty });
+                          }}
+                        >
+                          반려
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -141,6 +173,15 @@ const NewOrderStatusButton: React.FC = () => {
             </ul>
           )}
         </div>
+      )}
+
+      {/* ── 반려 확인 모달 ── */}
+      {open && rejectTarget && (
+        <CartRejectModal
+          target={rejectTarget}
+          onClose={() => setRejectTarget(null)}
+          onRejected={handleRejected}
+        />
       )}
     </div>
   );

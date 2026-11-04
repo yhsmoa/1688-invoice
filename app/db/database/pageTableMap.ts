@@ -75,6 +75,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/delivery-codes', tables: ['1688_invoice_deliveryInfo_check'] },
           { route: '/api/ft/order-items/arrival-route', tables: ['ft_order_items', 'ft_storage_movements'] },
           { route: '/api/ft/new-orders', tables: ['ft_carts', 'ft_cart_items', 'ft_users'] },
+          { route: '/api/ft/new-orders/reject', tables: ['invoiceManager_employees', 'ft_carts'] },
         ],
       },
       {
