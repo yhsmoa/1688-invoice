@@ -9,7 +9,7 @@ import { supabase } from './supabase';
 //     2. access_authorization = true  AND  role ∈ DB_ACCESS_ROLES[scope]
 //
 //   scope
-//     · 'db'     (기본) : /db/orders, /db/database, /db/order-inspect, 무역계좌
+//     · 'db'     (기본) : /db/orders, /db/database, /db/order-inspect, /db/account-info, 무역계좌
 //                         → 직책 '기업' 만 (현재 YUHWA 1명)
 //     · 'volume'        : /db/volume (물량관리) + 그 데이터 API
 //                         → 직책 '기업' · '매니저'

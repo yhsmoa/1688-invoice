@@ -282,6 +282,12 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">주문 검사</span>
                   </Link>
                 </li>
+                {/* 계좌정보 — 회사이름·이름·연락처·은행·계좌번호·비고 (DB 관리 접근 코드 필요) */}
+                <li className="submenu-item">
+                  <Link href="/db/account-info" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/account-info')}>
+                    <span className="submenu-text">계좌정보</span>
+                  </Link>
+                </li>
                 {/* ── 구분선 아래: 구 원장 (조회 전용) ── */}
                 <li className="submenu-divider" aria-hidden="true" />
                 <li className="submenu-item">

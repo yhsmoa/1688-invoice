@@ -270,6 +270,16 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         ],
         note: '1688 주문 엑셀(A열 주문번호) ↔ ft_order_items.1688_order_id 매칭 — 미매칭 주문만 표시. J열 주문상태(거래/환불/취소 탭)·N열 받는 사람·U열 수량·AD열 구매자 메모 함께 표시. [비용처리] → 회사 부담(무역계좌 회사 거래 추가 모달) 또는 고객 부담(고객계좌(신) 차감 폼)으로 결제금액 기록, 참조키는 1688 주문번호 고정. 업로드 때 두 원장을 조회해 이미 기록된 주문은 배지로 표시. DB 관리 접근 코드 필요',
       },
+      {
+        name: '계좌정보',
+        route: '/db/account-info',
+        file: 'app/db/account-info/AccountInfo.tsx',
+        apis: [
+          { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
+          { route: '/api/db/account-info', tables: ['ft_account_info', 'invoiceManager_employees'] },
+        ],
+        note: '회사이름·이름·연락처·은행·계좌번호·비고 등록/수정/삭제. 은행은 직원관리와 같은 목록(BANK_NAMES) 콤보박스. 테이블 RLS 정책 없음(서버 전용), DB 관리 접근 코드 필요',
+      },
     ],
   },
 

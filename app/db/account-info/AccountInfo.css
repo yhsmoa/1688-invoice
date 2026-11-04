@@ -1,0 +1,299 @@
+/* ============================================================ */
+/* 계좌정보 — 레이아웃 (주문 검사 페이지와 같은 골격)            */
+/* ============================================================ */
+.ai-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.ai-main {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.ai-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-width: 0;
+  min-height: calc(100vh - 80px);
+}
+
+.ai-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.ai-title {
+  color: #333;
+  font-size: 2rem;
+  margin: 0 0 8px;
+}
+
+.ai-desc {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+/* ============================================================ */
+/* 입력폼                                                        */
+/* ============================================================ */
+.ai-form {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
+  margin-bottom: 28px;
+}
+
+/* 수정 모드 — 신규 등록과 구분되도록 테두리 강조 */
+.ai-form--edit {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.ai-form-head {
+  margin-bottom: 14px;
+}
+
+.ai-form-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.ai-form-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 비고 — 한 줄 전체 폭 */
+.ai-field--wide {
+  grid-column: 1 / -1;
+}
+
+.ai-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.ai-input,
+.ai-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ai-input:focus,
+.ai-textarea:focus {
+  border-color: #3b82f6;
+}
+
+/* 은행 콤보박스 — padding 단축속성이 ▾ 버튼 자리(cb-input)를 덮지 않게 */
+.ai-input.cb-input {
+  padding-right: 32px;
+}
+
+.ai-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.ai-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ── 화면이 좁으면 2열 ── */
+@media (max-width: 1100px) {
+  .ai-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================ */
+/* 버튼                                                          */
+/* ============================================================ */
+.ai-btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.ai-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-btn--primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.ai-btn--primary:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.ai-btn--ghost {
+  background: transparent;
+}
+
+.ai-btn--danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.ai-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.ai-btn--sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ============================================================ */
+/* 안내 · 오류                                                   */
+/* ============================================================ */
+.ai-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.ai-empty {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ============================================================ */
+/* 목록                                                          */
+/* ============================================================ */
+.ai-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ai-list-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.ai-count {
+  margin-left: 6px;
+  color: #3b82f6;
+}
+
+.ai-table-wrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.ai-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ai-th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.ai-td {
+  padding: 8px 12px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.ai-center { text-align: center; }
+
+.ai-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+
+/* 비고 — 줄바꿈 유지 */
+.ai-note {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 160px;
+  color: #4b5563;
+}
+
+.ai-date {
+  white-space: nowrap;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.ai-actions {
+  white-space: nowrap;
+}
+
+.ai-actions .ai-btn + .ai-btn {
+  margin-left: 6px;
+}
+
+/* 수정 중인 행 */
+.ai-row--editing > .ai-td {
+  background: #fffbeb;
+}
