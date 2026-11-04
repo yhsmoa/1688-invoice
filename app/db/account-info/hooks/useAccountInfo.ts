@@ -1,12 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { dbAccessHeaders } from '../../../../component/DbAccessGate';
 import type { AccountInfo, AccountInfoForm } from '../types';
 
 // ============================================================
 // 계좌정보 데이터 훅 — /api/db/account-info 조회·등록·수정·삭제
-//   모든 요청에 DB 관리 접근 코드 헤더(dbAccessHeaders)를 싣는다.
+//   접근 코드 없이 호출 (계좌정보는 잠금 없음)
 //   등록·수정·삭제 성공 시 서버 응답으로 목록을 바로 갱신 (재조회 없음)
 // ============================================================
 
@@ -35,7 +34,7 @@ export function useAccountInfo() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(API, { headers: dbAccessHeaders() });
+      const res = await fetch(API);
       setAccounts((await parse<AccountInfo[]>(res, '계좌정보를 불러오지 못했습니다.')) ?? []);
     } catch (err) {
       console.error('계좌정보 조회 오류:', err);
@@ -53,7 +52,7 @@ export function useAccountInfo() {
   const create = useCallback(async (fields: AccountInfoForm) => {
     const res = await fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...dbAccessHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields }),
     });
     const created = await parse<AccountInfo>(res, '저장에 실패했습니다.');
@@ -64,7 +63,7 @@ export function useAccountInfo() {
   const update = useCallback(async (id: string, fields: AccountInfoForm) => {
     const res = await fetch(API, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...dbAccessHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, fields }),
     });
     const updated = await parse<AccountInfo>(res, '수정에 실패했습니다.');
@@ -73,10 +72,7 @@ export function useAccountInfo() {
 
   // ── 삭제 ──
   const remove = useCallback(async (id: string) => {
-    const res = await fetch(`${API}?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: dbAccessHeaders(),
-    });
+    const res = await fetch(`${API}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     await parse<undefined>(res, '삭제에 실패했습니다.');
     setAccounts((prev) => prev.filter((a) => a.id !== id));
   }, []);

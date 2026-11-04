@@ -275,10 +275,9 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         route: '/db/account-info',
         file: 'app/db/account-info/AccountInfo.tsx',
         apis: [
-          { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
-          { route: '/api/db/account-info', tables: ['ft_account_info', 'invoiceManager_employees'] },
+          { route: '/api/db/account-info', tables: ['ft_account_info'] },
         ],
-        note: '회사이름·이름·연락처·은행·계좌번호·비고 등록/수정/삭제. 은행은 직원관리와 같은 목록(BANK_NAMES) 콤보박스. 테이블 RLS 정책 없음(서버 전용), DB 관리 접근 코드 필요',
+        note: '회사이름·이름·연락처·은행·계좌번호·비고 등록/수정/삭제. 은행은 직원관리와 같은 목록(BANK_NAMES) 콤보박스. 테이블 RLS 정책 없음(서버 전용). 접근 코드 불필요',
       },
     ],
   },

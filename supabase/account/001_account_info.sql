@@ -5,9 +5,10 @@
 --   계좌관리 > 계좌정보(/db/account-info) 화면에서 입금·송금용 계좌를 등록·수정·삭제한다.
 --
 -- 접근:
---   계좌번호가 들어가는 민감 정보이므로 RLS 를 켜고 정책을 두지 않는다.
+--   RLS 를 켜고 정책을 두지 않는다.
 --   → anon 키로는 읽기·쓰기 불가, 서버(service role) 의 /api/db/account-info 만 접근.
---   API 는 DB 관리 접근 코드(lib/dbAccess.ts, scope 'db')를 매 요청 검증한다.
+--   화면·API 는 접근 코드 없이 누구나 사용 (운영 요청).
+--   created_by / updated_by 는 접근 코드를 쓰지 않으므로 채우지 않는다 (NULL).
 --
 -- 은행(bank_name):
 --   직원관리 은행명과 같은 목록(app/hr/employees/utils/bankNames.ts)에서 고르되,
@@ -36,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.ft_account_info (
 ALTER TABLE public.ft_account_info ENABLE ROW LEVEL SECURITY;
 
 COMMENT ON TABLE public.ft_account_info IS
-  '계좌정보 — 계좌관리 > 계좌정보(/db/account-info). RLS 정책 없음(서버 전용), API 는 DB 관리 접근 코드 검증';
+  '계좌정보 — 계좌관리 > 계좌정보(/db/account-info). RLS 정책 없음(서버 전용), 화면·API 접근 코드 불필요';
 
 CREATE INDEX IF NOT EXISTS ix_ft_account_info_created_at
   ON public.ft_account_info (created_at DESC);

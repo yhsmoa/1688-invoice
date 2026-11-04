@@ -13,7 +13,7 @@ import './AccountInfo.css';
 //   회사이름 / 이름 / 연락처 / 은행 / 계좌번호 / 비고 를 등록·수정·삭제
 //   · 입력폼: components/AccountInfoForm (은행은 직원관리와 같은 콤보박스)
 //   · 데이터: hooks/useAccountInfo → /api/db/account-info (ft_account_info)
-//   · 접근: page.tsx 의 DbAccessGate (DB 관리 접근 코드)
+//   · 접근: 잠금 없음 (접근 코드 불필요)
 // ============================================================
 
 /** 등록·수정일 표시 — KST 'YYYY-MM-DD HH:mm' */

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { guardDbRoute, requireDbAccess } from '../../../../lib/dbAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +11,8 @@ export const dynamic = 'force-dynamic';
 //   PATCH  { id, fields }    → 수정
 //   DELETE ?id=…             → 삭제
 //
-//   계좌번호가 들어가는 민감 정보 → 모든 메서드에서 DB 관리 접근 코드 검증 (scope 'db')
-//   테이블은 RLS 정책이 없어 service role(이 라우트)만 접근 가능
+//   접근 코드 없이 누구나 사용 (운영 요청) — 화면도 잠금 없음
+//   테이블은 RLS 정책이 없어 anon 키로는 직접 접근 불가, 이 라우트(service role)로만 읽고 쓴다
 // ============================================================
 
 const TABLE = 'ft_account_info';
@@ -64,10 +63,7 @@ function normalizeFields(raw: unknown): Record<EditableField, string | null> {
 // ============================================================
 // GET — 전체 목록
 // ============================================================
-export async function GET(request: NextRequest) {
-  const denied = await guardDbRoute(request);
-  if (denied) return denied;
-
+export async function GET() {
   try {
     const all: Record<string, unknown>[] = [];
     let from = 0;
@@ -95,16 +91,13 @@ export async function GET(request: NextRequest) {
 // POST — 신규 등록
 // ============================================================
 export async function POST(request: NextRequest) {
-  const access = await requireDbAccess(request);
-  if (!access.ok) return access.response;
-
   try {
     const body = await request.json();
     const fields = normalizeFields(body?.fields);
 
     const { data, error } = await supabase
       .from(TABLE)
-      .insert({ ...fields, created_by: access.employeeId, updated_by: access.employeeId })
+      .insert(fields)
       .select(SELECT_COLS)
       .single();
     if (error) throw error;
@@ -123,9 +116,6 @@ export async function POST(request: NextRequest) {
 // PATCH — 수정
 // ============================================================
 export async function PATCH(request: NextRequest) {
-  const access = await requireDbAccess(request);
-  if (!access.ok) return access.response;
-
   try {
     const body = await request.json();
     const id = typeof body?.id === 'string' ? body.id : '';
@@ -134,7 +124,7 @@ export async function PATCH(request: NextRequest) {
 
     const { data, error } = await supabase
       .from(TABLE)
-      .update({ ...fields, updated_by: access.employeeId })
+      .update(fields)
       .eq('id', id)
       .select(SELECT_COLS)
       .maybeSingle();
@@ -157,9 +147,6 @@ export async function PATCH(request: NextRequest) {
 // DELETE — 삭제
 // ============================================================
 export async function DELETE(request: NextRequest) {
-  const denied = await guardDbRoute(request);
-  if (denied) return denied;
-
   try {
     const id = new URL(request.url).searchParams.get('id') ?? '';
     if (!id) {
