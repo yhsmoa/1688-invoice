@@ -17,23 +17,23 @@
   position: sticky;
   top: 68px;
   align-self: flex-start;
-  width: 88px;
+  width: 80px;                      /* 2026-11-05: 88 → 80 (버튼 72 → 66) */
   height: calc(100vh - 68px);
-  flex-shrink: 0;                   /* flex 부모가 줄여도 88px 유지 */
+  flex-shrink: 0;                   /* flex 부모가 줄여도 80px 유지 */
   background-color: #ffffff;
   border-left: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;          /* 버튼 묶음 뷰포트 기준 세로 가운데 정렬 */
-  padding: 16px 8px;
+  padding: 16px 7px;
   gap: 6px;
 }
 
 /* ── 액션 버튼 (아이콘 + 라벨 세로 스택) ── */
 .v2-right-action-btn {
   position: relative;
-  width: 72px;
+  width: 66px;
   height: 64px;
   padding: 0;
   background: transparent;

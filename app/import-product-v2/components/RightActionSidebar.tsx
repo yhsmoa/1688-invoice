@@ -52,12 +52,13 @@ interface ActionMeta {
   labelKey: string;
 }
 
-// ── 버튼 메타 정의 (고정 순서: 입고 → 라벨 → 운송장 → 미입고 → 반품 → 비고) ──
+// ── 버튼 메타 정의 (고정 순서: 입고 → 미입고 → 라벨 → 운송장 → 반품 → 비고) ──
+//    미입고는 입고 작업 중 바로 이어서 누르는 버튼이라 입고 바로 아래에 둔다 (2026-11-05)
 const ACTIONS: ActionMeta[] = [
   { key: 'import',   icon: 'M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z',                 labelKey: 'importProductV2.buttons.import' },
+  { key: 'missing',  icon: 'M12 3l9.5 17h-19zM12 10v4M12 17h.01',                       labelKey: 'importProductV2.buttons.missing' },
   { key: 'label',    icon: 'M3 12V4h8l10 10-8 8zM7.5 7.5h.01',                          labelKey: 'importProductV2.buttons.label' },
   { key: 'shipping', icon: 'M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z',             labelKey: 'importProductV2.buttons.shipping' },
-  { key: 'missing',  icon: 'M12 3l9.5 17h-19zM12 10v4M12 17h.01',                       labelKey: 'importProductV2.buttons.missing' },
   { key: 'cancel',   icon: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',                    labelKey: 'importProductV2.buttons.cancel' },
   { key: 'note',     icon: 'M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h5',                  labelKey: 'importProductV2.buttons.note' },
 ];
