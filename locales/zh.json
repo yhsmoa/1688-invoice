@@ -531,7 +531,13 @@
       "saved": "已登记 {{count}} 条未入库。",
       "updated": "已将原登记的缺少清单更新为 {{count}} 条。",
       "failed": "未入库登记失败。",
-      "disabledHint": "按配送单号搜索的结果中有未到齐的订单时可用。"
+      "disabledHint": "搜索结果中有未到齐的订单时可用。",
+      "codeLabel": "配送单号",
+      "codePlaceholder": "运单（配送）号",
+      "codeResolving": "正在查找搜索结果订单的配送单号…",
+      "codeCandidates": "搜索结果的配送单号：",
+      "codeNone": "未找到搜索结果订单的配送单号，请直接输入。",
+      "codeRequired": "请输入配送单号。"
     },
     "cancelModal": {
       "title": "取消 / 退货登记",

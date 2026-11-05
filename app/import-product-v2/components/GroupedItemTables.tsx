@@ -236,7 +236,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           )}
         </div>
         {board.isSet ? (
-          <div className="v2-board-options v2-board-options-set">
+          // 구성품이 2개 이하면 가로에 여유가 있으니 옵션 칩을 넓게 (is-roomy) — 줄바꿈을 줄인다
+          <div className={`v2-board-options v2-board-options-set ${board.components.length <= 2 ? 'is-roomy' : ''}`}>
             {board.components.map((c, idx) => (
               <React.Fragment key={c.seq}>
                 {idx > 0 && <span className="v2-board-comp-plus" aria-hidden="true" />}
@@ -245,8 +246,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             ))}
           </div>
         ) : isV3 ? (
-          // V3 단품 — 세트 구성품과 같은 칩 (큰 이미지 + 옵션 + 입력)
-          <div className="v2-board-options v2-board-options-set">
+          // V3 단품 — 세트 구성품과 같은 칩 (큰 이미지 + 옵션 + 입력), 하나뿐이니 넓게
+          <div className="v2-board-options v2-board-options-set is-roomy">
             <span className="v2-board-comp">
               {renderImage(board.imgUrl)}
               <span className="v2-board-comp-text">

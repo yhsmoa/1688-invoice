@@ -532,12 +532,14 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   } = usePersonalInvoicePrint({ selectedUserId, selectedWorker, activeItems, t });
 
   // ============================================================
-  // 11-3) [미입고] — 배송번호 검색 결과 중 덜 들어온 주문행 (1688 판매자 문의 접수 대상)
+  // 11-3) [미입고] — 검색 결과 중 덜 들어온 주문행 (1688 판매자 문의 접수 대상)
   //       입고되어야 할 수량 = order − CANCEL · 입고 수량 = ARRIVAL + 작업 입력 · 부족 = 차이 > 0
-  //       배송번호 검색 결과가 떠 있을 때만 계산한다 (전체 목록에서는 버튼 비활성)
+  //       검색 결과가 떠 있을 때만 계산한다 (전체 목록에서는 버튼 비활성). 입고를 아직 안 넣었어도
+  //       부족이면 접수 대상이다. 배송번호는 배송번호 검색이면 그 번호, 아니면 모달이 결과 주문의
+  //       운송장에서 후보를 찾아 고르게 한다 (V2MissingModal).
   // ============================================================
   const missingRows: MissingRow[] = useMemo(() => {
-    if (!deliveryCode || deliveryItems === null) return [];
+    if (!isSearchActive) return [];
     return filteredItems
       .map((item) => {
         const expected = Math.max(0, (item.order_qty ?? 0) - (cancelMap.get(item.id) ?? 0));
@@ -545,7 +547,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
         return { item, expected, arrived, short: expected - arrived };
       })
       .filter((r) => r.short > 0);
-  }, [deliveryCode, deliveryItems, filteredItems, cancelMap, arrivalMap, modifiedImportQty]);
+  }, [isSearchActive, filteredItems, cancelMap, arrivalMap, modifiedImportQty]);
   const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
 
   // ============================================================
@@ -1268,7 +1270,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       <V2MissingModal
         isOpen={isMissingModalOpen}
         onClose={() => setIsMissingModalOpen(false)}
-        deliveryCode={deliveryCode ?? ''}
+        deliveryCode={searchType === '배송번호' ? deliveryCode : null}
         rows={missingRows}
         selectedUserId={selectedUserId}
         selectedWorker={selectedWorker}

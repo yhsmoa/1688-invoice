@@ -735,6 +735,8 @@
   min-width: 0;
   gap: 4px;
 }
+/* 구성품 2개 이하·단품 — 가로 여유가 있어 옵션을 한 줄로 (2026-11-05) */
+.v2-board-head.is-v3 .v2-board-options-set.is-roomy .v2-board-comp-text { max-width: 260px; }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-option1 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
