@@ -329,7 +329,7 @@ export default function SellerInquiry() {
                                   ) : (
                                     <div className="si-photos">
                                       {detail.photos.map((p) => (
-                                        <a key={p.id} href={p.public_url} target="_blank" rel="noopener noreferrer" title={`${p.taken_by ?? ''} ${fmt(p.created_at)}`}>
+                                        <a key={p.id} href={p.public_url} target="_blank" rel="noopener noreferrer" title={[p.taken_by, fmt(p.created_at)].filter(Boolean).join(' ')}>
                                           <img src={p.public_url} alt="" loading="lazy" />
                                         </a>
                                       ))}

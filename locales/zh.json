@@ -1492,8 +1492,6 @@
       "notMatched": "读取值：{{value}} — 不是运单号格式。"
     },
     "inquiry": {
-      "takenBy": "拍摄人",
-      "takenByPlaceholder": "姓名",
       "scan": "拍摄（运单条码）",
       "codePlaceholder": "手动输入运单号",
       "lookup": "查询",

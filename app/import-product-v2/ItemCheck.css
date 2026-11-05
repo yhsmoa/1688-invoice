@@ -438,7 +438,7 @@
 }
 
 /* ============================================================
-   요청사항(note_notice)·비고(note_cn) 배지 — 노란 바탕 + 거울 반사 광택 + 천천히 흔들림
+   요청사항(note_notice)·비고(note_cn) 배지 — 노란 바탕 + 거울 반사 광택 (흔들림은 산만해서 뺌)
    · 보드 헤더 아래 줄(.v2-board-notes): 같은 문구는 "첫 글번호 + 문구 외 N건" 하나
    · 테이블 행 아래 별도 행(.v2-note-row): 글번호~주문옵션 폭
    · 움직임 줄이기 설정이면 둘 다 정지
@@ -465,8 +465,6 @@
   font-weight: 700;
   line-height: 1.35;
   overflow: hidden;
-  transform-origin: 50% 100%;
-  animation: v2-note-wobble 3.6s ease-in-out infinite;
 }
 .v2-note-chip b { font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
 .v2-note-chip-text { min-width: 0; white-space: normal; word-break: break-all; }
@@ -481,17 +479,12 @@
   animation: v2-note-sheen 3.6s ease-in-out infinite;
   pointer-events: none;
 }
-@keyframes v2-note-wobble {
-  0%, 100% { transform: rotate(-1.4deg); }
-  50%      { transform: rotate(1.4deg); }
-}
 @keyframes v2-note-sheen {
   0%   { background-position: 160% 0; }
   60%  { background-position: -60% 0; }
   100% { background-position: -60% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .v2-note-chip { animation: none; }
   .v2-note-chip::after { animation: none; display: none; }
 }
 

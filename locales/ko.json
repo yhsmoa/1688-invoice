@@ -1498,8 +1498,6 @@
       "notMatched": "읽은 값: {{value}} — 운송장 번호 형식이 아니에요."
     },
     "inquiry": {
-      "takenBy": "촬영자",
-      "takenByPlaceholder": "이름",
       "scan": "촬영 (운송장 바코드)",
       "codePlaceholder": "운송장 번호 직접 입력",
       "lookup": "조회",

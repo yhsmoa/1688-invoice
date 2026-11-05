@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../../contexts/LanguageContext';
@@ -22,7 +22,6 @@ import '../Mobile.css';
 //   바코드를 못 읽으면 번호를 직접 입력해 [조회] 할 수 있다.
 // ============================================================
 
-const TAKEN_BY_KEY = 'mob-taken-by';
 /** 운송장 번호 형식 — 영문·숫자·하이픈 6자 이상 (YT…, JT…, S…, 숫자만 등) */
 const DELIVERY_CODE_RE = /^[A-Za-z0-9-]{6,}$/;
 
@@ -32,7 +31,6 @@ export default function MobileSellerInquiryPage() {
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
 
-  const [takenBy, setTakenBy] = useState('');
   const [camOpen, setCamOpen] = useState(false);
   const [code, setCode] = useState('');
   const [inquiry, setInquiry] = useState<SellerInquiryDetail | null>(null);
@@ -41,15 +39,6 @@ export default function MobileSellerInquiryPage() {
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ── 촬영자 이름은 기기에 기억 ──
-  useEffect(() => {
-    try { setTakenBy(window.localStorage.getItem(TAKEN_BY_KEY) ?? ''); } catch { /* 저장소 사용 불가 */ }
-  }, []);
-  const changeTakenBy = (v: string) => {
-    setTakenBy(v);
-    try { window.localStorage.setItem(TAKEN_BY_KEY, v); } catch { /* 무시 */ }
-  };
 
   // ── 접수 조회 ──
   const lookup = useCallback(async (raw: string) => {
@@ -102,7 +91,6 @@ export default function MobileSellerInquiryPage() {
     try {
       const form = new FormData();
       form.append('inquiry_id', inquiry.id);
-      if (takenBy.trim()) form.append('taken_by', takenBy.trim());
       for (let i = 0; i < files.length; i++) {
         try {
           const { file } = await compressImage(files[i]);
@@ -127,7 +115,7 @@ export default function MobileSellerInquiryPage() {
     } finally {
       setUploading(null);
     }
-  }, [inquiry, takenBy, t]);
+  }, [inquiry, t]);
 
   const camLabels: BarcodeCameraLabels = useMemo(() => ({
     close: t('mobile.cam.close'),
@@ -164,12 +152,6 @@ export default function MobileSellerInquiryPage() {
       </header>
 
       <main className="mob-body">
-        {/* 촬영자 */}
-        <label className="mob-field">
-          {t('mobile.inquiry.takenBy')}
-          <input className="mob-input" value={takenBy} onChange={(e) => changeTakenBy(e.target.value)} placeholder={t('mobile.inquiry.takenByPlaceholder')} />
-        </label>
-
         {/* 촬영 */}
         <button type="button" className="mob-btn accent" onClick={() => setCamOpen(true)}>
           📷 {t('mobile.inquiry.scan')}

@@ -33,6 +33,10 @@ const TopsideMenu: React.FC = () => {
           invoice-manager
         </Link>
         <div className="topside-right">
+          {/* 모바일 화면(/m) — 휴대폰 작업자용 메뉴 (BARCODE 왼쪽) */}
+          <Link href="/m" className="mobile-shortcut-btn" title={t('menu.mobile')} aria-label={t('menu.mobile')}>
+            📱
+          </Link>
           <button
             type="button"
             className={`barcode-print-btn ${isBarcodePrintOpen ? 'active' : ''}`}
@@ -41,10 +45,6 @@ const TopsideMenu: React.FC = () => {
           >
             BARCODE
           </button>
-          {/* 모바일 화면(/m) — 휴대폰 작업자용 메뉴 */}
-          <Link href="/m" className="mobile-shortcut-btn" title={t('menu.mobile')} aria-label={t('menu.mobile')}>
-            📱
-          </Link>
           <Link
             href="/barcode-scan"
             className={`barcode-shortcut-btn ${isBarcodePage ? 'active' : ''}`}
