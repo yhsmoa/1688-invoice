@@ -394,7 +394,6 @@
       "label": "라벨",
       "shipping": "운송장",
       "import": "입고",
-      "groupInput": "그룹입력",
       "customerConfirm": "고객확인"
     },
     "customerConfirm": {
@@ -460,7 +459,11 @@
       "groupView": "그룹별로 보기"
     },
     "board": {
-      "rows": "{{count}}건"
+      "rows": "{{count}}건",
+      "available": "작업 가능",
+      "done": "입고 완료",
+      "mismatch": "세트 불일치 {{count}}건",
+      "overLimit": "작업 가능 수량({{total}})을 넘을 수 없습니다."
     },
     "groupInput": {
       "title": "그룹입력",

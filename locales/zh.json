@@ -388,7 +388,6 @@
       "label": "标签",
       "shipping": "运单",
       "import": "入库",
-      "groupInput": "分组录入",
       "customerConfirm": "客户确认"
     },
     "customerConfirm": {
@@ -454,7 +453,11 @@
       "groupView": "按组查看"
     },
     "board": {
-      "rows": "{{count}}条"
+      "rows": "{{count}}条",
+      "available": "可作业",
+      "done": "已入库",
+      "mismatch": "套装不一致 {{count}}件",
+      "overLimit": "不能超过可作业数量({{total}})。"
     },
     "groupInput": {
       "title": "分组录入",

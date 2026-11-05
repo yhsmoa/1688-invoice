@@ -32,7 +32,6 @@ import {
 // ============================================================
 import ItemTable, { type ItemTableProps } from './components/ItemTable';
 import GroupedItemTables from './components/GroupedItemTables';
-import GroupInputModal from './components/GroupInputModal';
 import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
@@ -49,7 +48,7 @@ import { useImportUploads } from './hooks/useImportUploads';
 import { usePersonalInvoicePrint } from './hooks/usePersonalInvoicePrint';
 import { useGroupBoards } from './hooks/useGroupBoards';
 import { useStableCallback } from './hooks/useStableCallback';
-import { boardsForRows } from './utils/groupBoards';
+import { boardsForRows, distributeQty } from './utils/groupBoards';
 import type { LabelType } from '../../lib/labelTypes';
 
 const ItemCheck: React.FC = () => {
@@ -145,16 +144,14 @@ const ItemCheck: React.FC = () => {
   const { arrivalMap, packedMap, cancelMap, returnMap, shipmentMap, exportMap, shippedItemMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems, selectedUserId);
 
   // ============================================================
-  // 4-2) 보드 조각
-  //      pageBoards  : 현재 페이지 행을 보드로 다시 묶음 → [그룹별로 보기] 테이블 분할용
-  //      resultBoards: 검색 결과 전체(모든 페이지) → [그룹입력] 모달용
-  //      둘 다 flatItems 순서를 유지한 부분집합이라 연속 구간 = 한 보드
+  // 4-2) 보드 조각 — 현재 페이지 행을 보드로 다시 묶음 → [그룹별로 보기] 테이블 분할용
+  //      flatItems 순서를 유지한 부분집합이라 연속 구간 = 한 보드.
+  //      페이지는 그룹 경계에서만 끊기므로 화면의 보드 = 그룹 전체.
   // ============================================================
   const pageBoards = useMemo(
     () => (groupView ? boardsForRows(boards, paginatedData) : []),
     [groupView, boards, paginatedData]
   );
-  const resultBoards = useMemo(() => boardsForRows(boards, filteredItems), [boards, filteredItems]);
 
   // ============================================================
   // 5) Worker / PC-NO 드롭박스
@@ -498,18 +495,21 @@ const ItemCheck: React.FC = () => {
   } = usePersonalInvoicePrint({ selectedUserId, selectedWorker, activeItems, t });
 
   // ============================================================
-  // 11-2) [그룹입력] 모달 — 검색 결과를 그룹별로 묶어 수량을 한 번에 작업 열에 넣는다
-  //       검색 전(전체 목록)에는 버튼 비활성 (isSearchActive) — 검색한 결과에만 쓴다
-  //       모달 [입력] → modifiedImportQty 통째로 교체 (보이지 않는 행 값은 모달이 유지해서 넘긴다)
-  //       이후 흐름은 테이블에 직접 입력한 것과 같다 → [입고] 모달에서 저장
+  // 11-2) 보드 헤더 그룹 수량 입력 — 그룹(또는 세트 구성품) 행들의 작업 수량을 지우고
+  //       입력값을 글번호 순으로 잔여 한도(order − 입고 − 취소)까지 다시 배분한다.
+  //       이후 흐름은 테이블에 직접 입력한 것과 같다 → [입고] 모달에서 저장.
   // ============================================================
-  const [isGroupInputModalOpen, setIsGroupInputModalOpen] = useState(false);
-
-  const handleGroupInputApply = useCallback((next: Map<string, number>) => {
-    setModifiedImportQty(next);
-    setEditingCell(null);
-    setCellValue('');
-  }, []);
+  const handleApplyGroupQty = useCallback(
+    (rows: FtOrderItem[], qty: number) => {
+      setModifiedImportQty((prev) => {
+        const next = new Map(prev);
+        rows.forEach((r) => next.delete(r.id));
+        distributeQty(rows, qty, arrivalMap, cancelMap).forEach((v, id) => next.set(id, v));
+        return next;
+      });
+    },
+    [arrivalMap, cancelMap]
+  );
 
   // ============================================================
   // 12) 처리준비 모달
@@ -1051,7 +1051,7 @@ const ItemCheck: React.FC = () => {
             {/* 데이터 테이블 — [그룹별로 보기] 체크 시 보드(그룹)마다 테이블 분할 */}
             {/* ============================================================ */}
             {groupView ? (
-              <GroupedItemTables boards={pageBoards} tableProps={tableProps} />
+              <GroupedItemTables boards={pageBoards} tableProps={tableProps} onApplyGroupQty={handleApplyGroupQty} />
             ) : (
               <ItemTable {...tableProps} paginatedData={paginatedData} />
             )}
@@ -1155,9 +1155,7 @@ const ItemCheck: React.FC = () => {
         <RightActionSidebar
           disabled={!selectedUserId || items.length === 0}
           shippingEnabled={selectedShippingPrintable}
-          groupInputEnabled={isSearchActive}
           importBadgeCount={readyItems.length}
-          onGroupInputClick={() => setIsGroupInputModalOpen(true)}
           onNoteClick={() => {
             if (selectedRows.size === 0) {
               alert(t('importProductV2.alerts.selectItems'));
@@ -1192,19 +1190,6 @@ const ItemCheck: React.FC = () => {
           refreshFulfillments();
           if (selectedUserId) fetchItems(selectedUserId, statusFilter);
         }}
-      />
-
-      {/* ============================================================ */}
-      {/* 그룹입력 모달 — 검색 결과(전체 페이지) 그룹별 수량 → 작업 열 */}
-      {/* ============================================================ */}
-      <GroupInputModal
-        isOpen={isGroupInputModalOpen}
-        onClose={() => setIsGroupInputModalOpen(false)}
-        boards={resultBoards}
-        modifiedImportQty={modifiedImportQty}
-        arrivalMap={arrivalMap}
-        cancelMap={cancelMap}
-        onApply={handleGroupInputApply}
       />
 
       {/* ============================================================ */}

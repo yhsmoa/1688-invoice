@@ -7,7 +7,7 @@ import './RightActionSidebar.css';
 // ============================================================
 // /import-product-v2 전용 우측 액션 사이드바
 //
-// 목적: 테이블 스크롤 중에도 주요 액션(그룹입력/입고/라벨/운송장/미입고/반품/비고)에
+// 목적: 테이블 스크롤 중에도 주요 액션(입고/라벨/운송장/미입고/반품/비고)에
 //       즉시 접근 가능하도록 우측 고정.
 //
 // 레이아웃:
@@ -21,8 +21,6 @@ import './RightActionSidebar.css';
 
 interface RightActionSidebarProps {
   // ── 이벤트 핸들러 ──
-  /** 그룹입력 — 검색 결과를 그룹(상품·옵션)별로 묶어 수량을 한 번에 넣는 모달 */
-  onGroupInputClick: () => void;
   onNoteClick:     () => void;
   onCancelClick:   () => void;
   onMissingClick:  () => void;
@@ -37,14 +35,12 @@ interface RightActionSidebarProps {
   disabled: boolean;
   /** 운송장 버튼 전용 활성화 — 선택된 행 중 P + PDF 매칭 ≥ 1 일 때 true */
   shippingEnabled: boolean;
-  /** 그룹입력 버튼 전용 활성화 — 검색(배송번호·일반·주문번호·비고) 결과가 있을 때만 true */
-  groupInputEnabled: boolean;
 
   // ── 입고 버튼 뱃지 (작업 수량 입력된 항목 수) ──
   importBadgeCount: number;
 }
 
-type ActionKey = 'group' | 'note' | 'cancel' | 'missing' | 'label' | 'import' | 'shipping';
+type ActionKey = 'note' | 'cancel' | 'missing' | 'label' | 'import' | 'shipping';
 
 interface ActionMeta {
   key:   ActionKey;
@@ -54,9 +50,8 @@ interface ActionMeta {
   labelKey: string;
 }
 
-// ── 버튼 메타 정의 (고정 순서: 그룹입력 → 입고 → 라벨 → 운송장 → 미입고 → 반품 → 비고) ──
+// ── 버튼 메타 정의 (고정 순서: 입고 → 라벨 → 운송장 → 미입고 → 반품 → 비고) ──
 const ACTIONS: ActionMeta[] = [
-  { key: 'group',    icon: 'M4 5h16M4 12h16M4 19h16M8 5v14',                                labelKey: 'importProductV2.buttons.groupInput' },
   { key: 'import',   icon: 'M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z',                 labelKey: 'importProductV2.buttons.import' },
   { key: 'label',    icon: 'M3 12V4h8l10 10-8 8zM7.5 7.5h.01',                          labelKey: 'importProductV2.buttons.label' },
   { key: 'shipping', icon: 'M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z',             labelKey: 'importProductV2.buttons.shipping' },
@@ -74,7 +69,6 @@ const ActionIcon: React.FC<{ d: string }> = ({ d }) => (
 );
 
 const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
-  onGroupInputClick,
   onNoteClick,
   onCancelClick,
   onMissingClick,
@@ -84,13 +78,11 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
   onCustomerConfirmClick,
   disabled,
   shippingEnabled,
-  groupInputEnabled,
   importBadgeCount,
 }) => {
   const { t } = useTranslation();
 
   const handlerMap: Record<ActionKey, () => void | Promise<void>> = {
-    group:    onGroupInputClick,
     note:     onNoteClick,
     cancel:   onCancelClick,
     missing:  onMissingClick,
@@ -105,12 +97,7 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
         const isImport = key === 'import';
         const showBadge = isImport && importBadgeCount > 0;
         // 운송장: 공통 disabled + 선택된 P+PDF 가 0건이면 비활성화
-        // 그룹입력: 검색 전(전체 목록)에는 비활성화 — 검색 결과에 대해서만 그룹 수량을 받는다
-        const isDisabled =
-          key === 'shipping' ? (disabled || !shippingEnabled)
-          : key === 'group' ? (disabled || !groupInputEnabled)
-          : disabled;
-        const title = key === 'group' && !groupInputEnabled ? t('importProductV2.groupInput.searchFirst') : undefined;
+        const isDisabled = key === 'shipping' ? (disabled || !shippingEnabled) : disabled;
 
         return (
           <button
@@ -118,7 +105,6 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
             className={`v2-right-action-btn ${isImport ? 'is-primary' : ''} ${showBadge ? 'has-items' : ''}`}
             onClick={handlerMap[key]}
             disabled={isDisabled}
-            title={title}
             type="button"
           >
             <ActionIcon d={icon} />

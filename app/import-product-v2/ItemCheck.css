@@ -514,6 +514,74 @@
   color: #9ca3af;
 }
 
+/* ── 보드 그룹 수량 입력 — [입력] / 작업 가능 합계 (단품: 헤더 오른쪽 · 세트: 구성품 칩 안) ── */
+.v2-board-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.v2-board-comp .v2-board-qty {
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid #e5e7eb;
+}
+.v2-board-qty-input {
+  width: 52px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fffbeb;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+  outline: none;
+}
+.v2-board-qty-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+.v2-board-qty-input:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+.v2-board-qty.has-value .v2-board-qty-input {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.v2-board-qty-sep {
+  color: #9ca3af;
+  font-size: 14px;
+}
+.v2-board-qty-total {
+  min-width: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+.v2-board-qty.is-done .v2-board-qty-total {
+  font-size: 11px;
+  color: #15803d;
+}
+
+/* 세트 불일치 경고 — 구성품의 (입고 + 작업) 이 서로 다른 주문이 있을 때 */
+.v2-board-mismatch {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: help;
+}
+
 .v2-board-option1 {
   font-size: 14px;
   font-weight: 700;
