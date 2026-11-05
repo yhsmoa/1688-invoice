@@ -35,6 +35,8 @@ interface RightActionSidebarProps {
   disabled: boolean;
   /** 운송장 버튼 전용 활성화 — 선택된 행 중 P + PDF 매칭 ≥ 1 일 때 true */
   shippingEnabled: boolean;
+  /** 미입고 버튼 전용 활성화 — 배송번호 검색 결과에 덜 들어온 주문행이 있을 때 true */
+  missingEnabled: boolean;
 
   // ── 입고 버튼 뱃지 (작업 수량 입력된 항목 수) ──
   importBadgeCount: number;
@@ -78,6 +80,7 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
   onCustomerConfirmClick,
   disabled,
   shippingEnabled,
+  missingEnabled,
   importBadgeCount,
 }) => {
   const { t } = useTranslation();
@@ -97,7 +100,12 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
         const isImport = key === 'import';
         const showBadge = isImport && importBadgeCount > 0;
         // 운송장: 공통 disabled + 선택된 P+PDF 가 0건이면 비활성화
-        const isDisabled = key === 'shipping' ? (disabled || !shippingEnabled) : disabled;
+        // 미입고: 배송번호 검색 결과에 부족 주문행이 없으면 비활성화
+        const isDisabled =
+          key === 'shipping' ? (disabled || !shippingEnabled)
+          : key === 'missing' ? (disabled || !missingEnabled)
+          : disabled;
+        const title = key === 'missing' && !missingEnabled ? t('importProductV2.missing.disabledHint') : undefined;
 
         return (
           <button
@@ -105,6 +113,7 @@ const RightActionSidebar: React.FC<RightActionSidebarProps> = ({
             className={`v2-right-action-btn ${isImport ? 'is-primary' : ''} ${showBadge ? 'has-items' : ''}`}
             onClick={handlerMap[key]}
             disabled={isDisabled}
+            title={title}
             type="button"
           >
             <ActionIcon d={icon} />

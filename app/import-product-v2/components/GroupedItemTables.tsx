@@ -13,7 +13,6 @@ import {
   type GroupBoard,
   type GroupComponent,
 } from '../utils/groupBoards';
-import LabelBadge, { resolveLabelBadge } from './LabelBadge';
 
 // ============================================================
 // GroupedItemTables — [그룹별로 보기] 체크 시 보드(그룹) 단위로 테이블을 나눠 그린다
@@ -177,11 +176,6 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     }))
     .filter((n) => n.notes.length > 0);
 
-  // V3 제목 블록 — [P][라벨 작업][세트] / 한국어 상품명 / 한국어 옵션명 (첫 행 기준)
-  const firstRow = board.rows[0];
-  const labelKind = firstRow ? resolveLabelBadge(firstRow) : null;
-  const optionName = firstRow?.option_name?.trim() || '';
-
   // 전부 입력됨 — 보드의 모든 입력 단위가 작업 가능 수량을 다 채움 (잠긴 단위는 제외, 채울 게 하나는 있어야)
   const units = board.isSet ? board.components.map((c) => c.rows) : [board.rows];
   const openUnits = units.filter((rows) => totalOf(rows) > 0);
@@ -226,32 +220,15 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     <div className={`v2-board-head ${isV3 ? 'is-v3' : ''} ${expanded ? 'is-expanded' : ''}`}>
     <div className="v2-board-head-main">
       <div className="v2-board-head-left">
-        {isV3 ? (
-          /* V3 제목 블록 — 1줄: [P][원산지 도장/혼용률 라벨][세트] · 2줄: 상품명 · 3줄: 옵션명 */
-          <div className="v2-board-title">
-            <div className="v2-board-title-badges">
-              {board.badge && <TypeBadge info={board.badge} />}
-              {labelKind && <LabelBadge kind={labelKind} />}
-              {board.isSet && (
-                <span className="v2-set-badge v2-board-set-badge">
-                  {t('importProductV2.set.label')} {board.setTotal}中
-                </span>
-              )}
-            </div>
-            <div className="v2-board-title-name" title={board.itemName}>{board.itemName}</div>
-            {optionName && <div className="v2-board-title-option" title={optionName}>{optionName}</div>}
-          </div>
-        ) : (
-          /* V2 — 타입 배지 + 세트 배지 가로 */
-          <div className="v2-board-badges">
-            {board.badge && <TypeBadge info={board.badge} />}
-            {board.isSet && (
-              <span className="v2-set-badge v2-board-set-badge">
-                {t('importProductV2.set.label')} {board.setTotal}中
-              </span>
-            )}
-          </div>
-        )}
+        {/* 타입 배지 + 세트 배지 — V2 가로, V3 세로 열 (한국어 상품명·옵션명은 펼친 행의 상품명 칸에) */}
+        <div className="v2-board-badges">
+          {board.badge && <TypeBadge info={board.badge} />}
+          {board.isSet && (
+            <span className="v2-set-badge v2-board-set-badge">
+              {t('importProductV2.set.label')} {board.setTotal}中
+            </span>
+          )}
+        </div>
         {board.isSet ? (
           <div className="v2-board-options v2-board-options-set">
             {board.components.map((c, idx) => (

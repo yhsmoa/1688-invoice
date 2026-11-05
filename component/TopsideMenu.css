@@ -139,3 +139,20 @@
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 } 
+
+/* 📱 모바일 화면 바로가기 — BARCODE 옆 */
+.mobile-shortcut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  background: #18181b;
+  color: #fff;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 18px;
+  line-height: 1;
+  transition: background-color 0.15s, transform 0.15s;
+}
+.mobile-shortcut-btn:hover { background: #27272a; transform: translateY(-1px); }

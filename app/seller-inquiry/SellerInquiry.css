@@ -1,0 +1,166 @@
+/* ============================================================ */
+/* 1688 판매자 문의 (/seller-inquiry) — 창고 PC                    */
+/* ============================================================ */
+.si-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 헤더 */
+.si-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.si-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
+.si-subtitle { margin: 4px 0 0; font-size: 13px; color: #6b7280; }
+.si-tools { display: flex; align-items: center; gap: 8px; }
+.si-search { position: relative; display: flex; align-items: center; }
+.si-search input {
+  width: 260px;
+  height: 38px;
+  padding: 0 32px 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.si-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+}
+.si-btn {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.si-btn:hover:not(:disabled) { background: #f3f4f6; }
+.si-btn:disabled { opacity: 0.45; cursor: default; }
+.si-btn.is-primary { background: #111827; border-color: #111827; color: #fff; }
+.si-btn.is-primary:hover:not(:disabled) { background: #1f2937; }
+
+/* 상태 탭 */
+.si-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.si-tab {
+  height: 38px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+  cursor: pointer;
+}
+.si-tab.is-active { border-color: #111827; background: #111827; color: #fff; }
+.si-tab-n { font-size: 12px; font-weight: 800; opacity: 0.8; }
+
+/* 안내 */
+.si-notice { padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.si-notice.is-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+/* 목록 */
+.si-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; transition: opacity 0.15s; }
+.si-table-wrap.is-loading { opacity: 0.55; pointer-events: none; }
+.si-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.si-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+.si-table td { padding: 10px 12px; border-bottom: 1px solid #f1f2f4; vertical-align: middle; }
+.si-row { cursor: pointer; }
+.si-row:hover td { background: #f9fafb; }
+.si-row.is-open td { background: #eff6ff; }
+.si-col-img { width: 56px; }
+.si-col-img img, .si-noimg {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+.si-col-num { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+.si-short { color: #dc2626; font-weight: 800; }
+.si-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; font-weight: 800; }
+.si-team {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+}
+.si-by { margin-left: 6px; font-size: 11px; color: #6b7280; }
+.si-items-label { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.si-item-no { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
+.si-more { font-size: 12px; color: #6b7280; }
+.si-memo-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #4b5563; }
+.si-status {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.si-status.is-new { background: #fff7ed; color: #c2410c; }
+.si-status.is-inq { background: #eff6ff; color: #1d4ed8; }
+.si-status.is-done { background: #ecfdf5; color: #15803d; }
+.si-times { margin-top: 4px; display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: #6b7280; }
+.si-empty { text-align: center; padding: 40px 12px; color: #9ca3af; }
+
+/* 상세 */
+.si-detail-row td { background: #f9fafb; padding: 14px 16px 18px; }
+.si-detail-loading { color: #9ca3af; font-size: 13px; }
+.si-detail { display: flex; gap: 18px; align-items: flex-start; }
+.si-detail-items { flex: 1; min-width: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+.si-items-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.si-items-table th { padding: 8px 10px; background: #f3f4f6; font-size: 11px; color: #6b7280; text-align: left; }
+.si-items-table td { padding: 8px 10px; border-top: 1px solid #f1f2f4; vertical-align: middle; }
+.si-sub { font-size: 11px; color: #6b7280; }
+.si-detail-side { width: 320px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.si-side-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.si-side-block h4 { margin: 0; font-size: 12px; font-weight: 700; color: #6b7280; }
+.si-side-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.si-times-detail span { display: block; }
+.si-memo { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: 13px; resize: vertical; }
+.si-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.si-photos a { display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #f3f4f6; }
+.si-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* 페이지 */
+.si-pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: #4b5563; }
+
+/* 데이터 출처 */
+.si-footer { font-size: 11px; color: #9ca3af; }
+.si-footer b { color: #6b7280; }

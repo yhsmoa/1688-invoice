@@ -15,7 +15,8 @@
     "labelSettings": "라벨 설정",
     "customerChecks": "고객 검수 확인",
     "inquiry": "상품문의",
-    "sellerInquiry": "1688 판매자 문의"
+    "sellerInquiry": "1688 판매자 문의",
+    "mobile": "모바일"
   },
   "orderSearch": {
     "title": "주문 검색",
@@ -519,6 +520,59 @@
     "set": {
       "label": "세트",
       "mixed": "다른 판매자"
+    },
+    "missing": {
+      "title": "미입고 접수",
+      "summary": "부족 {{lines}}건 · {{qty}}개",
+      "hint": "입고되어야 할 수량(주문 − 취소)보다 입고 수량(저장된 입고 + 지금 작업 열에 넣은 수량)이 적은 주문입니다. 접수하면 [상품문의 › 1688 판매자 문의]에 들어가고, 모바일에서 운송장 바코드를 찍어 사진을 붙일 수 있습니다.",
+      "expected": "입고되어야 할 수량",
+      "arrived": "입고 수량",
+      "short": "부족",
+      "memo": "메모",
+      "memoPlaceholder": "예) 판매자에게 재발송 요청",
+      "cancel": "취소",
+      "submit": "접수",
+      "saving": "접수 중…",
+      "saved": "미입고 {{count}}건을 접수했습니다.",
+      "updated": "기존 접수의 부족 목록을 {{count}}건으로 갱신했습니다.",
+      "failed": "미입고 접수에 실패했습니다.",
+      "disabledHint": "배송번호로 검색한 결과에 덜 들어온 주문이 있을 때 쓸 수 있습니다."
+    },
+    "cancelModal": {
+      "title": "취소 / 반품 접수",
+      "empty": "선택된 항목이 없습니다.",
+      "type": "타입",
+      "typeCancel": "주문 취소",
+      "typeReturn": "반품 접수",
+      "requester": "요청자",
+      "requesterCompany": "유화무역",
+      "requesterCustomer": "고객",
+      "badgeReceived": "접수",
+      "qty": "수량",
+      "required": "* 필수",
+      "max": "(최대 {{limit}})",
+      "qtyPlaceholder": "수량 입력",
+      "price": "가격 (CNY)",
+      "delivery": "배송비 (CNY)",
+      "serviceFee": "서비스료 (6%)",
+      "refund": "환불금 (합계)",
+      "auto": "자동",
+      "refundTitle": "가격 + 배송비 + 서비스료",
+      "reason": "반품 사유",
+      "reasonPlaceholder": "직접 입력 (드롭박스 미선택 시)",
+      "close": "닫기",
+      "submit": "접수",
+      "saving": "저장 중...",
+      "verifying": "검증 중...",
+      "selectTypeFirst": "타입을 먼저 선택해주세요",
+      "selectRequesterFirst": "요청자를 먼저 선택해주세요",
+      "enterQty": "수량을 입력하세요",
+      "overLimit": "한도 초과 항목이 있습니다",
+      "overLimitList": "한도 초과 항목이 있습니다:",
+      "limitError": "{{itemNo}}: 입력 {{qty}} > 한도 {{limit}}",
+      "failed": "취소 접수 실패",
+      "errorGeneric": "취소 접수 중 오류가 발생했습니다.",
+      "stockNotice": "보관(S) 상품 {{count}}건이 포함되어 있습니다. 재고 위치에 올려 둔 수량이면 [재고(보관)] 메뉴에서 꺼내 주세요 (원장은 반품을 자동으로 빼지 않습니다)."
     }
   },
   "importProductV3": {
@@ -1381,6 +1435,86 @@
     }
   },
   "sellerInquiry": {
-    "comingSoon": "1688 판매자 문의 페이지는 준비 중입니다."
+    "subtitle": "배송번호별 미입고 접수 — 상품입고 [미입고] 에서 들어오고, 모바일에서 사진을 붙입니다",
+    "searchPlaceholder": "배송번호 · 글번호",
+    "refresh": "새로고침",
+    "tabAll": "전체",
+    "status": {
+      "접수": "접수",
+      "문의중": "문의중",
+      "처리완료": "처리완료"
+    },
+    "to": {
+      "문의중": "문의중으로",
+      "처리완료": "처리완료"
+    },
+    "col": {
+      "image": "이미지",
+      "delivery": "배송번호",
+      "items": "글번호",
+      "arrived": "입고수량",
+      "short": "부족수량",
+      "expected": "입고되어야 할 수량",
+      "memo": "메모",
+      "status": "처리상태",
+      "photos": "사진",
+      "itemNo": "글번호",
+      "product": "상품명",
+      "option": "중국옵션"
+    },
+    "andMore": "외 {{count}}건",
+    "receivedAt": "접수",
+    "inquiringAt": "문의중",
+    "completedAt": "처리완료",
+    "loading": "불러오는 중…",
+    "empty": "접수된 건이 없습니다.",
+    "loadError": "목록을 불러오지 못했습니다.",
+    "saveError": "저장에 실패했습니다.",
+    "memoPlaceholder": "판매자 답변·처리 내용",
+    "saveMemo": "메모 저장",
+    "noPhotos": "첨부된 사진이 없습니다.",
+    "dbNote": "데이터"
+  },
+  "mobile": {
+    "subtitle": "모바일",
+    "toDesktop": "PC 화면",
+    "home": "메뉴",
+    "sellerInquiryDesc": "운송장 바코드 촬영 → 미입고 접수에 사진 첨부",
+    "cam": {
+      "close": "닫기",
+      "preparing": "인식 모듈 준비 중…",
+      "align": "바코드를 네모 안에 가로로 맞춰 주세요",
+      "photoReading": "사진에서 바코드를 읽는 중…",
+      "photoFail": "사진에서 바코드를 읽지 못했어요. 바코드가 화면에 크고 선명하게 나오게 다시 찍어 주세요.",
+      "failTitle": "카메라를 열 수 없어요",
+      "photoScan": "사진 찍어서 읽기",
+      "closeManual": "닫기 · 번호 직접 입력",
+      "permissionDenied": "카메라 권한이 꺼져 있어요.",
+      "noCamera": "카메라를 찾지 못했어요.",
+      "cannotOpen": "카메라를 열 수 없어요.",
+      "moduleFail": "바코드 인식 모듈을 내려받지 못했습니다 (인터넷 확인)",
+      "continueHint": "아래 방법으로 계속할 수 있어요.",
+      "notMatched": "읽은 값: {{value}} — 운송장 번호 형식이 아니에요."
+    },
+    "inquiry": {
+      "takenBy": "촬영자",
+      "takenByPlaceholder": "이름",
+      "scan": "촬영 (운송장 바코드)",
+      "codePlaceholder": "운송장 번호 직접 입력",
+      "lookup": "조회",
+      "badCode": "운송장 번호 형식이 아닙니다.",
+      "notFound": "{{code}} — 접수된 미입고 건이 없습니다. PC 상품입고에서 [미입고] 로 먼저 접수하세요.",
+      "lookupError": "조회 중 오류가 발생했습니다.",
+      "found": "접수를 찾았습니다 (부족 {{count}}건). 아래에서 사진을 추가하세요.",
+      "others": "같은 번호의 다른 접수 {{count}}건",
+      "shortSummary": "부족 {{lines}}건 · {{qty}}개",
+      "tooMany": "한 번에 {{max}}장까지 올릴 수 있어 앞의 {{max}}장만 올립니다.",
+      "compressFail": "{{name}} 을(를) 처리할 수 없습니다.",
+      "uploadFail": "사진 저장에 실패했습니다.",
+      "uploaded": "사진 {{count}}장이 첨부되었습니다.",
+      "uploading": "사진 준비 {{done}} / {{total}}",
+      "addPhotos": "사진 추가 (여러 장 가능)",
+      "camHint": "운송장 바코드를 맞춰 주세요"
+    }
   }
 }

@@ -671,42 +671,6 @@
 }
 .v2-board-head.is-v3 .v2-board-head-main { gap: 18px; }
 
-/* V3 제목 블록 — [P][라벨 작업][세트] / 상품명 / 옵션명 (글자 크기는 라벨 배지와 같은 11~12px) */
-.v2-board-title {
-  width: 170px;
-  flex: none;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding-right: 14px;
-  margin-right: 4px;
-  border-right: 1px solid #eef0f3;
-  min-width: 0;
-}
-.v2-board-title-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.v2-board-title-badges .size-badge { font-size: 12px; padding: 1px 8px; }
-.v2-board-title-badges .v2-set-badge { margin-bottom: 0; }
-.v2-board-title-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #111827;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-all;
-}
-.v2-board-title-option {
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 /* 펼친 카드 — 헤더와 흰 테이블 사이 머리선 */
 .v2-board-head.is-v3.is-expanded {
   border-bottom: 1px solid #eef0f3;
@@ -928,6 +892,9 @@
 .v2-item-table.is-compact .v2-product-name,
 .v2-item-table.is-compact .v2-china-options { font-size: 12px; line-height: 1.3; }
 .v2-item-table.is-compact .v2-set-badge { font-size: 11px; padding: 1px 7px; margin-bottom: 1px; }
+/* compact 상품명 칸 — 한국어 상품명은 회색, 옵션명은 검정 (라벨 배지와 같은 11px) */
+.v2-item-table.is-compact .v2-name-kr { font-size: 11px; color: #6b7280; line-height: 1.3; }
+.v2-item-table.is-compact .v2-option-kr { font-size: 11px; color: #111827; font-weight: 600; line-height: 1.3; }
 
 /* 세트 불일치 경고 — 구성품의 (입고 + 작업) 이 서로 다른 주문이 있을 때: 빨간 글씨 강조(깜빡임) */
 .v2-board-mismatch {

@@ -267,9 +267,9 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
             );
           })()}
 
-          {/* ── 2·3번째 줄: item_name / option_name — compact(V3) 에서는 숨김 (보드 헤더에 있음) ── */}
-          {!compact && <div>{item.item_name || ''}</div>}
-          {!compact && item.option_name && <div>{item.option_name}</div>}
+          {/* ── 2·3번째 줄: item_name / option_name — compact(V3) 는 상품명 회색·옵션명 검정, 라벨 배지 크기 ── */}
+          <div className={compact ? 'v2-name-kr' : undefined}>{item.item_name || ''}</div>
+          {item.option_name && <div className={compact ? 'v2-option-kr' : undefined}>{item.option_name}</div>}
 
           {/* ── 맨 아래: note_cn — 깜빡이는 빨간 배지 (V2 전용 is-alert, V3 는 빨간 글씨 그대로) ── */}
           {item.note_cn && String(item.note_cn).trim() && (

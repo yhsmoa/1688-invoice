@@ -261,7 +261,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
       hasAnyQty = true;
       const limit = computeInputLimit(item);
       if (q > limit) {
-        errors.push(`${item.item_no || item.id}: 입력 ${q} > 한도 ${limit}`);
+        errors.push(t('importProductV2.cancelModal.limitError', { itemNo: item.item_no || item.id, qty: q, limit }));
       }
     }
     return { valid: hasAnyQty && errors.length === 0, hasQty: hasAnyQty, errors };
@@ -275,7 +275,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
     if (!cancelType || !requester) return;
 
     if (validation.errors.length > 0) {
-      alert('한도 초과 항목이 있습니다:\n\n' + validation.errors.join('\n'));
+      alert(t('importProductV2.cancelModal.overLimitList') + '\n\n' + validation.errors.join('\n'));
       return;
     }
 
@@ -331,7 +331,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
       const json = await res.json();
 
       if (!json.success) {
-        throw new Error(json.error || '취소 접수 실패');
+        throw new Error(json.error || t('importProductV2.cancelModal.failed'));
       }
 
       // ── 보관(STOCK) 상품 반품: 재고 원장은 RETURN 을 모르므로 위치에 남은 수량은 창고가 직접 정리 ──
@@ -340,19 +340,17 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         ? items.filter((it) => isStockRoute(it) && (parseInt(formData.get(it.id)?.qty || '0', 10) || 0) > 0)
         : [];
       const stockNotice = stockReturned.length > 0
-        ? `
-
-보관(S) 상품 ${stockReturned.length}건이 포함되어 있습니다. 재고 위치에 올려 둔 수량이면 [재고(보관)] 메뉴에서 꺼내 주세요 (원장은 반품을 자동으로 빼지 않습니다).`
+        ? '\n\n' + t('importProductV2.cancelModal.stockNotice', { count: stockReturned.length })
         : '';
       alert(json.message + stockNotice);
       onSaveComplete();
     } catch (err) {
       console.error('취소 접수 오류:', err);
-      alert(err instanceof Error ? err.message : '취소 접수 중 오류가 발생했습니다.');
+      alert(err instanceof Error ? err.message : t('importProductV2.cancelModal.errorGeneric'));
     } finally {
       setIsSaving(false);
     }
-  }, [validation, isSaving, items, formData, requester, cancelType, selectedUserId, selectedOperator, onSaveComplete]);
+  }, [validation, isSaving, items, formData, requester, cancelType, selectedUserId, selectedOperator, onSaveComplete, t]);
 
   if (!isOpen) return null;
 
@@ -368,7 +366,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
             헤더
         ──────────────────────────────────────── */}
         <div className="v2-cancel-header">
-          <h2>취소 / 반품 접수</h2>
+          <h2>{t('importProductV2.cancelModal.title')}</h2>
           <button className="v2-cancel-close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -377,13 +375,13 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         ──────────────────────────────────────── */}
         <div className="v2-cancel-body">
           {items.length === 0 ? (
-            <div className="v2-cancel-empty">선택된 항목이 없습니다.</div>
+            <div className="v2-cancel-empty">{t('importProductV2.cancelModal.empty')}</div>
           ) : (
             <>
               {/* ── 1. 타입 + 요청자 선택 (한 줄) ── */}
               <div className="v2-cancel-global-section">
                 <span className="v2-cancel-field-label v2-cancel-field-label-required">
-                  타입 <span className="v2-cancel-required">*</span>
+                  {t('importProductV2.cancelModal.type')} <span className="v2-cancel-required">*</span>
                 </span>
                 <div className="v2-cancel-requester-toggle">
                   {(['CANCEL', 'RETURN'] as CancelType[]).map((c) => (
@@ -392,12 +390,12 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                       className={`v2-cancel-requester-btn ${cancelType === c ? 'active' : ''}`}
                       onClick={() => setCancelType(c)}
                     >
-                      {c === 'CANCEL' ? '주문 취소' : '반품 접수'}
+                      {t(c === 'CANCEL' ? 'importProductV2.cancelModal.typeCancel' : 'importProductV2.cancelModal.typeReturn')}
                     </button>
                   ))}
                 </div>
                 <span className="v2-cancel-field-label v2-cancel-field-label-required" style={{ marginLeft: 16 }}>
-                  요청자 <span className="v2-cancel-required">*</span>
+                  {t('importProductV2.cancelModal.requester')} <span className="v2-cancel-required">*</span>
                 </span>
                 <div className="v2-cancel-requester-toggle">
                   {(['유화무역', '고객'] as Requester[]).map((r) => (
@@ -406,7 +404,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                       className={`v2-cancel-requester-btn ${requester === r ? 'active' : ''}`}
                       onClick={() => setRequester(r)}
                     >
-                      {r}
+                      {t(r === '유화무역' ? 'importProductV2.cancelModal.requesterCompany' : 'importProductV2.cancelModal.requesterCustomer')}
                     </button>
                   ))}
                 </div>
@@ -434,7 +432,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                   <div key={item.id} className="v2-cancel-item-card">
                     {/* ── 카드 헤더: 배지 + 상품 정보 */}
                     <div className="v2-cancel-item-header">
-                      <span className="v2-cancel-status-badge">접수</span>
+                      <span className="v2-cancel-status-badge">{t('importProductV2.cancelModal.badgeReceived')}</span>
                       <span className="v2-cancel-item-no">{item.item_no || '-'}</span>
                       <span className="v2-cancel-item-name">
                         {item.item_name || '-'}
@@ -449,9 +447,9 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                       {/* 수량 (필수) — 한도 표시 + 초과 입력 시 강조 */}
                       <div className="v2-cancel-field-group">
                         <label className="v2-cancel-field-label v2-cancel-field-label-required">
-                          수량 <span className="v2-cancel-required">* 필수</span>
+                          {t('importProductV2.cancelModal.qty')} <span className="v2-cancel-required">{t('importProductV2.cancelModal.required')}</span>
                           {cancelType && limit !== Infinity && (
-                            <span className="v2-cancel-limit-hint"> (최대 {limit})</span>
+                            <span className="v2-cancel-limit-hint"> {t('importProductV2.cancelModal.max', { limit })}</span>
                           )}
                         </label>
                         <input
@@ -460,7 +458,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                           value={data.qty}
                           min={1}
                           max={limit !== Infinity ? limit : undefined}
-                          placeholder="수량 입력"
+                          placeholder={t('importProductV2.cancelModal.qtyPlaceholder')}
                           ref={registerNav(item.id, 'qty')}
                           onKeyDown={handleNavKeyDown(item.id, 'qty')}
                           onChange={(e) => updateField(item.id, 'qty', e.target.value)}
@@ -469,7 +467,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
                       {/* 가격 (CNY) */}
                       <div className="v2-cancel-field-group">
-                        <label className="v2-cancel-field-label">가격 (CNY)</label>
+                        <label className="v2-cancel-field-label">{t('importProductV2.cancelModal.price')}</label>
                         <input
                           type="number"
                           className="v2-cancel-input"
@@ -484,7 +482,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
                       {/* 배송비 (CNY) */}
                       <div className="v2-cancel-field-group">
-                        <label className="v2-cancel-field-label">배송비 (CNY)</label>
+                        <label className="v2-cancel-field-label">{t('importProductV2.cancelModal.delivery')}</label>
                         <input
                           type="number"
                           className="v2-cancel-input"
@@ -499,12 +497,12 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
                       {/* 서비스료 (자동 6%) */}
                       <div className="v2-cancel-field-group">
-                        <label className="v2-cancel-field-label">서비스료 (6%)</label>
+                        <label className="v2-cancel-field-label">{t('importProductV2.cancelModal.serviceFee')}</label>
                         <input
                           type="number"
                           className="v2-cancel-input v2-cancel-input-auto"
                           value={data.service_fee}
-                          placeholder="자동"
+                          placeholder={t('importProductV2.cancelModal.auto')}
                           step="0.01"
                           onChange={(e) => updateField(item.id, 'service_fee', e.target.value)}
                         />
@@ -512,22 +510,22 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
 
                       {/* 환불금 (자동 합계 — 읽기 전용) */}
                       <div className="v2-cancel-field-group">
-                        <label className="v2-cancel-field-label">환불금 (합계)</label>
+                        <label className="v2-cancel-field-label">{t('importProductV2.cancelModal.refund')}</label>
                         <input
                           type="text"
                           className="v2-cancel-input v2-cancel-input-auto v2-cancel-input-total"
                           value={totalRefund != null ? totalRefund.toFixed(2) : ''}
-                          placeholder="자동"
+                          placeholder={t('importProductV2.cancelModal.auto')}
                           readOnly
                           tabIndex={-1}
-                          title="가격 + 배송비 + 서비스료"
+                          title={t('importProductV2.cancelModal.refundTitle')}
                         />
                       </div>
                     </div>
 
                     {/* ── 반품 사유 (드롭박스 2단 선택 또는 직접 입력 — 상호 비활성) */}
                     <div className="v2-cancel-reason-group">
-                      <label className="v2-cancel-field-label">반품 사유</label>
+                      <label className="v2-cancel-field-label">{t('importProductV2.cancelModal.reason')}</label>
 
                       {(() => {
                         const hasText = data.cancel_reason.trim() !== '';
@@ -571,7 +569,7 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
                             <textarea
                               className="v2-cancel-textarea"
                               value={data.cancel_reason}
-                              placeholder="직접 입력 (드롭박스 미선택 시)"
+                              placeholder={t('importProductV2.cancelModal.reasonPlaceholder')}
                               rows={2}
                               disabled={data.reason_category !== ''}
                               onChange={(e) => updateField(item.id, 'cancel_reason', e.target.value)}
@@ -592,27 +590,27 @@ const V2CancelModal: React.FC<V2CancelModalProps> = ({
         ──────────────────────────────────────── */}
         <div className="v2-cancel-footer">
           <button className="v2-cancel-btn-secondary" onClick={onClose} disabled={isSaving}>
-            닫기
+            {t('importProductV2.cancelModal.close')}
           </button>
           <button
             className="v2-cancel-btn-primary"
             onClick={handleSubmit}
             disabled={!validation.valid || isSaving || !selectedUserId}
             title={
-              !cancelType ? '타입을 먼저 선택해주세요' :
-              !requester ? '요청자를 먼저 선택해주세요' :
-              !validation.hasQty ? '수량을 입력하세요' :
-              validation.errors.length > 0 ? '한도 초과 항목이 있습니다' :
+              !cancelType ? t('importProductV2.cancelModal.selectTypeFirst') :
+              !requester ? t('importProductV2.cancelModal.selectRequesterFirst') :
+              !validation.hasQty ? t('importProductV2.cancelModal.enterQty') :
+              validation.errors.length > 0 ? t('importProductV2.cancelModal.overLimit') :
               undefined
             }
           >
             {isSaving ? (
               <span className="v2-cancel-saving">
                 <span className="v2-cancel-spinner" />
-                {savingStep === 'saving' ? '저장 중...' : '검증 중...'}
+                {t(savingStep === 'saving' ? 'importProductV2.cancelModal.saving' : 'importProductV2.cancelModal.verifying')}
               </span>
             ) : (
-              '접수'
+              t('importProductV2.cancelModal.submit')
             )}
           </button>
         </div>

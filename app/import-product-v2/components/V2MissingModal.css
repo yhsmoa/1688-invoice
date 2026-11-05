@@ -1,0 +1,74 @@
+/* ============================================================ */
+/* 미입고 접수 모달 (V2MissingModal) — 가운데 다이얼로그           */
+/* ============================================================ */
+.v2-missing-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.v2-missing-dialog {
+  width: min(960px, 100%);
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(17, 24, 39, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.v2-missing-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.v2-missing-header h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.v2-missing-sub { margin-top: 4px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #6b7280; }
+.v2-missing-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; color: #111827; }
+.v2-missing-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 22px;
+  cursor: pointer;
+}
+.v2-missing-close:hover { background: #f3f4f6; }
+.v2-missing-body { padding: 14px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.v2-missing-hint { margin: 0; font-size: 12px; color: #6b7280; }
+.v2-missing-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.v2-missing-table th { padding: 8px 10px; background: #f9fafb; color: #6b7280; font-size: 11px; font-weight: 600; text-align: left; }
+.v2-missing-table td { padding: 8px 10px; border-top: 1px solid #f1f2f4; vertical-align: middle; }
+.v2-missing-table .num { text-align: right; width: 90px; font-variant-numeric: tabular-nums; }
+.v2-missing-table img, .v2-missing-noimg {
+  width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid #e5e7eb; display: inline-flex; align-items: center; justify-content: center; color: #9ca3af;
+}
+.v2-missing-itemno { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.v2-missing-opt { font-size: 12px; color: #6b7280; }
+.v2-missing-short { color: #dc2626; font-weight: 800; }
+.v2-missing-memo { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: #6b7280; }
+.v2-missing-memo textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: 13px; resize: vertical; }
+.v2-missing-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #e5e7eb; }
+.v2-missing-btn {
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.v2-missing-btn:disabled { opacity: 0.45; cursor: default; }
+.v2-missing-btn.is-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.v2-missing-btn.is-primary:hover:not(:disabled) { background: #1d4ed8; }

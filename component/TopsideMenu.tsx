@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useTranslation } from 'react-i18next';
 import BarcodePrintModal from './BarcodePrintModal';
 import './TopsideMenu.css';
 
 const TopsideMenu: React.FC = () => {
   const { language, changeLanguage } = useLanguage();
   const { toggleSidebar } = useSidebar();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const isAttendancePage = pathname === '/hr/attendance-scan';
   const isBarcodePage = pathname === '/barcode-scan';
@@ -39,6 +41,10 @@ const TopsideMenu: React.FC = () => {
           >
             BARCODE
           </button>
+          {/* 모바일 화면(/m) — 휴대폰 작업자용 메뉴 */}
+          <Link href="/m" className="mobile-shortcut-btn" title={t('menu.mobile')} aria-label={t('menu.mobile')}>
+            📱
+          </Link>
           <Link
             href="/barcode-scan"
             className={`barcode-shortcut-btn ${isBarcodePage ? 'active' : ''}`}

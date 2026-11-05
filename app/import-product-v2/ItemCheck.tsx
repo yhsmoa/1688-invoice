@@ -32,6 +32,7 @@ import {
 // ============================================================
 import ItemTable, { type ItemTableProps } from './components/ItemTable';
 import GroupedItemTables from './components/GroupedItemTables';
+import V2MissingModal, { type MissingRow } from './components/V2MissingModal';
 import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
@@ -101,6 +102,8 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   //      FtOrderItem[] = 검색 완료 → 해당 결과 표시
   // ============================================================
   const [deliveryItems, setDeliveryItems] = useState<FtOrderItem[] | null>(null);
+  /** 검색에 쓴 배송번호 — [미입고] 접수의 키. deliveryItems 와 함께 비운다 */
+  const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
   const [isDeliverySearching, setIsDeliverySearching] = useState(false);
 
   // ============================================================
@@ -237,6 +240,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       setSelectedRows(new Set());
       setModifiedImportQty(new Map());
       setDeliveryItems(null);
+      setDeliveryCode(null);
       setSearchInput('');
       clearSearch();
 
@@ -256,6 +260,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       setSelectedRows(new Set());
       setModifiedImportQty(new Map());
       setDeliveryItems(null);
+      setDeliveryCode(null);
       setSearchInput('');
       clearSearch();
 
@@ -293,6 +298,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
         if (json.success) {
           const rows = json.data as FtOrderItem[];
           setDeliveryItems(rows);
+          setDeliveryCode(trimmed);
           if (rows.length === 0) {
             alert(t('importProductV2.alerts.deliveryNoResult'));
           } else {
@@ -325,6 +331,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       setSearchType(e.target.value);
       setDeliveryItems(null);
+      setDeliveryCode(null);
       setSearchInput('');
       clearSearch(); // useFtSearch 내부 searchTerm 초기화
     },
@@ -349,6 +356,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       // ── 빈 값: 서버 조회 결과 + 클라이언트 필터 모두 리셋 ──
       if (!trimmed) {
         setDeliveryItems(null);
+        setDeliveryCode(null);
         clearSearch();
         return;
       }
@@ -522,6 +530,23 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
     isItemInvoicePrintable,
     printInvoicesForItems,
   } = usePersonalInvoicePrint({ selectedUserId, selectedWorker, activeItems, t });
+
+  // ============================================================
+  // 11-3) [미입고] — 배송번호 검색 결과 중 덜 들어온 주문행 (1688 판매자 문의 접수 대상)
+  //       입고되어야 할 수량 = order − CANCEL · 입고 수량 = ARRIVAL + 작업 입력 · 부족 = 차이 > 0
+  //       배송번호 검색 결과가 떠 있을 때만 계산한다 (전체 목록에서는 버튼 비활성)
+  // ============================================================
+  const missingRows: MissingRow[] = useMemo(() => {
+    if (!deliveryCode || deliveryItems === null) return [];
+    return filteredItems
+      .map((item) => {
+        const expected = Math.max(0, (item.order_qty ?? 0) - (cancelMap.get(item.id) ?? 0));
+        const arrived = (arrivalMap.get(item.id) ?? 0) + (modifiedImportQty.get(item.id) ?? 0);
+        return { item, expected, arrived, short: expected - arrived };
+      })
+      .filter((r) => r.short > 0);
+  }, [deliveryCode, deliveryItems, filteredItems, cancelMap, arrivalMap, modifiedImportQty]);
+  const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
 
   // ============================================================
   // 11-2) 보드 헤더 그룹 수량 입력 — 그룹(또는 세트 구성품) 행들의 작업 수량을 지우고
@@ -1208,7 +1233,8 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
             setIsNoteModalOpen(true);
           }}
           onCancelClick={() => setIsCancelModalOpen(true)}
-          onMissingClick={() => { /* 미입고 기능은 별도 작업에서 구현 예정 */ }}
+          onMissingClick={() => setIsMissingModalOpen(true)}
+          missingEnabled={missingRows.length > 0 && !!selectedUserId}
           onLabelClick={handleLabelClick}
           onImportClick={() => setIsReadyModalOpen(true)}
           onShippingClick={handlePrintInvoicesFromSelection}
@@ -1234,6 +1260,18 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
           refreshFulfillments();
           if (selectedUserId) fetchItems(selectedUserId, statusFilter);
         }}
+      />
+
+      {/* ============================================================ */}
+      {/* 미입고 접수 모달 — 배송번호 검색 결과의 부족 주문행 → 1688 판매자 문의 */}
+      {/* ============================================================ */}
+      <V2MissingModal
+        isOpen={isMissingModalOpen}
+        onClose={() => setIsMissingModalOpen(false)}
+        deliveryCode={deliveryCode ?? ''}
+        rows={missingRows}
+        selectedUserId={selectedUserId}
+        selectedWorker={selectedWorker}
       />
 
       {/* ============================================================ */}

@@ -1,0 +1,107 @@
+/* ============================================================ */
+/* BarcodeCamera — 카메라 스캔 덮개 (immongRK_scan mobileInbound 의 .cam-back 과 같은 모양) */
+/* ============================================================ */
+.bc-cam {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: none;
+  flex-direction: column;
+  z-index: 60;
+}
+.bc-cam.show { display: flex; }
+.bc-cam video {
+  flex: 1;
+  width: 100%;
+  object-fit: cover;
+}
+/* 안내 네모 — ZXing 해독 영역과 같은 위치 (left 8% · right 8% · top 40% · height 20%) */
+.bc-guide {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 40%;
+  height: 20%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.bc-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.bc-top button {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* 카메라 실패 시트 */
+.bc-fail {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 22, 26, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 56;
+}
+.bc-sheet {
+  background: #fff;
+  border-radius: 22px 22px 0 0;
+  padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+}
+.bc-sheet h2 { margin: 0 0 4px; font-size: 19px; font-weight: 900; color: #17161a; letter-spacing: -0.02em; }
+.bc-sheet p { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: #6b6a72; }
+.bc-fail-btns { display: flex; flex-direction: column; gap: 8px; }
+.bc-btn {
+  height: 56px;
+  border: 1.5px solid #e4e3ea;
+  background: #fff;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  color: #17161a;
+  cursor: pointer;
+}
+.bc-btn.primary { background: #17161a; border-color: #17161a; color: #fff; }
+.bc-btn.ghost { border-color: transparent; color: #6b6a72; }
+
+.bc-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  background: #17161a;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(23, 22, 26, 0.25);
+  z-index: 61;
+  max-width: 90vw;
+  white-space: pre-line;
+  text-align: center;
+}

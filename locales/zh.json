@@ -14,7 +14,8 @@
     "labelSettings": "标签设置",
     "customerChecks": "客户检验确认",
     "inquiry": "商品咨询",
-    "sellerInquiry": "1688 卖家咨询"
+    "sellerInquiry": "1688 卖家咨询",
+    "mobile": "手机版"
   },
   "orderSearch": {
     "title": "订单查询",
@@ -513,6 +514,59 @@
     "set": {
       "label": "套装",
       "mixed": "不同卖家"
+    },
+    "missing": {
+      "title": "未入库登记",
+      "summary": "缺 {{lines}} 条 · {{qty}} 个",
+      "hint": "入库数量（已保存入库 + 当前作业列输入）少于应入库数量（订单 − 取消）的订单。登记后进入[商品咨询 › 1688 卖家咨询]，可在手机端拍运单条码添加照片。",
+      "expected": "应入库数量",
+      "arrived": "入库数量",
+      "short": "缺少",
+      "memo": "备注",
+      "memoPlaceholder": "例）请卖家补发",
+      "cancel": "取消",
+      "submit": "登记",
+      "saving": "登记中…",
+      "saved": "已登记 {{count}} 条未入库。",
+      "updated": "已将原登记的缺少清单更新为 {{count}} 条。",
+      "failed": "未入库登记失败。",
+      "disabledHint": "按配送单号搜索的结果中有未到齐的订单时可用。"
+    },
+    "cancelModal": {
+      "title": "取消 / 退货登记",
+      "empty": "没有选中的项目。",
+      "type": "类型",
+      "typeCancel": "取消订单",
+      "typeReturn": "退货登记",
+      "requester": "申请方",
+      "requesterCompany": "裕华贸易",
+      "requesterCustomer": "客户",
+      "badgeReceived": "登记",
+      "qty": "数量",
+      "required": "* 必填",
+      "max": "(最多 {{limit}})",
+      "qtyPlaceholder": "输入数量",
+      "price": "价格 (CNY)",
+      "delivery": "运费 (CNY)",
+      "serviceFee": "服务费 (6%)",
+      "refund": "退款（合计）",
+      "auto": "自动",
+      "refundTitle": "价格 + 运费 + 服务费",
+      "reason": "退货原因",
+      "reasonPlaceholder": "手动输入（未选下拉时）",
+      "close": "关闭",
+      "submit": "登记",
+      "saving": "保存中...",
+      "verifying": "校验中...",
+      "selectTypeFirst": "请先选择类型",
+      "selectRequesterFirst": "请先选择申请方",
+      "enterQty": "请输入数量",
+      "overLimit": "有超过上限的项目",
+      "overLimitList": "有超过上限的项目：",
+      "limitError": "{{itemNo}}: 输入 {{qty}} > 上限 {{limit}}",
+      "failed": "取消登记失败",
+      "errorGeneric": "取消登记时出错。",
+      "stockNotice": "包含 {{count}} 条保管(S)商品。若数量已放在库存位置，请在[库存(保管)]菜单中取出（账本不会自动扣减退货）。"
     }
   },
   "importProductV3": {
@@ -1375,6 +1429,86 @@
     }
   },
   "sellerInquiry": {
-    "comingSoon": "1688 卖家咨询页面正在准备中。"
+    "subtitle": "按配送单号的未入库登记 — 来自商品入库[未入库]，手机端添加照片",
+    "searchPlaceholder": "配送单号 · 帖子编号",
+    "refresh": "刷新",
+    "tabAll": "全部",
+    "status": {
+      "접수": "已登记",
+      "문의중": "咨询中",
+      "처리완료": "处理完成"
+    },
+    "to": {
+      "문의중": "转为咨询中",
+      "처리완료": "处理完成"
+    },
+    "col": {
+      "image": "图片",
+      "delivery": "配送单号",
+      "items": "帖子编号",
+      "arrived": "入库数量",
+      "short": "缺少数量",
+      "expected": "应入库数量",
+      "memo": "备注",
+      "status": "处理状态",
+      "photos": "照片",
+      "itemNo": "帖子编号",
+      "product": "商品名",
+      "option": "中国规格"
+    },
+    "andMore": "等 {{count}} 条",
+    "receivedAt": "登记",
+    "inquiringAt": "咨询中",
+    "completedAt": "处理完成",
+    "loading": "加载中…",
+    "empty": "没有登记的件。",
+    "loadError": "无法加载列表。",
+    "saveError": "保存失败。",
+    "memoPlaceholder": "卖家回复·处理内容",
+    "saveMemo": "保存备注",
+    "noPhotos": "没有附加照片。",
+    "dbNote": "数据"
+  },
+  "mobile": {
+    "subtitle": "手机版",
+    "toDesktop": "电脑版",
+    "home": "菜单",
+    "sellerInquiryDesc": "拍运单条码 → 给未入库登记添加照片",
+    "cam": {
+      "close": "关闭",
+      "preparing": "正在准备识别模块…",
+      "align": "请把条码横放在方框内",
+      "photoReading": "正在从照片读取条码…",
+      "photoFail": "无法从照片读取条码。请让条码在画面中大而清晰地重新拍摄。",
+      "failTitle": "无法打开相机",
+      "photoScan": "拍照读取",
+      "closeManual": "关闭 · 手动输入号码",
+      "permissionDenied": "相机权限已关闭。",
+      "noCamera": "未找到相机。",
+      "cannotOpen": "无法打开相机。",
+      "moduleFail": "无法下载条码识别模块（请检查网络）",
+      "continueHint": "可以用下面的方法继续。",
+      "notMatched": "读取值：{{value}} — 不是运单号格式。"
+    },
+    "inquiry": {
+      "takenBy": "拍摄人",
+      "takenByPlaceholder": "姓名",
+      "scan": "拍摄（运单条码）",
+      "codePlaceholder": "手动输入运单号",
+      "lookup": "查询",
+      "badCode": "不是运单号格式。",
+      "notFound": "{{code}} — 没有登记的未入库件。请先在电脑端商品入库用[未入库]登记。",
+      "lookupError": "查询时出错。",
+      "found": "已找到登记（缺 {{count}} 条）。请在下方添加照片。",
+      "others": "同号其他登记 {{count}} 件",
+      "shortSummary": "缺 {{lines}} 条 · {{qty}} 个",
+      "tooMany": "一次最多上传 {{max}} 张，只上传前 {{max}} 张。",
+      "compressFail": "无法处理 {{name}}。",
+      "uploadFail": "照片保存失败。",
+      "uploaded": "已添加 {{count}} 张照片。",
+      "uploading": "照片准备 {{done}} / {{total}}",
+      "addPhotos": "添加照片（可多张）",
+      "camHint": "请对准运单条码"
+    }
   }
 }
