@@ -459,25 +459,6 @@
       "mismatch": "套装不一致 {{count}}件",
       "overLimit": "不能超过可作业数量({{total}})。"
     },
-    "groupInput": {
-      "title": "分组录入",
-      "groups": "{{count}}组",
-      "empty": "搜索结果中没有分组。",
-      "searchFirst": "仅可用于配送单号等搜索结果。",
-      "hint": "输入分组数量后，作业数量将按订单号顺序分配。保存请在[入库]中进行。",
-      "orders": "订单 {{count}}条",
-      "available": "可作业",
-      "done": "已入库",
-      "mismatch": "套装不一致 {{count}}件",
-      "mismatchTitle": "套装数量不一致",
-      "mismatchBody": "以下订单的套装组成数量（入库 + 作业）不一致。是否继续？",
-      "arrivalPlusWork": "入库 {{arrival}} + 作业 {{work}}",
-      "proceed": "继续",
-      "back": "返回",
-      "submit": "录入",
-      "cancel": "取消",
-      "overLimit": "有分组超过可作业数量。请减少红色标记的数值。"
-    },
     "table": {
       "image": "图片",
       "orderNumber": "订单号",
