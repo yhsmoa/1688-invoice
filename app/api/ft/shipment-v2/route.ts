@@ -33,13 +33,32 @@ async function fetchAll<T>(
 }
 
 // ============================================================
-// 배치 조회 헬퍼 (in 조건, 100개 단위)
+// 배치 조회 헬퍼 (in 조건, 100개 단위 — 배치끼리는 동시에, 최대 8개)
 //
 //   키 100개라도 키당 행이 많으면 1000행을 넘을 수 있다 (입고·포장 이력).
 //   · 1000행 미만 → 요청 1번
 //   · 딱 1000행   → 잘렸을 수 있으므로 그 배치만 id 정렬 + range 루프로 끝까지 재조회
 //   (조회 대상 테이블은 모두 id 컬럼 보유 — 2026-10-29 확인)
+//
+//   배치를 순서대로 기다리면 PostgREST 왕복(≈250ms)이 배치 수만큼 쌓인다
+//   (2026-11-05 운영: 미출고 472행 → 단계마다 5배치 × 9단계 ≈ 30회 순차, 8.5초).
+//   결과는 모두 id 키 맵으로 쓰므로 배치 순서는 상관없다 — 동시에 보내고 순서대로 이어 붙인다.
 // ============================================================
+const BATCH_CONCURRENCY = 8;
+
+async function mapLimit<I, O>(items: I[], limit: number, fn: (item: I) => Promise<O>): Promise<O[]> {
+  const out: O[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const idx = next++;
+      out[idx] = await fn(items[idx]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
 async function batchIn<T>(
   table: string,
   select: string,
@@ -49,7 +68,6 @@ async function batchIn<T>(
 ): Promise<T[]> {
   const BATCH = 100;
   const PAGE = 1000;
-  const all: T[] = [];
 
   const baseQuery = (batch: string[]) => {
     let query = supabase.from(table).select(select).in(column, batch);
@@ -59,30 +77,31 @@ async function batchIn<T>(
     return query;
   };
 
-  for (let i = 0; i < ids.length; i += BATCH) {
-    const batch = ids.slice(i, i + BATCH);
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += BATCH) batches.push(ids.slice(i, i + BATCH));
 
+  const perBatch = await mapLimit(batches, BATCH_CONCURRENCY, async (batch): Promise<T[]> => {
     // ── 1차: 단일 요청 ──
     const { data, error } = await baseQuery(batch);
     if (error) throw error;
     const first = (data ?? []) as T[];
-    if (first.length < PAGE) {
-      all.push(...first);
-      continue;
-    }
+    if (first.length < PAGE) return first;
 
     // ── 2차: 1000행에서 잘림 → id 정렬 range 루프 ──
+    const rows: T[] = [];
     for (let from = 0; ; from += PAGE) {
       const { data: page, error: pageErr } = await baseQuery(batch)
         .order('id', { ascending: true })
         .range(from, from + PAGE - 1);
       if (pageErr) throw pageErr;
-      const rows = (page ?? []) as T[];
-      all.push(...rows);
-      if (rows.length < PAGE) break;
+      const pageRows = (page ?? []) as T[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE) break;
     }
-  }
-  return all;
+    return rows;
+  });
+
+  return perBatch.flat();
 }
 
 const uniq = (values: (string | null | undefined)[]): string[] =>
