@@ -394,6 +394,7 @@
       "label": "라벨",
       "shipping": "운송장",
       "import": "입고",
+      "groupInput": "그룹입력",
       "customerConfirm": "고객확인"
     },
     "customerConfirm": {
@@ -456,7 +457,29 @@
       "processing": "진행중"
     },
     "filter": {
-      "groupByProduct": "상품별로 보기"
+      "groupView": "그룹별로 보기"
+    },
+    "board": {
+      "rows": "{{count}}건"
+    },
+    "groupInput": {
+      "title": "그룹입력",
+      "groups": "{{count}}그룹",
+      "empty": "검색 결과에 그룹이 없습니다.",
+      "searchFirst": "배송번호 등으로 검색한 결과에서만 사용할 수 있습니다.",
+      "hint": "그룹 수량을 입력하면 주문번호 순서대로 작업 수량이 나눠 들어갑니다. 저장은 [입고]에서 합니다.",
+      "orders": "주문 {{count}}건",
+      "available": "작업 가능",
+      "done": "입고 완료",
+      "mismatch": "세트 불일치 {{count}}건",
+      "mismatchTitle": "세트 수량이 맞지 않습니다",
+      "mismatchBody": "아래 주문은 세트 구성품의 수량(입고 + 작업)이 서로 다릅니다. 그대로 진행할까요?",
+      "arrivalPlusWork": "입고 {{arrival}} + 작업 {{work}}",
+      "proceed": "그대로 진행",
+      "back": "돌아가기",
+      "submit": "입력",
+      "cancel": "취소",
+      "overLimit": "작업 가능 수량을 넘는 그룹이 있습니다. 빨갛게 표시된 값을 줄여 주세요."
     },
     "table": {
       "image": "이미지",

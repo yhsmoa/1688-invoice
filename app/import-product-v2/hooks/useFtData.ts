@@ -363,11 +363,40 @@ export const SEARCH_PAGE_SIZE = 100;
 // useFtPagination — 간단한 페이지네이션
 //   showAll=true 면 페이지 없이 전체 (검색 결과 표시용)
 //   [처음] [끝] 이동: goToFirstPage / goToLastPage
+//   breakKeyOf 를 주면 같은 키(그룹)의 행은 페이지를 넘기지 않고 한 페이지에 둔다
+//     — itemsPerPage 는 "최소 건수" 가 되고, 그룹이 끝나는 곳에서 페이지를 끊는다
+//     (한 세트·한 옵션 그룹이 두 페이지에 걸쳐 헷갈리는 일이 없도록)
 // ============================================================
-export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20, showAll = false) {
+export function useFtPagination(
+  data: FtOrderItem[],
+  itemsPerPage = 20,
+  showAll = false,
+  breakKeyOf?: (item: FtOrderItem) => string | undefined
+) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = showAll ? 1 : Math.max(1, Math.ceil(data.length / itemsPerPage));
+  // 페이지 경계 계산 — 그룹 키가 있으면 그룹이 끝나는 곳까지 페이지를 늘린다
+  const pages = useMemo<FtOrderItem[][]>(() => {
+    if (showAll) return [data];
+    if (data.length === 0) return [];
+    const out: FtOrderItem[][] = [];
+    let page: FtOrderItem[] = [];
+    for (let i = 0; i < data.length; i++) {
+      page.push(data[i]);
+      if (page.length < itemsPerPage) continue;
+      const next = data[i + 1];
+      if (next && breakKeyOf) {
+        const key = breakKeyOf(data[i]);
+        if (key !== undefined && breakKeyOf(next) === key) continue;   // 같은 그룹 → 이어서
+      }
+      out.push(page);
+      page = [];
+    }
+    if (page.length > 0) out.push(page);
+    return out;
+  }, [data, itemsPerPage, showAll, breakKeyOf]);
+
+  const totalPages = Math.max(1, pages.length);
 
   // 데이터 변경 시 첫 페이지로 리셋
   useEffect(() => {
@@ -379,11 +408,10 @@ export function useFtPagination(data: FtOrderItem[], itemsPerPage = 20, showAll 
     setCurrentPage(1);
   }, [showAll, itemsPerPage]);
 
-  const paginatedData = useMemo(() => {
-    if (showAll) return data;
-    const start = (currentPage - 1) * itemsPerPage;
-    return data.slice(start, start + itemsPerPage);
-  }, [data, currentPage, itemsPerPage, showAll]);
+  const paginatedData = useMemo(
+    () => pages[Math.min(currentPage, totalPages) - 1] ?? [],
+    [pages, currentPage, totalPages]
+  );
 
   const goToNextPage = useCallback(() => {
     setCurrentPage((p) => Math.min(p + 1, totalPages));

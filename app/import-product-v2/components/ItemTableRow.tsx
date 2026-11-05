@@ -11,6 +11,16 @@ import { resolveQtyStatus, type QtyCell } from '../utils/qtyStatus';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
 
+// ============================================================
+// 렌더 비용 — 이 컴포넌트는 React.memo 로 감싼다.
+//   한 페이지에 행 20~40개, 행마다 이미지 2장이라 키 입력·마우스 이동마다 전부 다시 그리면
+//   작업 셀 타이핑이 밀린다. 그래서
+//   · 편집 상태는 "이 행" 기준 값(editingField / editValue / isCategoryEditing)만 받는다
+//     → 다른 행은 props 가 안 바뀌어 다시 그리지 않는다
+//   · 이미지 미리보기 위치는 state 가 아니라 레이아웃 컨테이너의 CSS 변수(--v2-mouse-x/y)
+//   · 핸들러는 부모가 참조를 고정해서 넘긴다 (hooks/useStableCallback)
+// ============================================================
+
 /** 세트 그룹 안에서의 위치 — 체크박스 옆 중괄호 묶음선(first/mid/last/only) 그리기용 */
 export type SetGroupPos = 'first' | 'mid' | 'last' | 'only';
 
@@ -25,9 +35,10 @@ interface ItemTableRowProps {
   setGroupPos?: SetGroupPos;
   /** 같은 세트인데 1688 주문번호가 서로 다름 (다른 판매자에게서 옴) */
   setMixedSeller?: boolean;
-  mousePosition: { x: number; y: number };
-  editingCell: { id: string; field: string } | null;
-  cellValue: string;
+  /** 이 행에서 편집 중인 필드 — 아니면 null (다른 행 편집 중이어도 null) */
+  editingField: string | null;
+  /** 이 행이 편집 중일 때의 입력값 — 아니면 '' */
+  editValue: string;
   importQtyValue: number | undefined;
   /** ft_fulfillment_inbounds type=ARRIVAL quantity 합계 */
   arrivalQty: number;
@@ -51,7 +62,9 @@ interface ItemTableRowProps {
   onCellKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onFinishEditingCell: () => void;
   onProductNameClick: (item: FtOrderItem) => void;
-  categoryEditing: { id: string } | null;
+  /** 이 행의 품목(customs_category) 편집 중 여부 */
+  isCategoryEditing: boolean;
+  /** 이 행이 품목 편집 중일 때의 입력값 — 아니면 '' */
   categoryValue: string;
   onStartCategoryEdit: (id: string, currentValue: string | null) => void;
   onCategoryValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -74,9 +87,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   setColorIndex,
   setGroupPos,
   setMixedSeller = false,
-  mousePosition,
-  editingCell,
-  cellValue,
+  editingField,
+  editValue,
   importQtyValue,
   arrivalQty,
   packedQty,
@@ -92,7 +104,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   onCellKeyDown,
   onFinishEditingCell,
   onProductNameClick,
-  categoryEditing,
+  isCategoryEditing,
   categoryValue,
   onStartCategoryEdit,
   onCategoryValueChange,
@@ -165,13 +177,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                 (e.target as HTMLImageElement).src = '/placeholder.svg';
               }}
             />
-            <div
-              className="v2-image-preview"
-              style={{
-                top: `${mousePosition.y - 300}px`,
-                left: `${mousePosition.x + 30}px`,
-              }}
-            >
+            {/* 위치는 CSS 변수(--v2-mouse-x/y, 레이아웃 컨테이너가 mousemove 로 갱신) */}
+            <div className="v2-image-preview">
               <img
                 src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
                 alt="상품 이미지 미리보기"
@@ -325,8 +332,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         id={item.id}
         field="import_qty"
         value={displayImportQty}
-        isEditing={editingCell?.id === item.id && editingCell?.field === 'import_qty'}
-        editValue={cellValue}
+        isEditing={editingField === 'import_qty'}
+        editValue={editValue}
         type="number"
         onStartEdit={onStartEditingCell}
         onValueChange={onCellValueChange}
@@ -358,4 +365,4 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   );
 };
 
-export default ItemTableRow;
+export default React.memo(ItemTableRow);

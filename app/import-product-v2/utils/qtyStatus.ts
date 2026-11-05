@@ -14,7 +14,7 @@
 //   allDone          = progress <= 0              이 행은 더 할 일이 없음
 //
 // 칸별 규칙 (위에서 아래로 첫 번째로 맞는 것)
-//   진행  0 이하 → none · 아직 들어올 게 있으면 pending · 다 들어왔으면 idle
+//   진행  0 이하 → none · arrivalDone(더 들어올 게 없음) → none(빈 칸) · 그 외(더 들어올 게 있음) → pending
 //   입고  0 → none · arrivalDone(더 들어올 게 없음) → idle · 그 외(더 들어올 게 있음) → done
 //   포장  0 → none · allDone → idle · packed ≥ inHand → done · 그 외 → pending
 //   취소  0 → none · 그 외 → cancel (allDone 이어도 빨강 — 이력 정보)
@@ -23,7 +23,8 @@
 // 모순이 없도록 한 점
 //   · allDone 이면 진행은 0 이라 none, 나머지 네 칸은 idle 또는 none (취소만 빨강) → "전부 회색"
 //   · arrivalDone 이 아니면 진행 pending(주황), 입고 done(초록) — "들어오는 중" 을 두 칸이 같이 표시
-//   · arrivalDone 이면 진행 idle, 입고 idle — 입고 칸은 끝난 뒤 회색 (allDone 과 무관)
+//   · arrivalDone 이면 진행은 빈 칸, 입고 idle — 수량대로 다 들어왔거나 취소분까지 합쳐 더 들어올
+//     예정이 없으면 "진행" 숫자는 사라진다 (아직 들어올 게 있을 때만 숫자가 남는다)
 //   · arrivalDone 이고 allDone 이 아니면 남은 단계(포장·출고)만 pending
 //   · 초과 입고(arrival > order - cancel), 입고 없이 포장(packed > arrival) 도 비교식이라 예외 없이 판정된다
 //
@@ -74,7 +75,7 @@ export function resolveQtyStatus(q: QtyStatusInput): QtyStatus {
   return {
     progress: {
       value: progress,
-      tone: progress <= 0 ? 'none' : !arrivalDone ? 'pending' : 'idle',
+      tone: progress <= 0 || arrivalDone ? 'none' : 'pending',
     },
     arrival: {
       value: q.arrivalQty,

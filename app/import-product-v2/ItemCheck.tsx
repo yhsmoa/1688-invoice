@@ -30,7 +30,9 @@ import {
 // ============================================================
 // V2 전용 컴포넌트
 // ============================================================
-import ItemTable from './components/ItemTable';
+import ItemTable, { type ItemTableProps } from './components/ItemTable';
+import GroupedItemTables from './components/GroupedItemTables';
+import GroupInputModal from './components/GroupInputModal';
 import SearchSection from './components/SearchSection';
 import V2ReadyModal, { type V2ReadyItem } from './components/V2ReadyModal';
 import V2LabelModal from './components/V2LabelModal';
@@ -45,6 +47,9 @@ import ImportUploadButtons, { V2MigrationButton } from './components/ImportUploa
 import { useWorkers, PC_NO_OPTIONS } from './hooks/useWorkers';
 import { useImportUploads } from './hooks/useImportUploads';
 import { usePersonalInvoicePrint } from './hooks/usePersonalInvoicePrint';
+import { useGroupBoards } from './hooks/useGroupBoards';
+import { useStableCallback } from './hooks/useStableCallback';
+import { boardsForRows } from './utils/groupBoards';
 import type { LabelType } from '../../lib/labelTypes';
 
 const ItemCheck: React.FC = () => {
@@ -86,33 +91,26 @@ const ItemCheck: React.FC = () => {
   const [isDeliverySearching, setIsDeliverySearching] = useState(false);
 
   // ============================================================
-  // 2-3) [상품별로 보기] — 정렬 전환 (전역 적용)
-  //      체크 시: 1688_offer_id ASC → item_no ASC (동일 1688 offer 그룹핑)
-  //      해제 시: 원본 순서 (서버 기본 정렬)
-  //      페이지 접속 시 기본 false. 사용자 수동 체크로만 동작.
+  // 2-3) 그룹(보드) 정렬 — 항상 적용 (utils/groupBoards)
+  //      같은 상품(타입 P/A + 1688 오퍼)끼리 → 옵션1·옵션2 사이즈 순 → 글번호 순.
+  //      세트(set_total > 1)는 구성이 같은 세트끼리 한 그룹으로 묶인다.
+  //      [그룹별로 보기] 체크는 정렬이 아니라 "보드마다 테이블을 나눠 그릴지" 만 바꾼다.
+  //      페이지 접속 시 기본 체크.
   // ============================================================
-  const [groupByProduct, setGroupByProduct] = useState(false);
+  const [groupView, setGroupView] = useState(true);
 
   // baseActiveItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
   const baseActiveItems =
     searchType === '배송번호' && deliveryItems !== null ? deliveryItems : items;
 
-  // groupByProduct 체크 시 클라이언트 정렬 (1688_offer_id → item_no)
-  //   로컬 정렬 → 서버 재조회 불필요 → 토글 반응 즉시
-  const activeItems = useMemo(() => {
-    if (!groupByProduct) return baseActiveItems;
-    const cmp = (a: string | null | undefined, b: string | null | undefined): number => {
-      if (!a && !b) return 0;
-      if (!a) return 1;
-      if (!b) return -1;
-      return String(a).localeCompare(String(b), undefined, { numeric: true });
-    };
-    return [...baseActiveItems].sort((x, y) => {
-      const p = cmp(x['1688_offer_id'], y['1688_offer_id']);
-      if (p !== 0) return p;
-      return cmp(x.item_no, y.item_no);
-    });
-  }, [baseActiveItems, groupByProduct]);
+  // 보드 구성 + 보드 순서대로 펼친 행 (클라이언트 정렬 → 서버 재조회 불필요)
+  const { boards, flatItems: activeItems, boardKeyOfRow } = useGroupBoards(baseActiveItems);
+
+  // 페이지를 그룹 경계에서만 끊기 위한 키 (useFtPagination breakKeyOf)
+  const boardKeyOf = useCallback(
+    (item: FtOrderItem) => boardKeyOfRow.get(item.id),
+    [boardKeyOfRow]
+  );
 
   // ============================================================
   // 3) 검색
@@ -126,6 +124,7 @@ const ItemCheck: React.FC = () => {
   // 4) 페이지네이션
   //    처음 화면은 페이지(20건) 표시. 검색했을 때는 SEARCH_PAGE_SIZE(100건) 단위로 넓혀
   //    결과가 100건 이하면 페이지를 넘길 일이 없게 한다 (전체를 그리면 렌더·이미지가 무거움).
+  //    그룹(보드)은 페이지 사이에서 끊지 않는다 — 건수는 "최소" 이고 그룹이 끝나는 곳에서 넘긴다.
   // ============================================================
   const isSearchActive =
     searchType === '배송번호' ? deliveryItems !== null : searchTerm.trim() !== '';
@@ -137,13 +136,25 @@ const ItemCheck: React.FC = () => {
     totalPages,
     goToFirstPage,
     goToLastPage,
-  } = useFtPagination(filteredItems, isSearchActive ? SEARCH_PAGE_SIZE : undefined);
+  } = useFtPagination(filteredItems, isSearchActive ? SEARCH_PAGE_SIZE : undefined, false, boardKeyOf);
 
   // ============================================================
   // 4-1) ft_fulfillments ARRIVAL/PACKED/CANCEL/SHIPMENT 합계
   //      activeItems 변경 시 자동 fetch (1회 요청, 타입별 집계)
   // ============================================================
   const { arrivalMap, packedMap, cancelMap, returnMap, shipmentMap, exportMap, shippedItemMap, rawFulfillments, refreshFulfillments } = useFtFulfillmentSummary(activeItems, selectedUserId);
+
+  // ============================================================
+  // 4-2) 보드 조각
+  //      pageBoards  : 현재 페이지 행을 보드로 다시 묶음 → [그룹별로 보기] 테이블 분할용
+  //      resultBoards: 검색 결과 전체(모든 페이지) → [그룹입력] 모달용
+  //      둘 다 flatItems 순서를 유지한 부분집합이라 연속 구간 = 한 보드
+  // ============================================================
+  const pageBoards = useMemo(
+    () => (groupView ? boardsForRows(boards, paginatedData) : []),
+    [groupView, boards, paginatedData]
+  );
+  const resultBoards = useMemo(() => boardsForRows(boards, filteredItems), [boards, filteredItems]);
 
   // ============================================================
   // 5) Worker / PC-NO 드롭박스
@@ -194,12 +205,14 @@ const ItemCheck: React.FC = () => {
   }, []);
 
   // ============================================================
-  // 7) 이미지 미리보기용 마우스 위치
+  // 7) 이미지 미리보기용 마우스 위치 — state 가 아니라 CSS 변수로 전달
+  //    state 로 두면 마우스가 움직일 때마다 페이지 전체(행·이미지)가 다시 그려져 작업이 밀린다.
+  //    레이아웃 컨테이너의 --v2-mouse-x/y 만 바꾸고, 미리보기 위치는 CSS calc 로 잡는다.
   // ============================================================
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    el.style.setProperty('--v2-mouse-x', `${e.clientX}px`);
+    el.style.setProperty('--v2-mouse-y', `${e.clientY}px`);
   }, []);
 
   // ============================================================
@@ -367,7 +380,8 @@ const ItemCheck: React.FC = () => {
   );
 
   // 편집 완료 (blur / Enter) — 진행(order_qty - 입고 - 취소)보다 큰 값 입력 불가
-  const finishEditingCell = useCallback(() => {
+  //   useStableCallback: 참조를 고정해 memo 된 행이 키 입력마다 다시 그려지지 않게 (본문은 최신)
+  const finishEditingCell = useStableCallback(() => {
     if (!editingCell) return;
 
     const { id } = editingCell;
@@ -400,10 +414,10 @@ const ItemCheck: React.FC = () => {
 
     setEditingCell(null);
     setCellValue('');
-  }, [editingCell, cellValue, activeItems, arrivalMap, cancelMap]);
+  });
 
   // 키보드 핸들러 (Enter → 완료 + 다음 행 이동, Escape → 취소)
-  const handleCellKeyDown = useCallback(
+  const handleCellKeyDown = useStableCallback(
     (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -431,8 +445,7 @@ const ItemCheck: React.FC = () => {
         setEditingCell(null);
         setCellValue('');
       }
-    },
-    [finishEditingCell, editingCell, paginatedData, modifiedImportQty, startEditingCell]
+    }
   );
 
   // ============================================================
@@ -483,6 +496,20 @@ const ItemCheck: React.FC = () => {
     isItemInvoicePrintable,
     printInvoicesForItems,
   } = usePersonalInvoicePrint({ selectedUserId, selectedWorker, activeItems, t });
+
+  // ============================================================
+  // 11-2) [그룹입력] 모달 — 검색 결과를 그룹별로 묶어 수량을 한 번에 작업 열에 넣는다
+  //       검색 전(전체 목록)에는 버튼 비활성 (isSearchActive) — 검색한 결과에만 쓴다
+  //       모달 [입력] → modifiedImportQty 통째로 교체 (보이지 않는 행 값은 모달이 유지해서 넘긴다)
+  //       이후 흐름은 테이블에 직접 입력한 것과 같다 → [입고] 모달에서 저장
+  // ============================================================
+  const [isGroupInputModalOpen, setIsGroupInputModalOpen] = useState(false);
+
+  const handleGroupInputApply = useCallback((next: Map<string, number>) => {
+    setModifiedImportQty(next);
+    setEditingCell(null);
+    setCellValue('');
+  }, []);
 
   // ============================================================
   // 12) 처리준비 모달
@@ -800,7 +827,7 @@ const ItemCheck: React.FC = () => {
     setCategoryValue(currentValue || '');
   }, []);
 
-  const finishCategoryEdit = useCallback(async () => {
+  const finishCategoryEdit = useStableCallback(async () => {
     if (!categoryEditing) return;
     const { id } = categoryEditing;
     const trimmed = categoryValue.trim();
@@ -823,9 +850,9 @@ const ItemCheck: React.FC = () => {
     } catch (error) {
       console.error('품목 저장 오류:', error);
     }
-  }, [categoryEditing, categoryValue, selectedUserId, fetchItems]);
+  });
 
-  const handleCategoryKeyDown = useCallback(
+  const handleCategoryKeyDown = useStableCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -834,8 +861,12 @@ const ItemCheck: React.FC = () => {
         setCategoryEditing(null);
         setCategoryValue('');
       }
-    },
-    [finishCategoryEdit]
+    }
+  );
+
+  const handleCategoryValueChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setCategoryValue(e.target.value),
+    []
   );
 
   // ============================================================
@@ -880,6 +911,41 @@ const ItemCheck: React.FC = () => {
   // 로딩 상태
   // ============================================================
   const loading = usersLoading || itemsLoading;
+
+  // ============================================================
+  // 테이블 공통 props — 평면 보기(ItemTable 1개) / 그룹별로 보기(보드마다 ItemTable) 공용
+  // ============================================================
+  const tableProps: Omit<ItemTableProps, 'paginatedData' | 'header' | 'headerMode'> = {
+    loading,
+    selectedRows,
+    isAllSelected,
+    isIndeterminate,
+    editingCell,
+    cellValue,
+    modifiedImportQty,
+    arrivalMap,
+    packedMap,
+    cancelMap,
+    returnMap,
+    shipmentMap,
+    exportMap,
+    shippedItemMap,
+    invoicePdfSet,
+    printedItemIdsMap,
+    onSelectAll: handleSelectAll,
+    onSelectRow: handleSelectRow,
+    onStartEditingCell: startEditingCell,
+    onCellValueChange: handleCellValueChange,
+    onCellKeyDown: handleCellKeyDown,
+    onFinishEditingCell: finishEditingCell,
+    onProductNameClick: handleProductNameClick,
+    categoryEditing,
+    categoryValue,
+    onStartCategoryEdit: startCategoryEdit,
+    onCategoryValueChange: handleCategoryValueChange,
+    onCategoryKeyDown: handleCategoryKeyDown,
+    onFinishCategoryEdit: finishCategoryEdit,
+  };
 
   // ============================================================
   // 렌더링
@@ -976,47 +1042,19 @@ const ItemCheck: React.FC = () => {
               statusFilter={statusFilter}
               onStatusFilterChange={(s) => handleStatusFilterChange(s as 'PROCESSING' | 'ALL')}
               filteredItemsCount={filteredItems.length}
-              groupByProduct={groupByProduct}
-              onGroupByProductChange={setGroupByProduct}
+              groupByProduct={groupView}
+              onGroupByProductChange={setGroupView}
               rightButtons={<ImportUploadButtons uploads={uploads} selectedUserId={selectedUserId} />}
             />
 
             {/* ============================================================ */}
-            {/* 데이터 테이블 */}
+            {/* 데이터 테이블 — [그룹별로 보기] 체크 시 보드(그룹)마다 테이블 분할 */}
             {/* ============================================================ */}
-            <ItemTable
-              loading={loading}
-              paginatedData={paginatedData}
-              selectedRows={selectedRows}
-              mousePosition={mousePosition}
-              isAllSelected={isAllSelected}
-              isIndeterminate={isIndeterminate}
-              editingCell={editingCell}
-              cellValue={cellValue}
-              modifiedImportQty={modifiedImportQty}
-              arrivalMap={arrivalMap}
-              packedMap={packedMap}
-              cancelMap={cancelMap}
-              returnMap={returnMap}
-              shipmentMap={shipmentMap}
-              exportMap={exportMap}
-              shippedItemMap={shippedItemMap}
-              invoicePdfSet={invoicePdfSet}
-              printedItemIdsMap={printedItemIdsMap}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-              onStartEditingCell={startEditingCell}
-              onCellValueChange={handleCellValueChange}
-              onCellKeyDown={handleCellKeyDown}
-              onFinishEditingCell={finishEditingCell}
-              onProductNameClick={handleProductNameClick}
-              categoryEditing={categoryEditing}
-              categoryValue={categoryValue}
-              onStartCategoryEdit={startCategoryEdit}
-              onCategoryValueChange={(e) => setCategoryValue(e.target.value)}
-              onCategoryKeyDown={handleCategoryKeyDown}
-              onFinishCategoryEdit={finishCategoryEdit}
-            />
+            {groupView ? (
+              <GroupedItemTables boards={pageBoards} tableProps={tableProps} />
+            ) : (
+              <ItemTable {...tableProps} paginatedData={paginatedData} />
+            )}
 
             {/* ============================================================ */}
             {/* 페이지네이션 */}
@@ -1117,7 +1155,9 @@ const ItemCheck: React.FC = () => {
         <RightActionSidebar
           disabled={!selectedUserId || items.length === 0}
           shippingEnabled={selectedShippingPrintable}
+          groupInputEnabled={isSearchActive}
           importBadgeCount={readyItems.length}
+          onGroupInputClick={() => setIsGroupInputModalOpen(true)}
           onNoteClick={() => {
             if (selectedRows.size === 0) {
               alert(t('importProductV2.alerts.selectItems'));
@@ -1152,6 +1192,19 @@ const ItemCheck: React.FC = () => {
           refreshFulfillments();
           if (selectedUserId) fetchItems(selectedUserId, statusFilter);
         }}
+      />
+
+      {/* ============================================================ */}
+      {/* 그룹입력 모달 — 검색 결과(전체 페이지) 그룹별 수량 → 작업 열 */}
+      {/* ============================================================ */}
+      <GroupInputModal
+        isOpen={isGroupInputModalOpen}
+        onClose={() => setIsGroupInputModalOpen(false)}
+        boards={resultBoards}
+        modifiedImportQty={modifiedImportQty}
+        arrivalMap={arrivalMap}
+        cancelMap={cancelMap}
+        onApply={handleGroupInputApply}
       />
 
       {/* ============================================================ */}

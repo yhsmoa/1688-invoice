@@ -8,11 +8,17 @@ import { getSetGroupKey } from '../utils/setGroupPalette';
 
 /* V2 전용 ItemTable 컴포넌트 - 원래 13열 헤더 유지 */
 
-interface ItemTableProps {
+/** 열 헤더 모드 — [그룹별로 보기] 에서 두 번째 보드부터는 높이 0 thead 로 열 너비만 맞춘다 */
+export type ItemTableHeaderMode = 'full' | 'collapsed';
+
+export interface ItemTableProps {
   loading: boolean;
   paginatedData: FtOrderItem[];
+  /** 테이블 위에 붙는 보드 헤더 (GroupedItemTables 가 넘긴다) */
+  header?: React.ReactNode;
+  /** 기본 'full' — 열 제목·전체선택 체크박스를 그린다 */
+  headerMode?: ItemTableHeaderMode;
   selectedRows: Set<string>;
-  mousePosition: { x: number; y: number };
   isAllSelected: boolean;
   isIndeterminate: boolean;
   editingCell: { id: string; field: string } | null;
@@ -52,11 +58,14 @@ interface ItemTableProps {
   onFinishCategoryEdit: () => void;
 }
 
+const COLUMN_COUNT = 13;
+
 const ItemTable: React.FC<ItemTableProps> = ({
   loading,
   paginatedData,
+  header,
+  headerMode = 'full',
   selectedRows,
-  mousePosition,
   isAllSelected,
   isIndeterminate,
   editingCell,
@@ -137,7 +146,15 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   return (
     <div className="v2-table-board">
+      {header}
       <table className="v2-item-table">
+        {headerMode === 'collapsed' ? (
+          <thead className="v2-thead-collapsed" aria-hidden="true">
+            <tr>
+              {Array.from({ length: COLUMN_COUNT }, (_, i) => <th key={i} />)}
+            </tr>
+          </thead>
+        ) : (
         <thead>
           <tr>
             <th>
@@ -165,6 +182,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
             <th>{t('importProduct.table.export')}</th>
           </tr>
         </thead>
+        )}
         <tbody>
           {loading ? (
             <tr>
@@ -181,6 +199,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
               // 가로 border 제거: 세트 그룹 내 인접 행일 때만 (thisKey != null 보장)
               const sameGroupAsNext = thisKey !== null && thisKey === nextKey;
               const setColorIdx = thisKey !== null ? setGroupColorIndex.get(thisKey) : undefined;
+              // 편집 상태는 "이 행" 기준으로만 넘긴다 — 다른 행은 props 가 그대로라 memo 로 건너뛴다
+              const isEditingRow = editingCell?.id === item.id;
+              const isCategoryEditingRow = categoryEditing?.id === item.id;
               return (
               <ItemTableRow
                 key={item.id}
@@ -190,9 +211,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 setGroupPos={setGroupPosOf(idx)}
                 setMixedSeller={thisKey !== null && mixedSellerKeys.has(thisKey)}
                 isSelected={selectedRows.has(item.id)}
-                mousePosition={mousePosition}
-                editingCell={editingCell}
-                cellValue={cellValue}
+                editingField={isEditingRow ? editingCell!.field : null}
+                editValue={isEditingRow ? cellValue : ''}
                 importQtyValue={modifiedImportQty.get(item.id)}
                 arrivalQty={arrivalMap.get(item.id) ?? 0}
                 packedQty={packedMap.get(item.product_id ?? '') ?? 0}
@@ -218,8 +238,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 onCellKeyDown={onCellKeyDown}
                 onFinishEditingCell={onFinishEditingCell}
                 onProductNameClick={onProductNameClick}
-                categoryEditing={categoryEditing}
-                categoryValue={categoryValue}
+                isCategoryEditing={isCategoryEditingRow}
+                categoryValue={isCategoryEditingRow ? categoryValue : ''}
                 onStartCategoryEdit={onStartCategoryEdit}
                 onCategoryValueChange={onCategoryValueChange}
                 onCategoryKeyDown={onCategoryKeyDown}

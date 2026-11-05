@@ -1,0 +1,292 @@
+/* ============================================================ */
+/* 그룹입력 모달 — 오른쪽 슬라이드 패널 (폭 560px)                 */
+/*   헤더 → 그룹 카드 목록(스크롤) → 푸터(세트 경고 · 취소 · 입력)  */
+/*   V2ReadyModal.css 와 같은 톤 (오버레이 · 헤더 높이 · 닫기 버튼) */
+/* ============================================================ */
+
+.v2-gi-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.45);
+  z-index: 999;
+}
+
+.v2-gi-modal {
+  position: fixed;
+  top: 0;
+  right: -600px;
+  width: 560px;
+  max-width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -12px 0 32px rgba(17, 24, 39, 0.10);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.25s ease-in-out;
+  color: #111827;
+}
+.v2-gi-modal.open { right: 0; }
+
+/* ============================================================ */
+/* 헤더                                                          */
+/* ============================================================ */
+.v2-gi-header {
+  flex: none;
+  height: 64px;
+  padding: 0 16px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+.v2-gi-title-wrap { display: flex; align-items: center; gap: 10px; }
+.v2-gi-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.v2-gi-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 3px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.v2-gi-close {
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.v2-gi-close:hover { background-color: #f3f4f6; color: #111827; }
+
+/* ============================================================ */
+/* 그룹 목록                                                     */
+/* ============================================================ */
+.v2-gi-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 24px 20px;
+  background: #f9fafb;
+}
+.v2-gi-empty { text-align: center; color: #9ca3af; padding: 40px 20px; font-size: 14px; }
+.v2-gi-hint { margin: 0 0 12px; font-size: 12px; color: #6b7280; }
+.v2-gi-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── 그룹 카드 — 단품은 단위 한 줄, 세트는 헤더 + 구성품 줄 ── */
+.v2-gi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.v2-gi-card.is-set { border-color: #fdba74; }
+.v2-gi-card-head {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fff7ed;
+  border-bottom: 1px solid #fed7aa;
+  font-size: 12px;
+}
+.v2-gi-card.is-set .v2-gi-card-head { display: flex; }
+.v2-gi-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+.v2-gi-card-meta { color: #6b7280; white-space: nowrap; }
+
+/* ── 입력 단위 한 줄: [순번] [이미지] [옵션 · 상품명 · 주문 n건] [입력 / 합계] ── */
+.v2-gi-unit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid #f3f4f6;
+}
+.v2-gi-card .v2-gi-unit:first-child,
+.v2-gi-card-head + .v2-gi-unit { border-top: none; }
+.v2-gi-unit.is-done { opacity: 0.55; }
+.v2-gi-unit-seq {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff3e0;
+  color: #e65100;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.v2-gi-unit-image {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.v2-gi-unit-image img { width: 100%; height: 100%; object-fit: contain; }
+.v2-gi-no-image { color: #9ca3af; font-size: 12px; }
+.v2-gi-unit-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.v2-gi-unit-options { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.v2-gi-option1 { font-size: 14px; font-weight: 700; color: #111827; }
+.v2-gi-option2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 1px 7px;
+  border-radius: 6px;
+}
+.v2-gi-unit-name {
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-gi-unit-meta { font-size: 11px; color: #9ca3af; }
+
+/* ── 입력 / 합계 ── */
+.v2-gi-unit-qty { flex: none; display: flex; align-items: center; gap: 6px; }
+.v2-gi-input {
+  width: 64px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+  background: #fffbeb;
+  outline: none;
+}
+.v2-gi-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15); }
+.v2-gi-input:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+.v2-gi-unit.is-over .v2-gi-input { border-color: #dc2626; background: #fef2f2; color: #b91c1c; }
+.v2-gi-sep { color: #9ca3af; font-size: 16px; }
+.v2-gi-total { min-width: 36px; font-size: 16px; font-weight: 700; color: #374151; text-align: left; }
+.v2-gi-unit.is-done .v2-gi-total { font-size: 12px; color: #15803d; }
+
+/* ============================================================ */
+/* 푸터                                                          */
+/* ============================================================ */
+.v2-gi-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.v2-gi-footer-spacer { flex: 1; }
+.v2-gi-footer-actions { display: flex; gap: 8px; }
+
+/* 세트 불일치 경고 — [입력] 왼쪽, 누르면 목록 */
+.v2-gi-mismatch {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #b45309;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.v2-gi-mismatch:hover { background: #fef3c7; }
+
+.v2-gi-btn-cancel,
+.v2-gi-btn-submit,
+.v2-gi-btn-proceed {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v2-gi-btn-cancel { border: 1px solid #d1d5db; background: #fff; color: #374151; }
+.v2-gi-btn-cancel:hover { background: #f3f4f6; }
+.v2-gi-btn-submit { border: none; background: #2563eb; color: #fff; }
+.v2-gi-btn-submit:hover:not(:disabled) { background: #1d4ed8; }
+.v2-gi-btn-submit:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+.v2-gi-btn-proceed { border: none; background: #d97706; color: #fff; }
+.v2-gi-btn-proceed:hover:not(:disabled) { background: #b45309; }
+.v2-gi-btn-proceed:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+/* ============================================================ */
+/* 세트 불일치 확인 — 패널 안쪽 덮개                               */
+/* ============================================================ */
+.v2-gi-confirm {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 2;
+}
+.v2-gi-confirm-box {
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.2);
+}
+.v2-gi-confirm-box h3 {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #b45309;
+}
+.v2-gi-confirm-box p { margin: 0 0 12px; font-size: 13px; color: #4b5563; }
+.v2-gi-confirm-list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.v2-gi-confirm-list > li { border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; padding: 8px 12px; }
+.v2-gi-confirm-order { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.v2-gi-confirm-no { font-size: 13px; font-weight: 700; color: #111827; }
+.v2-gi-confirm-orderno { font-size: 11px; color: #6b7280; }
+.v2-gi-confirm-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.v2-gi-confirm-part { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #374151; }
+.v2-gi-confirm-part-opt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2-gi-confirm-part-qty { white-space: nowrap; color: #6b7280; }
+.v2-gi-confirm-part-qty b { color: #b45309; }
+.v2-gi-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }

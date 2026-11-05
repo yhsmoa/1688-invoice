@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 
 // ============================================================
 // V2 전용 SearchSection 컴포넌트 (상품입고 V3 도 같이 쓴다)
-// 1행: 상태 필터 (PROCESSING/ALL 세그먼트) + [상품별로 보기] 체크박스 + 건수 + 우측 액션 버튼
+// 1행: 상태 필터 (PROCESSING/ALL 세그먼트) + [그룹별로 보기] 체크박스 + 건수 + 우측 액션 버튼
 // 2행: 검색 컨트롤 한 덩어리 — [검색유형 ▾ | 입력 | 검색]
 //
-// [상품별로 보기] 동작:
-//   - 항상 클릭 가능 (페이지 접속 시 기본 해제)
-//   - 체크 시 클라이언트에서 product_id(offer_id) ASC → item_no ASC 로 정렬
+// [그룹별로 보기] 동작 (상품입고 V2):
+//   - 항상 클릭 가능 (페이지 접속 시 기본 체크)
+//   - 체크 시 상품·옵션 그룹(보드)마다 테이블을 나눠 그린다 — 정렬 자체는 체크와 무관하게
+//     항상 그룹 순서 (utils/groupBoards)
 // ============================================================
 
 interface SearchSectionProps {
@@ -28,10 +29,10 @@ interface SearchSectionProps {
   onStatusFilterChange: (status: string) => void;
   filteredItemsCount: number;
 
-  // ── 상품별로 보기 (정렬 전환, 클라이언트 처리) ──
+  // ── 그룹별로 보기 (보드 분할 토글, 클라이언트 처리) ──
   groupByProduct: boolean;
   onGroupByProductChange: (value: boolean) => void;
-  /** 토글 체크박스 문구 — 미지정 시 "상품별로 보기" (V3 는 "전체 보기" 로 재사용) */
+  /** 토글 체크박스 문구 — 미지정 시 "그룹별로 보기" (V3 는 "전체 보기" 로 재사용) */
   groupToggleLabel?: string;
 
   // ── 우측 액션 버튼들 (1688 XLSX ~ 주문 ID) — 필터행 오른쪽 ──
@@ -87,14 +88,14 @@ const SearchSection: React.FC<SearchSectionProps> = ({
           </label>
         </div>
 
-        {/* 상품별로 보기 체크박스 — 항상 클릭 가능, 기본 해제 */}
+        {/* 그룹별로 보기 체크박스 — 항상 클릭 가능 */}
         <label className="v2-check">
           <input
             type="checkbox"
             checked={groupByProduct}
             onChange={(e) => onGroupByProductChange(e.target.checked)}
           />
-          {groupToggleLabel ?? t('importProductV2.filter.groupByProduct')}
+          {groupToggleLabel ?? t('importProductV2.filter.groupView')}
         </label>
 
         {/* 전체 건수 */}
