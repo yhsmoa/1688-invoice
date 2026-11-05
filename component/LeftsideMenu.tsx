@@ -140,6 +140,7 @@ const LeftsideMenu: React.FC = () => {
   const [isDbMenuOpen, setIsDbMenuOpen] = useState(false);
   const [isV1MenuOpen, setIsV1MenuOpen] = useState(false);
   const [isStorageMenuOpen, setIsStorageMenuOpen] = useState(false);
+  const [isInquiryMenuOpen, setIsInquiryMenuOpen] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const { checkUnsavedChanges } = useSaveContext();
@@ -151,6 +152,10 @@ const LeftsideMenu: React.FC = () => {
 
   const toggleStorageMenu = () => {
     setIsStorageMenuOpen(!isStorageMenuOpen);
+  };
+
+  const toggleInquiryMenu = () => {
+    setIsInquiryMenuOpen(!isInquiryMenuOpen);
   };
 
   const toggleInvoiceMenu = () => {
@@ -224,6 +229,28 @@ const LeftsideMenu: React.FC = () => {
               <span className="menu-icon">{Icons.returnProduct}</span>
               <span className="menu-text">반품접수</span>
             </Link>
+          </li>
+          {/* 상품문의 — 고객 검수 확인(Notion 대체) · 1688 판매자 문의(페이지 준비 중) */}
+          <li className="menu-item">
+            <div className="menu-link" onClick={toggleInquiryMenu}>
+              <span className="menu-icon">{Icons.customerChecks}</span>
+              <span className="menu-text">{t('menu.inquiry')}</span>
+              <span className={`dropdown-arrow ${isInquiryMenuOpen ? 'open' : ''}`}>▼</span>
+            </div>
+            {isInquiryMenuOpen && (
+              <ul className="submenu-list">
+                <li className="submenu-item">
+                  <Link href="/customer-checks" className="submenu-link" onClick={(e) => handleNavigation(e, '/customer-checks')}>
+                    <span className="submenu-text">{t('menu.customerChecks')}</span>
+                  </Link>
+                </li>
+                <li className="submenu-item">
+                  <Link href="/seller-inquiry" className="submenu-link" onClick={(e) => handleNavigation(e, '/seller-inquiry')}>
+                    <span className="submenu-text">{t('menu.sellerInquiry')}</span>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
           {/* 재고(보관) — 보관(STOCK) 상품: 입고 → 위치 배치 → 재고 → 쉽먼트 (docs/PLAN_stock-type-S.md) */}
           <li className="menu-item">
@@ -451,14 +478,8 @@ const LeftsideMenu: React.FC = () => {
           </li>
 
           {/* ============================================================ */}
-          {/* 고객 검수 확인 — 입고 [고객확인] 요청 · 고객 답변 · 처리 (Notion 대체) */}
+          {/* 고객 검수 확인 — 상품문의 메뉴(반품접수 아래)로 이동 */}
           {/* ============================================================ */}
-          <li className="menu-item">
-            <Link href="/customer-checks" className="menu-link" onClick={(e) => handleNavigation(e, '/customer-checks')}>
-              <span className="menu-icon">{Icons.customerChecks}</span>
-              <span className="menu-text">{t('menu.customerChecks')}</span>
-            </Link>
-          </li>
         </ul>
       </nav>
     </aside>

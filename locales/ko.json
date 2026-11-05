@@ -13,7 +13,9 @@
     "orderSearch": "주문 검색",
     "orderCheck": "주문 검사",
     "labelSettings": "라벨 설정",
-    "customerChecks": "고객 검수 확인"
+    "customerChecks": "고객 검수 확인",
+    "inquiry": "상품문의",
+    "sellerInquiry": "1688 판매자 문의"
   },
   "orderSearch": {
     "title": "주문 검색",
@@ -471,7 +473,8 @@
       "setMismatch": "세트가 맞지 않습니다!",
       "allFilled": "전부 입력됨",
       "legendMismatch": "세트 불일치",
-      "summary": "{{groups}} 그룹 · {{rows}}건"
+      "summary": "{{groups}} 그룹 · {{rows}}건",
+      "setShort": "입고 상품이 부족합니다"
     },
     "table": {
       "image": "이미지",
@@ -1376,5 +1379,8 @@
       "confirm": "수정",
       "error": "수량 수정 중 오류가 발생했습니다."
     }
+  },
+  "sellerInquiry": {
+    "comingSoon": "1688 판매자 문의 페이지는 준비 중입니다."
   }
 }

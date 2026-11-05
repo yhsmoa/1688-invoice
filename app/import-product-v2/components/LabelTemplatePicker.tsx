@@ -122,10 +122,12 @@ interface Props {
   help?: string;
   /** 제목 옆 진한 칩 — 출력될 장수 ("3장") 처럼 한눈에 봐야 하는 값 */
   badge?: React.ReactNode;
+  /** true 면 칩을 파랗게 깜빡여 "지금 출력될 게 있다" 를 알린다 (장수 > 0) */
+  badgeActive?: boolean;
   disabled?: boolean;
 }
 
-const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, help, badge, disabled }) => {
+const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, help, badge, badgeActive = false, disabled }) => {
   const { t } = useTranslation();
   const options = plan.templatesOf(labelType);
   const selected = plan.selectedOf(labelType);
@@ -137,7 +139,7 @@ const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, help, ba
     <div className="ltp-block">
       <div className="ltp-title">
         {title}
-        {badge != null && <span className="ltp-badge">{badge}</span>}
+        {badge != null && <span className={`ltp-badge ${badgeActive ? 'is-active' : ''}`}>{badge}</span>}
         {help && <HelpTip text={help} className="ltp-help" />}
       </div>
       {plan.audiences.length === 0 ? (

@@ -12,7 +12,9 @@
     "barcodeSettings": "条码设置",
     "orderSearch": "订单查询",
     "labelSettings": "标签设置",
-    "customerChecks": "客户检验确认"
+    "customerChecks": "客户检验确认",
+    "inquiry": "商品咨询",
+    "sellerInquiry": "1688 卖家咨询"
   },
   "orderSearch": {
     "title": "订单查询",
@@ -465,7 +467,8 @@
       "setMismatch": "套装数量不一致！",
       "allFilled": "已全部录入",
       "legendMismatch": "套装不一致",
-      "summary": "{{groups}} 组 · {{rows}}条"
+      "summary": "{{groups}} 组 · {{rows}}条",
+      "setShort": "入库商品不足"
     },
     "table": {
       "image": "图片",
@@ -1370,5 +1373,8 @@
       "confirm": "修改",
       "error": "修改数量时发生错误。"
     }
+  },
+  "sellerInquiry": {
+    "comingSoon": "1688 卖家咨询页面正在准备中。"
   }
 }

@@ -7,6 +7,7 @@ import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import TypeBadge from '../../../component/TypeBadge';
 import { resolveQtyStatus, type QtyCell } from '../utils/qtyStatus';
+import LabelBadge, { resolveLabelBadge } from './LabelBadge';
 import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
@@ -249,12 +250,8 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
                         </span>
                       )}
                     </>
-                  ) : item.composition && String(item.composition).trim() ? (
-                    <span className="label-badge fabric">{t('importProduct.badge.fabricLabel')}</span>
-                  ) : (item.order_qty ?? 0) < 10 ? (
-                    <span className="label-badge origin">{t('importProduct.badge.originStamp')}</span>
                   ) : (
-                    <span className="label-badge stop">{t('importProduct.badge.stopWork')}</span>
+                    <LabelBadge kind={resolveLabelBadge(item)} />
                   )}
                 </div>
 

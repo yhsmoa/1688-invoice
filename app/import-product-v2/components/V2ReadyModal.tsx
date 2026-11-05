@@ -403,6 +403,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 labelType="barcode"
                 title={t('importProduct.processReady.labelSticker')}
                 badge={t('importProduct.processReady.sheets', { count: stickerTotal })}
+                badgeActive={stickerTotal > 0}
                 help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />
@@ -411,6 +412,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 labelType="care"
                 title={t('importProduct.processReady.careLabel')}
                 badge={t('importProduct.processReady.sheets', { count: careTotal })}
+                badgeActive={careTotal > 0}
                 help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />

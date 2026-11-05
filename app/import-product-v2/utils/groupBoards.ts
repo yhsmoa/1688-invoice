@@ -409,6 +409,46 @@ export interface SetMismatch {
   parts: SetMismatchPart[];
 }
 
+/**
+ * 세트 부족 — 구성품끼리 (입고 + 작업) 은 맞는데 주문 수량보다 적게 들어온 인스턴스
+ *   (세트 불일치가 아니라 "덜 들어온" 상태 — 주황 배지). 아직 하나도 안 들어온 세트는 제외.
+ */
+export function findSetShortages(
+  boards: GroupBoard[],
+  workMap: Map<string, number>,
+  arrivalMap: Map<string, number>,
+  cancelMap: Map<string, number>
+): SetMismatch[] {
+  const out: SetMismatch[] = [];
+  for (const board of boards) {
+    if (!board.isSet) continue;
+    const byInstance = new Map<string, FtOrderItem[]>();
+    for (const row of board.rows) {
+      const list = byInstance.get(row.product_id!) ?? [];
+      list.push(row);
+      byInstance.set(row.product_id!, list);
+    }
+    byInstance.forEach((rows, productId) => {
+      if (rows.length < 2) return;
+      const parts: SetMismatchPart[] = rows.map((r) => ({
+        itemNo: r.item_no,
+        seq: r.set_seq ?? 0,
+        option1: normOpt(r.china_option1),
+        option2: normOpt(r.china_option2),
+        arrival: arrivalMap.get(r.id) ?? 0,
+        work: workMap.get(r.id) ?? 0,
+      }));
+      const totals = parts.map((p) => p.arrival + p.work);
+      const equal = totals.every((v) => v === totals[0]);
+      if (!equal || totals[0] <= 0) return;
+      const short = rows.some((r, i) => totals[i] < (r.order_qty ?? 0) - (cancelMap.get(r.id) ?? 0));
+      if (!short) return;
+      out.push({ productId, orderNo: rows[0].order_no, productNo: rows[0].product_no, setTotal: rows[0].set_total ?? null, parts });
+    });
+  }
+  return out;
+}
+
 export function findSetMismatches(
   boards: GroupBoard[],
   workMap: Map<string, number>,

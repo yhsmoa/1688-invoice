@@ -8,10 +8,12 @@ import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import type { FtOrderItem } from '../hooks/useFtData';
 import {
   findSetMismatches,
+  findSetShortages,
   remainingQtyOf,
   type GroupBoard,
   type GroupComponent,
 } from '../utils/groupBoards';
+import LabelBadge, { resolveLabelBadge } from './LabelBadge';
 
 // ============================================================
 // GroupedItemTables — [그룹별로 보기] 체크 시 보드(그룹) 단위로 테이블을 나눠 그린다
@@ -161,6 +163,24 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
   // 세트 불일치 — 이 보드의 세트 인스턴스 중 (입고 + 작업) 이 구성품끼리 다른 것
   const mismatches = board.isSet ? findSetMismatches([board], modifiedImportQty, arrivalMap) : [];
+  // 세트 부족 — 구성품끼리는 맞는데 주문 수량보다 덜 들어온 것 (주황)
+  const shortages = board.isSet ? findSetShortages([board], modifiedImportQty, arrivalMap, cancelMap) : [];
+  const shortageTitle = shortages
+    .map((m) => `${m.productNo ?? m.productId}: ` + m.parts.map((p) => `${p.seq}=${p.arrival}+${p.work}`).join(' / '))
+    .join('\n');
+
+  // 요청사항(note_notice) · 비고(note_cn) 가 있는 주문 — 그룹으로 묶여 가려지지 않게 헤더 아래 줄에 빨갛게
+  const noteRows = board.rows
+    .map((r) => ({
+      itemNo: r.item_no,
+      notes: [r.note_notice, r.note_cn].map((v) => (v ?? '').trim()).filter(Boolean),
+    }))
+    .filter((n) => n.notes.length > 0);
+
+  // V3 제목 블록 — [P][라벨 작업][세트] / 한국어 상품명 / 한국어 옵션명 (첫 행 기준)
+  const firstRow = board.rows[0];
+  const labelKind = firstRow ? resolveLabelBadge(firstRow) : null;
+  const optionName = firstRow?.option_name?.trim() || '';
 
   // 전부 입력됨 — 보드의 모든 입력 단위가 작업 가능 수량을 다 채움 (잠긴 단위는 제외, 채울 게 하나는 있어야)
   const units = board.isSet ? board.components.map((c) => c.rows) : [board.rows];
@@ -204,16 +224,34 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
   return (
     <div className={`v2-board-head ${isV3 ? 'is-v3' : ''} ${expanded ? 'is-expanded' : ''}`}>
+    <div className="v2-board-head-main">
       <div className="v2-board-head-left">
-        {/* 타입 배지 + 세트 배지 — V3 는 세로로 묶어 왼쪽 열(72px) */}
-        <div className="v2-board-badges">
-          {board.badge && <TypeBadge info={board.badge} />}
-          {board.isSet && (
-            <span className="v2-set-badge v2-board-set-badge">
-              {t('importProductV2.set.label')} {board.setTotal}中
-            </span>
-          )}
-        </div>
+        {isV3 ? (
+          /* V3 제목 블록 — 1줄: [P][원산지 도장/혼용률 라벨][세트] · 2줄: 상품명 · 3줄: 옵션명 */
+          <div className="v2-board-title">
+            <div className="v2-board-title-badges">
+              {board.badge && <TypeBadge info={board.badge} />}
+              {labelKind && <LabelBadge kind={labelKind} />}
+              {board.isSet && (
+                <span className="v2-set-badge v2-board-set-badge">
+                  {t('importProductV2.set.label')} {board.setTotal}中
+                </span>
+              )}
+            </div>
+            <div className="v2-board-title-name" title={board.itemName}>{board.itemName}</div>
+            {optionName && <div className="v2-board-title-option" title={optionName}>{optionName}</div>}
+          </div>
+        ) : (
+          /* V2 — 타입 배지 + 세트 배지 가로 */
+          <div className="v2-board-badges">
+            {board.badge && <TypeBadge info={board.badge} />}
+            {board.isSet && (
+              <span className="v2-set-badge v2-board-set-badge">
+                {t('importProductV2.set.label')} {board.setTotal}中
+              </span>
+            )}
+          </div>
+        )}
         {board.isSet ? (
           <div className="v2-board-options v2-board-options-set">
             {board.components.map((c, idx) => (
@@ -254,6 +292,11 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             {t('importProductV2.board.setMismatch')} ({mismatches.length})
           </span>
         )}
+        {mismatches.length === 0 && shortages.length > 0 && (
+          <span className="v2-board-short" title={shortageTitle}>
+            {t('importProductV2.board.setShort')} ({shortages.length})
+          </span>
+        )}
         {mismatches.length === 0 && isAllFull && (
           <span className="v2-board-full">{t('importProductV2.board.allFilled')}</span>
         )}
@@ -279,6 +322,17 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </button>
         )}
       </div>
+    </div>
+      {/* 요청사항·비고가 있는 주문 — 주문번호 + 내용을 빨갛게 (그룹으로 묶여도 놓치지 않게) */}
+      {noteRows.length > 0 && (
+        <div className="v2-board-notes">
+          {noteRows.map((n) => (
+            <span key={n.itemNo ?? n.notes.join('|')} className="v2-board-note">
+              <b>{n.itemNo}</b> {n.notes.join(' · ')}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
