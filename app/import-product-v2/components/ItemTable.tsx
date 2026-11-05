@@ -100,25 +100,22 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // 세트 그룹 판정 — 단일 키 함수(getSetGroupKey) 기반
   //
   //   1. 각 행의 set group key 사전 계산 (rowKeys)
-  //   2. 고유 key에 색상 인덱스 부여 (setGroupColorIndex)
-  //   3. 그룹 안에 1688 주문번호가 2개 이상이면 "다른 판매자" 세트 (mixedSellerKeys)
+  //   2. 그룹 안에 1688 주문번호가 2개 이상이면 "다른 판매자" 세트 (mixedSellerKeys)
+  //
+  // 세트 묶음선·배지 색은 한 가지(주황, CSS 기본값) — 그룹마다 색을 바꾸지 않는다.
   //
   // 행별 용도:
-  //   - 색상 인덱스: setGroupColorIndex.get(rowKeys[idx])
   //   - 가로 border 제거: rowKeys[idx] !== null && rowKeys[idx] === rowKeys[idx+1]
   //   - 묶음선 위치(first/mid/last/only): 앞뒤 행의 key 비교
   //
   // ※ 현재 페이지 안의 행만 본다 — 페이지 경계에 걸친 세트는 잘려 보일 수 있다 (기존과 동일)
   // ============================================================
-  const { rowKeys, setGroupColorIndex, mixedSellerKeys } = useMemo(() => {
+  const { rowKeys, mixedSellerKeys } = useMemo(() => {
     const rowKeys: (string | null)[] = paginatedData.map(getSetGroupKey);
-    const colorMap = new Map<string, number>();
     const orderIdsByKey = new Map<string, Set<string>>();
-    let counter = 0;
     paginatedData.forEach((item, idx) => {
       const key = rowKeys[idx];
       if (key === null) return;
-      if (!colorMap.has(key)) colorMap.set(key, counter++);
       const orderId = item['1688_order_id']?.trim();
       if (!orderId) return;                       // 아직 매칭 안 된 행은 판정에서 제외
       const ids = orderIdsByKey.get(key) ?? new Set<string>();
@@ -129,7 +126,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     orderIdsByKey.forEach((ids, key) => {
       if (ids.size > 1) mixed.add(key);
     });
-    return { rowKeys, setGroupColorIndex: colorMap, mixedSellerKeys: mixed };
+    return { rowKeys, mixedSellerKeys: mixed };
   }, [paginatedData]);
 
   /** 세트 그룹 안 위치 — 체크박스 옆 묶음선을 어디서 시작·끝낼지 */
@@ -198,7 +195,6 @@ const ItemTable: React.FC<ItemTableProps> = ({
               const nextKey = idx < paginatedData.length - 1 ? rowKeys[idx + 1] : null;
               // 가로 border 제거: 세트 그룹 내 인접 행일 때만 (thisKey != null 보장)
               const sameGroupAsNext = thisKey !== null && thisKey === nextKey;
-              const setColorIdx = thisKey !== null ? setGroupColorIndex.get(thisKey) : undefined;
               // 편집 상태는 "이 행" 기준으로만 넘긴다 — 다른 행은 props 가 그대로라 memo 로 건너뛴다
               const isEditingRow = editingCell?.id === item.id;
               const isCategoryEditingRow = categoryEditing?.id === item.id;
@@ -207,7 +203,6 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 key={item.id}
                 item={item}
                 sameGroupAsNext={sameGroupAsNext}
-                setColorIndex={setColorIdx}
                 setGroupPos={setGroupPosOf(idx)}
                 setMixedSeller={thisKey !== null && mixedSellerKeys.has(thisKey)}
                 isSelected={selectedRows.has(item.id)}

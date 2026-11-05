@@ -6,7 +6,6 @@ import EditableCell from './EditableCell';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import TypeBadge from '../../../component/TypeBadge';
-import { resolveSetGroupColor } from '../utils/setGroupPalette';
 import { resolveQtyStatus, type QtyCell } from '../utils/qtyStatus';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
@@ -29,8 +28,6 @@ interface ItemTableRowProps {
   isSelected: boolean;
   /** 다음 행과 같은 product_id 그룹이면 true → border 제거 */
   sameGroupAsNext: boolean;
-  /** 세트 그룹 색상 인덱스 (set_total > 1 인 행에만 지정). undefined면 기본 주황 fallback */
-  setColorIndex?: number;
   /** 세트 그룹 안 위치 (세트가 아니면 undefined) */
   setGroupPos?: SetGroupPos;
   /** 같은 세트인데 1688 주문번호가 서로 다름 (다른 판매자에게서 옴) */
@@ -84,7 +81,6 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   item,
   isSelected,
   sameGroupAsNext,
-  setColorIndex,
   setGroupPos,
   setMixedSeller = false,
   editingField,
@@ -140,19 +136,10 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
     displayImportQty != null && displayImportQty > 0 ? 'v2-row-has-work' : '',
   ].filter(Boolean).join(' ');
 
-  // ── 세트 그룹 색상 CSS 변수 (인덱스 기반 팔레트 순환) ──
-  //    setColorIndex가 undefined이면 style 미지정 → CSS fallback 주황 적용
-  const rowStyle: React.CSSProperties | undefined =
-    setColorIndex != null
-      ? ({
-          ['--set-accent' as string]: resolveSetGroupColor(setColorIndex).border,
-          ['--set-bg' as string]: resolveSetGroupColor(setColorIndex).bg,
-          ['--set-text' as string]: resolveSetGroupColor(setColorIndex).text,
-        } as React.CSSProperties)
-      : undefined;
+  // 세트 묶음선·배지 색은 CSS 한 가지(주황) — 그룹별 색 순환 없음
 
   return (
-    <tr className={rowClasses} style={rowStyle}>
+    <tr className={rowClasses}>
       {/* 체크박스 */}
       <td>
         <input
