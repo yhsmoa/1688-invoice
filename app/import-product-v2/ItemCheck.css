@@ -513,6 +513,7 @@
   font-weight: 700;
   color: #9ca3af;
 }
+.v2-board-comp-plus::after { content: '+'; }
 
 /* ── 보드 그룹 수량 입력 — [입력] / 작업 가능 합계 (단품: 헤더 오른쪽 · 세트: 구성품 칩 안) ── */
 .v2-board-qty {
@@ -581,25 +582,38 @@
    · 접힌 보드는 헤더만 (아래 테이블 없음)
    · 펼친 테이블은 compact: 작은 이미지(40px), 상품명·비용 없음, 낮은 행
    ============================================================ */
-.v2-board-list.is-v3 { gap: 14px; }
-.v2-board-list.is-v3 .v2-table-board { border-radius: 18px; }
+/* ── V3 보드 — 테두리 없는 흰 카드 + 부드러운 그림자. 구성품은 상자 없이 나란히 ── */
+.v2-board-list.is-v3 { gap: 16px; }
+.v2-board-list.is-v3 .v2-table-board {
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 14px 32px -16px rgba(16, 24, 40, 0.16);
+  transition: box-shadow 0.15s;
+}
+.v2-board-list.is-v3 .v2-table-board:hover {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 18px 40px -16px rgba(16, 24, 40, 0.22);
+}
+.v2-board-list.is-v3 .v2-table-board .v2-item-table { background: #fff; }
 
-.v2-table-board.is-collapsed .v2-board-head { border-bottom: none; }
-
-/* 배지 열 — 타입 배지 위, 세트 배지 아래 (V2 는 가로) */
+/* 배지 열 — 타입 배지 위, 세트 배지 아래, 오른쪽에 얇은 세로선 */
 .v2-board-badges { display: flex; align-items: center; gap: 8px; }
 .v2-board-head.is-v3 .v2-board-badges {
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
-  width: 72px;
+  gap: 8px;
+  width: 76px;
   flex: none;
+  align-self: stretch;
+  justify-content: center;
+  border-right: 1px solid #eef0f3;
+  margin-right: 4px;
 }
 .v2-board-head.is-v3 .v2-board-badges .size-badge {
-  min-width: 32px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 8px;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
   font-size: 15px;
   font-weight: 800;
   display: inline-flex;
@@ -608,33 +622,37 @@
 }
 
 .v2-board-head.is-v3 {
-  padding: 16px 20px;
+  padding: 18px 22px;
   background: #fff;
-  gap: 16px;
+  border-bottom: none;
+  gap: 18px;
 }
-/* 펼친 카드 — 헤더 바탕 연회색으로 테이블과 구분 */
+/* 펼친 카드 — 헤더와 흰 테이블 사이 머리선 */
 .v2-board-head.is-v3.is-expanded {
-  background: #fff;
+  border-bottom: 1px solid #eef0f3;
 }
-/* 구성품 칩 — 좁게 (세트 3개 + 문구가 조금 길어도 한 줄에 들어가도록, 칩 하나 ≈ 330px) */
-.v2-board-head.is-v3 .v2-board-options-set { gap: 6px; }
+
+/* 구성품 — 상자 없음: [이미지 | 옵션 | 입력]. 사이는 세로선 + 작은 + 원 */
+.v2-board-head.is-v3 .v2-board-options-set { gap: 0; }
 .v2-board-head.is-v3 .v2-board-comp {
-  padding: 6px 12px 6px 6px;
+  padding: 0 2px;
   gap: 10px;
   border: none;
-  border-radius: 14px;
-  background: #f3f4f6;
+  border-radius: 0;
+  background: transparent;
 }
 .v2-board-head.is-v3 .v2-board-comp-image {
-  width: 64px;
-  height: 64px;
-  border-radius: 10px;
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+  border: 1px solid #eef0f3;
+  box-shadow: none;
 }
 .v2-board-head.is-v3 .v2-board-comp-text {
-  max-width: 150px;
+  max-width: 140px;
   min-width: 0;
+  gap: 4px;
 }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-option1 {
   display: block;
@@ -644,28 +662,82 @@
 }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-qty {
   margin-left: 2px;
-  padding-left: 10px;
-  border-left-color: #e5e7eb;
+  padding-left: 0;
+  border-left: none;
 }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-qty-input {
   width: 72px;
   height: 44px;
   font-size: 20px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
 }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-qty-total { font-size: 16px; min-width: 24px; }
 .v2-board-head.is-v3 .v2-board-comp .v2-board-qty-sep { font-size: 16px; }
-.v2-board-head.is-v3 .v2-board-qty-input {
-  background: #fff;
+/* 구성품 사이 — 세로선 위에 + 원 */
+.v2-board-head.is-v3 .v2-board-comp-plus {
+  position: relative;
+  width: 28px;
+  height: 56px;
+  margin: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 700;
 }
-.v2-board-head.is-v3 .v2-board-comp-plus { color: #c4c7cd; }
-.v2-board-head.is-v3 .v2-board-comp .v2-board-qty {
-  margin-left: 6px;
-  padding-left: 12px;
+.v2-board-head.is-v3 .v2-board-comp-plus::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #e5e7eb;
 }
+.v2-board-head.is-v3 .v2-board-comp-plus::after {
+  content: '+';
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.v2-board-head.is-v3 .v2-board-option1 { font-size: 16px; }
+.v2-board-head.is-v3 .v2-board-option2 { font-size: 13px; padding: 1px 8px; }
+.v2-board-head.is-v3 .v2-board-qty-input { width: 84px; height: 48px; font-size: 22px; }
+.v2-board-head.is-v3 .v2-board-qty-total { font-size: 18px; min-width: 30px; }
+.v2-board-head.is-v3 .v2-board-qty-sep { font-size: 18px; }
+.v2-board-head.is-v3 .v2-board-count {
+  font-size: 12px;
+  padding: 4px 11px;
+  background: #f3f4f6;
+  border: none;
+  color: #4b5563;
+}
+.v2-board-head.is-v3 .v2-board-expand {
+  height: 38px;
+  padding: 0 14px 0 10px;
+  font-size: 13px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+}
+.v2-board-head.is-v3 .v2-board-expand:hover { background: #e5e7eb; }
+
+/* 보드 이미지 확대 — 테이블 행과 같은 미리보기(.v2-image-preview, 마우스 CSS 변수 위치) */
+.v2-board-comp-image { cursor: zoom-in; }
+.v2-board-comp-image:hover > img { transform: scale(1.05); }
+.v2-board-comp-image > img { transition: transform 0.15s; }
 .v2-board-head.is-v3 .v2-board-head-right { gap: 10px; }
 .v2-board-head.is-v3 .v2-board-expand.is-open {
   background: #111827;
-  border-color: #111827;
   color: #fff;
 }
 .v2-board-head.is-v3 .v2-board-expand.is-open:hover { background: #1f2937; }

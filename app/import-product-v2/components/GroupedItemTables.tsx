@@ -218,7 +218,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           <div className="v2-board-options v2-board-options-set">
             {board.components.map((c, idx) => (
               <React.Fragment key={c.seq}>
-                {idx > 0 && <span className="v2-board-comp-plus" aria-hidden="true">+</span>}
+                {idx > 0 && <span className="v2-board-comp-plus" aria-hidden="true" />}
                 {renderComponent(c)}
               </React.Fragment>
             ))}
