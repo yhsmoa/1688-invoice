@@ -7,6 +7,7 @@ import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import TypeBadge from '../../../component/TypeBadge';
 import { resolveQtyStatus, type QtyCell } from '../utils/qtyStatus';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 
 /* V2 전용 ItemTableRow - 원래 13열 구조 유지, 입고 열 편집 가능 */
 
@@ -159,7 +160,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         {item.img_url ? (
           <div className="v2-image-preview-container">
             <img
-              src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+              src={proxyImageUrl(item.img_url, THUMB_WIDTH)}
               alt="상품 이미지"
               className="v2-product-thumbnail"
               // 검색 결과 전체 표시 시 화면 밖 행의 이미지는 스크롤해 올 때 불러온다
@@ -171,7 +172,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
             {/* 위치는 CSS 변수(--v2-mouse-x/y, 레이아웃 컨테이너가 mousemove 로 갱신) */}
             <div className="v2-image-preview">
               <img
-                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                src={proxyImageUrl(item.img_url)}
                 alt="상품 이미지 미리보기"
                 loading="lazy"
                 onError={(e) => {

@@ -182,3 +182,7 @@
 .ltp-option.active { background: #eff6ff; }
 .ltp-option .ltp-name,
 .ltp-option .ltp-desc { white-space: normal; word-break: break-all; }
+
+/* 제목 옆 ? 설명 칩 (HelpTip) */
+.ltp-title { display: flex; align-items: center; gap: 6px; }
+.ltp-help { margin-left: 2px; }

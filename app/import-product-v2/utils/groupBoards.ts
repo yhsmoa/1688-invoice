@@ -17,10 +17,11 @@ import {
 //       세트 인스턴스 = product_id (구성품 n행이 공유)
 //       세트 서명    = set_seq 순으로 (오퍼|옵션1|옵션2) 를 이은 문자열
 //
-// 정렬 (테이블 평면 보기 · 보드 보기 · 그룹입력 모달이 모두 같은 순서)
-//   1. 상품(타입+오퍼) 의 첫 글번호(item_no) 가 앞선 상품 먼저
-//   2. 같은 상품 안에서는 옵션1 → 옵션2 를 사이즈 규칙(compareOption)으로
-//   3. 그룹 안 행은 글번호 순 (세트는 인스턴스 글번호 순 → set_seq 순)
+// 정렬 (테이블 평면 보기 · 보드 보기가 같은 순서)
+//   1. 타입 P → A → B → C → X → 그 외 (TYPE_RANK)
+//   2. 상품(타입+오퍼) 의 첫 글번호(item_no) 가 앞선 상품 먼저
+//   3. 같은 상품 안에서는 옵션1 → 옵션2 를 사이즈 규칙(compareOption)으로 (黑色 130 → 黑色 140 → 黑色 150)
+//   4. 그룹 안 행은 글번호 순 (세트는 인스턴스 글번호 순 → set_seq 순)
 //
 // 오퍼 키·옵션 정규화·글번호 비교는 utils/groupKeys (V2·V3 공용) 에서만 정의한다.
 // ============================================================
@@ -118,6 +119,10 @@ export interface GroupBoard {
 // ============================================================
 // 내부 헬퍼
 // ============================================================
+/** 타입 정렬 순서 — P(개인) 먼저, 그 다음 쿠팡 A/B/C, 직송 X, 그 외 */
+const TYPE_RANK: Record<string, number> = { P: 0, A: 1, B: 2, C: 3, X: 4 };
+const typeRankOf = (badge: SizeBadge | null) => (badge ? TYPE_RANK[badge.code] ?? 5 : 6);
+
 function typeCodeOf(row: FtOrderItem): { code: string; badge: SizeBadge | null } {
   const badge = resolveSizeBadge(row.shipment_type, row.coupang_shipment_size);
   return { code: badge?.code ?? '-', badge };
@@ -260,6 +265,9 @@ export function buildGroupBoards(items: FtOrderItem[]): GroupBoard[] {
   }
 
   list.sort((a, b) => {
+    // 0) 타입 P → A → B → C → X
+    const tr = typeRankOf(a.badge) - typeRankOf(b.badge);
+    if (tr !== 0) return tr;
     // 1) 상품 첫 글번호
     const pr = compareText(productRank.get(a.productKey) ?? null, productRank.get(b.productKey) ?? null);
     if (pr !== 0) return pr;
@@ -380,7 +388,8 @@ export function distributeQty(
 // ============================================================
 // 세트 불일치 판정
 //   세트 인스턴스(product_id) 안에서 구성품별 (입고 + 작업) 이 서로 다르면 불일치.
-//   이번 입력으로 작업 수량이 들어간 인스턴스만 본다 (손대지 않은 세트는 경고하지 않음).
+//   이미 저장된 입고만으로 어긋난 세트(3,2,3 처럼 한 피스가 덜 들어온 것)도 잡아야 하므로
+//   작업 수량 입력 여부와 무관하게 모든 인스턴스를 본다.
 //   검색으로 구성품 일부만 보이는 세트는 보이는 구성품끼리만 비교한다.
 // ============================================================
 export interface SetMismatchPart {
@@ -415,8 +424,7 @@ export function findSetMismatches(
       byInstance.set(row.product_id!, list);
     }
     byInstance.forEach((rows, productId) => {
-      const touched = rows.some((r) => (workMap.get(r.id) ?? 0) > 0);
-      if (!touched || rows.length < 2) return;
+      if (rows.length < 2) return;
       const parts: SetMismatchPart[] = rows.map((r) => ({
         itemNo: r.item_no,
         seq: r.set_seq ?? 0,

@@ -130,7 +130,12 @@
       "templateTitle": "라벨 템플릿",
       "allHint": "저장 → 라벨 스티커 → 케어 라벨",
       "importOverProgress": "입고 / 진행",
-      "invoiceHint": "P 상품 운송장 PDF"
+      "invoiceHint": "P 상품 운송장 PDF",
+      "stickerTotal": "라벨 스티커 {{count}}장",
+      "careTotal": "케어 라벨 {{count}}장",
+      "allHelp": "쉽먼트 타입 COUPANG·DIRECT 상품: 저장 → 라벨 스티커 → 케어 라벨\nPERSONAL(P) 상품: 저장 → 라벨 스티커 (케어 라벨은 찍지 않음)",
+      "krTip": "한국어 상품명",
+      "setOf": "세트 {{total}}中{{seq}}"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",
@@ -463,7 +468,8 @@
       "available": "작업 가능",
       "done": "입고 완료",
       "mismatch": "세트 불일치 {{count}}건",
-      "overLimit": "작업 가능 수량({{total}})을 넘을 수 없습니다."
+      "overLimit": "작업 가능 수량({{total}})을 넘을 수 없습니다.",
+      "setMismatch": "세트가 맞지 않습니다!"
     },
     "table": {
       "image": "이미지",
@@ -501,7 +507,9 @@
       "invoiceUrlFailed": "송장 URL 발급에 실패했습니다.",
       "invoiceDownloadFailed": "송장 PDF 다운로드에 실패했습니다.",
       "invoicePrintFailed": "송장 PDF 처리에 실패했습니다.",
-      "invoicePrintError": "송장 출력 중 오류가 발생했습니다."
+      "invoicePrintError": "송장 출력 중 오류가 발생했습니다.",
+      "deliveryMixedUsers": "여러 사용자의 주문이 섞인 배송번호입니다. 사용자를 직접 선택해주세요.",
+      "readyUserMismatch": "선택한 사용자와 다른 사용자의 주문이 {{count}}건 있습니다. 사용자를 확인해주세요."
     },
     "set": {
       "label": "세트",

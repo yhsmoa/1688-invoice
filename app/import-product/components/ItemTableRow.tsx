@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import { useTranslation } from 'react-i18next';
 import EditableCell from './EditableCell';
 import type { ItemData } from '../hooks';
@@ -59,7 +60,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         {item.img_url ? (
           <div className="image-preview-container">
             <img
-              src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+              src={proxyImageUrl(item.img_url, THUMB_WIDTH)}
               alt="상품 이미지"
               className="product-thumbnail"
               onError={(e) => {
@@ -74,7 +75,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
               }}
             >
               <img
-                src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                src={proxyImageUrl(item.img_url)}
                 alt="상품 이미지 미리보기"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/placeholder.svg';

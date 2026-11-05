@@ -209,14 +209,44 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* 상품명 */
-.v2-pr-product-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-  line-height: 1.35;
-  word-break: break-word;
+/* ── 세트 묶음 — 같은 세트 구성품은 왼쪽 묶음선(주황)으로 잇는다 ── */
+.v2-ready-item.is-set { position: relative; }
+.v2-ready-item.is-set::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  width: 6px;
+  border-left: 2px solid #e65100;
+  pointer-events: none;
 }
+.v2-ready-item.v2-pr-set-first::before { top: 50%; bottom: -11px; border-top: 2px solid #e65100; border-top-left-radius: 6px; }
+.v2-ready-item.v2-pr-set-mid::before   { top: -11px; bottom: -11px; }
+.v2-ready-item.v2-pr-set-last::before  { top: -11px; bottom: 50%; border-bottom: 2px solid #e65100; border-bottom-left-radius: 6px; }
+.v2-ready-item.v2-pr-set-only::before  { top: 30%; bottom: 30%; border-top: 2px solid #e65100; border-bottom: 2px solid #e65100; border-radius: 6px 0 0 6px; }
+.v2-ready-item.is-set { padding-left: 16px; }
+.v2-ready-item .v2-set-badge { margin-bottom: 0; }
+
+/* 'kr' 칩 — 한국어 상품명 hover */
+.v2-pr-kr { margin-left: 2px; }
+
+/* ── 출력될 장수 (목록 아래) ── */
+.v2-pr-totals {
+  margin-top: 12px;
+  padding: 10px 14px;
+  display: flex;
+  gap: 18px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+.v2-pr-total { display: inline-flex; align-items: center; gap: 6px; }
+
+/* [모두] + 설명 칩 */
+.v2-pr-all-row { display: flex; align-items: center; gap: 8px; }
+.v2-pr-all-row .v2-pr-all-button { flex: 1; }
 
 /* 주문옵션 배지 */
 .v2-pr-order-option-badge {

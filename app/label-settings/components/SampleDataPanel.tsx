@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import { useTranslation } from 'react-i18next';
 import {
   PRODUCT_FIELDS,
@@ -177,7 +178,7 @@ const SampleDataPanel: React.FC<Props> = ({ data, onChange }) => {
                   <span className="ls-sample-thumb">
                     {row.img_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={`/api/image-proxy?url=${encodeURIComponent(row.img_url)}`} alt="" loading="lazy" />
+                      <img src={proxyImageUrl(row.img_url, THUMB_WIDTH)} alt="" loading="lazy" />
                     ) : null}
                   </span>
                   <span className="ls-sample-result-body">

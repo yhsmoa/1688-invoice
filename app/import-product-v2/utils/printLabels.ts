@@ -72,8 +72,9 @@ export interface PrintLabelResult {
 const audienceLabel = (a: LabelAudience) => LABEL_AUDIENCES.find((x) => x.key === a)?.label ?? a;
 const typeLabel = (t: LabelType) => (t === 'care' ? '케어라벨' : '라벨 스티커');
 
-/** 세트상품 병합 — 동일 product_no 중 최대 qty 1건만 (saveLabelData 와 동일) */
-function mergeSets(items: { item: FtOrderItem; qty: number }[]) {
+/** 세트상품 병합 — 동일 product_no 중 최대 qty 1건만 (saveLabelData 와 동일)
+ *  처리준비 모달의 "출력될 장수" 집계도 이 함수를 써서 실제 인쇄 장수와 같게 한다 */
+export function mergeSetEntries(items: { item: FtOrderItem; qty: number }[]) {
   const normal: typeof items = [];
   const setGroups = new Map<string, { item: FtOrderItem; qty: number }>();
 
@@ -178,7 +179,7 @@ export async function printLabels(params: PrintLabelParams): Promise<PrintLabelR
 
   try {
     // ── 1) 세트 병합(호출 측이 끄지 않았으면) → 대상별 분류 ──
-    const merged = shouldMergeSets ? mergeSets(items) : items;
+    const merged = shouldMergeSets ? mergeSetEntries(items) : items;
     const byAudience = groupByAudience(merged);
 
     // ── 2) 대상마다 템플릿 확인 — 하나라도 없으면 아무것도 찍지 않는다 ──

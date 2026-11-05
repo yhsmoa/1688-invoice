@@ -18,7 +18,7 @@ i18n
       zh: { translation: zh }
     },
     fallbackLng: 'ko',
-    lng: 'ko', // 기본 언어를 명시적으로 설정
+    lng: 'zh', // 기본 언어 — 중국어 (LanguageContext 가 저장된 선택으로 덮는다). 누락 키는 fallbackLng(ko)
     debug: false,
     interpolation: {
       escapeValue: false

@@ -129,7 +129,12 @@
       "templateTitle": "标签模板",
       "allHint": "保存 → 条码标签 → 洗唛",
       "importOverProgress": "入库 / 进度",
-      "invoiceHint": "P 商品运单 PDF"
+      "invoiceHint": "P 商品运单 PDF",
+      "stickerTotal": "条码标签 {{count}}张",
+      "careTotal": "洗唛 {{count}}张",
+      "allHelp": "配送类型 COUPANG·DIRECT 商品：保存 → 条码标签 → 洗唛\nPERSONAL(P) 商品：保存 → 条码标签（不打印洗唛）",
+      "krTip": "韩文商品名",
+      "setOf": "套装 {{total}}中{{seq}}"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",
@@ -457,7 +462,8 @@
       "available": "可作业",
       "done": "已入库",
       "mismatch": "套装不一致 {{count}}件",
-      "overLimit": "不能超过可作业数量({{total}})。"
+      "overLimit": "不能超过可作业数量({{total}})。",
+      "setMismatch": "套装数量不一致！"
     },
     "table": {
       "image": "图片",
@@ -495,7 +501,9 @@
       "invoiceUrlFailed": "运单URL发放失败。",
       "invoiceDownloadFailed": "运单PDF下载失败。",
       "invoicePrintFailed": "运单PDF处理失败。",
-      "invoicePrintError": "运单打印时发生错误。"
+      "invoicePrintError": "运单打印时发生错误。",
+      "deliveryMixedUsers": "该配送单号混有多个用户的订单，请手动选择用户。",
+      "readyUserMismatch": "有 {{count}} 条订单属于其他用户，请确认所选用户。"
     },
     "set": {
       "label": "套装",

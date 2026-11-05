@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { proxyImageUrl, THUMB_WIDTH } from '../lib/imageProxy';
 import { useTranslation } from 'react-i18next';
 import type { FtOrderItem, FtUser } from '../app/import-product-v2/hooks/useFtData';
 import { useLabelTemplatePlan } from '../app/import-product-v2/hooks/useLabelTemplatePlan';
@@ -350,7 +351,7 @@ const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({ isOpen, onClose }
                     <div className="bpm-row-img">
                       {row.img_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`/api/image-proxy?url=${encodeURIComponent(row.img_url)}`} alt="" />
+                        <img src={proxyImageUrl(row.img_url, THUMB_WIDTH)} alt="" />
                       ) : (
                         <span className="bpm-row-noimg">—</span>
                       )}

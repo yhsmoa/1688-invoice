@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { proxyImageUrl, THUMB_WIDTH_LARGE } from '../lib/imageProxy';
 import { useTranslation } from 'react-i18next';
 import './ProcessReadyModal.css';
 
@@ -157,7 +158,7 @@ const ProcessReadyModal: React.FC<ProcessReadyModalProps> = ({
                     <div className="ready-item-image">
                       {item.img_url ? (
                         <img
-                          src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                          src={proxyImageUrl(item.img_url, THUMB_WIDTH_LARGE)}
                           alt={item.product_name}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/placeholder.svg';

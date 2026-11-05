@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import HelpTip from '../../../component/HelpTip';
 import { useTranslation } from 'react-i18next';
 import type { LabelAudience, LabelTemplate, LabelType } from '../../../lib/labelTypes';
 import type { LabelTemplatePlan } from '../hooks/useLabelTemplatePlan';
@@ -117,10 +118,12 @@ interface Props {
   labelType: LabelType;
   /** 블록 제목 (라벨 스티커 / 케어 라벨) */
   title: string;
+  /** 제목 옆 ? 칩에 접어 둘 설명 (HelpTip) */
+  help?: string;
   disabled?: boolean;
 }
 
-const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, disabled }) => {
+const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, help, disabled }) => {
   const { t } = useTranslation();
   const options = plan.templatesOf(labelType);
   const selected = plan.selectedOf(labelType);
@@ -130,7 +133,10 @@ const LabelTemplatePicker: React.FC<Props> = ({ plan, labelType, title, disabled
 
   return (
     <div className="ltp-block">
-      <div className="ltp-title">{title}</div>
+      <div className="ltp-title">
+        {title}
+        {help && <HelpTip text={help} className="ltp-help" />}
+      </div>
       {plan.audiences.length === 0 ? (
         <div className="ltp-empty">{t('importProduct.processReady.emptyMessage')}</div>
       ) : (

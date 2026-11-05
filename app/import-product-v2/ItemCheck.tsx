@@ -42,6 +42,7 @@ import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
 import { printLabels, type AudienceTemplates, type PrintLabelResult } from './utils/printLabels';
+import type { PrintOptions } from './components/V2ReadyModal';
 import ImportUploadButtons, { V2MigrationButton } from './components/ImportUploadButtons';
 import { useWorkers, PC_NO_OPTIONS } from './hooks/useWorkers';
 import { useImportUploads } from './hooks/useImportUploads';
@@ -290,9 +291,22 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
         const json = await res.json();
 
         if (json.success) {
-          setDeliveryItems(json.data);
-          if (json.data.length === 0) {
+          const rows = json.data as FtOrderItem[];
+          setDeliveryItems(rows);
+          if (rows.length === 0) {
             alert(t('importProductV2.alerts.deliveryNoResult'));
+          } else {
+            // ── 결과의 사용자가 하나면 그 사용자를 자동 선택 (작업자가 사용자를 고르지 않아도
+            //    입고·라벨 등 사이드바가 바로 동작하도록). 여러 사용자가 섞이면 직접 고르게 한다.
+            const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((v): v is string => !!v)));
+            if (userIds.length === 1 && userIds[0] !== selectedUserId) {
+              setSelectedUserId(userIds[0]);
+              setSelectedRows(new Set());
+              setModifiedImportQty(new Map());
+              fetchItems(userIds[0], statusFilter);
+            } else if (userIds.length > 1) {
+              alert(t('importProductV2.alerts.deliveryMixedUsers'));
+            }
           }
         } else {
           alert(json.error || '배송번호 조회 중 오류가 발생했습니다.');
@@ -303,7 +317,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
         setIsDeliverySearching(false);
       }
     },
-    [t]
+    [t, selectedUserId, statusFilter, fetchItems]
   );
 
   // 9-2) 검색 타입 변경 → 입력값·결과 초기화
@@ -463,21 +477,22 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   // 11) readyItems — 수정된 입고 데이터 목록
   //     progress_qty 는 테이블 '진행' 공식과 같다 (order - CANCEL - RETURN - 출고완료)
   //     → 모달에서 "입고 / 진행" 으로 보여주고 둘이 같으면 초록, 다르면 주황.
+  //     순서는 사용자 전체 목록의 그룹 순서(타입 → 상품 → 옵션 → 글번호) — 세트 구성품이 붙어 보인다.
   // ============================================================
+  const { flatItems: itemsInGroupOrder } = useGroupBoards(items);
   const readyItems: V2ReadyItem[] = useMemo(() => {
-    return Array.from(modifiedImportQty.entries())
-      .map(([id, qty]) => {
-        const item = items.find((i) => i.id === id);
-        if (!item) return null;
+    return itemsInGroupOrder
+      .filter((item) => modifiedImportQty.has(item.id))
+      .map((item) => {
+        const id = item.id;
         const progress_qty =
           (item.order_qty ?? 0)
           - (cancelMap.get(id) ?? 0)
           - (returnMap.get(id) ?? 0)
           - (shippedItemMap.get(id) ?? 0);
-        return { item, import_qty: qty, progress_qty };
-      })
-      .filter((v): v is V2ReadyItem => v !== null);
-  }, [modifiedImportQty, items, cancelMap, returnMap, shippedItemMap]);
+        return { item, import_qty: modifiedImportQty.get(id)!, progress_qty };
+      });
+  }, [modifiedImportQty, itemsInGroupOrder, cancelMap, returnMap, shippedItemMap]);
 
   // ============================================================
   // 11-1) P 상품 송장 출력 — personal_order_no dedup + Storage check
@@ -687,6 +702,13 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       return false;
     }
 
+    // 배송번호 검색 결과에 다른 사용자의 행이 섞인 경우 — 선택 사용자로 저장하면 안 된다
+    const foreign = readyItems.filter(({ item }) => item.user_id && item.user_id !== selectedUserId);
+    if (foreign.length > 0) {
+      alert(t('importProductV2.alerts.readyUserMismatch', { count: foreign.length }));
+      return false;
+    }
+
     const currentUser = users.find((u) => u.id === selectedUserId) || null;
 
     try {
@@ -748,7 +770,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.');
       return false;
     }
-  }, [readyItems, selectedWorker, selectedPcNo, selectedUserId, users, refreshFulfillments]);
+  }, [readyItems, selectedWorker, selectedPcNo, selectedUserId, users, refreshFulfillments, t]);
 
   // ============================================================
   // 14-1) [모두] 버튼용 즉시 출력 — 처리준비 목록(readyItems) 을
@@ -756,14 +778,16 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   //       같은 printLabels() 유틸을 쓰되, 데이터 출처만 readyItems 로 다르다.
   //       세트상품 병합은 printLabels() 내부에서 처리하므로 여기선 안 한다.
   //       templates 는 모달의 드롭다운에서 확정된 대상(성인/키즈)별 템플릿.
+  //       options.excludePersonal — 케어 라벨은 PERSONAL(P) 상품을 찍지 않는다 (모달이 넘긴다)
   // ============================================================
   const handleReadyPrint = useCallback(
-    async (labelType: LabelType, templates: AudienceTemplates): Promise<PrintLabelResult> => {
+    async (labelType: LabelType, templates: AudienceTemplates, options?: PrintOptions): Promise<PrintLabelResult> => {
       if (!selectedPcNo) {
         return { success: false, printed: 0, error: 'PC-NO를 선택해주세요.' };
       }
       const printItems = readyItems
         .filter(({ item }) => item.barcode)
+        .filter(({ item }) => !(options?.excludePersonal && item.shipment_type?.trim().toUpperCase() === 'PERSONAL'))
         .map(({ item, import_qty }) => ({ item, qty: import_qty }));
       if (printItems.length === 0) {
         return { success: false, printed: 0, error: '바코드가 있는 항목이 없습니다.' };

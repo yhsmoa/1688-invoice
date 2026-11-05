@@ -5,9 +5,12 @@ import { useTranslation } from 'react-i18next';
 import type { FtOrderItem } from '../hooks/useFtData';
 import { resolveSizeBadge } from '../../../lib/sizeCode';
 import type { LabelType } from '../../../lib/labelTypes';
-import type { AudienceTemplates, PrintLabelResult } from '../utils/printLabels';
+import { mergeSetEntries, type AudienceTemplates, type PrintLabelResult } from '../utils/printLabels';
 import { useLabelTemplatePlan } from '../hooks/useLabelTemplatePlan';
 import LabelTemplatePicker from './LabelTemplatePicker';
+import HelpTip from '../../../component/HelpTip';
+import { getSetGroupKey } from '../utils/setGroupPalette';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import './V2ReadyModal.css';
 
 // ============================================================
@@ -16,17 +19,35 @@ import './V2ReadyModal.css';
 // 항목 카드 오른쪽에 "입고 / 진행" 을 크게 보여준다.
 //   입고(import_qty) 가 진행(progress_qty, 테이블 '진행' 공식) 과 같으면 초록, 다르면 주황.
 //
+// 목록
+//   · 세트 구성품은 그룹 순서로 붙어 오고(ItemCheck readyItems), 세트 배지 + 왼쪽 묶음선으로 묶어 보인다
+//   · 한국어 상품명은 'kr' 칩에 접어 두고 hover 로 본다
+//   · 목록 아래에 실제로 출력될 라벨 스티커·케어 라벨 장수 (printLabels 의 세트 병합 규칙과 동일)
+//
 // 푸터 (위 → 아래 = 작업 순서)
 //   1. 라벨 템플릿   : 종류별·대상(성인/키즈)별로 어떤 템플릿으로 찍는지 확인·변경 (LabelTemplatePicker)
+//                      자동 선택 규칙은 제목 옆 ? 칩
 //   2. [모두]        : 저장(안 됐으면) → 라벨 스티커 → 케어 라벨. 중간 실패 시 알림만 띄우고 멈춘다.
-//      [저장] [라벨 스티커] [케어 라벨] : 한 단계씩 따로 실행
-//      [송장 출력]   : P 상품 운송장 PDF 병합 인쇄 (onPrintInvoices 가 있을 때만)
+//                      케어 라벨은 PERSONAL(P) 상품을 찍지 않는다 — P 만 있으면 케어 단계는 건너뛴다
+//      [저장] [라벨 스티커] [케어 라벨] : 한 단계씩 따로 실행 (케어 라벨도 P 제외)
+//      [송장 출력]   : P 상품 운송장 PDF 병합 인쇄 — 당분간 숨김 (SHOW_INVOICE_PRINT)
 //
 // ※ 예전 [postgre + 저장] 버튼은 [저장] 과 같은 핸들러라 하나로 합쳤다 (동작 변경 없음).
 // ============================================================
 
 /** 출력 성공 표시(플래시) 유지 시간 */
 const PRINT_FLASH_MS = 3000;
+
+/** [송장 출력] 버튼 노출 — 사용자 요청으로 당분간 숨김 (핸들러·조회 로직은 유지) */
+const SHOW_INVOICE_PRINT = false;
+
+/** 라벨 출력 옵션 — 케어 라벨은 PERSONAL(P) 상품 제외 */
+export interface PrintOptions {
+  excludePersonal?: boolean;
+}
+
+const isPersonal = (item: FtOrderItem) => item.shipment_type?.trim().toUpperCase() === 'PERSONAL';
+const CARE_OPTIONS: PrintOptions = { excludePersonal: true };
 
 export interface V2ReadyItem {
   item: FtOrderItem;
@@ -50,7 +71,7 @@ interface V2ReadyModalProps {
    * templates 는 이 모달의 드롭다운에서 확정된 대상별 템플릿.
    * 실패해도 예외를 던지지 않고 result.success = false 로 알려준다.
    */
-  onPrintLabel: (labelType: LabelType, templates: AudienceTemplates) => Promise<PrintLabelResult>;
+  onPrintLabel: (labelType: LabelType, templates: AudienceTemplates, options?: PrintOptions) => Promise<PrintLabelResult>;
   /** 템플릿 조회 범위 — 선택된 사업자 (공용 + 그 사업자 전용) */
   selectedUserId: string | null;
   /** 송장 출력 핸들러 (P 상품 PDF 병합 인쇄). 미제공 시 버튼 숨김 */
@@ -113,6 +134,21 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   const careMissing = plan.missingOf('care').length > 0;
 
   // ============================================================
+  // 출력될 장수 — printLabels 와 같은 규칙 (바코드 있는 항목, 세트는 1벌 1장으로 병합)
+  //   케어 라벨은 PERSONAL(P) 상품 제외
+  // ============================================================
+  const { stickerTotal, careTotal } = useMemo(() => {
+    const entries = readyItems
+      .filter(({ item }) => item.barcode)
+      .map(({ item, import_qty }) => ({ item, qty: import_qty }));
+    const sum = (list: typeof entries) => mergeSetEntries(list).reduce((n, e) => n + e.qty, 0);
+    return {
+      stickerTotal: sum(entries),
+      careTotal: sum(entries.filter(({ item }) => !isPersonal(item))),
+    };
+  }, [readyItems]);
+
+  // ============================================================
   // 저장 / 인쇄 로딩 상태
   // ============================================================
   const [isSaving, setIsSaving] = useState(false);
@@ -171,7 +207,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   // 라벨 스티커 / 케어 라벨 — 종류 하나 출력 (성공 시 flash, 실패 시 알림)
   // 반환값은 [모두] 버튼이 다음 단계 진행 여부를 판단하는 데 쓴다.
   // ============================================================
-  const printOne = async (labelType: LabelType): Promise<boolean> => {
+  const printOne = async (labelType: LabelType, options?: PrintOptions): Promise<boolean> => {
     const setBusy = labelType === 'barcode' ? setIsPrintingBarcode : setIsPrintingCare;
     const setFlash = labelType === 'barcode' ? setBarcodeFlash : setCareFlash;
     const typeLabel = t(
@@ -182,7 +218,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
     setBusy(true);
     try {
-      const result = await onPrintLabel(labelType, plan.selectedOf(labelType));
+      const result = await onPrintLabel(labelType, plan.selectedOf(labelType), options);
       if (result.success) {
         setFlash(`${typeLabel} ${t('importProduct.processReady.printedCount', { count: result.printed })}`);
         return true;
@@ -201,6 +237,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
   // ============================================================
   // [모두] — 저장(안 됐으면) → 라벨 스티커 → 케어 라벨, 순서대로.
   // 한 단계라도 실패하면 그 단계에서 알림만 띄우고 다음 단계로 넘어가지 않는다.
+  // 케어 라벨은 PERSONAL(P) 제외 — 찍을 게 없으면(P 만 있으면) 그 단계는 건너뛴다.
   // ============================================================
   const handleRunAll = async () => {
     setIsRunningAll(true);
@@ -212,7 +249,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
         if (!saveOk) return;
       }
       if (!(await printOne('barcode'))) return;
-      await printOne('care');
+      if (careTotal > 0) await printOne('care', CARE_OPTIONS);
     } finally {
       setIsRunningAll(false);
     }
@@ -253,9 +290,21 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
           {readyItems.length === 0 ? (
             <div className="v2-pr-empty-message">{t('importProduct.processReady.emptyMessage')}</div>
           ) : (
+            <>
             <div className="v2-ready-items-list">
-              {readyItems.map(({ item, import_qty, progress_qty }) => {
+              {readyItems.map(({ item, import_qty, progress_qty }, idx) => {
                 const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
+                // 세트 묶음 — 앞뒤 항목과 같은 세트면 묶음선을 잇는다 (ItemTable 과 같은 first/mid/last/only)
+                const setKey = getSetGroupKey(item);
+                const prevKey = idx > 0 ? getSetGroupKey(readyItems[idx - 1].item) : null;
+                const nextKey = idx < readyItems.length - 1 ? getSetGroupKey(readyItems[idx + 1].item) : null;
+                const setPos =
+                  setKey === null ? ''
+                  : prevKey === setKey && nextKey === setKey ? 'mid'
+                  : nextKey === setKey ? 'first'
+                  : prevKey === setKey ? 'last'
+                  : 'only';
+                const krName = [item.item_name, item.option_name].filter(Boolean).join(' ');
                 const showPersonalNo =
                   item.shipment_type?.trim().toUpperCase() === 'PERSONAL'
                   && !!item.personal_order_no
@@ -264,12 +313,12 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 const qtyTone = import_qty === progress_qty ? 'is-match' : 'is-diff';
 
                 return (
-                  <div key={item.id} className="v2-ready-item">
+                  <div key={item.id} className={`v2-ready-item ${setKey ? `is-set v2-pr-set-${setPos}` : ''}`}>
                     {/* 이미지 */}
                     <div className="v2-ready-item-image">
                       {item.img_url ? (
                         <img
-                          src={`/api/image-proxy?url=${encodeURIComponent(item.img_url)}`}
+                          src={proxyImageUrl(item.img_url, THUMB_WIDTH)}
                           alt="상품 이미지"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/placeholder.svg';
@@ -287,11 +336,26 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                         {sizeBadge && (
                           <span className={`size-badge ${sizeBadge.colorClass}`}>{sizeBadge.code}</span>
                         )}
+                        {setKey && (
+                          <span className="v2-set-badge">
+                            {t('importProduct.processReady.setOf', { total: item.set_total, seq: item.set_seq ?? '?' })}
+                          </span>
+                        )}
                         {item.item_no && (
                           <span className="v2-pr-item-no-badge">{item.item_no}</span>
                         )}
                         {item.barcode && (
                           <span className="v2-pr-barcode">{item.barcode}</span>
+                        )}
+                        {/* 한국어 상품명 — 'kr' 칩에 접어 두고 hover 로 본다 */}
+                        {krName && (
+                          <HelpTip
+                            variant="text"
+                            label="kr"
+                            placement="bottom"
+                            className="v2-pr-kr"
+                            text={`${t('importProduct.processReady.krTip')}\n${krName}`}
+                          />
                         )}
                       </div>
 
@@ -299,12 +363,6 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                       {showPersonalNo && (
                         <div className="v2-pr-personal-order-no-inline">↳ {item.personal_order_no}</div>
                       )}
-
-                      {/* 상품명 */}
-                      <div className="v2-pr-product-name">
-                        {item.item_name || ''}
-                        {item.option_name && ` ${item.option_name}`}
-                      </div>
 
                       {/* 주문옵션 배지 */}
                       {(item.china_option1 || item.china_option2) && (
@@ -327,6 +385,13 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 );
               })}
             </div>
+
+            {/* ── 출력될 장수 — 세트는 1벌 1장, 케어 라벨은 P 제외 ── */}
+            <div className="v2-pr-totals" role="status">
+              <span className="v2-pr-total"><Icon name="label" size={14} />{t('importProduct.processReady.stickerTotal', { count: stickerTotal })}</span>
+              <span className="v2-pr-total"><Icon name="care" size={14} />{t('importProduct.processReady.careTotal', { count: careTotal })}</span>
+            </div>
+            </>
           )}
         </div>
 
@@ -339,18 +404,19 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
             <section className="v2-pr-template-plan" aria-label={t('importProduct.processReady.templateTitle')}>
               <div className="v2-pr-template-head">
                 <h3>{t('importProduct.processReady.templateTitle')}</h3>
-                <span className="v2-pr-template-hint">{t('importProduct.processReady.templateHint')}</span>
               </div>
               <LabelTemplatePicker
                 plan={plan}
                 labelType="barcode"
                 title={t('importProduct.processReady.labelSticker')}
+                help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />
               <LabelTemplatePicker
                 plan={plan}
                 labelType="care"
                 title={t('importProduct.processReady.careLabel')}
+                help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />
             </section>
@@ -366,21 +432,25 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
 
           {/* 2. 실행 — [모두] 가 대표, 아래 세 버튼은 한 단계씩 */}
           <div className="v2-pr-actions">
-            <button
-              type="button"
-              className="v2-pr-all-button"
-              disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing || careMissing}
-              onClick={handleRunAll}
-            >
-              {isRunningAll ? (
-                <Busy label={t('importProduct.processReady.all')} />
-              ) : (
-                <>
-                  <span className="v2-pr-all-title">{t('importProduct.processReady.all')}</span>
-                  <span className="v2-pr-all-hint">{t('importProduct.processReady.allHint')}</span>
-                </>
-              )}
-            </button>
+            {/* [모두] — 케어 템플릿은 케어를 찍을 항목(P 제외)이 있을 때만 필요 */}
+            <div className="v2-pr-all-row">
+              <button
+                type="button"
+                className="v2-pr-all-button"
+                disabled={!hasPrintableItems || isBusy || plan.loading || barcodeMissing || (careTotal > 0 && careMissing)}
+                onClick={handleRunAll}
+              >
+                {isRunningAll ? (
+                  <Busy label={t('importProduct.processReady.all')} />
+                ) : (
+                  <>
+                    <span className="v2-pr-all-title">{t('importProduct.processReady.all')}</span>
+                    <span className="v2-pr-all-hint">{t('importProduct.processReady.allHint')}</span>
+                  </>
+                )}
+              </button>
+              <HelpTip text={t('importProduct.processReady.allHelp')} className="v2-pr-all-help" />
+            </div>
 
             <div className="v2-pr-step-buttons">
               <button
@@ -412,8 +482,8 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
               <button
                 type="button"
                 className="v2-pr-step-button"
-                disabled={!hasPrintableItems || isBusy || plan.loading || careMissing}
-                onClick={() => printOne('care')}
+                disabled={careTotal === 0 || isBusy || plan.loading || careMissing}
+                onClick={() => printOne('care', CARE_OPTIONS)}
               >
                 {isPrintingCare && !isRunningAll ? (
                   <Busy label={t('importProduct.processReady.printing')} />
@@ -423,8 +493,8 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
               </button>
             </div>
 
-            {/* 송장 출력 — P 상품 PDF 병합 인쇄 */}
-            {onPrintInvoices && (
+            {/* 송장 출력 — P 상품 PDF 병합 인쇄 (당분간 숨김) */}
+            {SHOW_INVOICE_PRINT && onPrintInvoices && (
               <button
                 type="button"
                 className="v2-pr-invoice-button"

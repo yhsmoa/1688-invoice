@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ItemTable, { type ItemTableProps } from './ItemTable';
 import TypeBadge from '../../../component/TypeBadge';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import type { FtOrderItem } from '../hooks/useFtData';
 import {
   findSetMismatches,
@@ -44,7 +45,6 @@ interface GroupedItemTablesProps {
 const sumBy = (rows: FtOrderItem[], pick: (row: FtOrderItem) => number) =>
   rows.reduce((acc, row) => acc + pick(row), 0);
 
-const proxied = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
   (e.target as HTMLImageElement).src = '/placeholder.svg';
 };
@@ -91,8 +91,11 @@ const GroupQtyInput: React.FC<GroupQtyInputProps> = ({ value, total, onCommit })
     if (idx >= 0 && idx < all.length - 1) all[idx + 1].focus();
   };
 
+  // 작업 가능 수량을 전부 채웠으면(정상 입고) 초록
+  const isFull = !done && value > 0 && value >= total;
+
   return (
-    <span className={`v2-board-qty ${done ? 'is-done' : ''} ${value > 0 ? 'has-value' : ''}`}>
+    <span className={`v2-board-qty ${done ? 'is-done' : ''} ${value > 0 ? 'has-value' : ''} ${isFull ? 'is-full' : ''}`}>
       <input
         type="text"
         inputMode="numeric"
@@ -165,9 +168,17 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     )
     .join('\n');
 
+  // 썸네일은 리사이즈 변형, 마우스를 올리면 원본 확대 (테이블 행과 같은 .v2-image-preview)
   const renderImage = (url: string | null) => (
-    <span className="v2-board-comp-image">
-      {url ? <img src={proxied(url)} alt="" loading="lazy" onError={onImgError} /> : '-'}
+    <span className="v2-board-comp-image v2-image-preview-container">
+      {url ? (
+        <>
+          <img src={proxyImageUrl(url, THUMB_WIDTH)} alt="" loading="lazy" onError={onImgError} />
+          <div className="v2-image-preview">
+            <img src={proxyImageUrl(url)} alt="" loading="lazy" onError={onImgError} />
+          </div>
+        </>
+      ) : '-'}
     </span>
   );
 
@@ -228,10 +239,11 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         )}
       </div>
       <div className="v2-board-head-right">
-        <span className="v2-board-name" title={board.itemName}>{board.itemName}</span>
+        {/* 한국어 상품명 — V3 는 요약이 메인이라 숨긴다 (펼친 테이블·kr 칩에서 확인) */}
+        {!isV3 && <span className="v2-board-name" title={board.itemName}>{board.itemName}</span>}
         {mismatches.length > 0 && (
           <span className="v2-board-mismatch" title={mismatchTitle}>
-            {t('importProductV2.board.mismatch', { count: mismatches.length })}
+            {t('importProductV2.board.setMismatch')} ({mismatches.length})
           </span>
         )}
         <span className="v2-board-count">{t('importProductV2.board.rows', { count: board.rows.length })}</span>
