@@ -22,7 +22,8 @@ import './V2ReadyModal.css';
 // 목록
 //   · 세트 구성품은 그룹 순서로 붙어 오고(ItemCheck readyItems), 세트 배지 + 왼쪽 묶음선으로 묶어 보인다
 //   · 한국어 상품명은 'kr' 칩에 접어 두고 hover 로 본다
-//   · 목록 아래에 실제로 출력될 라벨 스티커·케어 라벨 장수 (printLabels 의 세트 병합 규칙과 동일)
+//   · 실제로 출력될 라벨 스티커·케어 라벨 장수는 푸터의 템플릿 제목 옆 칩 (스크롤 없이 보이게,
+//     printLabels 의 세트 병합 규칙과 동일)
 //
 // 푸터 (위 → 아래 = 작업 순서)
 //   1. 라벨 템플릿   : 종류별·대상(성인/키즈)별로 어떤 템플릿으로 찍는지 확인·변경 (LabelTemplatePicker)
@@ -290,7 +291,6 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
           {readyItems.length === 0 ? (
             <div className="v2-pr-empty-message">{t('importProduct.processReady.emptyMessage')}</div>
           ) : (
-            <>
             <div className="v2-ready-items-list">
               {readyItems.map(({ item, import_qty, progress_qty }, idx) => {
                 const sizeBadge = resolveSizeBadge(item.shipment_type, item.coupang_shipment_size);
@@ -385,13 +385,6 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 );
               })}
             </div>
-
-            {/* ── 출력될 장수 — 세트는 1벌 1장, 케어 라벨은 P 제외 ── */}
-            <div className="v2-pr-totals" role="status">
-              <span className="v2-pr-total"><Icon name="label" size={14} />{t('importProduct.processReady.stickerTotal', { count: stickerTotal })}</span>
-              <span className="v2-pr-total"><Icon name="care" size={14} />{t('importProduct.processReady.careTotal', { count: careTotal })}</span>
-            </div>
-            </>
           )}
         </div>
 
@@ -409,6 +402,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 plan={plan}
                 labelType="barcode"
                 title={t('importProduct.processReady.labelSticker')}
+                badge={t('importProduct.processReady.sheets', { count: stickerTotal })}
                 help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />
@@ -416,6 +410,7 @@ const V2ReadyModal: React.FC<V2ReadyModalProps> = ({
                 plan={plan}
                 labelType="care"
                 title={t('importProduct.processReady.careLabel')}
+                badge={t('importProduct.processReady.sheets', { count: careTotal })}
                 help={t('importProduct.processReady.templateHint')}
                 disabled={isBusy}
               />

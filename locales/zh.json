@@ -130,11 +130,10 @@
       "allHint": "保存 → 条码标签 → 洗唛",
       "importOverProgress": "入库 / 进度",
       "invoiceHint": "P 商品运单 PDF",
-      "stickerTotal": "条码标签 {{count}}张",
-      "careTotal": "洗唛 {{count}}张",
       "allHelp": "配送类型 COUPANG·DIRECT 商品：保存 → 条码标签 → 洗唛\nPERSONAL(P) 商品：保存 → 条码标签（不打印洗唛）",
       "krTip": "韩文商品名",
-      "setOf": "套装 {{total}}中{{seq}}"
+      "setOf": "套装 {{total}}中{{seq}}",
+      "sheets": "{{count}}张"
     },
     "badge": {
       "fabricLabel": "混纺标签打印",

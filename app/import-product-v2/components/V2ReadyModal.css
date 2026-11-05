@@ -229,21 +229,6 @@
 /* 'kr' 칩 — 한국어 상품명 hover */
 .v2-pr-kr { margin-left: 2px; }
 
-/* ── 출력될 장수 (목록 아래) ── */
-.v2-pr-totals {
-  margin-top: 12px;
-  padding: 10px 14px;
-  display: flex;
-  gap: 18px;
-  border: 1px dashed #d1d5db;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
-}
-.v2-pr-total { display: inline-flex; align-items: center; gap: 6px; }
-
 /* [모두] + 설명 칩 */
 .v2-pr-all-row { display: flex; align-items: center; gap: 8px; }
 .v2-pr-all-row .v2-pr-all-button { flex: 1; }

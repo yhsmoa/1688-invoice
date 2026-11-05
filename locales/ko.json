@@ -131,11 +131,10 @@
       "allHint": "저장 → 라벨 스티커 → 케어 라벨",
       "importOverProgress": "입고 / 진행",
       "invoiceHint": "P 상품 운송장 PDF",
-      "stickerTotal": "라벨 스티커 {{count}}장",
-      "careTotal": "케어 라벨 {{count}}장",
       "allHelp": "쉽먼트 타입 COUPANG·DIRECT 상품: 저장 → 라벨 스티커 → 케어 라벨\nPERSONAL(P) 상품: 저장 → 라벨 스티커 (케어 라벨은 찍지 않음)",
       "krTip": "한국어 상품명",
-      "setOf": "세트 {{total}}中{{seq}}"
+      "setOf": "세트 {{total}}中{{seq}}",
+      "sheets": "{{count}}장"
     },
     "missingDelivery": {
       "modalTitle": "배송누락 목록",

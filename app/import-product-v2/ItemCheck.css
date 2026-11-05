@@ -616,24 +616,44 @@
 .v2-board-head.is-v3.is-expanded {
   background: #fff;
 }
-.v2-board-head.is-v3 .v2-board-options-set { gap: 10px; }
+/* 구성품 칩 — 좁게 (세트 3개 + 문구가 조금 길어도 한 줄에 들어가도록, 칩 하나 ≈ 330px) */
+.v2-board-head.is-v3 .v2-board-options-set { gap: 6px; }
 .v2-board-head.is-v3 .v2-board-comp {
-  padding: 8px 16px 8px 8px;
-  gap: 14px;
+  padding: 6px 12px 6px 6px;
+  gap: 10px;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #f3f4f6;
 }
 .v2-board-head.is-v3 .v2-board-comp-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
 }
+.v2-board-head.is-v3 .v2-board-comp-text {
+  max-width: 150px;
+  min-width: 0;
+}
+.v2-board-head.is-v3 .v2-board-comp .v2-board-option1 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .v2-board-head.is-v3 .v2-board-comp .v2-board-qty {
+  margin-left: 2px;
+  padding-left: 10px;
   border-left-color: #e5e7eb;
 }
+.v2-board-head.is-v3 .v2-board-comp .v2-board-qty-input {
+  width: 72px;
+  height: 44px;
+  font-size: 20px;
+}
+.v2-board-head.is-v3 .v2-board-comp .v2-board-qty-total { font-size: 16px; min-width: 24px; }
+.v2-board-head.is-v3 .v2-board-comp .v2-board-qty-sep { font-size: 16px; }
 .v2-board-head.is-v3 .v2-board-qty-input {
   background: #fff;
 }
@@ -688,8 +708,8 @@
 }
 .v2-board-legend i.is-full { background: #dcfce7; border: 1px solid #16a34a; }
 .v2-board-legend i.is-mismatch { background: #fee2e2; border: 1px solid #dc2626; }
-.v2-board-head.is-v3 .v2-board-option1 { font-size: 18px; }
-.v2-board-head.is-v3 .v2-board-option2 { font-size: 16px; padding: 2px 9px; }
+.v2-board-head.is-v3 .v2-board-option1 { font-size: 16px; }
+.v2-board-head.is-v3 .v2-board-option2 { font-size: 13px; padding: 1px 8px; }
 .v2-board-head.is-v3 .v2-board-qty-input {
   width: 84px;
   height: 48px;

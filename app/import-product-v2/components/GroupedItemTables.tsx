@@ -191,7 +191,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     <span className="v2-board-comp">
       {renderImage(c.imgUrl)}
       <span className="v2-board-comp-text">
-        <span className="v2-board-option1">{c.option1 || '-'}</span>
+        <span className="v2-board-option1" title={c.option1 || undefined}>{c.option1 || '-'}</span>
         {c.option2 && <span className="v2-board-option2">{c.option2}</span>}
       </span>
       <GroupQtyInput
