@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { FT_ORDER_ITEMS_DISPLAY_SELECT } from '../../../../lib/ftOrderItemsSelect';
-
-// 화면 렌더용 조회 컬럼 — by-delivery-code 와 동일 컬럼 셋 공유
-const ORDER_ITEMS_SELECT = FT_ORDER_ITEMS_DISPLAY_SELECT;
+import { pickDisplayColumns } from '../../../../lib/ftOrderItemsSelect';
+import { jsonResponse } from '../../../../lib/apiResponse';
 
 // ============================================================
 // GET /api/ft/order-items?user_id=X&status=PROCESSING
-// ft_order_items 테이블에서 주문 아이템 조회 (limit 해제)
+// ft_order_items 사용자·상태별 전체 조회 — RPC ft_order_items_by_user 1회 (supabase/perf/001)
+//   · 1000행 페이지 루프를 없앴다 (사용자당 1,600행 → 2회 왕복이던 것이 1회, 행이 늘어도 1회)
+//   · 컬럼은 by-delivery-code 와 같은 FT_ORDER_ITEMS_DISPLAY_COLUMNS (pickDisplayColumns)
+//   · 응답 2MB 안팎 → gzip (jsonResponse)
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
@@ -22,34 +23,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1000행 limit 우회 — 페이징 조회
-    const PAGE = 1000;
-    const all: Record<string, unknown>[] = [];
-    let from = 0;
+    // status=ALL 이면 함수 안에서 상태 필터 없음, 그 외는 해당 status
+    const { data, error } = await supabase.rpc('ft_order_items_by_user', {
+      p_user_id: userId,
+      p_status: status,
+    });
+    if (error) throw error;
 
-    while (true) {
-      let query = supabase
-        .from('ft_order_items')
-        .select(ORDER_ITEMS_SELECT)
-        .eq('user_id', userId);
-
-      // status=ALL이면 필터 없이 전체 조회, 그 외는 해당 status 필터
-      if (status !== 'ALL') {
-        query = query.eq('status', status);
-      }
-
-      const { data, error } = await query
-        .order('item_no', { ascending: true })
-        .range(from, from + PAGE - 1);
-
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      all.push(...(data as unknown as Record<string, unknown>[]));
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
-
-    return NextResponse.json({ success: true, data: all });
+    return jsonResponse(request, {
+      success: true,
+      data: pickDisplayColumns((data ?? []) as Record<string, unknown>[]),
+    });
   } catch (error) {
     console.error('ft_order_items 조회 오류:', error);
     return NextResponse.json(

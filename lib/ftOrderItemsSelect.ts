@@ -5,15 +5,16 @@
 // 모든 API가 동일한 SELECT를 사용해야 화면 렌더 로직이 일관되게 동작한다.
 //
 // 사용처 (화면 렌더용 조회):
-//   - /api/ft/order-items                    (전체 조회)
-//   - /api/ft/order-items/by-delivery-code   (배송번호 서버 필터)
+//   - /api/ft/order-items                    (전체 조회 — RPC ft_order_items_by_user → pickDisplayColumns)
+//   - /api/ft/order-items/by-delivery-code   (배송번호 서버 필터 — RPC ft_order_items_by_delivery_code → pickDisplayColumns)
+//   - /api/ft/order-items/by-product-ids · lookup (PostgREST select 문자열)
 //
 // 목적이 다른 경로는 제외 (각자 별도 SELECT 관리):
 //   - /api/ft/order-items/export-xlsx        (엑셀 컬럼 매핑 전용)
 //   - /api/ft/order-items/match-order-id     (1688_order_id 매칭 전용)
 // ============================================================
 
-export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
+export const FT_ORDER_ITEMS_DISPLAY_COLUMNS: readonly string[] = [
   'id',
   // user_id — 상품입고 V3 저장 시 "선택한 사용자 ≠ 주문 사용자" 차단에 쓴다
   //   (by-delivery-code 는 사용자 필터가 없어서 다른 사용자의 행이 섞일 수 있다)
@@ -63,4 +64,21 @@ export const FT_ORDER_ITEMS_DISPLAY_SELECT = [
   'shipped_qty',
   'cancel_qty',
   'requested_date',
-].join(', ');
+];
+
+export const FT_ORDER_ITEMS_DISPLAY_SELECT = FT_ORDER_ITEMS_DISPLAY_COLUMNS.join(', ');
+
+/**
+ * RPC(ft_order_items_by_user · by_delivery_code) 가 돌려준 전체 컬럼 행에서 화면용 컬럼만 남긴다.
+ * PostgREST select 와 똑같이, 행에 없는 컬럼은 키 자체를 만들지 않는다.
+ * (DB 에서 컬럼을 고르면 25,000행 기준 3초가 더 걸려 여기서 한다 — supabase/perf/001)
+ */
+export function pickDisplayColumns(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((row) => {
+    const out: Record<string, unknown> = {};
+    for (const col of FT_ORDER_ITEMS_DISPLAY_COLUMNS) {
+      if (col in row) out[col] = row[col];
+    }
+    return out;
+  });
+}

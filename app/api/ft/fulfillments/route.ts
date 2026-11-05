@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { jsonResponse } from '../../../../lib/apiResponse';
 
 // ============================================================
 // 공통 상수 — 테이블 분리 기준
@@ -408,9 +409,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { items, order_item_ids, product_ids, user_id } = body;
 
-    // ── [1] 조회 모드 ──────────────────────────────────────────
-    // Supabase .in()도 내부적으로 URL 쿼리 파라미터 → ID 수가 많으면 실패
-    // 100개 단위로 배치 조회 후 합산
+    // ── [1] 조회 모드 — RPC ft_fulfillments_lookup 1회 (supabase/perf/001) ──────
+    // 전에는 PostgREST .in() 의 URL 길이 때문에 100개씩 잘라 순차 호출했다
+    //   (진행중 1,600행 → 25번 왕복, 5.9초). 배열 인자를 POST 본문으로 넘기는 RPC 는 한 번이다.
     //
     // inbound (ARRIVAL/CANCEL/RETURN): order_item_id 기준 (per 행)
     // outbound (PACKED/SHIPMENT):
@@ -419,79 +420,31 @@ export async function POST(request: NextRequest) {
     //   · 미제공 시 → 기존 order_item_id 기준 (backward compat: export-product-v2 등)
     if (order_item_ids && Array.isArray(order_item_ids)) {
       try {
-        if (order_item_ids.length === 0) {
+        const orderItemIds = (order_item_ids as unknown[]).filter((v): v is string => typeof v === 'string' && v.length > 0);
+        if (orderItemIds.length === 0) {
           return NextResponse.json({ success: true, data: [] });
         }
 
-        const BATCH_SIZE = 100;
-        const allData: any[] = [];
-
-        const SELECT_COLS_INBOUND = 'id, order_item_id, quantity, type, created_at, operator_name, product_id';
-        const SELECT_COLS_OUTBOUND = 'id, order_item_id, quantity, type, created_at, operator_name, product_id, shipment_id';
-        const PAGE = 1000;
-
-        // ── 공통 페이징 조회 헬퍼 ──
-        const fetchTable = async (
-          table: string,
-          selectCols: string,
-          filterCol: string,
-          batch: string[],
-          extraEq?: { col: string; value: string }
-        ) => {
-          const rows: typeof allData = [];
-          let from = 0;
-          while (true) {
-            let query = supabase
-              .from(table)
-              .select(selectCols)
-              .in(filterCol, batch);
-            if (extraEq) query = query.eq(extraEq.col, extraEq.value);
-            const { data, error } = await query.range(from, from + PAGE - 1);
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            rows.push(...data);
-            if (data.length < PAGE) break;
-            from += PAGE;
-          }
-          return rows;
-        };
-
-        // ── inbound: order_item_id 기준 (항상) ──
-        for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
-          const batch = order_item_ids.slice(i, i + BATCH_SIZE);
-          const inRows = await fetchTable(INBOUND_TABLE, SELECT_COLS_INBOUND, 'order_item_id', batch);
-          allData.push(...inRows);
-        }
-
-        // ── outbound: product_id 기준 (신규) 또는 order_item_id 기준 (backward compat) ──
         const useProductIdFilter =
           Array.isArray(product_ids) &&
           product_ids.length > 0 &&
           typeof user_id === 'string' &&
           user_id.length > 0;
+        const uniqueProductIds = useProductIdFilter
+          ? Array.from(new Set((product_ids as unknown[]).filter((v): v is string => typeof v === 'string' && v.length > 0)))
+          : [];
 
-        if (useProductIdFilter) {
-          const uniqueProductIds = Array.from(new Set(product_ids as string[])).filter(Boolean);
-          for (let i = 0; i < uniqueProductIds.length; i += BATCH_SIZE) {
-            const batch = uniqueProductIds.slice(i, i + BATCH_SIZE);
-            const outRows = await fetchTable(
-              OUTBOUND_TABLE,
-              SELECT_COLS_OUTBOUND,
-              'product_id',
-              batch,
-              { col: 'user_id', value: user_id as string }
-            );
-            allData.push(...outRows);
-          }
-        } else {
-          for (let i = 0; i < order_item_ids.length; i += BATCH_SIZE) {
-            const batch = order_item_ids.slice(i, i + BATCH_SIZE);
-            const outRows = await fetchTable(OUTBOUND_TABLE, SELECT_COLS_OUTBOUND, 'order_item_id', batch);
-            allData.push(...outRows);
-          }
-        }
+        const { data, error } = await supabase.rpc('ft_fulfillments_lookup', {
+          p_order_item_ids: orderItemIds,
+          p_product_ids: uniqueProductIds.length > 0 ? uniqueProductIds : null,
+          p_user_id: uniqueProductIds.length > 0 ? (user_id as string) : null,
+        });
+        if (error) throw error;
 
-        return NextResponse.json({ success: true, data: allData });
+        const result = (data ?? {}) as { inbound?: unknown[]; outbound?: unknown[] };
+        const allData = [...(result.inbound ?? []), ...(result.outbound ?? [])];
+
+        return jsonResponse(request, { success: true, data: allData });
       } catch (queryError) {
         console.error('ft_fulfillments POST 조회 오류:', queryError);
         return NextResponse.json(
