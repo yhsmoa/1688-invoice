@@ -469,7 +469,10 @@
       "done": "입고 완료",
       "mismatch": "세트 불일치 {{count}}건",
       "overLimit": "작업 가능 수량({{total}})을 넘을 수 없습니다.",
-      "setMismatch": "세트가 맞지 않습니다!"
+      "setMismatch": "세트가 맞지 않습니다!",
+      "allFilled": "전부 입력됨",
+      "legendMismatch": "세트 불일치",
+      "summary": "{{groups}} 그룹 · {{rows}}건"
     },
     "table": {
       "image": "이미지",

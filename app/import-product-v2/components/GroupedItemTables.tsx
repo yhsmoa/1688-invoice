@@ -161,6 +161,11 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
   // 세트 불일치 — 이 보드의 세트 인스턴스 중 (입고 + 작업) 이 구성품끼리 다른 것
   const mismatches = board.isSet ? findSetMismatches([board], modifiedImportQty, arrivalMap) : [];
+
+  // 전부 입력됨 — 보드의 모든 입력 단위가 작업 가능 수량을 다 채움 (잠긴 단위는 제외, 채울 게 하나는 있어야)
+  const units = board.isSet ? board.components.map((c) => c.rows) : [board.rows];
+  const openUnits = units.filter((rows) => totalOf(rows) > 0);
+  const isAllFull = openUnits.length > 0 && openUnits.every((rows) => workOf(rows) >= totalOf(rows));
   const mismatchTitle = mismatches
     .map((m) =>
       `${m.productNo ?? m.productId}: ` +
@@ -198,14 +203,17 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   );
 
   return (
-    <div className={`v2-board-head ${isV3 ? 'is-v3' : ''}`}>
+    <div className={`v2-board-head ${isV3 ? 'is-v3' : ''} ${expanded ? 'is-expanded' : ''}`}>
       <div className="v2-board-head-left">
-        {board.badge && <TypeBadge info={board.badge} />}
-        {board.isSet && (
-          <span className="v2-set-badge v2-board-set-badge">
-            {t('importProductV2.set.label')} {board.setTotal}中
-          </span>
-        )}
+        {/* 타입 배지 + 세트 배지 — V3 는 세로로 묶어 왼쪽 열(72px) */}
+        <div className="v2-board-badges">
+          {board.badge && <TypeBadge info={board.badge} />}
+          {board.isSet && (
+            <span className="v2-set-badge v2-board-set-badge">
+              {t('importProductV2.set.label')} {board.setTotal}中
+            </span>
+          )}
+        </div>
         {board.isSet ? (
           <div className="v2-board-options v2-board-options-set">
             {board.components.map((c, idx) => (
@@ -246,6 +254,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             {t('importProductV2.board.setMismatch')} ({mismatches.length})
           </span>
         )}
+        {mismatches.length === 0 && isAllFull && (
+          <span className="v2-board-full">{t('importProductV2.board.allFilled')}</span>
+        )}
         <span className="v2-board-count">{t('importProductV2.board.rows', { count: board.rows.length })}</span>
         {!board.isSet && !isV3 && (
           <GroupQtyInput
@@ -268,6 +279,35 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </button>
         )}
       </div>
+    </div>
+  );
+};
+
+// ============================================================
+// 결과 요약 줄 (V3) — "8 그룹 · 28건 · P 4 · A 4" + 색 범례
+// ============================================================
+const TYPE_ORDER = ['P', 'A', 'B', 'C', 'X', 'S'];
+
+const BoardSummary: React.FC<{ boards: GroupBoard[] }> = ({ boards }) => {
+  const { t } = useTranslation();
+  const rows = boards.reduce((n, b) => n + b.rows.length, 0);
+  const byType = new Map<string, number>();
+  for (const b of boards) {
+    const code = b.badge?.code ?? '-';
+    byType.set(code, (byType.get(code) ?? 0) + 1);
+  }
+  const typeParts = Array.from(byType.entries())
+    .sort((a, b) => (TYPE_ORDER.indexOf(a[0]) + 100) % 100 - (TYPE_ORDER.indexOf(b[0]) + 100) % 100)
+    .map(([code, n]) => `${code} ${n}`)
+    .join(' · ');
+  return (
+    <div className="v2-board-summary">
+      <span className="v2-board-summary-main">
+        {t('importProductV2.board.summary', { groups: boards.length, rows })}
+      </span>
+      <span className="v2-board-summary-types">{typeParts}</span>
+      <span className="v2-board-legend"><i className="is-full" />{t('importProductV2.board.allFilled')}</span>
+      <span className="v2-board-legend"><i className="is-mismatch" />{t('importProductV2.board.legendMismatch')}</span>
     </div>
   );
 };
@@ -300,6 +340,7 @@ const GroupedItemTables: React.FC<GroupedItemTablesProps> = ({
 
   return (
     <div className={`v2-board-list ${isV3 ? 'is-v3' : ''}`}>
+      {isV3 && <BoardSummary boards={boards} />}
       {boards.map((board, idx) => {
         const expanded = isV3 ? expandedKeys.has(board.key) : true;
         const header = (

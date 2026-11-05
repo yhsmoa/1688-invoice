@@ -463,7 +463,10 @@
       "done": "已入库",
       "mismatch": "套装不一致 {{count}}件",
       "overLimit": "不能超过可作业数量({{total}})。",
-      "setMismatch": "套装数量不一致！"
+      "setMismatch": "套装数量不一致！",
+      "allFilled": "已全部录入",
+      "legendMismatch": "套装不一致",
+      "summary": "{{groups}} 组 · {{rows}}条"
     },
     "table": {
       "image": "图片",

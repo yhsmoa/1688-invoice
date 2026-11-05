@@ -550,13 +550,13 @@
   cursor: not-allowed;
 }
 .v2-board-qty.has-value .v2-board-qty-input {
-  border-color: #2563eb;
+  border: 2px solid #1d4ed8;
   background: #eff6ff;
-  color: #1d4ed8;
+  color: #1e40af;
 }
 /* 작업 가능 수량을 전부 채움(정상 입고) — 초록 */
 .v2-board-qty.is-full .v2-board-qty-input {
-  border-color: #16a34a;
+  border: 2px solid #16a34a;
   background: #ecfdf5;
   color: #15803d;
 }
@@ -581,24 +581,114 @@
    · 접힌 보드는 헤더만 (아래 테이블 없음)
    · 펼친 테이블은 compact: 작은 이미지(40px), 상품명·비용 없음, 낮은 행
    ============================================================ */
-.v2-board-list.is-v3 { gap: 12px; }
+.v2-board-list.is-v3 { gap: 14px; }
+.v2-board-list.is-v3 .v2-table-board { border-radius: 18px; }
 
 .v2-table-board.is-collapsed .v2-board-head { border-bottom: none; }
 
+/* 배지 열 — 타입 배지 위, 세트 배지 아래 (V2 는 가로) */
+.v2-board-badges { display: flex; align-items: center; gap: 8px; }
+.v2-board-head.is-v3 .v2-board-badges {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 72px;
+  flex: none;
+}
+.v2-board-head.is-v3 .v2-board-badges .size-badge {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .v2-board-head.is-v3 {
-  padding: 12px 16px;
+  padding: 16px 20px;
+  background: #fff;
+  gap: 16px;
+}
+/* 펼친 카드 — 헤더 바탕 연회색으로 테이블과 구분 */
+.v2-board-head.is-v3.is-expanded {
   background: #fff;
 }
+.v2-board-head.is-v3 .v2-board-options-set { gap: 10px; }
 .v2-board-head.is-v3 .v2-board-comp {
-  padding: 4px 12px 4px 4px;
-  gap: 12px;
+  padding: 8px 16px 8px 8px;
+  gap: 14px;
+  border: none;
+  border-radius: 16px;
+  background: #f3f4f6;
 }
 .v2-board-head.is-v3 .v2-board-comp-image {
-  width: 72px;
-  height: 72px;
-  border-radius: 8px;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
 }
-.v2-board-head.is-v3 .v2-board-option1 { font-size: 16px; }
+.v2-board-head.is-v3 .v2-board-comp .v2-board-qty {
+  border-left-color: #e5e7eb;
+}
+.v2-board-head.is-v3 .v2-board-qty-input {
+  background: #fff;
+}
+.v2-board-head.is-v3 .v2-board-comp-plus { color: #c4c7cd; }
+.v2-board-head.is-v3 .v2-board-comp .v2-board-qty {
+  margin-left: 6px;
+  padding-left: 12px;
+}
+.v2-board-head.is-v3 .v2-board-head-right { gap: 10px; }
+.v2-board-head.is-v3 .v2-board-expand.is-open {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+.v2-board-head.is-v3 .v2-board-expand.is-open:hover { background: #1f2937; }
+.v2-board-head.is-v3 .v2-board-mismatch { font-size: 13px; padding: 6px 12px; }
+
+/* 전부 입력됨 — 보드의 모든 입력이 작업 가능 수량을 채움 */
+.v2-board-full {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* 결과 요약 줄 (V3) — "8 그룹 · 28건 · P 4 · A 4" + 색 범례 */
+.v2-board-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: #6b7280;
+  flex-wrap: wrap;
+}
+.v2-board-summary-main { font-weight: 700; color: #111827; }
+.v2-board-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v2-board-legend:first-of-type { margin-left: auto; }
+.v2-board-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.v2-board-legend i.is-full { background: #dcfce7; border: 1px solid #16a34a; }
+.v2-board-legend i.is-mismatch { background: #fee2e2; border: 1px solid #dc2626; }
+.v2-board-head.is-v3 .v2-board-option1 { font-size: 18px; }
 .v2-board-head.is-v3 .v2-board-option2 { font-size: 16px; padding: 2px 9px; }
 .v2-board-head.is-v3 .v2-board-qty-input {
   width: 84px;
@@ -692,11 +782,12 @@
   color: #111827;
 }
 
+/* 옵션2 — 회색 배지 (파랑은 A 타입·입력 중, 주황은 P·세트, 초록·빨강은 상태에만 쓴다) */
 .v2-board-option2 {
   font-size: 12px;
   font-weight: 600;
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: #374151;
+  background: #f3f4f6;
   padding: 1px 7px;
   border-radius: 6px;
 }
