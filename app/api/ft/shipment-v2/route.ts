@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { jsonResponse } from '../../../../lib/apiResponse';
 import { normalizeSizeCode, resolveScanSizeCode } from '../../../../lib/sizeCode';
 import { loadCustomsCategoryEnMap, toCustomsCategoryEn } from '../../../../lib/customsCategoryEn';
 
@@ -469,7 +470,8 @@ export async function GET(request: NextRequest) {
     // box_code 기준 정렬
     result.sort((a, b) => (a.box_code || '').localeCompare(b.box_code || ''));
 
-    return NextResponse.json({ success: true, data: result });
+    // 미출고 수백 행 → 400KB 안팎이라 gzip 으로 보낸다 (lib/apiResponse.ts)
+    return jsonResponse(request, { success: true, data: result });
   } catch (error) {
     console.error('shipment-v2 조회 오류:', error);
     return NextResponse.json(
