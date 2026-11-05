@@ -133,18 +133,47 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   // 세트상품 여부 (세트 배지 표시 조건과 동일)
   const isSetProduct = item.set_total != null && item.set_total > 1;
 
-  const rowClasses = [
-    sameGroupAsNext ? 'v2-same-product-group' : '',
-    isSetProduct ? 'v2-set-product-row' : '',
-    isSetProduct && setGroupPos ? `v2-set-pos-${setGroupPos}` : '',
+  // ── 요청사항(note_notice)·비고(note_cn) — 상품명 칸이 아니라 바로 아래 별도 행(글번호~주문옵션 폭)에 ──
+  //    세트 묶음선은 비고 행까지 이어져야 하므로, 비고 행이 있으면 본 행은 '끝' 이 될 수 없다:
+  //      본 행 first/mid → 비고 행 mid · 본 행 last → 본 행 mid + 비고 행 last · 본 행 only → first + last
+  const notes = [item.note_notice, item.note_cn].map((v) => (v ?? '').trim()).filter(Boolean);
+  const hasNoteRow = notes.length > 0;
+  const mainPos: SetGroupPos | undefined =
+    !hasNoteRow || !setGroupPos ? setGroupPos
+    : setGroupPos === 'last' ? 'mid'
+    : setGroupPos === 'only' ? 'first'
+    : setGroupPos;
+  const notePos: SetGroupPos | undefined =
+    !setGroupPos ? undefined
+    : setGroupPos === 'last' || setGroupPos === 'only' ? 'last'
+    : 'mid';
+
+  const stateClasses = [
     isSelected ? 'v2-row-selected' : '',
     displayImportQty != null && displayImportQty > 0 ? 'v2-row-has-work' : '',
     compact ? 'v2-row-compact' : '',
+  ];
+  const rowClasses = [
+    // 비고 행이 따라오면 본 행 아래 선은 지운다 (같은 묶음)
+    sameGroupAsNext || hasNoteRow ? 'v2-same-product-group' : '',
+    isSetProduct ? 'v2-set-product-row' : '',
+    isSetProduct && mainPos ? `v2-set-pos-${mainPos}` : '',
+    ...stateClasses,
   ].filter(Boolean).join(' ');
+  const noteRowClasses = [
+    'v2-note-row',
+    sameGroupAsNext ? 'v2-same-product-group' : '',
+    isSetProduct ? 'v2-set-product-row' : '',
+    isSetProduct && notePos ? `v2-set-pos-${notePos}` : '',
+    ...stateClasses,
+  ].filter(Boolean).join(' ');
+  // 비고 행: [체크박스+이미지] 빈 칸 2 · [글번호+상품명+주문옵션] 3 · 나머지 수량 열 (비용 열은 compact 에서 없음)
+  const noteTailSpan = compact ? 7 : 8;
 
   // 세트 묶음선·배지 색은 CSS 한 가지(주황) — 그룹별 색 순환 없음
 
   return (
+    <>
     <tr className={rowClasses}>
       {/* 체크박스 */}
       <td>
@@ -225,7 +254,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         </div>
       </td>
 
-      {/* 상품명 — 맨 위: 배지(사이즈+라벨), 중간: item_name/option_name, 맨 아래: note_cn */}
+      {/* 상품명 — 맨 위: 배지(사이즈+라벨), 아래: item_name/option_name (요청사항·비고는 아래 별도 행) */}
       <td onClick={() => onProductNameClick(item)} style={{ cursor: 'pointer' }}>
         <div className="v2-product-name">
           {(() => {
@@ -271,10 +300,6 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
           <div className={compact ? 'v2-name-kr' : undefined}>{item.item_name || ''}</div>
           {item.option_name && <div className={compact ? 'v2-option-kr' : undefined}>{item.option_name}</div>}
 
-          {/* ── 맨 아래: note_cn — 깜빡이는 빨간 배지 (V2 전용 is-alert, V3 는 빨간 글씨 그대로) ── */}
-          {item.note_cn && String(item.note_cn).trim() && (
-            <div className="v2-note-cn is-alert">{item.note_cn}</div>
-          )}
         </div>
       </td>
 
@@ -351,6 +376,20 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         <QtyBadge cell={qty.ship} />
       </td>
     </tr>
+
+    {/* ── 요청사항·비고 행 — 글번호~주문옵션 폭, 노란 배지(광택 + 흔들림) ── */}
+    {hasNoteRow && (
+      <tr className={noteRowClasses}>
+        <td colSpan={2} />
+        <td colSpan={3} className="v2-note-cell">
+          {notes.map((n) => (
+            <span key={n} className="v2-note-chip"><span className="v2-note-chip-text">{n}</span></span>
+          ))}
+        </td>
+        <td colSpan={noteTailSpan} />
+      </tr>
+    )}
+    </>
   );
 };
 

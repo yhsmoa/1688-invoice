@@ -469,7 +469,8 @@
       "allFilled": "已全部录入",
       "legendMismatch": "套装不一致",
       "summary": "{{groups}} 组 · {{rows}}条",
-      "setShort": "入库商品不足"
+      "setShort": "入库商品不足",
+      "andMore": "等 {{count}}条"
     },
     "table": {
       "image": "图片",

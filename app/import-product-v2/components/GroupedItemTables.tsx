@@ -168,13 +168,19 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     .map((m) => `${m.productNo ?? m.productId}: ` + m.parts.map((p) => `${p.seq}=${p.arrival}+${p.work}`).join(' / '))
     .join('\n');
 
-  // 요청사항(note_notice) · 비고(note_cn) 가 있는 주문 — 그룹으로 묶여 가려지지 않게 헤더 아래 줄에 빨갛게
-  const noteRows = board.rows
-    .map((r) => ({
-      itemNo: r.item_no,
-      notes: [r.note_notice, r.note_cn].map((v) => (v ?? '').trim()).filter(Boolean),
-    }))
-    .filter((n) => n.notes.length > 0);
+  // 요청사항(note_notice) · 비고(note_cn) 가 있는 주문 — 그룹으로 묶여 가려지지 않게 헤더 아래 줄에
+  //   같은 문구는 하나로 묶어 "첫 글번호 + 문구 외 N건" 으로 보여 준다 (P 주문 14건이 같은 비고를 달고 오는 일이 흔하다)
+  const noteGroups = (() => {
+    const map = new Map<string, { itemNo: string | null; count: number }>();
+    for (const r of board.rows) {
+      const text = [r.note_notice, r.note_cn].map((v) => (v ?? '').trim()).filter(Boolean).join(' · ');
+      if (!text) continue;
+      const cur = map.get(text);
+      if (cur) cur.count += 1;
+      else map.set(text, { itemNo: r.item_no, count: 1 });
+    }
+    return Array.from(map.entries()).map(([text, v]) => ({ text, ...v }));
+  })();
 
   // 전부 입력됨 — 보드의 모든 입력 단위가 작업 가능 수량을 다 채움 (잠긴 단위는 제외, 채울 게 하나는 있어야)
   const units = board.isSet ? board.components.map((c) => c.rows) : [board.rows];
@@ -300,12 +306,14 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         )}
       </div>
     </div>
-      {/* 요청사항·비고가 있는 주문 — 주문번호 + 내용을 빨갛게 (그룹으로 묶여도 놓치지 않게) */}
-      {noteRows.length > 0 && (
+      {/* 요청사항·비고 — 같은 문구는 "첫 글번호 + 문구 외 N건" 하나로 (노란 배지, 광택 + 흔들림) */}
+      {noteGroups.length > 0 && (
         <div className="v2-board-notes">
-          {noteRows.map((n) => (
-            <span key={n.itemNo ?? n.notes.join('|')} className="v2-board-note">
-              <b>{n.itemNo}</b> {n.notes.join(' · ')}
+          {noteGroups.map((n) => (
+            <span key={n.text} className="v2-note-chip" title={n.text}>
+              <b>{n.itemNo}</b>
+              <span className="v2-note-chip-text">{n.text}</span>
+              {n.count > 1 && <em>{t('importProductV2.board.andMore', { count: n.count - 1 })}</em>}
             </span>
           ))}
         </div>

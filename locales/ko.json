@@ -475,7 +475,8 @@
       "allFilled": "전부 입력됨",
       "legendMismatch": "세트 불일치",
       "summary": "{{groups}} 그룹 · {{rows}}건",
-      "setShort": "입고 상품이 부족합니다"
+      "setShort": "입고 상품이 부족합니다",
+      "andMore": "외 {{count}}건"
     },
     "table": {
       "image": "이미지",

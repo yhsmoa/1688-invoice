@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 // ============================================================
 // V2NoteModal — 비고 입력 모달
 // 체크된 아이템들에 대해 ft_order_items.note_cn 일괄 저장/수정
-// (note_cn = 상품명 셀 하단 빨간색으로 표시되는 비고)
+// (note_cn = 주문행 아래 비고 행에 노란 배지로 표시되는 비고)
 // ============================================================
 
 interface V2NoteModalProps {
