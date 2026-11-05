@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ItemTable, { type ItemTableProps } from './ItemTable';
 import TypeBadge from '../../../component/TypeBadge';
@@ -21,22 +21,33 @@ import {
 //       세트 보드: [이미지 | 옵션] 칩마다 입력 하나(구성품별) → 그 구성품 행들에 배분
 //       배분·한도(잔여 = order − 입고 − 취소)는 utils/groupBoards.distributeQty (ItemCheck 가 적용)
 //       세트 구성품의 (입고 + 작업) 이 서로 다른 주문이 있으면 헤더에 경고 배지
-//   · 열 헤더(체크박스 전체선택 포함)는 첫 보드에만 그리고, 나머지는 높이 0 thead 로
-//     열 너비만 맞춘다 (table-layout: fixed 가 th 너비를 기준으로 삼기 때문)
-//   · 로딩·결과 없음은 빈 ItemTable 하나로 기존 안내 행을 그대로 보여 준다
 //
+//   variant
+//     'v2' : 헤더(요약) 작게 + 주문 행 테이블 항상 펼침. 열 헤더는 첫 보드에만, 나머지는 높이 0
+//     'v3' : 헤더(요약)가 메인 — 큰 이미지·옵션·입력. 주문 행 테이블은 헤더 오른쪽 [펼치기] 로
+//            보드 아래에 펼쳐지고(compact: 작은 이미지, 상품명·비용 없음), 펼친 테이블마다 열 헤더
+//
+//   · 로딩·결과 없음은 빈 ItemTable 하나로 기존 안내 행을 그대로 보여 준다
 //   페이지는 그룹 경계에서만 끊기므로(useFtPagination breakKeyOf) 화면의 보드 = 그룹 전체.
 // ============================================================
 
+export type GroupedVariant = 'v2' | 'v3';
+
 interface GroupedItemTablesProps {
   boards: GroupBoard[];
-  tableProps: Omit<ItemTableProps, 'paginatedData' | 'header' | 'headerMode'>;
+  tableProps: Omit<ItemTableProps, 'paginatedData' | 'header' | 'headerMode' | 'compact'>;
   /** 그룹 수량 확정 — rows 의 작업 수량을 지우고 qty 를 글번호 순으로 다시 배분 */
   onApplyGroupQty: (rows: FtOrderItem[], qty: number) => void;
+  variant?: GroupedVariant;
 }
 
 const sumBy = (rows: FtOrderItem[], pick: (row: FtOrderItem) => number) =>
   rows.reduce((acc, row) => acc + pick(row), 0);
+
+const proxied = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
+const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  (e.target as HTMLImageElement).src = '/placeholder.svg';
+};
 
 // ============================================================
 // 그룹 수량 입력 — [입력] / 합계
@@ -113,25 +124,34 @@ const GroupQtyInput: React.FC<GroupQtyInputProps> = ({ value, total, onCommit })
 };
 
 // ============================================================
-// 보드 헤더 — 테이블 왼쪽 위: [P/A 배지] [세트 배지] 옵션1 · 옵션2 | 상품명 | n건 | [입력]/합계
+// 보드 헤더 — [P/A 배지] [세트 배지] (이미지) 옵션1 · 옵션2 | 상품명 | 불일치 | n건 | [입력]/합계 | (펼치기)
 //   세트는 구성품을 [이미지 | 옵션1 / 옵션2 | [입력]/합계] + … 로 가로 나열
+//   V3 는 단품도 이미지를 크게 보여 주고(요약이 메인), 오른쪽 끝에 [펼치기/접기] 버튼
 // ============================================================
 interface BoardHeaderProps {
   board: GroupBoard;
+  variant: GroupedVariant;
   modifiedImportQty: Map<string, number>;
   arrivalMap: Map<string, number>;
   cancelMap: Map<string, number>;
   onApplyGroupQty: (rows: FtOrderItem[], qty: number) => void;
+  /** V3 — 주문 행 펼침 여부·토글 (V2 는 undefined) */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 const BoardHeader: React.FC<BoardHeaderProps> = ({
   board,
+  variant,
   modifiedImportQty,
   arrivalMap,
   cancelMap,
   onApplyGroupQty,
+  expanded,
+  onToggleExpand,
 }) => {
   const { t } = useTranslation();
+  const isV3 = variant === 'v3';
 
   const workOf = (rows: FtOrderItem[]) => sumBy(rows, (r) => modifiedImportQty.get(r.id) ?? 0);
   const totalOf = (rows: FtOrderItem[]) => sumBy(rows, (r) => remainingQtyOf(r, arrivalMap, cancelMap));
@@ -145,18 +165,15 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     )
     .join('\n');
 
+  const renderImage = (url: string | null) => (
+    <span className="v2-board-comp-image">
+      {url ? <img src={proxied(url)} alt="" loading="lazy" onError={onImgError} /> : '-'}
+    </span>
+  );
+
   const renderComponent = (c: GroupComponent) => (
     <span className="v2-board-comp">
-      <span className="v2-board-comp-image">
-        {c.imgUrl ? (
-          <img
-            src={`/api/image-proxy?url=${encodeURIComponent(c.imgUrl)}`}
-            alt=""
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-          />
-        ) : '-'}
-      </span>
+      {renderImage(c.imgUrl)}
       <span className="v2-board-comp-text">
         <span className="v2-board-option1">{c.option1 || '-'}</span>
         {c.option2 && <span className="v2-board-option2">{c.option2}</span>}
@@ -170,7 +187,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   );
 
   return (
-    <div className="v2-board-head">
+    <div className={`v2-board-head ${isV3 ? 'is-v3' : ''}`}>
       <div className="v2-board-head-left">
         {board.badge && <TypeBadge info={board.badge} />}
         {board.isSet && (
@@ -187,6 +204,22 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               </React.Fragment>
             ))}
           </div>
+        ) : isV3 ? (
+          // V3 단품 — 세트 구성품과 같은 칩 (큰 이미지 + 옵션 + 입력)
+          <div className="v2-board-options v2-board-options-set">
+            <span className="v2-board-comp">
+              {renderImage(board.imgUrl)}
+              <span className="v2-board-comp-text">
+                <span className="v2-board-option1">{board.option1 || '-'}</span>
+                {board.option2 && <span className="v2-board-option2">{board.option2}</span>}
+              </span>
+              <GroupQtyInput
+                value={workOf(board.rows)}
+                total={totalOf(board.rows)}
+                onCommit={(qty) => onApplyGroupQty(board.rows, qty)}
+              />
+            </span>
+          </div>
         ) : (
           <div className="v2-board-options">
             <span className="v2-board-option1">{board.option1 || '-'}</span>
@@ -202,42 +235,94 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </span>
         )}
         <span className="v2-board-count">{t('importProductV2.board.rows', { count: board.rows.length })}</span>
-        {!board.isSet && (
+        {!board.isSet && !isV3 && (
           <GroupQtyInput
             value={workOf(board.rows)}
             total={totalOf(board.rows)}
             onCommit={(qty) => onApplyGroupQty(board.rows, qty)}
           />
         )}
+        {onToggleExpand && (
+          <button
+            type="button"
+            className={`v2-board-expand ${expanded ? 'is-open' : ''}`}
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+            {t(expanded ? 'importProductV3.collapse' : 'importProductV3.expand')}
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-const GroupedItemTables: React.FC<GroupedItemTablesProps> = ({ boards, tableProps, onApplyGroupQty }) => {
+// ============================================================
+// 보드 목록
+// ============================================================
+const GroupedItemTables: React.FC<GroupedItemTablesProps> = ({
+  boards,
+  tableProps,
+  onApplyGroupQty,
+  variant = 'v2',
+}) => {
+  const isV3 = variant === 'v3';
+
+  // V3 — 보드별 펼침 상태 (보드 키 기준, 페이지를 넘겨도 같은 보드면 유지)
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const toggleExpand = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   if (tableProps.loading || boards.length === 0) {
-    return <ItemTable {...tableProps} paginatedData={[]} />;
+    return <ItemTable {...tableProps} paginatedData={[]} compact={isV3} />;
   }
 
   return (
-    <div className="v2-board-list">
-      {boards.map((board, idx) => (
-        <ItemTable
-          key={board.key}
-          {...tableProps}
-          paginatedData={board.rows}
-          header={
-            <BoardHeader
-              board={board}
-              modifiedImportQty={tableProps.modifiedImportQty}
-              arrivalMap={tableProps.arrivalMap}
-              cancelMap={tableProps.cancelMap}
-              onApplyGroupQty={onApplyGroupQty}
-            />
-          }
-          headerMode={idx === 0 ? 'full' : 'collapsed'}
-        />
-      ))}
+    <div className={`v2-board-list ${isV3 ? 'is-v3' : ''}`}>
+      {boards.map((board, idx) => {
+        const expanded = isV3 ? expandedKeys.has(board.key) : true;
+        const header = (
+          <BoardHeader
+            board={board}
+            variant={variant}
+            modifiedImportQty={tableProps.modifiedImportQty}
+            arrivalMap={tableProps.arrivalMap}
+            cancelMap={tableProps.cancelMap}
+            onApplyGroupQty={onApplyGroupQty}
+            expanded={isV3 ? expanded : undefined}
+            onToggleExpand={isV3 ? () => toggleExpand(board.key) : undefined}
+          />
+        );
+
+        // V3 접힘 — 헤더만 (테이블은 그리지 않는다)
+        if (!expanded) {
+          return (
+            <div key={board.key} className="v2-table-board is-collapsed">
+              {header}
+            </div>
+          );
+        }
+
+        return (
+          <ItemTable
+            key={board.key}
+            {...tableProps}
+            paginatedData={board.rows}
+            header={header}
+            headerMode={isV3 || idx === 0 ? 'full' : 'collapsed'}
+            compact={isV3}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -32,6 +32,8 @@ interface ItemTableRowProps {
   setGroupPos?: SetGroupPos;
   /** 같은 세트인데 1688 주문번호가 서로 다름 (다른 판매자에게서 옴) */
   setMixedSeller?: boolean;
+  /** V3 펼침 테이블 — 작은 이미지, 한국어 상품명·옵션명 줄 없음, 비용 열 없음, 낮은 행 */
+  compact?: boolean;
   /** 이 행에서 편집 중인 필드 — 아니면 null (다른 행 편집 중이어도 null) */
   editingField: string | null;
   /** 이 행이 편집 중일 때의 입력값 — 아니면 '' */
@@ -83,6 +85,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
   sameGroupAsNext,
   setGroupPos,
   setMixedSeller = false,
+  compact = false,
   editingField,
   editValue,
   importQtyValue,
@@ -134,6 +137,7 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
     isSetProduct && setGroupPos ? `v2-set-pos-${setGroupPos}` : '',
     isSelected ? 'v2-row-selected' : '',
     displayImportQty != null && displayImportQty > 0 ? 'v2-row-has-work' : '',
+    compact ? 'v2-row-compact' : '',
   ].filter(Boolean).join(' ');
 
   // 세트 묶음선·배지 색은 CSS 한 가지(주황) — 그룹별 색 순환 없음
@@ -265,11 +269,9 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
             );
           })()}
 
-          {/* ── 2번째 줄: item_name ── */}
-          <div>{item.item_name || ''}</div>
-
-          {/* ── 3번째 줄: option_name ── */}
-          {item.option_name && <div>{item.option_name}</div>}
+          {/* ── 2·3번째 줄: item_name / option_name — compact(V3) 에서는 숨김 (보드 헤더에 있음) ── */}
+          {!compact && <div>{item.item_name || ''}</div>}
+          {!compact && item.option_name && <div>{item.option_name}</div>}
 
           {/* ── 맨 아래: note_cn — 깜빡이는 빨간 배지 (V2 전용 is-alert, V3 는 빨간 글씨 그대로) ── */}
           {item.note_cn && String(item.note_cn).trim() && (
@@ -296,18 +298,20 @@ const ItemTableRow: React.FC<ItemTableRowProps> = ({
         {item.order_qty ?? ''}
       </td>
 
-      {/* 비용 (price_cny / price_total_cny) — 가운데 정렬 */}
-      <td style={{ textAlign: 'center' }}>
-        <div className="v2-cost-display" style={{ textAlign: 'center' }}>
-          {item.price_cny != null ? `¥${item.price_cny}` : ''}
-          {item.price_total_cny != null && (
-            <>
-              <br />
-              {`¥${item.price_total_cny}`}
-            </>
-          )}
-        </div>
-      </td>
+      {/* 비용 (price_cny / price_total_cny) — 가운데 정렬. compact(V3) 에서는 열 자체를 뺀다 */}
+      {!compact && (
+        <td style={{ textAlign: 'center' }}>
+          <div className="v2-cost-display" style={{ textAlign: 'center' }}>
+            {item.price_cny != null ? `¥${item.price_cny}` : ''}
+            {item.price_total_cny != null && (
+              <>
+                <br />
+                {`¥${item.price_total_cny}`}
+              </>
+            )}
+          </div>
+        </td>
+      )}
 
       {/* 진행 = 개수 - 취소 - 반품 - 출고완료 (아직 들어올 게 있으면 주황, 다 들어왔으면 회색) */}
       <td className="v2-qty-cell">

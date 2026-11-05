@@ -18,6 +18,8 @@ export interface ItemTableProps {
   header?: React.ReactNode;
   /** 기본 'full' — 열 제목·전체선택 체크박스를 그린다 */
   headerMode?: ItemTableHeaderMode;
+  /** V3 펼침 테이블 — 비용 열 없음, 행은 compact (ItemTableRow compact) */
+  compact?: boolean;
   selectedRows: Set<string>;
   isAllSelected: boolean;
   isIndeterminate: boolean;
@@ -58,13 +60,16 @@ export interface ItemTableProps {
   onFinishCategoryEdit: () => void;
 }
 
+/** 열 수 — 기본 13, compact(비용 열 없음) 12 */
 const COLUMN_COUNT = 13;
+const COLUMN_COUNT_COMPACT = 12;
 
 const ItemTable: React.FC<ItemTableProps> = ({
   loading,
   paginatedData,
   header,
   headerMode = 'full',
+  compact = false,
   selectedRows,
   isAllSelected,
   isIndeterminate,
@@ -95,6 +100,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   onFinishCategoryEdit,
 }) => {
   const { t } = useTranslation();
+  const columnCount = compact ? COLUMN_COUNT_COMPACT : COLUMN_COUNT;
 
   // ============================================================
   // 세트 그룹 판정 — 단일 키 함수(getSetGroupKey) 기반
@@ -144,11 +150,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
   return (
     <div className="v2-table-board">
       {header}
-      <table className="v2-item-table">
+      <table className={`v2-item-table ${compact ? 'is-compact' : ''}`}>
         {headerMode === 'collapsed' ? (
           <thead className="v2-thead-collapsed" aria-hidden="true">
             <tr>
-              {Array.from({ length: COLUMN_COUNT }, (_, i) => <th key={i} />)}
+              {Array.from({ length: columnCount }, (_, i) => <th key={i} />)}
             </tr>
           </thead>
         ) : (
@@ -170,7 +176,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
             <th>{t('importProduct.table.productName')}</th>
             <th>{t('importProduct.table.orderOption')}</th>
             <th>{t('importProduct.table.quantity')}</th>
-            <th>{t('importProduct.table.cost')}</th>
+            {!compact && <th>{t('importProduct.table.cost')}</th>}
             <th>{t('importProduct.table.progress')}</th>
             <th className="v2-work-cell">{t('importProductV2.table.work')}</th>
             <th>{t('importProductV2.table.arrival')}</th>
@@ -183,11 +189,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={13} className="empty-data">{t('importProduct.table.loading')}</td>
+              <td colSpan={columnCount} className="empty-data">{t('importProduct.table.loading')}</td>
             </tr>
           ) : paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={13} className="empty-data">{t('importProduct.table.noData')}</td>
+              <td colSpan={columnCount} className="empty-data">{t('importProduct.table.noData')}</td>
             </tr>
           ) : (
             paginatedData.map((item, idx) => {
@@ -203,6 +209,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 key={item.id}
                 item={item}
                 sameGroupAsNext={sameGroupAsNext}
+                compact={compact}
                 setGroupPos={setGroupPosOf(idx)}
                 setMixedSeller={thisKey !== null && mixedSellerKeys.has(thisKey)}
                 isSelected={selectedRows.has(item.id)}

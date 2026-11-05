@@ -32,8 +32,10 @@ interface SearchSectionProps {
   // ── 그룹별로 보기 (보드 분할 토글, 클라이언트 처리) ──
   groupByProduct: boolean;
   onGroupByProductChange: (value: boolean) => void;
-  /** 토글 체크박스 문구 — 미지정 시 "그룹별로 보기" (V3 는 "전체 보기" 로 재사용) */
+  /** 토글 체크박스 문구 — 미지정 시 "그룹별로 보기" */
   groupToggleLabel?: string;
+  /** false 면 그룹 토글을 숨긴다 (V3 는 항상 그룹 보기) — 기본 true */
+  showGroupToggle?: boolean;
 
   // ── 우측 액션 버튼들 (1688 XLSX ~ 주문 ID) — 필터행 오른쪽 ──
   rightButtons?: React.ReactNode;
@@ -53,6 +55,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   groupByProduct,
   onGroupByProductChange,
   groupToggleLabel,
+  showGroupToggle = true,
   rightButtons,
 }) => {
   const { t } = useTranslation();
@@ -88,15 +91,17 @@ const SearchSection: React.FC<SearchSectionProps> = ({
           </label>
         </div>
 
-        {/* 그룹별로 보기 체크박스 — 항상 클릭 가능 */}
-        <label className="v2-check">
-          <input
-            type="checkbox"
-            checked={groupByProduct}
-            onChange={(e) => onGroupByProductChange(e.target.checked)}
-          />
-          {groupToggleLabel ?? t('importProductV2.filter.groupView')}
-        </label>
+        {/* 그룹별로 보기 체크박스 — V3 는 숨김(항상 그룹 보기) */}
+        {showGroupToggle && (
+          <label className="v2-check">
+            <input
+              type="checkbox"
+              checked={groupByProduct}
+              onChange={(e) => onGroupByProductChange(e.target.checked)}
+            />
+            {groupToggleLabel ?? t('importProductV2.filter.groupView')}
+          </label>
+        )}
 
         {/* 전체 건수 */}
         {statusFilter === 'ALL' && (

@@ -51,8 +51,21 @@ import { useStableCallback } from './hooks/useStableCallback';
 import { boardsForRows, distributeQty } from './utils/groupBoards';
 import type { LabelType } from '../../lib/labelTypes';
 
-const ItemCheck: React.FC = () => {
+// ============================================================
+// variant — 같은 데이터·동작, 보기만 다르다
+//   'v2' (/import-product-v2) : 주문 행 테이블이 메인, 보드 헤더는 요약. [그룹별로 보기] 토글 가능
+//   'v3' (/import-product-v3) : 보드 헤더(요약)가 메인 — 큰 이미지·옵션·입력. 주문 행은 [펼치기] 로.
+//                               항상 그룹 보기, 펼친 테이블은 compact (작은 이미지, 상품명·비용 없음)
+// ============================================================
+export type ItemCheckVariant = 'v2' | 'v3';
+
+interface ItemCheckProps {
+  variant?: ItemCheckVariant;
+}
+
+const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   const { t } = useTranslation();
+  const isV3 = variant === 'v3';
 
   // ============================================================
   // 1) ft_users 드롭박스
@@ -96,7 +109,8 @@ const ItemCheck: React.FC = () => {
   //      [그룹별로 보기] 체크는 정렬이 아니라 "보드마다 테이블을 나눠 그릴지" 만 바꾼다.
   //      페이지 접속 시 기본 체크.
   // ============================================================
-  const [groupView, setGroupView] = useState(true);
+  const [groupViewChecked, setGroupView] = useState(true);
+  const groupView = isV3 || groupViewChecked;          // V3 는 항상 그룹 보기
 
   // baseActiveItems: 배송번호 모드+검색완료 → deliveryItems / 그 외 → items
   const baseActiveItems =
@@ -951,7 +965,7 @@ const ItemCheck: React.FC = () => {
   // 렌더링
   // ============================================================
   return (
-    <div className="v2-item-layout" onMouseMove={handleMouseMove}>
+    <div className={`v2-item-layout ${isV3 ? 'is-v3' : ''}`} onMouseMove={handleMouseMove}>
       <TopsideMenu />
       <div className="v2-item-main-content">
         <LeftsideMenu />
@@ -963,7 +977,7 @@ const ItemCheck: React.FC = () => {
             <div className="v2-title-row">
               {/* ── 왼쪽: 제목 + [V2 이전] 버튼 ─────────── */}
               <div className="v2-title-left">
-                <h1 className="v2-item-title">{t('importProductV2.title')}</h1>
+                <h1 className="v2-item-title">{t(isV3 ? 'importProductV3.title' : 'importProductV2.title')}</h1>
                 <V2MigrationButton
                   uploads={uploads}
                   selectedUserId={selectedUserId}
@@ -1044,6 +1058,7 @@ const ItemCheck: React.FC = () => {
               filteredItemsCount={filteredItems.length}
               groupByProduct={groupView}
               onGroupByProductChange={setGroupView}
+              showGroupToggle={!isV3}
               rightButtons={<ImportUploadButtons uploads={uploads} selectedUserId={selectedUserId} />}
             />
 
@@ -1051,7 +1066,12 @@ const ItemCheck: React.FC = () => {
             {/* 데이터 테이블 — [그룹별로 보기] 체크 시 보드(그룹)마다 테이블 분할 */}
             {/* ============================================================ */}
             {groupView ? (
-              <GroupedItemTables boards={pageBoards} tableProps={tableProps} onApplyGroupQty={handleApplyGroupQty} />
+              <GroupedItemTables
+                boards={pageBoards}
+                tableProps={tableProps}
+                onApplyGroupQty={handleApplyGroupQty}
+                variant={variant}
+              />
             ) : (
               <ItemTable {...tableProps} paginatedData={paginatedData} />
             )}

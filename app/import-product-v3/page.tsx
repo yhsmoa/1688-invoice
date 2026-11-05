@@ -1,5 +1,10 @@
-import ImportV3 from './ImportV3';
+import ItemCheck from '../import-product-v2/ItemCheck';
 
+// ============================================================
+// 상품입고 V3 — V2 와 같은 데이터·동작, 보기만 다르다 (ItemCheck variant='v3')
+//   · 그룹 요약(보드 헤더)이 메인 — 큰 이미지 · 옵션 · [입력]/작업 가능
+//   · 주문 행 테이블은 헤더 오른쪽 [펼치기] 로 보드 아래에 펼쳐진다 (작은 이미지 · 상품명·비용 없음)
+// ============================================================
 export default function Page() {
-  return <ImportV3 />;
+  return <ItemCheck variant="v3" />;
 }

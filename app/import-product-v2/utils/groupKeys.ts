@@ -1,7 +1,7 @@
-import type { FtOrderItem } from '../../import-product-v2/hooks/useFtData';
+import type { FtOrderItem } from '../hooks/useFtData';
 
 // ============================================================
-// 상품입고 V3 — 그룹 키 (순수 함수)
+// 상품입고 V2·V3 — 그룹 키 (순수 함수)  ※ 예전 V3 utils 에서 옮겨 옴
 //
 //   카드   = (1688 오퍼 + 색상 china_option1)   → 이미지 1장
 //   옵션   = 카드 안에서 사이즈(china_option2) 가 같은 주문행 묶음
