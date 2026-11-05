@@ -13,12 +13,13 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
-  const [language, setLanguage] = useState<string>('ko');
+  // 기본 언어 — 중국어 (창고 작업자 기준). 저장된 선택이 있으면 그것을 따른다
+  const [language, setLanguage] = useState<string>('zh');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // 로컬스토리지에서 언어 설정 불러오기
-    const savedLanguage = localStorage.getItem('i18nextLng') || 'ko';
+    const savedLanguage = localStorage.getItem('i18nextLng') || 'zh';
     setLanguage(savedLanguage);
     i18n.changeLanguage(savedLanguage);
     setMounted(true);
