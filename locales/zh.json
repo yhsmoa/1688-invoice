@@ -15,7 +15,37 @@
     "customerChecks": "客户检验确认",
     "inquiry": "商品咨询",
     "sellerInquiry": "1688 卖家咨询",
-    "mobile": "手机版"
+    "mobile": "手机版",
+    "orderCheck": "订单检查",
+    "orderStatus": "订单状态",
+    "productIn": "商品入库",
+    "productInV3": "商品入库V3",
+    "productOut": "商品出库",
+    "shipment": "Shipment",
+    "outboundDone": "出库完成",
+    "returnReceipt": "退货受理",
+    "stockStorage": "库存(保管)",
+    "working": "作业中",
+    "stock": "库存",
+    "accountManage": "账户管理",
+    "customerAccountNew": "客户账户(新)",
+    "tradeAccount": "贸易账户",
+    "invoice": "invoice",
+    "accountInfo": "账户信息",
+    "customerAccountOld": "客户账户(旧)",
+    "boxLabel": "箱标签",
+    "pdfSplit": "PDF拆分",
+    "hrManage": "人事管理",
+    "attendanceScan": "考勤扫描",
+    "employeeManage": "员工管理",
+    "payrollBook": "工资账簿",
+    "dbManage": "DB管理",
+    "orderDataManage": "订单数据管理",
+    "volumeManage": "物量管理",
+    "databaseManage": "数据库管理",
+    "v1Menu": "V1",
+    "orderStats": "订单统计",
+    "orderCancel": "订单取消"
   },
   "orderSearch": {
     "title": "订单查询",
@@ -395,7 +425,9 @@
       "label": "标签",
       "shipping": "运单",
       "import": "入库",
-      "customerConfirm": "客户确认"
+      "customerConfirm": "客户确认",
+      "sellerCheck": "1688卖家确认",
+      "koreaCustomerCheck": "韩国客户确认"
     },
     "customerConfirm": {
       "attr": {
@@ -538,6 +570,35 @@
       "codeCandidates": "搜索结果的配送单号：",
       "codeNone": "未找到搜索结果订单的配送单号，请直接输入。",
       "codeRequired": "请输入配送单号。"
+    },
+    "sellerCheck": {
+      "title": "1688 卖家确认请求",
+      "summary": "已选 {{count}} 条",
+      "hint": "向 1688 卖家确认所选订单。登记后以「确认请求」进入[商品咨询 › 1688 卖家咨询]。每次请求都会新建 1 条登记。",
+      "codeLabel": "配送单号",
+      "codePlaceholder": "运单（配送）号",
+      "codeResolving": "正在查找所选订单的配送单号…",
+      "codeCandidates": "所选订单的配送单号：",
+      "codeNone": "未找到所选订单的配送单号，请直接输入。",
+      "codeRequired": "请输入配送单号。",
+      "colImage": "图片",
+      "colItemNo": "帖子编号",
+      "colProductNo": "商品编号",
+      "colProduct": "商品名",
+      "colChinaOption": "中国规格",
+      "colConfirmQty": "确认数量",
+      "colUrl": "URL",
+      "openUrl": "打开",
+      "memo": "内容",
+      "required": "必填",
+      "memoPlaceholder": "请填写需要向卖家确认的内容",
+      "memoRequired": "请输入需要确认的内容。",
+      "confirmQtyInvalid": "请在每一行输入 1 以上的整数作为确认数量。",
+      "cancel": "取消",
+      "submit": "确认请求",
+      "saving": "登记中…",
+      "saved": "已登记 {{count}} 条确认请求。",
+      "failed": "确认请求登记失败。"
     },
     "cancelModal": {
       "title": "取消 / 退货登记",
@@ -1436,7 +1497,7 @@
     }
   },
   "sellerInquiry": {
-    "subtitle": "按配送单号的未入库登记 — 来自商品入库[未入库]，手机端添加照片",
+    "subtitle": "按配送单号的未入库登记 · 卖家确认请求 — 来自商品入库[未入库] · [1688卖家确认]，手机端添加照片",
     "searchPlaceholder": "配送单号 · 帖子编号",
     "refresh": "刷新",
     "tabAll": "全部",
@@ -1455,7 +1516,7 @@
       "items": "帖子编号",
       "arrived": "入库数量",
       "short": "缺少数量",
-      "expected": "应入库数量",
+      "expected": "确认数量",
       "memo": "备注",
       "status": "处理状态",
       "photos": "照片",
@@ -1474,7 +1535,48 @@
     "memoPlaceholder": "卖家回复·处理内容",
     "saveMemo": "保存备注",
     "noPhotos": "没有附加照片。",
-    "dbNote": "数据"
+    "dbNote": "数据",
+    "tabGroup": {
+      "status": "处理状态",
+      "kind": "类别"
+    },
+    "kind": {
+      "미입고": "未入库",
+      "확인요청": "确认请求"
+    },
+    "colKind": "类别",
+    "accountTitle": "1688 账号 {{badge}}",
+    "photoMore": "+{{count}}",
+    "photoOpen": "查看大图",
+    "statusModal": {
+      "title": "更改处理状态",
+      "current": "当前状态",
+      "none": "没有可更改的状态。",
+      "cancel": "取消",
+      "saving": "更改中…"
+    },
+    "memo": {
+      "empty": "无备注",
+      "save": "保存",
+      "cancel": "取消",
+      "saving": "保存中…",
+      "add": "添加备注行",
+      "editLine": "修改此行",
+      "deleteLine": "删除此行",
+      "confirmDelete": "要删除这条备注吗？",
+      "conflict": "其他人已先修改了备注。将重新加载列表。",
+      "placeholder": "输入内容 · Enter 保存 · Esc 取消"
+    },
+    "copy": {
+      "code": "复制配送单号",
+      "done": "已复制",
+      "failed": "复制失败",
+      "image": "已复制图片",
+      "imageUrl": "已复制图片地址（当前环境无法复制图片）",
+      "photoHint": "点击复制图片",
+      "options": "已复制中国规格·确认数量",
+      "optionsTitle": "复制中国规格 + 确认数量（每行 规格⇥数量）"
+    }
   },
   "mobile": {
     "subtitle": "手机版",

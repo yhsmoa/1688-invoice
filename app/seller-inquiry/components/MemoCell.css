@@ -1,0 +1,92 @@
+/* ============================================================ */
+/* 목록 [메모] 칸 (MemoCell) — /seller-inquiry                     */
+/*   메모 줄 기록: [도장] [내용] [E] [−] · 맨 아래 hover 시 [+]   */
+/* ============================================================ */
+.si-memo-cell {
+  /* 표가 좁아져도 이 폭을 지킨다 (표 전체는 가로 스크롤) */
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  box-sizing: border-box;
+  color: #4b5563;
+  cursor: default;
+}
+
+/* ============================================================ */
+/* 줄                                                            */
+/* ============================================================ */
+.si-memo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 1px 0;
+}
+.si-memo-row + .si-memo-row { margin-top: 2px; }
+
+.si-memo-stamp {
+  flex: none;
+  min-width: 70px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 18px;
+  color: #9ca3af;
+}
+
+.si-memo-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #111827;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.si-memo-row-actions { flex: none; display: inline-flex; gap: 3px; }
+
+/* ============================================================ */
+/* 작은 아이콘 버튼 (E · − · + · ✓ · ✕)                          */
+/* ============================================================ */
+.si-memo-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #9ca3af;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+.si-memo-icon:hover:not(:disabled) { color: #111827; border-color: #9ca3af; background: #f9fafb; }
+.si-memo-icon:disabled { opacity: 0.4; cursor: default; }
+.si-memo-icon.is-ok:not(:disabled) { color: #15803d; }
+
+/* ── [+] 새 줄 — 칸에 마우스를 올렸을 때만 ── */
+.si-memo-add { display: block; margin-top: 4px; visibility: hidden; }
+.si-memo-cell:hover .si-memo-add,
+.si-memo-add:focus-visible { visibility: visible; }
+
+/* ============================================================ */
+/* 한 줄 입력 (수정 · 추가)                                       */
+/* ============================================================ */
+.si-memo-input-row { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3px; }
+.si-memo-row.is-new { margin-top: 4px; }
+.si-memo-input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+}
+.si-memo-input:focus { outline: none; border-color: #4a90e2; }

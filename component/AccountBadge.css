@@ -1,0 +1,29 @@
+/* ============================================================ */
+/* AccountBadge — 1688 구매 계정 배지                              */
+/*   N 초록 · Y 핑크 · 그 외(설정에 없는 계정) 회색                 */
+/*   (주문상태 V2 .os-v2-account-badge 에서 옮김 — 값 동일)         */
+/* ============================================================ */
+.account-badge {
+  flex-shrink: 0;
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.account-badge[data-badge="N"] {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.account-badge[data-badge="Y"] {
+  background: #ec4899;
+  color: #ffffff;
+}

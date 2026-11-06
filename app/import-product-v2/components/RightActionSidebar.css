@@ -3,7 +3,8 @@
 /*                                                              */
 /* 구조: v2-item-main-content 의 flex item (LeftsideMenu 와 대칭) */
 /*   - TopsideMenu 아래, Left/Right 두 사이드바가 탑메뉴 양 옆에 대칭 배치 */
-/*   - 너비 88px, 흰 바탕 레일, 선 아이콘 + 라벨 버튼 세로 가운데 정렬 */
+/*   - 너비 80px, 흰 바탕 레일, 선 아이콘 + 라벨 버튼 세로 가운데 정렬 */
+/*   - [미입고] 아래 반쪽 버튼 줄: 1688 판매자 확인 · 한국 고객확인     */
 /*   - 색은 [입고] 하나만 (파랑) — 나머지는 회색 글자, hover 시 연회색 배경 */
 /* ============================================================ */
 
@@ -86,12 +87,40 @@
   color: #9ca3af;
 }
 
-/* ── 고객확인 구분선 (기존 액션 ↔ 고객확인 분리) ── */
-.v2-right-action-divider {
-  width: 40px;
-  height: 1px;
-  margin: 6px 0;
-  background-color: #e5e7eb;
+/* ── 반쪽 버튼 줄 ([1688 판매자 확인] · [한국 고객확인]) ── */
+/*    버튼 폭 66px 안에 31px × 2 + 간격 4px, 높이는 일반 버튼과 같은 64px */
+.v2-right-action-pair {
+  width: 66px;
+  display: flex;
+  gap: 4px;
+}
+
+.v2-right-action-btn.is-half {
+  width: 31px;
+  border-radius: 10px;
+}
+
+/* 두 줄 라벨 (16 / 88) */
+.v2-right-action-label.is-stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 국기 이모지 — 비활성일 때 흐리게 (이모지는 color 를 따르지 않는다) */
+.v2-right-action-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.v2-right-action-btn:disabled .v2-right-action-flag {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 /* ── 아이콘 ── */

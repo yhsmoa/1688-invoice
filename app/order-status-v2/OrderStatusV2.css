@@ -849,30 +849,7 @@
   min-width: 0;
 }
 
-.order-status-v2-table .os-v2-account-badge {
-  flex-shrink: 0;
-  display: inline-block;
-  min-width: 18px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-  white-space: nowrap;
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.order-status-v2-table .os-v2-account-badge[data-badge="N"] {
-  background: #16a34a;
-  color: #ffffff;
-}
-
-.order-status-v2-table .os-v2-account-badge[data-badge="Y"] {
-  background: #ec4899;
-  color: #ffffff;
-}
+/* 1688 구매 계정 배지 — 모양·색은 component/AccountBadge.css (.os-v2-account-badge 는 배치용 이름만) */
 
 /* ============================================================
    비고 열 (KR / CN) — 인라인 편집 (contentEditable)

@@ -103,6 +103,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/save-fashion-label', tables: ['invoiceManager_label'] },
           { route: '/api/hr/workers', tables: ['invoiceManager_employees'] },
           { route: '/api/ft/customer-checks', tables: ['ft_customer_checks', 'ft_customer_check_images', 'ft_customer_check_comments', 'ft_users'] },
+          { route: '/api/ft/seller-inquiries', tables: ['ft_seller_inquiries', 'ft_seller_inquiry_items', 'ft_users'] },
         ],
         external: ['Supabase Storage'],
         note: '고객확인 모달 첨부 이미지는 Storage 버킷 customer-confirm, 개인통관 PDF 는 stock_management 프로젝트의 Storage 사용',
@@ -581,6 +582,28 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         ],
         external: ['Supabase Storage'],
         note: '입고 [고객확인] 요청(Notion 상품확인 DB 대체) — 팀별 탭 · 고객 답변 확인 · 재확인요청/처리완료. 고객 답변은 purchase-agent /inspections (DB 함수 customer_check_answer)',
+      },
+      {
+        name: '1688 판매자 문의',
+        route: '/seller-inquiry',
+        file: 'app/seller-inquiry/SellerInquiry.tsx',
+        apis: [
+          { route: '/api/ft/seller-inquiries', tables: ['ft_seller_inquiries', 'ft_seller_inquiry_items', 'ft_seller_inquiry_photos', '1688_invoice_deliveryInfo_check'] },
+          { route: '/api/ft/seller-inquiries/[id]', tables: ['ft_seller_inquiries', 'ft_seller_inquiry_items', 'ft_seller_inquiry_photos', '1688_invoice_deliveryInfo_check'] },
+        ],
+        external: ['Supabase Storage'],
+        note: '입고 [미입고](kind 미입고) · [1688 판매자 확인](kind 확인요청) 접수 목록 — 처리상태·구분 탭, 배송번호 옆 1688 계정 배지(1688_invoice_deliveryInfo_check), 사진은 Storage 버킷 seller-inquiry',
+      },
+      {
+        name: '1688 판매자 문의 사진 (모바일)',
+        route: '/m/seller-inquiry',
+        file: 'app/m/seller-inquiry/page.tsx',
+        apis: [
+          { route: '/api/ft/seller-inquiries/by-delivery-code', tables: ['ft_seller_inquiries', 'ft_seller_inquiry_items', 'ft_seller_inquiry_photos'] },
+          { route: '/api/ft/seller-inquiries/photos', tables: ['ft_seller_inquiries', 'ft_seller_inquiry_photos'] },
+        ],
+        external: ['Supabase Storage'],
+        note: '운송장 바코드 촬영 → 열린 미입고 접수(kind 미입고)에 사진 첨부',
       },
       {
         name: '바코드 라벨',

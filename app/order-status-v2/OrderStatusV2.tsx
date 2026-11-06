@@ -16,6 +16,7 @@ import FulfillmentLogModal, { type DeliveryTracking } from './components/Fulfill
 import DeliveryStatusTools from './components/DeliveryStatusTools';
 import NewOrderStatusButton from './components/NewOrderStatusButton';
 import TypeBadge from '../../component/TypeBadge';
+import AccountBadge from '../../component/AccountBadge';
 import AlertCriteriaPopover from './components/AlertCriteriaPopover';
 import { evaluateDeliveryAlert, type DeliveryAlert } from './utils/deliveryAlerts';
 import { evaluateOrderMissing, type OrderMissing } from './utils/orderMissing';
@@ -881,14 +882,12 @@ const OrderStatusV2: React.FC = () => {
                                 {[item.item_name, item.option_name].filter(Boolean).join(', ') || '-'}
                               </span>
                               {item['1688_order_id'] && orderXlsxMap.get(item['1688_order_id'])?.accounts.map((a) => (
-                                <span
+                                <AccountBadge
                                   key={a.account}
                                   className="os-v2-account-badge"
-                                  data-badge={a.badge}
+                                  badge={a.badge}
                                   title={`1688 계정 ${a.account}`}
-                                >
-                                  {a.badge}
-                                </span>
+                                />
                               ))}
                             </div>
                           </td>

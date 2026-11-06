@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FtOrderItem } from '../hooks/useFtData';
+import { useDeliveryCodeCandidates } from '../hooks/useDeliveryCodeCandidates';
+import type { ShortfallRow } from '../utils/arrivalShortfall';
 import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import type { SellerInquiryItemInput } from '../../../lib/sellerInquiries';
 import './V2MissingModal.css';
@@ -19,23 +20,11 @@ import './V2MissingModal.css';
 //   · 주문번호·일반·비고 검색 결과 (deliveryCode = null): 결과 주문들의 1688 주문ID 로
 //     1688_invoice_deliveryInfo_check 에서 배송번호 후보를 찾아 고르게 한다 (하나면 자동 선택).
 //     후보를 고르면 그 배송번호에 속한 주문행만 접수한다 (후보에 없는 번호를 직접 넣으면 전부).
+//     후보 찾기는 hooks/useDeliveryCodeCandidates ([1688 판매자 확인] 모달과 공용).
 // ============================================================
 
-export interface MissingRow {
-  item: FtOrderItem;
-  /** 입고되어야 할 수량 = order_qty − CANCEL */
-  expected: number;
-  /** 입고 수량 = ARRIVAL + 작업 입력 */
-  arrived: number;
-  /** 부족 = expected − arrived (> 0) */
-  short: number;
-}
-
-interface DeliveryCandidate {
-  code: string;
-  /** 이 배송번호로 온 1688 주문ID 들 */
-  orderIds: string[];
-}
+/** 부족 주문행 — expected/arrived/short 계산은 utils/arrivalShortfall (short > 0 인 행만) */
+export type MissingRow = ShortfallRow;
 
 interface V2MissingModalProps {
   isOpen: boolean;
@@ -57,54 +46,14 @@ const V2MissingModal: React.FC<V2MissingModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
 
   // ── 배송번호 — 검색한 번호가 없으면 결과 주문의 운송장에서 후보를 찾는다 ──
-  const [code, setCode] = useState('');
-  const [candidates, setCandidates] = useState<DeliveryCandidate[]>([]);
-  const [isResolving, setIsResolving] = useState(false);
-
-  // 결과 주문들의 1688 주문ID (안정된 키 — rows 참조가 바뀌어도 같은 주문이면 다시 찾지 않는다)
-  const orderIdsKey = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.item['1688_order_id']).filter((v): v is string => !!v))).sort().join('|'),
-    [rows],
-  );
+  const orderIds = useMemo(() => rows.map((r) => r.item['1688_order_id']), [rows]);
+  const { code, setCode, candidates, loading: isResolving } = useDeliveryCodeCandidates({
+    deliveryCode,
+    orderIds,
+    enabled: isOpen,
+  });
 
   useEffect(() => { if (isOpen) setMemo(''); }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setCode(deliveryCode ?? '');
-    setCandidates([]);
-    if (deliveryCode) return;
-
-    const orderIds = orderIdsKey ? orderIdsKey.split('|') : [];
-    if (orderIds.length === 0) return;
-
-    let cancelled = false;
-    setIsResolving(true);
-    (async () => {
-      try {
-        const found = await Promise.all(orderIds.map(async (id) => {
-          const res = await fetch(`/api/ft/delivery-codes?order_id=${encodeURIComponent(id)}`);
-          const json = await res.json();
-          return { id, codes: json.success ? (json.data as string[]) : [] };
-        }));
-        if (cancelled) return;
-        const byCode = new Map<string, string[]>();
-        for (const f of found) {
-          for (const c of f.codes) byCode.set(c, [...(byCode.get(c) ?? []), f.id]);
-        }
-        const list = Array.from(byCode.entries())
-          .map(([c, ids]) => ({ code: c, orderIds: ids }))
-          .sort((a, b) => b.orderIds.length - a.orderIds.length || a.code.localeCompare(b.code));
-        setCandidates(list);
-        if (list.length === 1) setCode(list[0].code);
-      } catch (e) {
-        console.error('배송번호 후보 조회 오류:', e);
-      } finally {
-        if (!cancelled) setIsResolving(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isOpen, deliveryCode, orderIdsKey]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -155,6 +104,7 @@ const V2MissingModal: React.FC<V2MissingModalProps> = ({
           user_id: selectedUserId,
           created_by: selectedWorker || null,
           delivery_code: trimmedCode,
+          kind: '미입고',
           memo: memo.trim() || null,
           items,
         }),

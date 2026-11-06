@@ -39,6 +39,7 @@ import V2LabelModal from './components/V2LabelModal';
 import V2CancelModal from './components/V2CancelModal';
 import V2NoteModal from './components/V2NoteModal';
 import V2CustomerConfirmModal from './components/V2CustomerConfirmModal';
+import V2SellerCheckModal from './components/V2SellerCheckModal';
 import FulfillmentLogModal from './components/FulfillmentLogModal';
 import RightActionSidebar from './components/RightActionSidebar';
 import { saveLabelData } from './utils/saveLabelData';
@@ -51,6 +52,7 @@ import { usePersonalInvoicePrint } from './hooks/usePersonalInvoicePrint';
 import { useGroupBoards } from './hooks/useGroupBoards';
 import { useStableCallback } from './hooks/useStableCallback';
 import { boardsForRows, distributeQty } from './utils/groupBoards';
+import { computeArrivalShortfall, type ShortfallRow } from './utils/arrivalShortfall';
 import type { LabelType } from '../../lib/labelTypes';
 
 // ============================================================
@@ -536,16 +538,12 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
   //       입고되어야 할 수량 = order − CANCEL · 입고 수량 = ARRIVAL + 작업 입력 · 부족 = 차이 > 0
   //       검색 결과가 떠 있을 때만 계산한다 (전체 목록에서는 버튼 비활성). 입고를 아직 안 넣었어도
   //       부족이면 접수 대상이다. 배송번호는 배송번호 검색이면 그 번호, 아니면 모달이 결과 주문의
-  //       운송장에서 후보를 찾아 고르게 한다 (V2MissingModal).
+  //       운송장에서 후보를 찾아 고르게 한다 (V2MissingModal). 수량 계산은 utils/arrivalShortfall.
   // ============================================================
   const missingRows: MissingRow[] = useMemo(() => {
     if (!isSearchActive) return [];
     return filteredItems
-      .map((item) => {
-        const expected = Math.max(0, (item.order_qty ?? 0) - (cancelMap.get(item.id) ?? 0));
-        const arrived = (arrivalMap.get(item.id) ?? 0) + (modifiedImportQty.get(item.id) ?? 0);
-        return { item, expected, arrived, short: expected - arrived };
-      })
+      .map((item) => ({ item, ...computeArrivalShortfall(item, arrivalMap, cancelMap, modifiedImportQty) }))
       .filter((r) => r.short > 0);
   }, [isSearchActive, filteredItems, cancelMap, arrivalMap, modifiedImportQty]);
   const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
@@ -680,6 +678,25 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
       return;
     }
     setIsCustomerConfirmModalOpen(true);
+  }, [selectedRows, t]);
+
+  // ============================================================
+  // 14-1) [1688 판매자 확인] — 체크된 항목으로 판매자 확인요청 (ft_seller_inquiries kind 확인요청)
+  //       대상은 고객확인과 같은 체크된 항목, 수량은 [미입고] 와 같은 계산 (utils/arrivalShortfall)
+  // ============================================================
+  const [isSellerCheckModalOpen, setIsSellerCheckModalOpen] = useState(false);
+
+  const sellerCheckRows: ShortfallRow[] = useMemo(
+    () => customerConfirmItems.map((item) => ({ item, ...computeArrivalShortfall(item, arrivalMap, cancelMap, modifiedImportQty) })),
+    [customerConfirmItems, arrivalMap, cancelMap, modifiedImportQty]
+  );
+
+  const handleSellerCheckClick = useCallback(() => {
+    if (selectedRows.size === 0) {
+      alert(t('importProductV2.alerts.selectItems'));
+      return;
+    }
+    setIsSellerCheckModalOpen(true);
   }, [selectedRows, t]);
 
   // PC-NO → operator_id (라벨 저장용)
@@ -1240,6 +1257,7 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
           onLabelClick={handleLabelClick}
           onImportClick={() => setIsReadyModalOpen(true)}
           onShippingClick={handlePrintInvoicesFromSelection}
+          onSellerCheckClick={handleSellerCheckClick}
           onCustomerConfirmClick={handleCustomerConfirmClick}
         />
       </div>
@@ -1272,6 +1290,18 @@ const ItemCheck: React.FC<ItemCheckProps> = ({ variant = 'v2' }) => {
         onClose={() => setIsMissingModalOpen(false)}
         deliveryCode={searchType === '배송번호' ? deliveryCode : null}
         rows={missingRows}
+        selectedUserId={selectedUserId}
+        selectedWorker={selectedWorker}
+      />
+
+      {/* ============================================================ */}
+      {/* 1688 판매자 확인 모달 — 체크된 항목 → 1688 판매자 문의 (확인요청) */}
+      {/* ============================================================ */}
+      <V2SellerCheckModal
+        isOpen={isSellerCheckModalOpen}
+        onClose={() => setIsSellerCheckModalOpen(false)}
+        deliveryCode={searchType === '배송번호' ? deliveryCode : null}
+        rows={sellerCheckRows}
         selectedUserId={selectedUserId}
         selectedWorker={selectedWorker}
       />

@@ -1,0 +1,73 @@
+/* ============================================================ */
+/* 1688 판매자 확인 모달 (V2SellerCheckModal)                     */
+/*   틀·표·버튼은 V2MissingModal.css 클래스를 그대로 쓴다.         */
+/*   여기에는 이 모달에만 있는 것 (필수·상품번호·URL·확인수량) 만. */
+/* ============================================================ */
+
+/* ── 필수 표시 ── */
+.v2-sc-required {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+/* ── 상품번호 ── */
+.v2-sc-productno {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #374151;
+  white-space: nowrap;
+}
+
+/* ── URL (새 탭) ── */
+.v2-sc-url {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.v2-sc-url:hover {
+  background: #dbeafe;
+}
+
+/* ── 확인수량 입력 ── */
+.v2-sc-qty {
+  width: 64px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  text-align: right;
+}
+
+.v2-sc-qty:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.v2-sc-qty.is-invalid {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.v2-sc-qty-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}

@@ -1,17 +1,30 @@
 /* ============================================================ */
 /* 1688 판매자 문의 (/seller-inquiry) — 창고 PC                    */
+/*   상태 변경 모달 → components/StatusModal.css                   */
+/*   메모 칸      → components/MemoCell.css                        */
+/*   계정 배지    → component/AccountBadge.css                     */
+/*   hover 확대   → component/HoverZoomImage.css                   */
+/*   복사 알림    → component/CopyToast.css                        */
+/* ============================================================ */
+
+/* ============================================================ */
+/* 레이아웃 — .main-content(overflow hidden) 안에서 표만 스크롤   */
 /* ============================================================ */
 .si-main {
   flex: 1;
   min-width: 0;
-  padding: 28px 32px 48px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 28px 32px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
-/* 헤더 */
-.si-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+/* ============================================================ */
+/* 헤더 · 검색 · 공용 버튼                                         */
+/* ============================================================ */
+.si-header { flex: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .si-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
 .si-subtitle { margin: 4px 0 0; font-size: 13px; color: #6b7280; }
 .si-tools { display: flex; align-items: center; gap: 8px; }
@@ -50,13 +63,15 @@
 }
 .si-btn:hover:not(:disabled) { background: #f3f4f6; }
 .si-btn:disabled { opacity: 0.45; cursor: default; }
-.si-btn.is-primary { background: #111827; border-color: #111827; color: #fff; }
-.si-btn.is-primary:hover:not(:disabled) { background: #1f2937; }
 
-/* 상태 탭 */
-.si-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+/* ============================================================ */
+/* 탭 한 줄 (처리상태 · 구분 — 좁으면 줄바꿈)                       */
+/* ============================================================ */
+.si-tabbar { flex: none; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.si-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.si-tabs-label { flex: none; margin-right: 6px; font-size: 12px; font-weight: 700; color: #6b7280; }
 .si-tab {
-  height: 38px;
+  height: 34px;
   padding: 0 14px;
   display: inline-flex;
   align-items: center;
@@ -73,12 +88,24 @@
 .si-tab.is-active { border-color: #111827; background: #111827; color: #fff; }
 .si-tab-n { font-size: 12px; font-weight: 800; opacity: 0.8; }
 
-/* 안내 */
-.si-notice { padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+/* ============================================================ */
+/* 안내                                                          */
+/* ============================================================ */
+.si-notice { flex: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
 .si-notice.is-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
-/* 목록 */
-.si-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; transition: opacity 0.15s; }
+/* ============================================================ */
+/* 목록 표 — 이 영역만 세로 스크롤, 머리글 고정                      */
+/* ============================================================ */
+.si-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  transition: opacity 0.15s;
+}
 .si-table-wrap.is-loading { opacity: 0.55; pointer-events: none; }
 .si-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .si-table th {
@@ -91,12 +118,19 @@
   border-bottom: 1px solid #e5e7eb;
   white-space: nowrap;
 }
+/* 머리글 고정은 바깥 표만 (펼친 상세의 안쪽 표 머리글은 제외) */
+.si-table > thead > tr > th { position: sticky; top: 0; z-index: 1; }
 .si-table td { padding: 10px 12px; border-bottom: 1px solid #f1f2f4; vertical-align: middle; }
 .si-row { cursor: pointer; }
 .si-row:hover td { background: #f9fafb; }
 .si-row.is-open td { background: #eff6ff; }
+.si-empty { text-align: center; padding: 40px 12px; color: #9ca3af; }
+
+/* ── 칸 폭 · 숫자 ── */
+.si-col-kind { width: 72px; }
 .si-col-img { width: 56px; }
-.si-col-img img, .si-noimg {
+/* 직계 img 만 (HoverZoomImage 안의 확대 img 는 제외) */
+.si-col-img > img, .si-col-img > .si-thumb, .si-noimg {
   width: 44px;
   height: 44px;
   border-radius: 8px;
@@ -110,6 +144,39 @@
 }
 .si-col-num { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
 .si-short { color: #dc2626; font-weight: 800; }
+.si-na { color: #9ca3af; font-weight: 400; }
+.si-col-img > .si-thumb { display: inline-block; overflow: hidden; vertical-align: middle; }
+
+/* ── 작은 복사 버튼 (📋 — 배송번호 · 상세 중국옵션 머리글) ── */
+.si-copy-btn {
+  flex: none;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.si-copy-btn:hover { opacity: 1; }
+.si-th-with-copy { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── 구분 칩 ── */
+.si-kind {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: #f3f4f6;
+  color: #374151;
+}
+.si-kind.is-missing { background: #fef2f2; color: #b91c1c; }
+.si-kind.is-check { background: #f5f3ff; color: #6d28d9; }
+
+/* ── 배송번호 · 계정 배지 · 팀 ── */
+.si-code-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .si-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; font-weight: 800; }
 .si-team {
   display: inline-block;
@@ -122,45 +189,81 @@
   color: #374151;
 }
 .si-by { margin-left: 6px; font-size: 11px; color: #6b7280; }
+
+/* ── 글번호 ── */
 .si-items-label { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .si-item-no { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
 .si-more { font-size: 12px; color: #6b7280; }
-.si-memo-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #4b5563; }
+
+/* ── 처리상태 (칸 전체가 변경 모달 버튼) ── */
+.si-status-cell { cursor: pointer; }
 .si-status {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 9px;
+  border: none;
   border-radius: 999px;
+  font: inherit;
   font-size: 12px;
   font-weight: 800;
+  cursor: pointer;
 }
 .si-status.is-new { background: #fff7ed; color: #c2410c; }
 .si-status.is-inq { background: #eff6ff; color: #1d4ed8; }
 .si-status.is-done { background: #ecfdf5; color: #15803d; }
-.si-times { margin-top: 4px; display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: #6b7280; }
-.si-empty { text-align: center; padding: 40px 12px; color: #9ca3af; }
+.si-status-caret { font-size: 10px; opacity: 0.7; }
+.si-status-cell:hover .si-status { filter: brightness(0.95); box-shadow: 0 0 0 1px currentColor inset; }
 
-/* 상세 */
+/* ── 사진 썸네일 (최대 3장 + n) — 클릭 = 복사 · 모서리 ↗ = 원본 ── */
+.si-col-photos { width: 150px; }
+.si-photo-strip { display: flex; align-items: center; gap: 4px; }
+.si-photo-item { position: relative; flex: none; display: inline-flex; }
+.si-photo-thumb {
+  --hz-size: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+.si-photo-open {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  text-decoration: none;
+  opacity: 0;
+}
+.si-photo-item:hover .si-photo-open,
+.si-photo-open:focus-visible { opacity: 1; }
+.si-photo-open:hover { color: #111827; border-color: #9ca3af; }
+.si-photo-more { font-size: 12px; font-weight: 700; color: #6b7280; }
+.si-photo-none { color: #9ca3af; }
+
+/* ============================================================ */
+/* 상세 (펼친 행 — 주문행 표)                                      */
+/* ============================================================ */
 .si-detail-row td { background: #f9fafb; padding: 14px 16px 18px; }
+.si-detail-row:hover td { background: #f9fafb; }
 .si-detail-loading { color: #9ca3af; font-size: 13px; }
-.si-detail { display: flex; gap: 18px; align-items: flex-start; }
-.si-detail-items { flex: 1; min-width: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+.si-detail-items { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
 .si-items-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .si-items-table th { padding: 8px 10px; background: #f3f4f6; font-size: 11px; color: #6b7280; text-align: left; }
-.si-items-table td { padding: 8px 10px; border-top: 1px solid #f1f2f4; vertical-align: middle; }
+.si-items-table td { padding: 8px 10px; border-top: 1px solid #f1f2f4; border-bottom: none; vertical-align: middle; }
 .si-sub { font-size: 11px; color: #6b7280; }
-.si-detail-side { width: 320px; flex: none; display: flex; flex-direction: column; gap: 12px; }
-.si-side-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-.si-side-block h4 { margin: 0; font-size: 12px; font-weight: 700; color: #6b7280; }
-.si-side-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.si-times-detail span { display: block; }
-.si-memo { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: 13px; resize: vertical; }
-.si-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.si-photos a { display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #f3f4f6; }
-.si-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.si-order-id { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
-/* 페이지 */
-.si-pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: #4b5563; }
-
-/* 데이터 출처 */
-.si-footer { font-size: 11px; color: #9ca3af; }
+/* ============================================================ */
+/* 페이지 · 데이터 출처                                            */
+/* ============================================================ */
+.si-pager { flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: #4b5563; }
+.si-footer { flex: none; font-size: 11px; color: #9ca3af; }
 .si-footer b { color: #6b7280; }

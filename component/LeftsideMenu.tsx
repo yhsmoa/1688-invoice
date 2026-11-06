@@ -191,46 +191,46 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <Link href="/order-status-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/order-status-v2')}>
               <span className="menu-icon">{Icons.orderStatus}</span>
-              <span className="menu-text">주문상태</span>
+              <span className="menu-text">{t('menu.orderStatus')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/import-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v2')}>
               <span className="menu-icon">{Icons.importProduct}</span>
-              <span className="menu-text">상품입고</span>
+              <span className="menu-text">{t('menu.productIn')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/import-product-v3" className="menu-link" onClick={(e) => handleNavigation(e, '/import-product-v3')}>
               <span className="menu-icon">{Icons.importProduct}</span>
-              <span className="menu-text">상품입고V3</span>
+              <span className="menu-text">{t('menu.productInV3')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/export-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/export-product-v2')}>
               <span className="menu-icon">{Icons.exportProduct}</span>
-              <span className="menu-text">상품출고</span>
+              <span className="menu-text">{t('menu.productOut')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/shipment-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-v2')}>
               <span className="menu-icon">{Icons.shipment}</span>
-              <span className="menu-text">쉽먼트</span>
+              <span className="menu-text">{t('menu.shipment')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/shipment-complete-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/shipment-complete-v2')}>
               <span className="menu-icon">{Icons.shipmentComplete}</span>
-              <span className="menu-text">출고완료</span>
+              <span className="menu-text">{t('menu.outboundDone')}</span>
             </Link>
           </li>
           <li className="menu-item">
             <Link href="/return-product-v2" className="menu-link" onClick={(e) => handleNavigation(e, '/return-product-v2')}>
               <span className="menu-icon">{Icons.returnProduct}</span>
-              <span className="menu-text">반품접수</span>
+              <span className="menu-text">{t('menu.returnReceipt')}</span>
             </Link>
           </li>
-          {/* 상품문의 — 고객 검수 확인(Notion 대체) · 1688 판매자 문의(페이지 준비 중) */}
+          {/* 상품문의 — 고객 검수 확인(Notion 대체) · 1688 판매자 문의(미입고 접수 · 판매자 확인요청) */}
           <li className="menu-item">
             <div className="menu-link" onClick={toggleInquiryMenu}>
               <span className="menu-icon">{Icons.customerChecks}</span>
@@ -256,19 +256,19 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleStorageMenu}>
               <span className="menu-icon">{Icons.storage}</span>
-              <span className="menu-text">재고(보관)</span>
+              <span className="menu-text">{t('menu.stockStorage')}</span>
               <span className={`dropdown-arrow ${isStorageMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isStorageMenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
                   <Link href="/storage/pending" className="submenu-link" onClick={(e) => handleNavigation(e, '/storage/pending')}>
-                    <span className="submenu-text">작업중</span>
+                    <span className="submenu-text">{t('menu.working')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/storage/stock" className="submenu-link" onClick={(e) => handleNavigation(e, '/storage/stock')}>
-                    <span className="submenu-text">재고</span>
+                    <span className="submenu-text">{t('menu.stock')}</span>
                   </Link>
                 </li>
               </ul>
@@ -281,7 +281,7 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleInvoiceMenu}>
               <span className="menu-icon">{Icons.account}</span>
-              <span className="menu-text">계좌관리</span>
+              <span className="menu-text">{t('menu.accountManage')}</span>
               <span className={`dropdown-arrow ${isInvoiceMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isInvoiceMenuOpen && (
@@ -289,37 +289,37 @@ const LeftsideMenu: React.FC = () => {
                 {/* 고객계좌 (신) — 신 원장 ft_user_transactions (충전·차감 기록은 여기서) */}
                 <li className="submenu-item">
                   <Link href="/invoice/payment-history-v2" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history-v2')}>
-                    <span className="submenu-text">고객계좌 (신)</span>
+                    <span className="submenu-text">{t('menu.customerAccountNew')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/invoice/trade-account" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account')}>
-                    <span className="submenu-text">무역계좌</span>
+                    <span className="submenu-text">{t('menu.tradeAccount')}</span>
                   </Link>
                 </li>
                 {/* 무역계좌 하위 — PROFORMA INVOICE 생성 (엑셀 / JPG / PDF) */}
                 <li className="submenu-item submenu-item--child">
                   <Link href="/invoice/trade-account/invoice" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/trade-account/invoice')}>
-                    <span className="submenu-text">invoice</span>
+                    <span className="submenu-text">{t('menu.invoice')}</span>
                   </Link>
                 </li>
                 {/* 주문 검사 — 1688 주문 엑셀 ↔ 상품입고 V2 매칭 (경로는 /db 유지, DB 관리 접근 코드 필요) */}
                 <li className="submenu-item">
                   <Link href="/db/order-inspect" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/order-inspect')}>
-                    <span className="submenu-text">주문 검사</span>
+                    <span className="submenu-text">{t('menu.orderCheck')}</span>
                   </Link>
                 </li>
                 {/* 계좌정보 — 회사이름·이름·연락처·은행·계좌번호·비고 (접근 코드 불필요) */}
                 <li className="submenu-item">
                   <Link href="/db/account-info" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/account-info')}>
-                    <span className="submenu-text">계좌정보</span>
+                    <span className="submenu-text">{t('menu.accountInfo')}</span>
                   </Link>
                 </li>
                 {/* ── 구분선 아래: 구 원장 (조회 전용) ── */}
                 <li className="submenu-divider" aria-hidden="true" />
                 <li className="submenu-item">
                   <Link href="/invoice/payment-history" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/payment-history')}>
-                    <span className="submenu-text">고객계좌 (구)</span>
+                    <span className="submenu-text">{t('menu.customerAccountOld')}</span>
                   </Link>
                 </li>
               </ul>
@@ -345,12 +345,12 @@ const LeftsideMenu: React.FC = () => {
                 </li>
                 <li className="submenu-item">
                   <Link href="/export-invoice/box-label" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-invoice/box-label')}>
-                    <span className="submenu-text">박스 라벨</span>
+                    <span className="submenu-text">{t('menu.boxLabel')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/export-invoice/pdf-split" className="submenu-link" onClick={(e) => handleNavigation(e, '/export-invoice/pdf-split')}>
-                    <span className="submenu-text">PDF 분할</span>
+                    <span className="submenu-text">{t('menu.pdfSplit')}</span>
                   </Link>
                 </li>
               </ul>
@@ -360,24 +360,24 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleHrMenu}>
               <span className="menu-icon">{Icons.hr}</span>
-              <span className="menu-text">인사 관리</span>
+              <span className="menu-text">{t('menu.hrManage')}</span>
               <span className={`dropdown-arrow ${isHrMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isHrMenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
                   <Link href="/hr/attendance-scan" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/attendance-scan')}>
-                    <span className="submenu-text">출퇴근 스캔</span>
+                    <span className="submenu-text">{t('menu.attendanceScan')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/hr/employees" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/employees')}>
-                    <span className="submenu-text">직원관리</span>
+                    <span className="submenu-text">{t('menu.employeeManage')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/hr/payroll" className="submenu-link" onClick={(e) => handleNavigation(e, '/hr/payroll')}>
-                    <span className="submenu-text">급여장부</span>
+                    <span className="submenu-text">{t('menu.payrollBook')}</span>
                   </Link>
                 </li>
               </ul>
@@ -388,24 +388,24 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleDbMenu}>
               <span className="menu-icon">{Icons.db}</span>
-              <span className="menu-text">DB 관리</span>
+              <span className="menu-text">{t('menu.dbManage')}</span>
               <span className={`dropdown-arrow ${isDbMenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isDbMenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
                   <Link href="/db/orders" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/orders')}>
-                    <span className="submenu-text">주문 데이터 관리</span>
+                    <span className="submenu-text">{t('menu.orderDataManage')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/db/volume" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/volume')}>
-                    <span className="submenu-text">물량관리</span>
+                    <span className="submenu-text">{t('menu.volumeManage')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/db/database" className="submenu-link" onClick={(e) => handleNavigation(e, '/db/database')}>
-                    <span className="submenu-text">데이터베이스 관리</span>
+                    <span className="submenu-text">{t('menu.databaseManage')}</span>
                   </Link>
                 </li>
               </ul>
@@ -418,14 +418,14 @@ const LeftsideMenu: React.FC = () => {
           <li className="menu-item">
             <div className="menu-link" onClick={toggleV1Menu}>
               <span className="menu-icon">{Icons.v1}</span>
-              <span className="menu-text">V1</span>
+              <span className="menu-text">{t('menu.v1Menu')}</span>
               <span className={`dropdown-arrow ${isV1MenuOpen ? 'open' : ''}`}>▼</span>
             </div>
             {isV1MenuOpen && (
               <ul className="submenu-list">
                 <li className="submenu-item">
                   <Link href="/order-stats" className="submenu-link" onClick={(e) => handleNavigation(e, '/order-stats')}>
-                    <span className="submenu-text">주문 통계</span>
+                    <span className="submenu-text">{t('menu.orderStats')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
@@ -455,12 +455,12 @@ const LeftsideMenu: React.FC = () => {
                 </li>
                 <li className="submenu-item">
                   <Link href="/shipment" className="submenu-link" onClick={(e) => handleNavigation(e, '/shipment')}>
-                    <span className="submenu-text">쉽먼트</span>
+                    <span className="submenu-text">{t('menu.shipment')}</span>
                   </Link>
                 </li>
                 <li className="submenu-item">
                   <Link href="/invoice/order-refund" className="submenu-link" onClick={(e) => handleNavigation(e, '/invoice/order-refund')}>
-                    <span className="submenu-text">주문취소</span>
+                    <span className="submenu-text">{t('menu.orderCancel')}</span>
                   </Link>
                 </li>
               </ul>

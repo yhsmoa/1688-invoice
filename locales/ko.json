@@ -16,7 +16,36 @@
     "customerChecks": "고객 검수 확인",
     "inquiry": "상품문의",
     "sellerInquiry": "1688 판매자 문의",
-    "mobile": "모바일"
+    "mobile": "모바일",
+    "orderStatus": "주문상태",
+    "productIn": "상품입고",
+    "productInV3": "상품입고V3",
+    "productOut": "상품출고",
+    "shipment": "쉽먼트",
+    "outboundDone": "출고완료",
+    "returnReceipt": "반품접수",
+    "stockStorage": "재고(보관)",
+    "working": "작업중",
+    "stock": "재고",
+    "accountManage": "계좌관리",
+    "customerAccountNew": "고객계좌 (신)",
+    "tradeAccount": "무역계좌",
+    "invoice": "invoice",
+    "accountInfo": "계좌정보",
+    "customerAccountOld": "고객계좌 (구)",
+    "boxLabel": "박스 라벨",
+    "pdfSplit": "PDF 분할",
+    "hrManage": "인사 관리",
+    "attendanceScan": "출퇴근 스캔",
+    "employeeManage": "직원관리",
+    "payrollBook": "급여장부",
+    "dbManage": "DB 관리",
+    "orderDataManage": "주문 데이터 관리",
+    "volumeManage": "물량관리",
+    "databaseManage": "데이터베이스 관리",
+    "v1Menu": "V1",
+    "orderStats": "주문 통계",
+    "orderCancel": "주문취소"
   },
   "orderSearch": {
     "title": "주문 검색",
@@ -401,7 +430,9 @@
       "label": "라벨",
       "shipping": "운송장",
       "import": "입고",
-      "customerConfirm": "고객확인"
+      "customerConfirm": "고객확인",
+      "sellerCheck": "1688 판매자 확인",
+      "koreaCustomerCheck": "한국 고객확인"
     },
     "customerConfirm": {
       "attr": {
@@ -544,6 +575,35 @@
       "codeCandidates": "검색 결과의 배송번호:",
       "codeNone": "검색 결과 주문의 배송번호를 찾지 못했습니다. 직접 입력하세요.",
       "codeRequired": "배송번호를 입력하세요."
+    },
+    "sellerCheck": {
+      "title": "1688 판매자 확인 요청",
+      "summary": "선택 {{count}}건",
+      "hint": "선택한 주문을 1688 판매자에게 확인 요청합니다. 접수하면 [상품문의 › 1688 판매자 문의] 에 '확인요청' 으로 들어갑니다. 요청할 때마다 새 접수 1건이 만들어집니다.",
+      "codeLabel": "배송번호",
+      "codePlaceholder": "운송장(배송) 번호",
+      "codeResolving": "선택한 주문의 배송번호를 찾는 중…",
+      "codeCandidates": "선택한 주문의 배송번호:",
+      "codeNone": "선택한 주문의 배송번호를 찾지 못했습니다. 직접 입력하세요.",
+      "codeRequired": "배송번호를 입력하세요.",
+      "colImage": "이미지",
+      "colItemNo": "글번호",
+      "colProductNo": "상품번호",
+      "colProduct": "상품명",
+      "colChinaOption": "중국옵션",
+      "colConfirmQty": "확인수량",
+      "colUrl": "URL",
+      "openUrl": "열기",
+      "memo": "내용",
+      "required": "필수",
+      "memoPlaceholder": "판매자에게 확인할 내용을 적어 주세요",
+      "memoRequired": "확인할 내용을 입력하세요.",
+      "confirmQtyInvalid": "확인수량은 모든 행에 1 이상의 정수로 입력하세요.",
+      "cancel": "취소",
+      "submit": "확인 요청",
+      "saving": "접수 중…",
+      "saved": "확인요청 {{count}}건을 접수했습니다.",
+      "failed": "확인요청 접수에 실패했습니다."
     },
     "cancelModal": {
       "title": "취소 / 반품 접수",
@@ -1442,7 +1502,7 @@
     }
   },
   "sellerInquiry": {
-    "subtitle": "배송번호별 미입고 접수 — 상품입고 [미입고] 에서 들어오고, 모바일에서 사진을 붙입니다",
+    "subtitle": "배송번호별 미입고 접수 · 판매자 확인요청 — 상품입고 [미입고] · [1688 판매자 확인] 에서 들어오고, 모바일에서 사진을 붙입니다",
     "searchPlaceholder": "배송번호 · 글번호",
     "refresh": "새로고침",
     "tabAll": "전체",
@@ -1461,7 +1521,7 @@
       "items": "글번호",
       "arrived": "입고수량",
       "short": "부족수량",
-      "expected": "입고되어야 할 수량",
+      "expected": "확인수량",
       "memo": "메모",
       "status": "처리상태",
       "photos": "사진",
@@ -1480,7 +1540,48 @@
     "memoPlaceholder": "판매자 답변·처리 내용",
     "saveMemo": "메모 저장",
     "noPhotos": "첨부된 사진이 없습니다.",
-    "dbNote": "데이터"
+    "dbNote": "데이터",
+    "tabGroup": {
+      "status": "처리상태",
+      "kind": "구분"
+    },
+    "kind": {
+      "미입고": "미입고",
+      "확인요청": "확인요청"
+    },
+    "colKind": "구분",
+    "accountTitle": "1688 계정 {{badge}}",
+    "photoMore": "+{{count}}",
+    "photoOpen": "사진 크게 보기",
+    "statusModal": {
+      "title": "처리상태 변경",
+      "current": "현재 상태",
+      "none": "바꿀 수 있는 상태가 없습니다.",
+      "cancel": "취소",
+      "saving": "변경 중…"
+    },
+    "memo": {
+      "empty": "메모 없음",
+      "save": "저장",
+      "cancel": "취소",
+      "saving": "저장 중…",
+      "add": "메모 줄 추가",
+      "editLine": "이 줄 수정",
+      "deleteLine": "이 줄 삭제",
+      "confirmDelete": "이 메모 줄을 삭제할까요?",
+      "conflict": "다른 작업자가 먼저 메모를 바꿨습니다. 목록을 새로 불러옵니다.",
+      "placeholder": "내용 입력 · Enter 저장 · Esc 취소"
+    },
+    "copy": {
+      "code": "배송번호 복사",
+      "done": "복사했습니다",
+      "failed": "복사하지 못했습니다",
+      "image": "이미지를 복사했습니다",
+      "imageUrl": "이미지 주소를 복사했습니다 (이미지 복사 불가 환경)",
+      "photoHint": "클릭하면 이미지 복사",
+      "options": "중국옵션·확인수량을 복사했습니다",
+      "optionsTitle": "중국옵션 + 확인수량 복사 (줄마다 옵션⇥수량)"
+    }
   },
   "mobile": {
     "subtitle": "모바일",
