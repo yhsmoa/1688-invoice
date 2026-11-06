@@ -4,9 +4,8 @@
 /*   좌표 --hz-x / --hz-y 는 컴포넌트가 루트에 넣는다              */
 /* ============================================================ */
 .hz-root {
-  /* 미리보기 한 변 · 바깥 크기(패딩 10×2 + 테두리 2×2) · 화면 끝 여백 */
+  /* 미리보기 한 변 (border-box — 패딩·테두리 포함) · 화면 끝 여백 · 마우스와 간격 */
   --hz-preview-size: 600px;
-  --hz-preview-outer: calc(var(--hz-preview-size) + 24px);
   --hz-edge: 8px;
   --hz-gap: 30px;
 
@@ -31,12 +30,14 @@
 }
 
 /* ============================================================ */
-/* 확대 미리보기 — 마우스 오른쪽, 화면 밖으로 나가지 않게 clamp    */
+/* 확대 미리보기 — 기본은 마우스 오른쪽, 화면 밖으로 나가지 않게 clamp */
+/*   .is-left : 마우스 왼쪽 (화면 오른쪽 끝 열 — 사진 열 등)          */
 /* ============================================================ */
 .hz-preview {
   position: fixed;
-  top: clamp(var(--hz-edge), calc(var(--hz-y, 0px) - var(--hz-preview-size) / 2), calc(100vh - var(--hz-preview-outer) - var(--hz-edge)));
-  left: clamp(var(--hz-edge), calc(var(--hz-x, 0px) + var(--hz-gap)), calc(100vw - var(--hz-preview-outer) - var(--hz-edge)));
+  top: clamp(var(--hz-edge), calc(var(--hz-y, 0px) - var(--hz-preview-size) / 2), calc(100vh - var(--hz-preview-size) - var(--hz-edge)));
+  left: clamp(var(--hz-edge), calc(var(--hz-x, 0px) + var(--hz-gap)), calc(100vw - var(--hz-preview-size) - var(--hz-edge)));
+  box-sizing: border-box;
   width: var(--hz-preview-size);
   height: var(--hz-preview-size);
   padding: 10px;
@@ -47,6 +48,9 @@
   z-index: 2000;
   pointer-events: none;
   display: block;
+}
+.hz-root.is-left .hz-preview {
+  left: clamp(var(--hz-edge), calc(var(--hz-x, 0px) - var(--hz-gap) - var(--hz-preview-size)), calc(100vw - var(--hz-preview-size) - var(--hz-edge)));
 }
 .hz-preview img {
   width: 100%;

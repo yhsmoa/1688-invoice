@@ -24,6 +24,7 @@ import MemoCell from './MemoCell';
 //     [배송번호] 📋 = 배송번호 복사 · [메모] 칸 전체 · [처리상태] 칸 = 상태 변경 모달
 //     [사진] 썸네일 = 이미지 복사 (안 되면 URL 복사) · ↗ = 원본 새 탭
 //   [이미지] · [사진] 은 마우스를 올리면 확대 (component/HoverZoomImage)
+//     사진 열은 화면 오른쪽 끝이라 미리보기를 마우스 왼쪽에 (placement="left")
 //   [처리상태] 칸의 접수·문의중·처리완료 시각은 버튼 title(툴팁)에만
 //   [부족] 은 확인요청이면 — (확인요청의 부족 수량은 정의상 0)
 // ============================================================
@@ -155,6 +156,7 @@ const InquiryRow: React.FC<InquiryRowProps> = ({ row: r, isOpen, locale, onToggl
                     className="si-photo-thumb"
                     src={url}
                     fullSrc={url}
+                    placement="left"
                     title={t('sellerInquiry.copy.photoHint')}
                     onClick={(e) => copyPhoto(e, url)}
                   />

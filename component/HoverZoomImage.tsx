@@ -15,6 +15,7 @@ import './HoverZoomImage.css';
 //     src       썸네일 URL (프록시 썸네일 등)
 //     fullSrc   확대에 쓸 원본 URL
 //     size      썸네일 한 변(px) — 없으면 CSS 기본값
+//     placement 미리보기를 마우스 오른쪽(right, 기본) / 왼쪽(left) 에 — 화면 오른쪽 끝 열은 left
 //     onClick   썸네일 클릭 (복사 등) — 이벤트를 그대로 넘긴다
 // ============================================================
 
@@ -25,13 +26,17 @@ interface HoverZoomImageProps {
   size?: number;
   className?: string;
   title?: string;
+  /** 미리보기 위치 — 마우스 기준 오른쪽(기본) / 왼쪽 */
+  placement?: HoverZoomPlacement;
   onClick?: (e: React.MouseEvent<HTMLSpanElement>) => void;
 }
+
+export type HoverZoomPlacement = 'right' | 'left';
 
 /** 썸네일 크기 CSS 변수 */
 type SizeVars = React.CSSProperties & { '--hz-size'?: string };
 
-const HoverZoomImage: React.FC<HoverZoomImageProps> = ({ src, fullSrc, alt = '', size, className, title, onClick }) => {
+const HoverZoomImage: React.FC<HoverZoomImageProps> = ({ src, fullSrc, alt = '', size, className, title, placement = 'right', onClick }) => {
   const rootRef = useRef<HTMLSpanElement>(null);
   const [hovering, setHovering] = useState(false);
 
@@ -48,7 +53,7 @@ const HoverZoomImage: React.FC<HoverZoomImageProps> = ({ src, fullSrc, alt = '',
   return (
     <span
       ref={rootRef}
-      className={`hz-root ${onClick ? 'is-clickable' : ''} ${className ?? ''}`}
+      className={`hz-root is-${placement} ${onClick ? 'is-clickable' : ''} ${className ?? ''}`}
       style={sizeStyle}
       title={title}
       onMouseEnter={(e) => { track(e); setHovering(true); }}
