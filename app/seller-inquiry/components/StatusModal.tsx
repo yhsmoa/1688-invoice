@@ -85,11 +85,16 @@ const StatusModal: React.FC<StatusModalProps> = ({ inquiry, onClose, onChanged }
             <button
               key={next}
               type="button"
-              className="si-sm-option"
+              className={`si-sm-option ${STATUS_CLASS[next]}`}
               disabled={busy !== null}
               onClick={() => choose(next)}
             >
-              {busy === next ? t('sellerInquiry.statusModal.saving') : t(`sellerInquiry.to.${next}`)}
+              {/* 점 색 = 바뀔 상태 색 · 오른쪽 › = 누르는 버튼 표시 */}
+              <span className="si-sm-option-dot" aria-hidden="true" />
+              <span className="si-sm-option-label">
+                {busy === next ? t('sellerInquiry.statusModal.saving') : t(`sellerInquiry.to.${next}`)}
+              </span>
+              <span className="si-sm-option-arrow" aria-hidden="true">›</span>
             </button>
           ))}
         </div>

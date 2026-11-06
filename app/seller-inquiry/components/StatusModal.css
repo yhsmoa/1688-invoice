@@ -1,6 +1,6 @@
 /* ============================================================ */
 /* 처리상태 변경 모달 (StatusModal) — /seller-inquiry              */
-/*   작은 흰 상자 · 평평한 한 줄 보기 · 글자형 취소                  */
+/*   작은 흰 상자 · 테두리 버튼형 보기(상태 색 점 + ›) · 보조 취소 버튼 */
 /*   상태 칩 색(.si-status.is-*)은 SellerInquiry.css                */
 /* ============================================================ */
 .si-sm-overlay {
@@ -41,31 +41,53 @@
 .si-sm-current .si-status { cursor: default; }
 
 /* ============================================================ */
-/* 바꿀 상태 — 평평한 한 줄들 (헤더와 1px 선으로 구분)             */
+/* 바꿀 상태 — 테두리 있는 버튼 (헤더와 1px 선으로 구분)           */
+/*   왼쪽 점 = 바뀔 상태 색 (.is-new/.is-inq/.is-done), 오른쪽 ›    */
 /* ============================================================ */
 .si-sm-options {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-top: 8px;
+  gap: 6px;
+  padding-top: 10px;
   border-top: 1px solid #f1f2f4;
 }
 .si-sm-none { margin: 0; padding: 6px 8px; font-size: 12px; color: #9ca3af; }
 .si-sm-option {
-  height: 36px;
-  padding: 0 8px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
+  --si-sm-dot: #9ca3af;
+  height: 38px;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
   color: #111827;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
 }
-.si-sm-option:hover:not(:disabled) { background: #f3f4f6; }
+.si-sm-option.is-new  { --si-sm-dot: #ea580c; }
+.si-sm-option.is-inq  { --si-sm-dot: #2563eb; }
+.si-sm-option.is-done { --si-sm-dot: #16a34a; }
+.si-sm-option:hover:not(:disabled) { border-color: #9ca3af; background: #f9fafb; }
+.si-sm-option:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .si-sm-option:disabled { opacity: 0.5; cursor: default; }
+
+.si-sm-option-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--si-sm-dot);
+}
+.si-sm-option-label { flex: 1; min-width: 0; }
+.si-sm-option-arrow { flex: none; font-size: 16px; line-height: 1; color: #9ca3af; }
+.si-sm-option:hover:not(:disabled) .si-sm-option-arrow { color: #111827; }
 
 /* ============================================================ */
 /* 오류 · 취소                                                    */
@@ -74,14 +96,17 @@
 
 .si-sm-footer { display: flex; justify-content: flex-end; }
 .si-sm-cancel {
-  padding: 2px 4px;
-  border: none;
-  background: none;
-  color: #6b7280;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b5563;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
-.si-sm-cancel:hover:not(:disabled) { color: #111827; }
+.si-sm-cancel:hover:not(:disabled) { border-color: #9ca3af; color: #111827; }
+.si-sm-cancel:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .si-sm-cancel:disabled { opacity: 0.45; cursor: default; }
