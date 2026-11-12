@@ -3,8 +3,8 @@
 //
 //   DB 관리 통계 API (/api/db/volume-weekly, /api/db/order-weekly,
 //   /api/db/process-speed) 가 공유한다.
-//   · Period     = 주간/월간 (order-weekly 는 이것만 쓴다)
-//   · PeriodUnit = 일간 + Period (물량관리 두 탭) 날짜 연산은 모두 UTC 기준으로 수행해 서버 TZ 영향을 제거하고,
+//   · Period     = 주간/월간
+//   · PeriodUnit = 일간 + Period (물량관리 두 탭 · 주문 데이터 관리) 날짜 연산은 모두 UTC 기준으로 수행해 서버 TZ 영향을 제거하고,
 //   timestamptz → 날짜 변환만 KST(+9) 오프셋을 적용한다.
 // ============================================================
 

@@ -381,10 +381,21 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
         route: '/db/orders',
         file: 'app/db/orders/OrderDataManage.tsx',
         apis: [
-          { route: '/api/db/order-weekly', tables: ['ft_orders', 'ft_order_items', 'ft_carts', 'ft_cart_items'] },
+          {
+            route: '/api/db/order-weekly',
+            tables: [
+              'ft_orders',
+              'ft_order_items',
+              'ft_fulfillment_inbounds',
+              'ft_cancel_details',
+              'im_1688_delivery_history',
+              'ft_carts',
+              'ft_cart_items',
+            ],
+          },
           { route: '/api/db/verify-access', tables: ['invoiceManager_employees'] },
         ],
-        note: '주간/월간 주문량 — 수량은 ft_orders.total_qty 대신 품목(order_qty) 기준으로 집계',
+        note: '일간/주간/월간 주문량 + 진행 현황(입고완료·입고대기·미도착) + 잠재 주문량 — rpc db_order_flow 로 집계, 수량은 ft_orders.total_qty 대신 품목(order_qty) 기준',
       },
       {
         name: '물량관리',
