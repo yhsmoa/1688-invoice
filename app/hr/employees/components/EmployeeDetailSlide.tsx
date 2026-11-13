@@ -21,6 +21,8 @@ import {
   type Employee,
   type EditableFields,
 } from '../utils/employeeFields';
+// 슬라이드 스타일(em-*) — 직원관리 외 화면(급여장부)에서도 쓰므로 컴포넌트가 직접 불러온다
+import '../EmployeeManagement.css';
 
 // ============================================================
 // 직원 상세 슬라이드 (오른쪽에서 슬라이드인)

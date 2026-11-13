@@ -431,6 +431,20 @@
   line-height: 1.4;
 }
 
+/* 직원명 클릭 → 직원 상세 슬라이드 (생일 금빛 배경은 그대로 두고 밑줄로만 표시) */
+.pr-th-emp-clickable {
+  cursor: pointer;
+}
+
+.pr-th-emp-clickable:hover .pr-th-name-row span:last-child {
+  text-decoration: underline;
+}
+
+.pr-th-emp-loading {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* 이름 한 줄 */
 .pr-th-name-row {
   display: flex;

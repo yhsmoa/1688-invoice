@@ -8,6 +8,8 @@ import { birthdayInThisWeek, todayKSTDate, type BirthdayInWeek } from './utils/b
 import { useDragScroll } from './hooks/useDragScroll';
 import { calcSalary, paidByEmployee, todayKSTString, type PaidItem } from './utils/payrollPaid';
 import MarkPaidModal, { type MarkPaidRow } from './components/MarkPaidModal';
+import { useEmployeeDetail } from './hooks/useEmployeeDetail';
+import EmployeeDetailSlide from '../employees/components/EmployeeDetailSlide';
 import './Payroll.css';
 
 // ============================================================
@@ -164,6 +166,13 @@ const Payroll: React.FC = () => {
   // ============================================================
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const { onMouseDown: onTableMouseDown, isPanning } = useDragScroll(tableWrapperRef);
+
+  // ============================================================
+  // ④-0-1 직원 상세 슬라이드 — 직원 이름(헤더) 클릭 시 직원관리와 같은 슬라이드
+  // ============================================================
+  const {
+    detailEmployee, setDetailEmployee, loadingId: detailLoadingId, openDetail, closeDetail,
+  } = useEmployeeDetail();
 
   // ============================================================
   // ④-1 엑셀 다운로드 / 부분엑셀(시간 셀 선택)
@@ -866,16 +875,19 @@ const Payroll: React.FC = () => {
                         </th>
                       ))}
                     </tr>
-                    {/* 2행: 직원명 (colspan=2) — 생일 주간이면 👑 + 금빛 효과 */}
+                    {/* 2행: 직원명 (colspan=2) — 생일 주간이면 👑 + 금빛 효과
+                              클릭하면 직원 상세 슬라이드 (직원관리와 동일) */}
                     <tr>
                       {employees.map((emp) => {
                         const birthday = birthdayMap.get(emp.id);
+                        const isDetailLoading = detailLoadingId === emp.id;
                         return (
                         <th
                           key={emp.id}
                           colSpan={2}
-                          className={`pr-th-emp${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}${birthday ? ' pr-th-birthday' : ''}`}
-                          title={birthday ? `🎂 이번 주 생일 (${birthday.month}/${birthday.day})` : undefined}
+                          className={`pr-th-emp pr-th-emp-clickable${groupStartIds.has(emp.id) ? ' pr-group-start' : ''}${birthday ? ' pr-th-birthday' : ''}${isDetailLoading ? ' pr-th-emp-loading' : ''}`}
+                          title={birthday ? `🎂 이번 주 생일 (${birthday.month}/${birthday.day}) · 클릭하면 직원 정보` : '클릭하면 직원 정보'}
+                          onClick={() => openDetail(emp.id)}
                         >
                           <div className="pr-th-name-row">
                             {birthday && <span className="pr-crown" aria-label="생일 주간">👑</span>}
@@ -1143,6 +1155,19 @@ const Payroll: React.FC = () => {
               onClose={() => setMarkPaid(null)}
             />
           )}
+
+          {/* ============================================================
+              직원 상세 슬라이드 — 직원관리(/hr/employees)와 같은 컴포넌트
+              저장하면 이름·시급 등이 바뀔 수 있으므로 시간표를 DB 기준으로 다시 읽는다
+              ============================================================ */}
+          <EmployeeDetailSlide
+            employee={detailEmployee}
+            onClose={closeDetail}
+            onUpdated={(updated) => {
+              setDetailEmployee(updated);
+              reloadSilently();
+            }}
+          />
 
           {/* ============================================================
               [정리] 슬라이드 패널 - 급여 정산 요약

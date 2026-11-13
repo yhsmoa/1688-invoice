@@ -8,6 +8,7 @@ import {
   type PayrollEmployee,
 } from '../../../../../lib/payrollCalc';
 import { fetchPaidItems } from '../../../../../lib/payrollPayments';
+import { supabase } from '../../../../../lib/supabase';
 
 // ============================================================
 // 급여장부 엑셀 다운로드 — [정리] 패널과 동일한 데이터
@@ -19,11 +20,13 @@ import { fetchPaidItems } from '../../../../../lib/payrollPayments';
 //
 //   조회·급여 계산은 lib/payrollCalc (급여장부·무역계좌와 공용)
 // 컬럼(헤더 영문): Name | Korean Name | Position | Hourly Wage | Total Hours (h)
-//                | Estimated Salary | Expense | Total Amount | Bank | Account No | TAX
+//                | Estimated Salary | Expense | Total Amount | Bank | Account No | ID No | TAX
 //   - 조회 열      : 연한 회색 배경
 //   - 입력 열      : 연한 주황색 배경 (Expense, TAX — 값 없이 공란)
 //   - Total Amount : Estimated Salary + Expense 엑셀 수식 (입력 시 자동 반영)
 //   - Total Hours  : 'h' 접미사 없이 숫자로 출력 (소수 1자리)
+//   - ID No        : 직원 신분증(주민)번호 — 텍스트 셀 (앞자리 0·긴 숫자 지수표기 방지)
+//                    급여장부 화면 API(/api/hr/payroll) 로는 내보내지 않고 엑셀에서만 조회한다
 // ============================================================
 
 // ── 분 → 시간(숫자, 소수 1자리) ─────────────────────────────
@@ -62,11 +65,35 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
 
 const HEADERS = [
   'Name', 'Korean Name', 'Position', 'Hourly Wage', 'Total Hours (h)',
-  'Estimated Salary', 'Expense', 'Total Amount', 'Bank', 'Account No', 'TAX',
+  'Estimated Salary', 'Expense', 'Total Amount', 'Bank', 'Account No', 'ID No', 'TAX',
 ];
 
-// 입력 열(주황): G=Expense(7), K=TAX(11)
-const INPUT_COLS = new Set([7, 11]);
+// 입력 열(주황): G=Expense(7), L=TAX(12)
+const INPUT_COLS = new Set([7, 12]);
+
+// ============================================================
+// 직원 신분증번호 조회 — 엑셀에 나오는 직원만 (employee_id → identification)
+//   · 대상은 그 달 기록이 있는 직원(수십 명)뿐이지만, 1000행 제한과 .in() URL 길이를
+//     넘지 않도록 id 목록을 ID_CHUNK 단위로 나눠 조회한다
+// ============================================================
+const ID_CHUNK = 200;
+
+async function fetchIdentifications(employeeIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  for (let i = 0; i < employeeIds.length; i += ID_CHUNK) {
+    const chunk = employeeIds.slice(i, i + ID_CHUNK);
+    const { data, error } = await supabase
+      .from('invoiceManager_employees')
+      .select('id, identification')
+      .in('id', chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as { id: string; identification: string | null }[]) {
+      const value = row.identification?.trim();
+      if (value) map.set(row.id, value);
+    }
+  }
+  return map;
+}
 
 // ── 엑셀 종류 — 시트명·파일명 표기만 다르고 컬럼은 같다 ──
 type ExcelKind = 'full' | 'partial' | 'unpaid';
@@ -88,6 +115,8 @@ async function buildExcelResponse(
   minutesMap: Map<string, number>,
   kind: ExcelKind
 ): Promise<NextResponse> {
+  const identifications = await fetchIdentifications(employees.map((e) => e.id));
+
   const workbook = new ExcelJS.Workbook();
   const label    = KIND_LABEL[kind];
   const ws       = workbook.addWorksheet(`${year}년 ${month}월 ${label.sheet}`);
@@ -104,7 +133,8 @@ async function buildExcelResponse(
     { key: 'total_amount',width: 16 },  // H: Total Amount (수식)
     { key: 'bank_name',   width: 14 },  // I: Bank
     { key: 'bank_no',     width: 22 },  // J: Account No
-    { key: 'tax',         width: 16 },  // K: TAX (입력)
+    { key: 'id_no',       width: 22 },  // K: ID No (신분증·주민번호)
+    { key: 'tax',         width: 16 },  // L: TAX (입력)
   ];
 
   // ── 헤더 행 추가 (영문) ───────────────────────────────────
@@ -136,9 +166,13 @@ async function buildExcelResponse(
       null, // Total Amount: 아래에서 수식 지정
       emp.bank_name || '-',
       emp.bank_no || '-',
+      identifications.get(emp.id) ?? '-',
       null, // TAX: 입력 공란
     ]);
     dataRow.height = 20;
+
+    // ID No(K): 텍스트 서식 고정 — 엑셀에서 다시 저장해도 숫자로 바뀌지 않게
+    dataRow.getCell(11).numFmt = '@';
 
     // Total Amount(H) = Estimated Salary(F) + Expense(G)
     //   · Expense 를 나중에 입력해도 자동 반영되도록 수식으로 지정
