@@ -19,7 +19,9 @@ export const CHECK_DECISIONS = ['출고', '취소', '재문의'] as const;
 export type CheckDecision = (typeof CHECK_DECISIONS)[number];
 
 // ── 사이즈 코드 (배송 유형 배지와 동일) ──
-export const CHECK_SIZE_CODES = ['A', 'B', 'C', 'P', 'X'] as const;
+//   S = 보관(arrival_route=STOCK) 상품 — 입고 때 타입이 없어 resolveTypeBadge 가 'S' 를 준다.
+//   DB 제약(supabase/storage/003_stock_type.sql)·purchase-agent 검수 화면과 같은 목록
+export const CHECK_SIZE_CODES = ['A', 'B', 'C', 'P', 'X', 'S'] as const;
 
 // ── 목록 탭 = 상태 1:1 ──
 export const CHECK_TABS = ['open', 'reinquiry', 'answered', 'done'] as const;
