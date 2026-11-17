@@ -1,5 +1,5 @@
 import type { FtOrderItem, FtUser } from '../hooks/useFtData';
-import { resolveScanSizeCode } from '../../../lib/sizeCode';
+import { resolveLabelSizeCode } from '../../../lib/sizeCode';
 import { buildTsplBatch } from '../../../lib/tspl';
 import { preloadTemplateAssets } from '../../../lib/labelRender';
 import { printRaw, QZ_NOT_RUNNING } from '../../../lib/qzTray';
@@ -122,7 +122,7 @@ export function toLabelData(
     barcode: item.barcode || '',
     product_no: item.product_no || '',
     item_no: item.item_no || '',
-    shipment_size: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
+    shipment_size: resolveLabelSizeCode(item),
     composition: item.composition || null,
     recommanded_age: item.recommanded_age || null,
     qty,

@@ -1,5 +1,5 @@
 import type { FtOrderItem } from '../hooks/useFtData';
-import { resolveScanSizeCode } from '../../../lib/sizeCode';
+import { resolveLabelSizeCode } from '../../../lib/sizeCode';
 
 // ============================================================
 // 공통 라벨 저장 유틸 — [라벨] 버튼 + [입고]-[저장] 버튼 공용
@@ -47,7 +47,7 @@ export async function saveLabelData(params: LabelSaveParams): Promise<{
 
   // ── 2) labelItems 구성 ──
   //   shipment_size 는 화면 배지 / 스캔 검증과 동일한 단일 소스 함수 사용:
-  //     resolveScanSizeCode(shipment_type, coupang_shipment_size)
+  //     resolveLabelSizeCode(item) — 보관(STOCK) 이면 'S', 아니면 아래 규칙
   //     - PERSONAL → 'P'
   //     - COUPANG + Small/Medium/Large → A/B/C
   //     - COUPANG (size 매칭 실패) → 'X'
@@ -61,7 +61,7 @@ export async function saveLabelData(params: LabelSaveParams): Promise<{
     product_no: item.item_no || '',
     composition: item.composition || null,
     recommanded_age: item.recommanded_age || null,
-    shipment_size: resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size),
+    shipment_size: resolveLabelSizeCode(item),
     operator_no: operatorNo,
   });
 

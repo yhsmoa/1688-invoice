@@ -338,7 +338,7 @@ export interface LabelData {
   item_name?: string | null;
   barcode?: string | null;
   product_no?: string | null;
-  /** P / A / B / C / X — resolveScanSizeCode 결과 */
+  /** P / A / B / C / X / S(보관) — resolveLabelSizeCode 결과 */
   shipment_size?: string | null;
   composition?: string | null;
   recommanded_age?: string | null;

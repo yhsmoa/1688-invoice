@@ -134,3 +134,17 @@ export function resolveScanSizeCode(
   }
   return 'X';
 }
+
+// ============================================================
+// 라벨 출력용 타입 코드 — 보관(STOCK) 상품은 S, 아니면 resolveScanSizeCode
+//   보관 상품은 shipment_type 이 NULL 이라 resolveScanSizeCode 만 쓰면 X 로 찍힌다.
+//   saveLabelData / printLabels 공용
+// ============================================================
+export function resolveLabelSizeCode(item: {
+  arrival_route?: string | null;
+  shipment_type?: string | null;
+  coupang_shipment_size?: string | null;
+}): string {
+  if (isStockRoute(item)) return 'S';
+  return resolveScanSizeCode(item.shipment_type, item.coupang_shipment_size);
+}
