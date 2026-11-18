@@ -2,6 +2,7 @@
 
 import React from 'react';
 import TypeBadge from '../../../component/TypeBadge';
+import { proxyImageUrl, THUMB_WIDTH } from '../../../lib/imageProxy';
 import type { StorageProductInfo } from '../types';
 import { joinOptions } from '../utils/storageFormat';
 
@@ -23,9 +24,9 @@ const ProductCell: React.FC<ProductCellProps> = ({ info, large }) => {
   return (
     <div className={`storage-product ${large ? 'is-large' : ''}`}>
       {info.img_url ? (
-        // 1688 원본 이미지 — next/image 원격 도메인 설정 없이 그대로 표시 (다른 V2 화면과 동일)
+        // 1688 CDN 은 Referer 를 막는다 → image-proxy 경유 썸네일
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="storage-product-img" src={info.img_url} alt="" loading="lazy" />
+        <img className="storage-product-img" src={proxyImageUrl(info.img_url, THUMB_WIDTH)} alt="" loading="lazy" />
       ) : (
         <div className="storage-product-img is-empty" />
       )}

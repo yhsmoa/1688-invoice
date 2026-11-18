@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import BoxCreateModal, { type CreatedBox } from '../../../component/BoxCreateModal';
 import { resolveScanSizeCode } from '../../../lib/sizeCode';
 import type { BoxInfoItem } from '../../shipment-v2/types';
 import { useStorage } from '../hooks/StorageContext';
 import type { PickInput, PickTypeInput, StockRow, StorageRequest, StorageShipmentType } from '../types';
 import ProductCell from './ProductCell';
+import BoxField from './BoxField';
 import { formatDateTime, playErrorSound } from '../utils/storageFormat';
 
 // ============================================================
@@ -18,7 +18,9 @@ import { formatDateTime, playErrorSound } from '../utils/storageFormat';
 //     · 미처리 고객 요청이 있으면 그 타입·수량을 기본값으로 (요청 카드 표시)
 //     · 상품에 이미 타입이 있으면 고정 표시 (미출고 박스가 있는 동안 서버가 변경을 막는다)
 //     · 없으면 COUPANG / PERSONAL / DIRECT 선택 — COUPANG 은 사이즈(보존값 기본), PERSONAL 은 개인 주문번호
-//   박스: 그 사용자의 열린 박스(PACKING & 미출고) 중 하나 / [+ 새 박스] → BoxCreateModal
+//   사업자: 체크한 행의 사업자 (Stock 이 한 사업자만 넘긴다) · 박스: BoxField
+//   수량 기본값은 상품의 [잔여수량 + 그 상품의 쉽먼트 요청] 까지 — 와우출고 출고예정분은 남긴다
+//     (서버 한도와 같다: 재고 − 와우 미담음, 넘으면 PICK_OVER_AVAILABLE)
 //   저장: 상품마다 POST /api/ft/storage/pick 1회 (상품마다 독립 트랜잭션)
 //     → 타입 기록 + PICK 원장 + PACKED 행 — 이후 쉽먼트 V2 에서 일반 포장 행과 똑같이 보인다
 //   박스 타입 ≠ 상품 타입: 서버가 PICK_BOX_TYPE_MISMATCH 로 거절
@@ -48,7 +50,8 @@ const SIZES = ['Small', 'Medium', 'Large'];
 
 const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, requests, onClose }) => {
   const { t } = useTranslation();
-  const { userId, userCode, worker, reloadAll } = useStorage();
+  const { worker, reloadAll } = useStorage();
+  const userId = rows[0].user_id;
 
   // ── 상품별 묶음 (화면 순서 유지) + 미처리 요청 ──
   const groups = useMemo<ProductGroup[]>(() => {
@@ -72,11 +75,12 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, request
   // ============================================================
   const cellKey = (r: StockRow) => `${r.product_id}|${r.location_id}`;
 
-  // 수량 기본값: 요청이 있으면 요청 수량을 위치 순서대로 배분, 없으면 칸 전량
+  // 수량 기본값: 요청이 있으면 요청 수량, 없으면 꺼낼 수 있는 만큼을 위치 순서대로 배분
   const [qtyText, setQtyText] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const g of groups) {
-      let left = g.request?.qty ?? Infinity;
+      const limit = Math.max(0, g.rep.available + (g.request?.qty ?? 0));
+      let left = Math.min(g.request?.qty ?? Infinity, limit);
       for (const c of g.cells) {
         const q = Math.max(0, Math.min(c.qty, left));
         init[cellKey(c)] = String(q);
@@ -97,45 +101,11 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, request
   const setType = (pid: string, patch: Partial<PickTypeInput>) =>
     setTypeInput((prev) => ({ ...prev, [pid]: { ...prev[pid], ...patch } }));
 
-  const [boxes, setBoxes] = useState<BoxInfoItem[]>([]);
-  const [boxesLoading, setBoxesLoading] = useState(true);
-  const [boxId, setBoxId] = useState('');
+  const [box, setBox] = useState<BoxInfoItem | null>(null);
   const [force, setForce] = useState(false);
-  const [showBoxCreate, setShowBoxCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [results, setResults] = useState<ResultMap>({});
   const [changed, setChanged] = useState(false);
-
-  // ── 열린 박스 목록 ──
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setBoxesLoading(true);
-      try {
-        const res = await fetch(`/api/ft/box-info?user_id=${encodeURIComponent(userId)}&status=PACKING&shipment_id=null`);
-        const json = await res.json();
-        if (cancelled) return;
-        const list = ((json.success ? json.data : []) as BoxInfoItem[])
-          .slice()
-          .sort((a, b) => (a.box_code || '').localeCompare(b.box_code || ''));
-        setBoxes(list);
-      } catch (err) {
-        if (!cancelled) console.error('박스 목록 조회 오류:', err);
-      } finally {
-        if (!cancelled) setBoxesLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
-
-  const handleBoxCreated = (created: CreatedBox) => {
-    const item: BoxInfoItem = { id: created.id, box_code: created.box_code, size: created.size, type: created.type, no: created.no };
-    setBoxes((prev) => [...prev.filter((b) => b.id !== item.id), item].sort((a, b) => a.box_code.localeCompare(b.box_code)));
-    setBoxId(created.id);
-    setShowBoxCreate(false);
-  };
-
-  const box = boxes.find((b) => b.id === boxId);
 
   // ============================================================
   // 검증 (최종 판정은 서버)
@@ -323,30 +293,7 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, request
         </div>
 
         {/* ── 박스 ── */}
-        <div className="storage-modal-field">
-          <div className="storage-field-head">
-            <label>{t('storage.pick.box')}</label>
-            <button
-              type="button"
-              className="storage-link-btn"
-              onClick={() => setShowBoxCreate(true)}
-              disabled={boxesLoading || saving || !userCode}
-            >
-              {t('storage.pick.newBox')}
-            </button>
-          </div>
-          {boxesLoading ? (
-            <span className="storage-hint">{t('storage.loading')}</span>
-          ) : boxes.length === 0 ? (
-            <span className="storage-hint">{t('storage.pick.noBoxes')}</span>
-          ) : (
-            <select className="storage-select" value={boxId} onChange={(e) => setBoxId(e.target.value)} disabled={saving}>
-              <option value="">{t('storage.pick.selectBox')}</option>
-              {boxes.map((b) => (
-                <option key={b.id} value={b.id}>{b.box_code}{b.size ? ` (${b.size})` : ''}</option>
-              ))}
-            </select>
-          )}
+        <BoxField userId={userId} value={box} onChange={setBox} disabled={saving}>
           {mismatched.length > 0 && (
             <div className="storage-message is-warn">
               {t('storage.pick.mismatch', { box: box?.type ?? '-', count: mismatched.length })}
@@ -356,7 +303,7 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, request
             <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} disabled={saving} />
             {t('storage.pick.force')}
           </label>
-        </div>
+        </BoxField>
 
         {!worker && <div className="storage-message is-error">{t('storage.needWorker')}</div>}
 
@@ -373,16 +320,6 @@ const PickToShipmentModal: React.FC<PickToShipmentModalProps> = ({ rows, request
             {saving ? t('storage.saving') : t('storage.pick.confirm')}
           </button>
         </div>
-
-        {showBoxCreate && (
-          <BoxCreateModal
-            userId={userId}
-            userCode={userCode}
-            existingBoxes={boxes}
-            onClose={() => setShowBoxCreate(false)}
-            onCreated={handleBoxCreated}
-          />
-        )}
       </div>
     </div>
   );

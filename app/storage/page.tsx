@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 
 // ============================================================
-// /storage → 첫 탭 [작업중]
+// /storage → 첫 탭 [재고]
 // ============================================================
 export default function StoragePage() {
-  redirect('/storage/pending');
+  redirect('/storage/stock');
 }

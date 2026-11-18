@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { fetchIn } from '../storage/storageShared';
 
 // ============================================================
 // GET /api/ft/shipments?user_id=X
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
 // 출고 처리: ft_shipments 생성 → ft_box_info.shipment_id 업데이트
 //          → ft_fulfillments.shipment_no + shipment_id + shipment=true 업데이트
 //          → 출고된 포장 행의 미처리 이동요청(ft_move_requests) CANCELLED(note='shipped')
+//   와우출고 박스(supabase/storage/005_wow.sql)는 박스 통째로만, 일반 박스와 다른 출고번호로 (409)
 //
 // Body: {
 //   user_id: string,
@@ -73,6 +75,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const wowError = await checkWowSelection(fulfillment_ids);
+    if (wowError) {
+      return NextResponse.json({ success: false, error: wowError }, { status: 409 });
+    }
+
     // ── 1단계: ft_shipments에 레코드 생성 ──
     const { data: shipmentData, error: shipmentErr } = await supabase
       .from('ft_shipments')
@@ -93,10 +100,13 @@ export async function POST(request: NextRequest) {
     console.log(`ft_shipments 생성 완료: ${shipmentId} (${shipment_no})`);
 
     // ── 2단계: ft_box_info.shipment_id 업데이트 (box_code 기준) ──
+    //   box_code 는 출고 후 재사용된다 → 이 사용자의 미출고 박스만 (같은 코드의 옛 박스를 덮어쓰지 않게)
     if (box_codes && Array.isArray(box_codes) && box_codes.length > 0) {
       const { error: boxErr } = await supabase
         .from('ft_box_info')
         .update({ shipment_id: shipmentId })
+        .eq('user_id', user_id)
+        .is('shipment_id', null)
         .in('box_code', box_codes);
 
       if (boxErr) {
@@ -162,4 +172,28 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// ============================================================
+// 와우출고 박스 검사 — 행선지가 쿠팡 센터라 일반 박스와 한 출고번호에 섞지 않고,
+//   박스의 일부 행만 출고하면 와우 박스 출고 판정(포장 행 전부 shipment_id)이 어긋난다
+// ============================================================
+async function checkWowSelection(ids: string[]): Promise<string | null> {
+  const rows = await fetchIn<{ id: string; box_info_id: string | null }>(
+    'ft_fulfillment_outbounds', 'id, box_info_id', 'id', ids);
+  const wowBoxes = await fetchIn<{ box_info_id: string }>(
+    'ft_wow_boxes', 'box_info_id', 'box_info_id', rows.map((r) => r.box_info_id ?? ''));
+  if (wowBoxes.length === 0) return null;
+
+  const wowIds = new Set(wowBoxes.map((w) => w.box_info_id));
+  if (rows.some((r) => !r.box_info_id || !wowIds.has(r.box_info_id))) {
+    return '와우출고 박스는 일반 박스와 같은 출고번호로 출고할 수 없습니다. 따로 출고해 주세요.';
+  }
+  const selected = new Set(ids);
+  const boxRows = await fetchIn<{ id: string; shipment_id: string | null }>(
+    'ft_fulfillment_outbounds', 'id, shipment_id', 'box_info_id', Array.from(wowIds));
+  if (boxRows.some((r) => !r.shipment_id && !selected.has(r.id))) {
+    return '와우출고 박스는 박스 통째로 출고해야 합니다. 박스의 상품을 모두 선택해 주세요.';
+  }
+  return null;
 }

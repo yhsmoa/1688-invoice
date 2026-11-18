@@ -8,6 +8,8 @@
 // ── 상품 표시 정보 (대표 주문 행에서) ──
 export interface StorageProductInfo {
   product_id: string;
+  /** 사업자 (ft_users.id) — 화면은 전체를 받아 사업자 탭으로 거르고, 모달은 행의 사업자로 동작 */
+  user_id: string;
   /** 대표 주문 행 — 세트면 구성품 중 set_seq 가 가장 앞선 행 */
   order_item_id: string;
   product_no: string | null;
@@ -49,6 +51,9 @@ export interface StockRow extends StorageProductInfo {
   qty: number;
   first_putaway_at: string | null;
   last_moved_at: string | null;
+  /** 출고예정 · 잔여수량 — 상품 합계 (뷰 ft_storage_available, 같은 상품의 행마다 같은 값) */
+  reserved: number;
+  available: number;
 }
 
 // ── 추천 위치 (같은 바코드 → 같은 offer_id) ──
@@ -105,4 +110,28 @@ export interface StorageRequest {
   done_at: string | null;
   done_outbound_id: string | null;
   note: string | null;
+}
+
+// ============================================================
+// 와우출고 — 줄 1개 (ft_wow_items + 와우 박스 + 묶인 1688 박스)
+//   box_id NULL = 박스 미정 (예약만, 담을 수 없다)
+// ============================================================
+export interface WowLine extends StorageProductInfo {
+  item_id: string;
+  order_number: string;
+  /** 로켓이 보낸 바코드 (상품 대표 행의 바코드와 같은 값을 trim 한 것) */
+  wow_barcode: string;
+  qty: number;
+  picked_qty: number | null;
+  picked_at: string | null;
+  box_id: string | null;
+  box_no: number | null;
+  center: string | null;
+  box_size: string | null;
+  box_info_id: string | null;
+  box_code: string | null;
+  label_path: string | null;
+  manifest_path: string | null;
+  /** 묶인 1688 박스의 포장 행이 전부 출고됨 */
+  shipped: boolean;
 }

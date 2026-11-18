@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { WOW_BOX_LOCKED_MESSAGE } from '../../storage/storageShared';
 
 // ============================================================
 // POST /api/ft/shipment-v2/move
@@ -31,6 +32,7 @@ const MOVE_ERROR_MESSAGE: Record<string, string> = {
   MOVE_ROW_NOT_FOUND: '이동할 항목을 찾을 수 없습니다.',
   MOVE_ROW_NOT_MOVABLE: '이미 출고되었거나 이동할 수 없는 항목입니다.',
   MOVE_INVALID_QTY: '이동 수량이 현재 수량보다 많거나 올바르지 않습니다.',
+  WOW_BOX_LOCKED: WOW_BOX_LOCKED_MESSAGE,
 };
 
 const toMoveErrorMessage = (raw: string | undefined): string => {

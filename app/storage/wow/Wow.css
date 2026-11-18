@@ -1,0 +1,81 @@
+/* ============================================================
+   [와우출고] — 박스 카드 · 박스 미정 표 (공용은 ../Storage.css)
+   ============================================================ */
+
+.storage-wow-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 12px;
+}
+
+/* ── 박스 카드 — 왼쪽 띠 색 = 상태 ── */
+.storage-wow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+}
+
+.storage-wow-card.is-picked  { border-left-color: #16a34a; }
+.storage-wow-card.is-shipped { border-left-color: #9ca3af; }
+
+.storage-wow-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.storage-wow-head strong {
+  font-size: 15px;
+  color: #111827;
+}
+
+.storage-wow-user {
+  padding: 2px 6px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.storage-wow-status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.storage-wow-status.is-picked  { background: #dcfce7; color: #15803d; }
+.storage-wow-status.is-shipped { background: #f3f4f6; color: #4b5563; }
+
+.storage-wow-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ── 요청보다 적게 담음 ── */
+.storage-wow-short {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* ── 박스 미정 ── */
+.storage-wow-unboxed {
+  margin-top: 20px;
+}
+
+.storage-wow-unboxed h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #374151;
+}

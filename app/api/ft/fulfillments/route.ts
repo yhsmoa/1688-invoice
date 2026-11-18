@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { jsonResponse } from '../../../../lib/apiResponse';
+import { WOW_BOX_LOCKED_MESSAGE } from '../storage/storageShared';
 
 // ============================================================
 // 공통 상수 — 테이블 분리 기준
@@ -184,6 +185,9 @@ export async function DELETE(request: NextRequest) {
             { success: false, error: '이미 출고된 재고(보관) 포장 행은 철회할 수 없습니다.' },
             { status: 409 }
           );
+        }
+        if ((unpickErr.message ?? '').includes('WOW_BOX_LOCKED')) {
+          return NextResponse.json({ success: false, error: WOW_BOX_LOCKED_MESSAGE }, { status: 409 });
         }
         throw unpickErr;
       }
@@ -530,6 +534,7 @@ export async function POST(request: NextRequest) {
 
     const insertOutbound = async () => {
       if (outboundRows.length === 0) return;
+      // 와우출고 박스에 스캔하면 트리거가 WOW_BOX_LOCKED 로 거절 → 아래 catch 에서 409
       const { error } = await supabase.from(OUTBOUND_TABLE).insert(outboundRows);
       if (error) { console.error('ft_fulfillment_outbounds insert 오류:', error); throw error; }
     };
@@ -546,6 +551,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('ft_fulfillments 저장 오류:', error);
+    if (String((error as Record<string, unknown>)?.message ?? '').includes('WOW_BOX_LOCKED')) {
+      return NextResponse.json({ success: false, error: WOW_BOX_LOCKED_MESSAGE }, { status: 409 });
+    }
     return NextResponse.json(
       {
         success: false,

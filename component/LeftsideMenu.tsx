@@ -271,6 +271,11 @@ const LeftsideMenu: React.FC = () => {
                     <span className="submenu-text">{t('menu.stock')}</span>
                   </Link>
                 </li>
+                <li className="submenu-item">
+                  <Link href="/storage/wow" className="submenu-link" onClick={(e) => handleNavigation(e, '/storage/wow')}>
+                    <span className="submenu-text">{t('menu.wow')}</span>
+                  </Link>
+                </li>
               </ul>
             )}
           </li>

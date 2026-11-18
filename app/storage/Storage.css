@@ -72,6 +72,19 @@
   text-decoration: none;
 }
 
+/* 사업자 탭 — 화면 탭과 같은 모양, 버튼 */
+.storage-user-tabs {
+  width: fit-content;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.storage-user-tabs .storage-tab {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 .storage-tab.is-active {
   background: #ffffff;
   color: #111827;
@@ -207,10 +220,6 @@
 
 .storage-select.is-empty {
   border-color: #f59e0b;
-}
-
-.storage-select--user {
-  min-width: 180px;
 }
 
 .storage-input {

@@ -14,12 +14,13 @@ import './Pending.css';
 //
 //   상단 스캔창에 주문번호 라벨 스캔 → product_no 정규화 → 그 상품의 배치 모달
 //     · 작업중에 없으면 오류음 + 안내 (이미 재고에 있으면 "배치 완료" 로 구분)
+//     · 전체 탭에서 두 사업자에 같은 주문번호가 있으면 오류음 + 사업자 탭 안내
 //   표의 [배치] 버튼도 같은 모달
 //   모달이 닫히면 스캔창으로 포커스를 돌려 다음 라벨을 바로 스캔
 // ============================================================
 const Pending: React.FC = () => {
   const { t } = useTranslation();
-  const { userId, pending, stock } = useStorage();
+  const { pending, stock } = useStorage();
   const scanRef = useRef<HTMLInputElement>(null);
 
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
@@ -31,7 +32,13 @@ const Pending: React.FC = () => {
   // ============================================================
   const handleScan = useCallback((value: string) => {
     const code = normalizeProductNo(value);
-    const hit = pending.rows.find((r) => r.product_no === code);
+    const hits = pending.rows.filter((r) => r.product_no === code);
+    const hit = hits[0];
+    if (hit && hits.some((r) => r.user_id !== hit.user_id)) {
+      playErrorSound();
+      setScanMessage({ kind: 'error', text: t('storage.scan.ambiguousUser', { code }) });
+      return;
+    }
     if (hit) {
       setScanMessage(null);
       setActiveProductId(hit.product_id);
@@ -65,8 +72,6 @@ const Pending: React.FC = () => {
   // ============================================================
   // 렌더
   // ============================================================
-  if (!userId) return <div className="storage-empty">{t('storage.needUser')}</div>;
-
   return (
     <section className="storage-pending">
       <div className="storage-toolbar">

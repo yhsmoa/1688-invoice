@@ -28,8 +28,7 @@ interface PutawayModalProps {
 
 const PutawayModal: React.FC<PutawayModalProps> = ({ productId, onClose }) => {
   const { t } = useTranslation();
-  const { userId, worker, pending, reloadAll } = useStorage();
-  const { suggestions, reload: reloadSuggest } = useLocationSuggest(userId, productId);
+  const { worker, pending, reloadAll } = useStorage();
 
   // ── 이 상품의 입고 줄 (오래된 순 — API 가 정렬해서 준다) ──
   const lines = useMemo(
@@ -38,6 +37,7 @@ const PutawayModal: React.FC<PutawayModalProps> = ({ productId, onClose }) => {
   );
   const totalUnplaced = lines.reduce((s, l) => s + l.line_unplaced, 0);
   const head = lines[0];
+  const { suggestions, reload: reloadSuggest } = useLocationSuggest(head?.user_id ?? '', productId);
 
   const [location, setLocation] = useState('');
   const [qtyText, setQtyText] = useState(String(totalUnplaced));
@@ -77,7 +77,7 @@ const PutawayModal: React.FC<PutawayModalProps> = ({ productId, onClose }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: head.user_id,
           product_id: productId,
           inbound_id: head.inbound_id,
           location_code: location,

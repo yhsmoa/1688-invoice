@@ -20,7 +20,7 @@ interface StockMoveModalProps {
 
 const StockMoveModal: React.FC<StockMoveModalProps> = ({ row, onClose }) => {
   const { t } = useTranslation();
-  const { userId, worker } = useStorage();
+  const { worker } = useStorage();
   const [toLocation, setToLocation] = useState('');
   const [qtyText, setQtyText] = useState(String(row.qty));
   const [saving, setSaving] = useState(false);
@@ -38,7 +38,7 @@ const StockMoveModal: React.FC<StockMoveModalProps> = ({ row, onClose }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: row.user_id,
           product_id: row.product_id,
           from_location_id: row.location_id,
           to_location_code: toLocation,

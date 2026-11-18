@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     if (balance.length === 0) return NextResponse.json({ success: true, data: [] });
 
-    const info = await fetchProductInfo(userId, [productId, ...balance.map((b) => b.product_id)]);
+    const info = await fetchProductInfo([productId, ...balance.map((b) => b.product_id)]);
     const me = info.get(productId);
     if (!me) return NextResponse.json({ success: true, data: [] });
 

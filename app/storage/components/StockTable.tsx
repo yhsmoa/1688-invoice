@@ -9,9 +9,10 @@ import { daysSince, formatDateTime } from '../utils/storageFormat';
 
 // ============================================================
 // StockTable — [재고] 상품 × 위치 표
-//   체크 · 위치 · 상품 · 수량 · 첫 배치 · 보관일수
+//   체크 · 위치 · 상품 · 수량 · 출고예정 · 잔여수량 · 첫 배치 · 보관일수
 //   · 행 클릭 → 상세(원장 타임라인) / 체크박스 클릭은 상세를 열지 않는다
 //   · 보관 30일 이상은 강조, 음수 수량은 원장 이상 신호로 빨강
+//   · 출고예정 · 잔여수량은 상품 합계(행은 위치별이라 나누면 거짓이 된다) — 같은 상품의 행마다 같은 값
 // ============================================================
 
 /** 체크 키 = 상품 × 위치 */
@@ -43,6 +44,8 @@ const StockTable: React.FC<StockTableProps> = ({ rows, requests, checked, onTogg
           <th className="col-location">{t('storage.col.location')}</th>
           <th>{t('storage.col.product')}</th>
           <th className="col-num">{t('storage.col.qty')}</th>
+          <th className="col-num" title={t('storage.col.productTotalHint')}>{t('storage.col.reserved')}</th>
+          <th className="col-num" title={t('storage.col.productTotalHint')}>{t('storage.col.available')}</th>
           <th className="col-date">{t('storage.col.firstPutaway')}</th>
           <th className="col-num">{t('storage.col.days')}</th>
           <th className="col-request">{t('storage.request.label')}</th>
@@ -71,6 +74,8 @@ const StockTable: React.FC<StockTableProps> = ({ rows, requests, checked, onTogg
               <td className="col-location"><span className="storage-location-code">{r.location_code}</span></td>
               <td><ProductCell info={r} /></td>
               <td className={`col-num is-strong ${r.qty < 0 ? 'is-negative' : ''}`}>{r.qty}</td>
+              <td className="col-num">{r.reserved || ''}</td>
+              <td className={`col-num ${r.available < 0 ? 'is-negative' : ''}`}>{r.available}</td>
               <td className="col-date">{formatDateTime(r.first_putaway_at)}</td>
               <td className={`col-num ${aged ? 'is-aged' : ''}`}>{days ?? ''}</td>
               <td className="col-request">

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useStorage } from '../hooks/StorageContext';
 import type { LedgerRow, StockRow } from '../types';
 import ProductCell from './ProductCell';
 import { formatDateTime } from '../utils/storageFormat';
@@ -20,7 +19,6 @@ interface StockDetailModalProps {
 
 const StockDetailModal: React.FC<StockDetailModalProps> = ({ row, onClose }) => {
   const { t } = useTranslation();
-  const { userId } = useStorage();
   const [ledger, setLedger] = useState<LedgerRow[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -29,7 +27,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ row, onClose }) => 
     (async () => {
       try {
         const res = await fetch(
-          `/api/ft/storage/ledger?user_id=${encodeURIComponent(userId)}&product_id=${encodeURIComponent(row.product_id)}`,
+          `/api/ft/storage/ledger?user_id=${encodeURIComponent(row.user_id)}&product_id=${encodeURIComponent(row.product_id)}`,
           { cache: 'no-store' }
         );
         const json = await res.json();
@@ -43,7 +41,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ row, onClose }) => 
       }
     })();
     return () => { cancelled = true; };
-  }, [userId, row.product_id]);
+  }, [row.user_id, row.product_id]);
 
   return (
     <div className="storage-modal-overlay" onClick={onClose}>

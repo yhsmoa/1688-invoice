@@ -23,7 +23,7 @@ const REASON_PRESETS = ['실사 불일치', '배치 수량 오류', '파손', '�
 
 const StockAdjustModal: React.FC<StockAdjustModalProps> = ({ row, onClose }) => {
   const { t } = useTranslation();
-  const { userId, worker } = useStorage();
+  const { worker } = useStorage();
   const [qtyText, setQtyText] = useState(String(row.qty));
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -43,7 +43,7 @@ const StockAdjustModal: React.FC<StockAdjustModalProps> = ({ row, onClose }) => 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: row.user_id,
           product_id: row.product_id,
           location_id: row.location_id,
           new_qty: qty,

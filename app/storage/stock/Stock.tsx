@@ -15,13 +15,13 @@ import './Stock.css';
 // [재고] — 위치별 재고 → 쉽먼트 / 위치 이동
 //
 //   · 검색: 상품명 · 옵션 · 중국어옵션 · 바코드 · 주문번호 · 위치
-//   · 체크 → [쉽먼트] (여러 칸·여러 상품 가능) / [위치 이동] · [수량 수정] (1칸만)
+//   · 체크 → [쉽먼트] (여러 칸·여러 상품 가능, 한 사업자만) / [위치 이동] · [수량 수정] (1칸만)
 //   · 행 클릭 → 상세(원장 타임라인)
 //   모달에는 열 때의 행을 넘긴다 — 저장 후 재조회로 목록이 바뀌어도 모달 내용은 유지
 // ============================================================
 const Stock: React.FC = () => {
   const { t } = useTranslation();
-  const { userId, stock, requests, reloadAll } = useStorage();
+  const { tab, stock, requests, reloadAll } = useStorage();
 
   const [search, setSearch] = useState('');
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -30,8 +30,8 @@ const Stock: React.FC = () => {
   const [adjustRow, setAdjustRow] = useState<StockRow | null>(null);
   const [pickRows, setPickRows] = useState<StockRow[] | null>(null);
 
-  // ── 사용자가 바뀌면 체크 해제 ──
-  useEffect(() => { setChecked(new Set()); }, [userId]);
+  // ── 사업자 탭이 바뀌면 체크 해제 ──
+  useEffect(() => { setChecked(new Set()); }, [tab]);
 
   // ── 재조회 뒤 사라진 칸의 체크는 정리 ──
   useEffect(() => {
@@ -56,6 +56,8 @@ const Stock: React.FC = () => {
     () => stock.rows.filter((r) => checked.has(stockKey(r))),
     [stock.rows, checked]
   );
+  // 박스는 사업자별 → 전체 탭에서 두 사업자를 함께 쉽먼트로 보낼 수 없다
+  const mixedUsers = checkedRows.some((r) => r.user_id !== checkedRows[0].user_id);
 
   // ============================================================
   // 체크
@@ -97,8 +99,6 @@ const Stock: React.FC = () => {
   // ============================================================
   // 렌더
   // ============================================================
-  if (!userId) return <div className="storage-empty">{t('storage.needUser')}</div>;
-
   return (
     <section className="storage-stock">
       <div className="storage-toolbar">
@@ -109,7 +109,9 @@ const Stock: React.FC = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className="storage-toolbar-actions">
-          <span className="storage-hint">{t('storage.stock.checked', { count: checkedRows.length })}</span>
+          <span className="storage-hint">
+            {mixedUsers ? t('storage.stock.mixedUsers') : t('storage.stock.checked', { count: checkedRows.length })}
+          </span>
           <button
             type="button"
             className="storage-btn"
@@ -132,7 +134,7 @@ const Stock: React.FC = () => {
             type="button"
             className="storage-btn storage-btn--primary"
             onClick={() => setPickRows(checkedRows)}
-            disabled={checkedRows.length === 0}
+            disabled={checkedRows.length === 0 || mixedUsers}
           >
             {t('storage.stock.toShipment')}
           </button>

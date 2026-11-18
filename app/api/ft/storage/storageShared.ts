@@ -28,7 +28,7 @@ export const serverError = (label: string, error: unknown) => {
 };
 
 // ============================================================
-// rpc 오류 코드 → 사용자 문구 (supabase/storage/001_storage.sql)
+// rpc 오류 코드 → 사용자 문구 (supabase/storage/001 ~ 005)
 // ============================================================
 const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   PUTAWAY_NOT_STOCK: '보관 상품의 입고 건이 아닙니다. (주문상태에서 보관 설정 확인)',
@@ -47,7 +47,22 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   MOVE_INVALID_LOCATION: '옮길 위치를 입력해 주세요.',
   MOVE_SAME_LOCATION: '같은 위치로는 옮길 수 없습니다.',
   MOVE_INVALID_QTY: '옮길 수량이 위치 재고보다 많거나 올바르지 않습니다.',
+  // ── 와우출고 (supabase/storage/005_wow.sql) ──
+  PICK_BOX_WOW: '와우출고 박스에는 [쉽먼트]로 담을 수 없습니다.',
+  PICK_OVER_AVAILABLE: '와우출고 출고예정 수량은 꺼낼 수 없습니다. 잔여수량까지만 꺼내 주세요.',
+  WOW_BOX_LOCKED: '와우출고 박스는 와우출고 화면에서만 담고 뺄 수 있습니다.',
+  WOW_BOX_NOT_FOUND: '와우출고 박스를 찾을 수 없습니다. 새로고침 후 다시 시도하세요.',
+  WOW_BOX_ALREADY_PICKED: '이미 담은 박스입니다. 새로고침 후 확인하세요.',
+  WOW_BOX_NOT_EMPTY: '상품을 담은 적 없는 미출고 X 박스만 고를 수 있습니다. (합배송 박스 제외)',
+  WOW_BOX_NOT_PICKED: '아직 담지 않은 박스입니다.',
+  WOW_BOX_SHIPPED: '이미 출고된 박스는 담기 취소할 수 없습니다.',
+  WOW_PICK_OVER: '요청 수량보다 많이 담을 수 없습니다.',
+  WOW_PICK_EMPTY: '담을 수량을 입력해 주세요.',
+  WOW_INVALID_INPUT: '요청이 바뀌었습니다. 새로고침 후 다시 담아 주세요.',
 };
+
+/** 와우 박스 보호 트리거(WOW_BOX_LOCKED) — 스캔 저장 · 포장 철회 · 박스 이동 라우트도 같은 문구 */
+export const WOW_BOX_LOCKED_MESSAGE = STORAGE_ERROR_MESSAGE.WOW_BOX_LOCKED;
 
 /** rpc 오류 → { code, message }. 박스 타입 불일치는 두 타입을 문구에 넣는다 */
 export function toStorageError(raw: string | undefined): { code: string; message: string } {
@@ -93,28 +108,28 @@ export async function fetchIn<T>(
   return all;
 }
 
-/** eq 조건 전체 — range 루프 */
-export async function fetchAllEq<T>(
+/** 표 전체 (조건이 있으면 그 조건만) — range 루프. 뷰는 id 가 없어 정렬 열을 받는다 */
+export async function fetchAll<T>(
   table: string,
   select: string,
-  column: string,
-  value: string,
-  orderColumn = 'id'
+  orderColumns: string[],
+  filter?: { column: string; value: string }
 ): Promise<T[]> {
   const all: T[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(select)
-      .eq(column, value)
-      .order(orderColumn, { ascending: true })
-      .range(from, from + PAGE - 1);
+    let q = supabase.from(table).select(select);
+    if (filter) q = q.eq(filter.column, filter.value);
+    for (const c of orderColumns) q = q.order(c, { ascending: true });
+    const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) throw error;
     all.push(...((data ?? []) as T[]));
     if (!data || data.length < PAGE) break;
   }
   return all;
 }
+
+/** ?user_id= 가 있으면 그 사업자만, 없으면 전체 (재고 화면은 한 번에 받아 사업자 탭으로 거른다) */
+export const userFilter = (userId: string | null) => (userId ? { column: 'user_id', value: userId } : undefined);
 
 /** 집합 반환 rpc 도 PostgREST 1000행 제한을 받는다 → range 루프 */
 export async function rpcAll<T>(fn: string, args: Record<string, unknown>): Promise<T[]> {
@@ -160,6 +175,7 @@ const ITEM_SELECT =
 
 const toInfo = (r: ItemRow): StorageProductInfo => ({
   product_id: r.product_id ?? '',
+  user_id: r.user_id,
   order_item_id: r.id,
   product_no: r.product_no,
   item_no: r.item_no,
@@ -180,15 +196,9 @@ const toInfo = (r: ItemRow): StorageProductInfo => ({
 const repOrder = (a: ItemRow, b: ItemRow) =>
   (a.set_seq ?? 0) - (b.set_seq ?? 0) || String(a.item_no ?? '').localeCompare(String(b.item_no ?? ''));
 
-/** product_id 목록 → 대표 행 정보 (같은 사용자 행만) */
-export async function fetchProductInfo(
-  userId: string,
-  productIds: string[]
-): Promise<Map<string, StorageProductInfo>> {
-  const rows = await fetchIn<ItemRow>('ft_order_items', ITEM_SELECT, 'product_id', productIds, {
-    column: 'user_id',
-    value: userId,
-  });
+/** product_id 목록 → 대표 행 정보 (product_id 는 한 사업자의 것이라 사용자 조건이 필요 없다) */
+export async function fetchProductInfo(productIds: string[]): Promise<Map<string, StorageProductInfo>> {
+  const rows = await fetchIn<ItemRow>('ft_order_items', ITEM_SELECT, 'product_id', productIds);
   const byProduct = new Map<string, ItemRow[]>();
   for (const r of rows) {
     if (!r.product_id) continue;

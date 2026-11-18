@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { WOW_BOX_LOCKED_MESSAGE } from '../storage/storageShared';
 
 // ============================================================
 // GET /api/ft/box-info?user_id=X&status=PACKING
@@ -265,6 +266,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('ft_box_info PATCH 오류:', error);
+    // 합배송에 와우출고 박스가 끼면 트리거가 거절 (supabase/storage/005_wow.sql)
+    if (String((error as Record<string, unknown>)?.message ?? '').includes('WOW_BOX_LOCKED')) {
+      return NextResponse.json({ success: false, error: WOW_BOX_LOCKED_MESSAGE }, { status: 409 });
+    }
     return NextResponse.json(
       { success: false, error: 'ft_box_info 수정 중 오류가 발생했습니다.', details: (error as Record<string, unknown>)?.message ?? JSON.stringify(error) },
       { status: 500 }

@@ -3,10 +3,10 @@
 import { useCallback, useRef, useState } from 'react';
 
 // ============================================================
-// useStorageRows — 사용자별 목록 조회 (작업중 / 재고 공용)
+// useStorageRows — 목록 조회 (작업중 / 재고 / 요청 / 와우출고 공용)
 //
-//   GET {endpoint}?user_id=  → { success, data: T[] }
-//   · 사용자 변경 직후 이전 사용자의 늦은 응답이 덮어쓰지 않도록 요청 순번으로 무시
+//   GET {endpoint} → { success, data: T[] } — 전체 사업자를 한 번에 받고 화면이 사업자 탭으로 거른다
+//   · 연달아 다시 읽을 때 늦게 온 이전 응답이 덮어쓰지 않도록 요청 순번으로 무시
 //     (쉽먼트 V2 useShipmentRows 와 같은 방식)
 // ============================================================
 export function useStorageRows<T>(endpoint: string) {
@@ -15,18 +15,12 @@ export function useStorageRows<T>(endpoint: string) {
   const [loadError, setLoadError] = useState(false);
   const seqRef = useRef(0);
 
-  const fetchRows = useCallback(async (userId: string) => {
+  const fetchRows = useCallback(async () => {
     const seq = ++seqRef.current;
-    if (!userId) {
-      setRows([]);
-      setLoadError(false);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setLoadError(false);
     try {
-      const res = await fetch(`${endpoint}?user_id=${encodeURIComponent(userId)}`, { cache: 'no-store' });
+      const res = await fetch(endpoint, { cache: 'no-store' });
       const json = await res.json();
       if (seq !== seqRef.current) return;
       if (!json.success) throw new Error(json.error || endpoint);

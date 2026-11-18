@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
-import { fail, serverError, fetchProductInfo, fetchLocationCodes } from '../storageShared';
+import { serverError, fetchAll, userFilter, fetchProductInfo, fetchLocationCodes } from '../storageShared';
 import type { StockRow } from '../../../../storage/types';
 
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// GET /api/ft/storage/stock?user_id=
-//   [재고] — 상품 × 위치 잔량 (뷰 ft_storage_balance, qty ≠ 0)
+// GET /api/ft/storage/stock[?user_id=]
+//   [재고] — 상품 × 위치 잔량 (뷰 ft_storage_balance, qty ≠ 0). user_id 가 없으면 전체 사업자
 //   음수 칸도 그대로 내려준다 (운영 이상 신호 — 화면에서 강조)
+//   출고예정 · 잔여수량은 상품 합계 (뷰 ft_storage_available — 행마다 같은 값)
 // ============================================================
-
-const PAGE = 1000;
 
 interface BalanceRow {
   product_id: string;
@@ -21,36 +19,30 @@ interface BalanceRow {
   last_moved_at: string | null;
 }
 
+interface AvailableRow { product_id: string; reserved: number; available: number }
+
 export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('user_id');
-  if (!userId) return fail('user_id 가 필요합니다.');
+  const filter = userFilter(request.nextUrl.searchParams.get('user_id'));
 
   try {
-    // ── 잔량 (뷰에는 id 가 없어 product_id·location_id 로 정렬해 페이지) ──
-    const balance: BalanceRow[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .from('ft_storage_balance')
-        .select('product_id, location_id, qty, first_putaway_at, last_moved_at')
-        .eq('user_id', userId)
-        .order('product_id', { ascending: true })
-        .order('location_id', { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      balance.push(...((data ?? []) as BalanceRow[]));
-      if (!data || data.length < PAGE) break;
-    }
+    const [balance, available] = await Promise.all([
+      fetchAll<BalanceRow>('ft_storage_balance', 'product_id, location_id, qty, first_putaway_at, last_moved_at',
+        ['user_id', 'product_id', 'location_id'], filter),
+      fetchAll<AvailableRow>('ft_storage_available', 'product_id, reserved, available', ['user_id', 'product_id'], filter),
+    ]);
     if (balance.length === 0) return NextResponse.json({ success: true, data: [] });
 
     const [info, codes] = await Promise.all([
-      fetchProductInfo(userId, balance.map((b) => b.product_id)),
+      fetchProductInfo(balance.map((b) => b.product_id)),
       fetchLocationCodes(balance.map((b) => b.location_id)),
     ]);
+    const availByProduct = new Map(available.map((a) => [a.product_id, a]));
 
     const data: StockRow[] = [];
     for (const b of balance) {
       const p = info.get(b.product_id);
       if (!p) continue;
+      const a = availByProduct.get(b.product_id);
       data.push({
         ...p,
         location_id: b.location_id,
@@ -58,6 +50,8 @@ export async function GET(request: NextRequest) {
         qty: b.qty,
         first_putaway_at: b.first_putaway_at,
         last_moved_at: b.last_moved_at,
+        reserved: a?.reserved ?? 0,
+        available: a?.available ?? 0,
       });
     }
     data.sort((a, b) => a.location_code.localeCompare(b.location_code) || String(a.product_no).localeCompare(String(b.product_no)));

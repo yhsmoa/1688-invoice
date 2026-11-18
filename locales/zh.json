@@ -27,6 +27,7 @@
     "stockStorage": "库存(保管)",
     "working": "作业中",
     "stock": "库存",
+    "wow": "WOW出库",
     "accountManage": "账户管理",
     "customerAccountNew": "客户账户(新)",
     "tradeAccount": "贸易账户",
@@ -1369,11 +1370,12 @@
   "storage": {
     "title": "库存(保管)",
     "tabs": {
+      "all": "全部",
       "pending": "待上架",
-      "stock": "库存"
+      "stock": "库存",
+      "wow": "WOW出库"
     },
     "selectWorker": "选择负责人",
-    "selectUser": "选择用户",
     "loading": "加载中...",
     "refresh": "刷新",
     "summary": {
@@ -1383,7 +1385,6 @@
       "requests": "{{count}}件"
     },
     "needWorker": "请先选择负责人。",
-    "needUser": "请选择用户。",
     "loadError": "列表加载失败，请点击[刷新]。",
     "close": "关闭",
     "saving": "保存中...",
@@ -1393,7 +1394,8 @@
       "placeholder": "扫描订单号标签 (Enter)",
       "notFound": "待上架列表中没有该订单号: {{code}}",
       "alreadyPlaced": "该商品已完成上架: {{code}}",
-      "done": "上架完成 — 请扫描下一个标签。"
+      "done": "上架完成 — 请扫描下一个标签。",
+      "ambiguousUser": "两个客户有相同的订单号: {{code}} — 请选择客户标签后重新扫描。"
     },
     "col": {
       "arrivedAt": "入库日",
@@ -1405,7 +1407,10 @@
       "location": "库位",
       "qty": "数量",
       "firstPutaway": "首次上架",
-      "days": "保管天数"
+      "days": "保管天数",
+      "reserved": "待出库",
+      "available": "剩余数量",
+      "productTotalHint": "商品合计 — 同一商品的各库位显示相同数值"
     },
     "pending": {
       "place": "上架",
@@ -1435,7 +1440,8 @@
       "moveHint": "只选择一格时可以移库。",
       "toShipment": "出货",
       "empty": "没有保管中的库存。",
-      "adjust": "修改数量"
+      "adjust": "修改数量",
+      "mixedUsers": "选中了不同客户的库位 — 出货请按客户分开。"
     },
     "detail": {
       "title": "库存详情",
@@ -1494,6 +1500,29 @@
       "reasonPlaceholder": "选择或直接输入原因",
       "confirm": "修改",
       "error": "修改数量时发生错误。"
+    },
+    "wow": {
+      "empty": "没有WOW出库请求。",
+      "status": {
+        "requested": "请求",
+        "picked": "已装箱",
+        "shipped": "已出库"
+      },
+      "requested": "请求",
+      "picked": "已装",
+      "pick": "装箱",
+      "unpack": "取消装箱",
+      "pickTitle": "WOW出库装箱",
+      "unpackConfirm": "取消 {{box}} 的装箱，并把商品退回原库位吗？",
+      "label": "粘贴文件",
+      "manifest": "随箱文件",
+      "unboxed": "箱子未定",
+      "unboxedHint": "箱子确定后才能装箱。",
+      "order": "采购单号",
+      "boxHint": "只能选择从未装过商品的 X 箱子。",
+      "shortConfirm": "有 {{count}}行装箱数量少于请求数量。将按已装数量确定，剩余的待出库会被释放。\n如果商品确实缺少，请在[库存]中修改数量。（不修改的话，下次分配会再次占用）\n继续吗？",
+      "done": "已装箱。",
+      "error": "WOW出库处理时发生错误。"
     }
   },
   "sellerInquiry": {
