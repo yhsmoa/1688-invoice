@@ -151,6 +151,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
             tables: ['ft_wow_boxes', 'ft_wow_items', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_shipments', 'ft_storage_movements', 'ft_order_items'],
           },
           { route: '/api/ft/storage/wow/docs', tables: ['ft_wow_boxes'] },
+          { route: '/api/ft/storage/wow/docs/merged', tables: ['ft_wow_boxes'] },
           { route: '/api/ft/storage/move', tables: ['ft_storage_movements', 'ft_storage_locations'] },
           { route: '/api/ft/storage/requests', tables: ['ft_storage_requests'] },
           { route: '/api/ft/storage/adjust', tables: ['ft_storage_movements', 'ft_order_items'] },

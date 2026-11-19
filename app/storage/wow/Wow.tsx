@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStorage } from '../hooks/StorageContext';
 import ProductCell from '../components/ProductCell';
@@ -24,9 +24,14 @@ import './Wow.css';
 //     출고      쉽먼트 V2 에서 박스를 출고하면 자동 — 출고 후 WOW_SHIPPED_VISIBLE_DAYS 일 동안 보인다
 //   단계 판정은 utils/wowStage.ts 한 곳 (API 가 줄마다 계산해 준다)
 //   박스 미정: 배정만 되고 박스가 정해지지 않은 줄 — 예약은 되지만 작업할 수 없다 ([신규] 탭 아래)
+//   [서류준비] 탭: 표 오른쪽 위 [부착문서] [동봉문서] — 탭의 박스 서류를 한 PDF 로 합쳐 새 탭에 연다 (한 번에 인쇄)
+//     POST /api/ft/storage/wow/docs/merged (숨은 form 제출 — 박스가 많아도 주소 길이 제한이 없다)
 // ============================================================
 
 type BoxAction = 'start' | 'cancel' | 'unpack';
+type DocKind = 'label' | 'manifest';
+
+const DOC_KINDS: DocKind[] = ['label', 'manifest'];
 
 /** 버튼을 누른 뒤 박스가 옮겨 가는 단계 (안내 문구용) */
 const NEXT_STAGE: Record<BoxAction, WowStage> = { start: 'working', cancel: 'new', unpack: 'working' };
@@ -40,6 +45,9 @@ const Wow: React.FC = () => {
   const [pickBox, setPickBox] = useState<WowBox | null>(null);
   const [busyBox, setBusyBox] = useState('');
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const printFormRef = useRef<HTMLFormElement>(null);
+  const printKindRef = useRef<HTMLInputElement>(null);
+  const printIdsRef = useRef<HTMLInputElement>(null);
 
   // ── 박스별 묶음 (API 가 발주번호 · 박스번호 순으로 준다) + 박스 미정 줄 ──
   const { boxes, unboxed } = useMemo(() => {
@@ -113,6 +121,23 @@ const Wow: React.FC = () => {
     setPickBox(box);
   }, [worker, t]);
 
+  // ── [서류준비] 전체 인쇄 — 그 서류가 첨부된 박스만, 화면 순서대로 ──
+  const docBoxIds = useCallback(
+    (kind: DocKind) => stageBoxes
+      .filter((b) => (kind === 'label' ? b.lines[0].label_path : b.lines[0].manifest_path))
+      .map((b) => b.id),
+    [stageBoxes]
+  );
+
+  const handlePrintAll = useCallback((kind: DocKind) => {
+    const ids = docBoxIds(kind);
+    const form = printFormRef.current;
+    if (ids.length === 0 || !form || !printKindRef.current || !printIdsRef.current) return;
+    printKindRef.current.value = kind;
+    printIdsRef.current.value = ids.join(',');
+    form.submit();
+  }, [docBoxIds]);
+
   const handlePickClose = useCallback((changed: boolean) => {
     if (changed && pickBox) {
       // 서류가 먼저 와 있던 박스는 작업완료를 건너 바로 서류준비로 간다
@@ -135,6 +160,40 @@ const Wow: React.FC = () => {
       <WowStageTabs stage={stage} counts={counts} onChange={setStage} />
 
       {message && <div className={`wow-message is-${message.kind}`} role="status">{message.text}</div>}
+
+      {/* ── [서류준비] 전체 인쇄 — 표 오른쪽 바로 위 ── */}
+      {stage === 'docs' && stageBoxes.length > 0 && (
+        <div className="wow-print-bar">
+          <span className="wow-muted">{t('storage.wow.printAllHint', { count: stageBoxes.length })}</span>
+          <span className="wow-print-actions">
+            {DOC_KINDS.map((kind) => {
+              const count = docBoxIds(kind).length;
+              const doc = t(`storage.wow.${kind}`);
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  className="wow-btn is-print"
+                  onClick={() => handlePrintAll(kind)}
+                  disabled={count === 0}
+                  title={t('storage.wow.printAllTitle', { doc, count })}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z" />
+                  </svg>
+                  {doc}
+                  <span className="wow-print-count">{count}</span>
+                </button>
+              );
+            })}
+          </span>
+          <form ref={printFormRef} method="post" action="/api/ft/storage/wow/docs/merged" target="_blank" hidden>
+            <input ref={printKindRef} type="hidden" name="kind" />
+            <input ref={printIdsRef} type="hidden" name="box_ids" />
+          </form>
+        </div>
+      )}
 
       {/* ── 이 단계의 박스 ── */}
       {stageBoxes.length > 0 && (

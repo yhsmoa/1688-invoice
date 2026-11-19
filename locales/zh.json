@@ -1548,6 +1548,8 @@
       "label": "粘贴文件",
       "manifest": "随箱文件",
       "docWaiting": "{{doc}} 等待中",
+      "printAllHint": "将文件准备阶段 {{count}}箱的文件合并为一个文件，一次打印。",
+      "printAllTitle": "{{doc}} 全部打印（{{count}}箱）",
       "noStock": "无库存",
       "stockShort": "缺少 {{count}}件",
       "unboxed": "箱子未定",

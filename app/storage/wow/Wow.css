@@ -157,6 +157,45 @@
 }
 
 /* ============================================================
+   [서류준비] 전체 인쇄 — 표 오른쪽 바로 위
+   ============================================================ */
+.wow-print-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 14px;
+}
+
+.wow-print-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wow-btn.is-print {
+  padding: 0 16px;
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.wow-btn.is-print:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.wow-print-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 11.5px;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
    박스 카드
    ============================================================ */
 .wow-boxes {

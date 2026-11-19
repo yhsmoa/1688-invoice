@@ -1553,6 +1553,8 @@
       "label": "부착문서",
       "manifest": "동봉문서",
       "docWaiting": "{{doc}} 대기",
+      "printAllHint": "서류준비 {{count}}박스의 서류를 한 파일로 열어 한 번에 인쇄합니다.",
+      "printAllTitle": "{{doc}} {{count}}박스 전체 인쇄",
       "noStock": "재고 없음",
       "stockShort": "{{count}}개 부족",
       "unboxed": "박스 미정",
