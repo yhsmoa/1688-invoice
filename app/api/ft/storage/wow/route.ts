@@ -2,18 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { fail, serverError, toStorageError, fetchAll, fetchIn, userFilter, fetchProductInfo } from '../storageShared';
 import type { PickInput, WowLine } from '../../../../storage/types';
+import { WOW_SHIPPED_VISIBLE_DAYS, wowStageOf } from '../../../../storage/utils/wowStage';
 
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// /api/ft/storage/wow — 와우출고 (supabase/storage/005_wow.sql)
+// /api/ft/storage/wow — 와우출고 (supabase/storage/005_wow.sql · 006_wow_stage.sql)
 //
-//   GET [?user_id=] : 출고 전 줄이 남은 발주서의 줄 전부 (ft_wow_order_state(NULL) 과 같은 기준)
-//     박스 출고 = 묶인 1688 박스의 포장 행이 전부 shipment_id 를 가짐 (ft_box_info.shipment_id 는 쓰지 않는다)
-//   POST { action: 'pick',   user_id, wow_box_id, box_info_id, lines: [{ item_id, picks: [{ location_id, qty }] }], operator_name }
-//        { action: 'unpack', user_id, wow_box_id, operator_name }
-//     → rpc ft_wow_pick / ft_wow_unpack. 오류 코드는 storageShared 문구로 409
+//   GET [?user_id=] : 출고 전 줄 전부 + 출고한 지 WOW_SHIPPED_VISIBLE_DAYS 일 안 된 박스의 줄
+//     · 줄마다 단계(stage)를 계산해 내려준다 — 판정은 app/storage/utils/wowStage.ts 한 곳
+//     · 박스 출고 = 묶인 1688 박스의 포장 행이 전부 shipment_id 를 가짐 (ft_box_info.shipment_id 는 쓰지 않는다)
+//       출고 시각 = 그 쉽먼트들의 생성 시각 중 가장 늦은 것 (ft_wow_order_state 와 같은 기준)
+//   POST { action, user_id, wow_box_id, operator_name, … }
+//     start  : [작업]         신규 → 작업중        rpc ft_wow_work_start
+//     cancel : [작업 취소]    작업중 → 신규        rpc ft_wow_work_cancel
+//     pick   : [작업완료]     작업중 → 작업완료    rpc ft_wow_pick   + box_info_id, lines: [{ item_id, picks: [{ location_id, qty }] }]
+//     unpack : [작업완료 취소] 작업완료 → 작업중    rpc ft_wow_unpack (출고 전에만)
+//     오류 코드는 storageShared 문구로 409
 // ============================================================
+
+const DAY_MS = 86_400_000;
 
 interface BoxRow {
   id: string;
@@ -24,6 +32,9 @@ interface BoxRow {
   box_info_id: string | null;
   label_path: string | null;
   manifest_path: string | null;
+  work_started_at: string | null;
+  work_started_by: string | null;
+  picked_by: string | null;
 }
 
 interface ItemRow {
@@ -37,46 +48,99 @@ interface ItemRow {
   picked_at: string | null;
 }
 
+interface PackedRow {
+  id: string;
+  box_info_id: string;
+  shipment_id: string | null;
+  shipment_no: string | null;
+}
+
+/** 묶인 1688 박스 하나의 출고 상태 */
+interface ShipState {
+  shipped: boolean;
+  shipped_at: string | null;
+  shipment_no: string | null;
+}
+
+const NOT_SHIPPED: ShipState = { shipped: false, shipped_at: null, shipment_no: null };
+
+// ── 묶인 1688 박스별 출고 상태 — 포장 행이 있고 전부 출고됐을 때만 출고 ──
+async function loadShipStates(boundIds: string[]): Promise<Map<string, ShipState>> {
+  const packed = await fetchIn<PackedRow>(
+    'ft_fulfillment_outbounds', 'id, box_info_id, shipment_id, shipment_no', 'box_info_id', boundIds);
+  const shipments = await fetchIn<{ id: string; created_at: string }>(
+    'ft_shipments', 'id, created_at', 'id', packed.map((o) => o.shipment_id ?? ''));
+  const createdAt = new Map(shipments.map((s) => [s.id, s.created_at]));
+
+  const rowsByBox = new Map<string, PackedRow[]>();
+  for (const o of packed) {
+    const arr = rowsByBox.get(o.box_info_id) ?? [];
+    arr.push(o);
+    rowsByBox.set(o.box_info_id, arr);
+  }
+
+  const states = new Map<string, ShipState>();
+  for (const [boxInfoId, rows] of rowsByBox) {
+    if (rows.some((o) => !o.shipment_id)) continue;
+    const times = rows.map((o) => createdAt.get(o.shipment_id ?? '') ?? '').filter(Boolean).sort();
+    const numbers = rows.map((o) => o.shipment_no ?? '').filter(Boolean).sort();
+    states.set(boxInfoId, {
+      shipped: true,
+      shipped_at: times[times.length - 1] ?? null,
+      shipment_no: numbers[numbers.length - 1] ?? null,
+    });
+  }
+  return states;
+}
+
 export async function GET(request: NextRequest) {
   const filter = userFilter(request.nextUrl.searchParams.get('user_id'));
 
   try {
     const [boxes, items] = await Promise.all([
       fetchAll<BoxRow>('ft_wow_boxes',
-        'id, order_number, box_no, center, box_size, box_info_id, label_path, manifest_path', ['id'], filter),
+        'id, order_number, box_no, center, box_size, box_info_id, label_path, manifest_path, ' +
+        'work_started_at, work_started_by, picked_by', ['id'], filter),
       fetchAll<ItemRow>('ft_wow_items',
         'id, order_number, wow_box_id, barcode, product_id, qty, picked_qty, picked_at', ['id'], filter),
     ]);
     if (items.length === 0) return NextResponse.json({ success: true, data: [] });
 
     const boundIds = boxes.map((b) => b.box_info_id ?? '').filter(Boolean);
-    const [info, boxInfos, packed] = await Promise.all([
+    const [info, boxInfos, shipStates] = await Promise.all([
       fetchProductInfo(items.map((i) => i.product_id)),
       fetchIn<{ id: string; box_code: string | null }>('ft_box_info', 'id, box_code', 'id', boundIds),
-      fetchIn<{ id: string; box_info_id: string; shipment_id: string | null }>(
-        'ft_fulfillment_outbounds', 'id, box_info_id, shipment_id', 'box_info_id', boundIds),
+      loadShipStates(boundIds),
     ]);
 
-    // ── 박스 출고 판정 ──
-    const unshipped = new Set(packed.filter((o) => !o.shipment_id).map((o) => o.box_info_id));
-    const hasRows = new Set(packed.map((o) => o.box_info_id));
     const codeById = new Map(boxInfos.map((b) => [b.id, b.box_code]));
     const boxById = new Map(boxes.map((b) => [b.id, b]));
-    const shippedBox = (b: BoxRow | undefined) =>
-      !!b?.box_info_id && hasRows.has(b.box_info_id) && !unshipped.has(b.box_info_id);
+    const shipOf = (b: BoxRow | undefined): ShipState =>
+      (b?.box_info_id ? shipStates.get(b.box_info_id) : undefined) ?? NOT_SHIPPED;
 
-    // ── 출고 전 줄이 남은 발주서만 ──
-    const openOrders = new Set(
-      items.filter((i) => !shippedBox(i.wow_box_id ? boxById.get(i.wow_box_id) : undefined)).map((i) => i.order_number)
-    );
+    // ── 출고한 지 오래된 박스는 목록에서 뺀다 (출고 시각을 모르면 남긴다) ──
+    const cutoff = Date.now() - WOW_SHIPPED_VISIBLE_DAYS * DAY_MS;
+    const expired = (s: ShipState) => s.shipped && !!s.shipped_at && Date.parse(s.shipped_at) < cutoff;
 
     const data: WowLine[] = [];
     for (const i of items) {
       const p = info.get(i.product_id);
-      if (!p || !openOrders.has(i.order_number)) continue;
+      if (!p) continue;
       const b = i.wow_box_id ? boxById.get(i.wow_box_id) : undefined;
+      const ship = shipOf(b);
+      if (expired(ship)) continue;
+
+      const boxFields = {
+        box_info_id: b?.box_info_id ?? null,
+        label_path: b?.label_path ?? null,
+        manifest_path: b?.manifest_path ?? null,
+        work_started_at: b?.work_started_at ?? null,
+        shipped: ship.shipped,
+      };
       data.push({
         ...p,
+        ...boxFields,
+        stage: wowStageOf(boxFields),
         item_id: i.id,
         order_number: i.order_number,
         wow_barcode: i.barcode,
@@ -87,11 +151,11 @@ export async function GET(request: NextRequest) {
         box_no: b?.box_no ?? null,
         center: b?.center ?? null,
         box_size: b?.box_size ?? null,
-        box_info_id: b?.box_info_id ?? null,
         box_code: b?.box_info_id ? codeById.get(b.box_info_id) ?? null : null,
-        label_path: b?.label_path ?? null,
-        manifest_path: b?.manifest_path ?? null,
-        shipped: shippedBox(b),
+        work_started_by: b?.work_started_by ?? null,
+        picked_by: b?.picked_by ?? null,
+        shipped_at: ship.shipped_at,
+        shipment_no: ship.shipment_no,
       });
     }
     data.sort((a, b) =>
@@ -111,8 +175,14 @@ export async function POST(request: NextRequest) {
     if (!user_id || !wow_box_id) return fail('user_id, wow_box_id 가 필요합니다.');
     if (!operator_name) return fail('담당자를 선택해 주세요.');
 
+    const boxArgs = { p_user_id: user_id, p_wow_box_id: wow_box_id, p_operator_name: operator_name };
+
     let rpc;
-    if (action === 'pick') {
+    if (action === 'start') {
+      rpc = supabase.rpc('ft_wow_work_start', boxArgs);
+    } else if (action === 'cancel') {
+      rpc = supabase.rpc('ft_wow_work_cancel', boxArgs);
+    } else if (action === 'pick') {
       if (!box_info_id) return fail('박스를 선택해 주세요.');
       const list = (Array.isArray(lines) ? lines : []) as WowPickLine[];
       if (list.length === 0 || list.some((l) => !l?.item_id || !Array.isArray(l.picks)
@@ -127,9 +197,9 @@ export async function POST(request: NextRequest) {
         p_operator_name: operator_name,
       });
     } else if (action === 'unpack') {
-      rpc = supabase.rpc('ft_wow_unpack', { p_user_id: user_id, p_wow_box_id: wow_box_id, p_operator_name: operator_name });
+      rpc = supabase.rpc('ft_wow_unpack', boxArgs);
     } else {
-      return fail('action 은 pick 또는 unpack 입니다.');
+      return fail('action 은 start · cancel · pick · unpack 중 하나입니다.');
     }
 
     const { data, error } = await rpc;
@@ -142,6 +212,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ success: true, ...(data as Record<string, unknown>) });
   } catch (error) {
-    return serverError('와우출고 담기', error);
+    return serverError('와우출고 처리', error);
   }
 }

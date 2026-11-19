@@ -8,16 +8,19 @@ import type { PickInput, StockRow, WowLine } from '../types';
 import ProductCell from './ProductCell';
 import BoxField from './BoxField';
 import { playErrorSound } from '../utils/storageFormat';
+import { planPicks, stockCellsOf } from '../utils/wowStage';
 // 상품별 묶음 · 위치별 수량 칸은 [쉽먼트] 모달과 같은 스타일 (/storage/wow 로 바로 들어와도 적용되게)
 import '../stock/Stock.css';
 
 // ============================================================
-// WowPickModal — 와우출고 [담기]: 와우 박스(발주번호-박스번호) 하나 = 빈 X 박스 하나
+// WowPickModal — 와우출고 [작업완료] 확인 창: 와우 박스(발주번호-박스번호) 하나 = 빈 X 박스 하나
 //
-//   줄마다 위치별 꺼낼 수량 (기본 = 요청 수량을 먼저 배치된 위치부터)
+//   표에서 위치를 보고 상품을 다 찾은 뒤 여는 창 — 어느 박스에 담았는지와 실제 담은 수량을 확정한다
+//   줄마다 위치별 꺼낸 수량 (기본 = 표의 [위치] 칸과 같은 계산: 요청 수량을 먼저 배치된 위치부터)
 //   요청보다 적게 담으면 확인 — 담은 수량으로 확정되고 나머지 예약은 풀린다
 //     (상품이 실제로 없으면 [재고] 수량을 고쳐야 다음 배정이 다시 잡지 않는다)
 //   저장: POST /api/ft/storage/wow { action: 'pick' } → ft_wow_pick (한 트랜잭션, 타입 DIRECT)
+//     → 재고에서 빠지고 박스가 [작업완료] 단계로 넘어간다
 // ============================================================
 
 interface WowPickModalProps {
@@ -36,22 +39,15 @@ const WowPickModal: React.FC<WowPickModalProps> = ({ lines, onClose }) => {
   // ── 줄마다 그 상품이 있는 위치 (먼저 배치된 순) ──
   const cellsOf = useMemo(() => {
     const map = new Map<string, StockRow[]>();
-    for (const l of lines) {
-      map.set(l.item_id, stock.rows
-        .filter((r) => r.product_id === l.product_id && r.qty > 0)
-        .sort((a, b) => String(a.first_putaway_at).localeCompare(String(b.first_putaway_at))));
-    }
+    for (const l of lines) map.set(l.item_id, stockCellsOf(stock.rows, l.product_id));
     return map;
   }, [lines, stock.rows]);
 
   const [qtyText, setQtyText] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const l of lines) {
-      let left = l.qty;
-      for (const c of cellsOf.get(l.item_id) ?? []) {
-        const q = Math.min(c.qty, left);
-        init[cellKey(l.item_id, c.location_id)] = String(q);
-        left -= q;
+      for (const { cell, take } of planPicks(l.qty, cellsOf.get(l.item_id) ?? []).plan) {
+        init[cellKey(l.item_id, cell.location_id)] = String(take);
       }
     }
     return init;
@@ -109,7 +105,7 @@ const WowPickModal: React.FC<WowPickModalProps> = ({ lines, onClose }) => {
       reloadAll();
       onClose(true);
     } catch (err) {
-      console.error('와우출고 담기 오류:', err);
+      console.error('와우출고 작업완료 오류:', err);
       playErrorSound();
       setError(t('storage.wow.error'));
     } finally {
@@ -122,9 +118,9 @@ const WowPickModal: React.FC<WowPickModalProps> = ({ lines, onClose }) => {
   // ============================================================
   return (
     <div className="storage-modal-overlay">
-      <div className="storage-modal storage-modal--wide" role="dialog" aria-label={t('storage.wow.pickTitle')}>
+      <div className="storage-modal storage-modal--wide" role="dialog" aria-label={t('storage.wow.completeTitle')}>
         <div className="storage-modal-head">
-          <h3>{t('storage.wow.pickTitle')} · {head.order_number}-{head.box_no}</h3>
+          <h3>{t('storage.wow.completeTitle')} · {head.order_number}-{head.box_no}</h3>
           <button type="button" className="storage-modal-x" onClick={() => onClose(false)} disabled={saving}>✕</button>
         </div>
 
@@ -181,7 +177,7 @@ const WowPickModal: React.FC<WowPickModalProps> = ({ lines, onClose }) => {
             onClick={handleSubmit}
             disabled={saving || !box || !worker || !allValid}
           >
-            {saving ? t('storage.saving') : t('storage.wow.pick')}
+            {saving ? t('storage.saving') : t('storage.wow.complete')}
           </button>
         </div>
       </div>

@@ -1,81 +1,498 @@
 /* ============================================================
-   [와우출고] — 박스 카드 · 박스 미정 표 (공용은 ../Storage.css)
+   [와우출고] — 단계 바 · 박스 카드 · 상품 표 (공용은 ../Storage.css)
+   클로드 디자인 캔버스 "와우출고 화면 디자인" — 쉽먼트 V2 와 같은 톤
+   (밝은 회색 바탕 · 흰 카드 radius 14 · 큰 숫자 탭 바 · 박스별 묶음)
    ============================================================ */
 
-.storage-wow-boxes {
+.wow-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+  color: #111827;
+
+  /* 선택 색 (단계 바 선택 칸 · [작업] 버튼 · 꺼낼 수량) / 완료 색 ([작업완료] 버튼 · 다 담은 수량) */
+  --wow-accent: #1d4ed8;
+  --wow-accent-tint: #eff4ff;
+  --wow-done: #15803d;
+}
+
+.wow-muted {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* ============================================================
+   단계 바 — 한 판 5칸
+   ============================================================ */
+.wow-stagebar {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: #ffffff;
+  border: 1px solid #e3e6eb;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.wow-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border: 0;
+  background: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wow-stage + .wow-stage {
+  border-left: 1px solid #eef0f3;
+}
+
+.wow-stage:hover {
+  background: #fafbfc;
+}
+
+.wow-stage.is-active {
+  background: var(--wow-accent-tint);
+  box-shadow: inset 0 -3px 0 var(--wow-accent);
+}
+
+.wow-stage:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+}
+
+.wow-stage-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wow-stage-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #eef0f3;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.wow-stage.is-active .wow-stage-num {
+  background: var(--wow-accent);
+  color: #ffffff;
+}
+
+.wow-stage-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.wow-stage-arrow {
+  margin-left: auto;
+  color: #c4c9d1;
+}
+
+.wow-stage-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.wow-stage.is-active .wow-stage-count {
+  color: var(--wow-accent);
+}
+
+.wow-stage-count.is-zero,
+.wow-stage.is-active .wow-stage-count.is-zero {
+  color: #c4c9d1;
+}
+
+.wow-stage-unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.wow-stage-sub {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+/* ============================================================
+   처리 결과 · 빈 목록
+   ============================================================ */
+.wow-message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wow-message.is-ok    { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; }
+.wow-message.is-error { border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; }
+
+.wow-empty {
+  padding: 56px 16px;
+  background: #ffffff;
+  border: 1px dashed #d7dbe1;
+  border-radius: 14px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ============================================================
+   박스 카드
+   ============================================================ */
+.wow-boxes {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-/* ── 박스 카드 — 왼쪽 띠 색 = 상태 ── */
-.storage-wow-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+.wow-box {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-left: 4px solid #2563eb;
-  border-radius: 8px;
+  border: 1px solid #e3e6eb;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
-.storage-wow-card.is-picked  { border-left-color: #16a34a; }
-.storage-wow-card.is-shipped { border-left-color: #9ca3af; }
+/* ── 머리줄: 박스 정보 · 서류 · 담당 · 버튼 ── */
+.wow-box-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  background: #fbfbfc;
+  border-bottom: 1px solid #eef0f3;
+}
 
-.storage-wow-head {
+.wow-user {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.wow-box-head .wow-user {
+  margin-right: 0;
+}
+
+.wow-box-code {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wow-box-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 12.5px;
+}
+
+.wow-sep {
+  width: 1px;
+  height: 18px;
+  background: #e5e7eb;
+}
+
+
+/* 담당 · 출고 */
+.wow-worker,
+.wow-shipped {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #374151;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.wow-worker-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e8eaee;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wow-shipped {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f1f3f6;
+  font-weight: 700;
+}
+
+/* 버튼 — 오른쪽 끝 */
+.wow-box-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  font-size: 13px;
-  color: #4b5563;
+  margin-left: auto;
 }
 
-.storage-wow-head strong {
-  font-size: 15px;
+.wow-box-actions:empty {
+  display: none;
+}
+
+.wow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #dde1e7;
+  border-radius: 10px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wow-btn:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.wow-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wow-btn.is-start,
+.wow-btn.is-complete {
+  padding: 0 18px;
+  border: 0;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.wow-btn.is-start                          { background: var(--wow-accent); }
+.wow-btn.is-start:hover:not(:disabled)     { background: #1e40af; }
+.wow-btn.is-complete                       { background: var(--wow-done); }
+.wow-btn.is-complete:hover:not(:disabled)  { background: #166534; }
+
+/* 서류 버튼 — 버튼들 오른쪽 끝. 첨부되면 열기 링크(활성), 아직이면 비활성 */
+.wow-doc-sep {
+  width: 1px;
+  height: 22px;
+  margin: 0 2px;
+  background: #e5e7eb;
+}
+
+.wow-btn.is-doc {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.wow-btn.is-doc:hover {
+  background: #e0e7ff;
+}
+
+.wow-btn.is-doc:disabled {
+  border-style: dashed;
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #9ca3af;
+  font-weight: 600;
+  opacity: 1;
+}
+
+/* ============================================================
+   상품 표 (박스 카드 안)
+   ============================================================ */
+.wow-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wow-lines th {
+  height: 34px;
+  padding: 0 16px;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.wow-th-hint {
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.wow-lines td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f4f5f7;
+  vertical-align: middle;
+}
+
+.wow-lines tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.wow-lines th:first-child { width: 48%; }
+.wow-lines.is-picked th:first-child { width: auto; }
+
+.wow-lines .col-qty {
+  width: 72px;
+  text-align: right;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: #111827;
 }
 
-.storage-wow-user {
-  padding: 2px 6px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  font-weight: 700;
+.wow-lines th.col-qty {
+  font-size: 11px;
+  color: #6b7280;
 }
 
-.storage-wow-status {
-  padding: 2px 8px;
-  border-radius: 10px;
+.wow-lines td.col-qty.is-full  { color: var(--wow-done); }
+.wow-lines td.col-qty.is-short { color: #b91c1c; }
+
+.wow-lines .col-picked-box { width: 160px; }
+.wow-lines .col-order      { width: 180px; white-space: nowrap; font-weight: 600; }
+
+/* ── 꺼낼 위치: [위치 → 꺼낼 수량 / 재고] ── */
+.wow-locs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wow-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #dde1e7;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* 앞 위치에서 다 채워져 꺼낼 수량이 0 인 위치 — 여분 */
+.wow-loc.is-spare {
+  opacity: 0.45;
+}
+
+.wow-loc-code {
+  font-family: Consolas, 'SFMono-Regular', ui-monospace, monospace;
+  font-weight: 800;
+  color: #111827;
+}
+
+.wow-loc-arrow {
+  display: inline-flex;
+  color: #9ca3af;
+}
+
+.wow-loc strong {
+  font-size: 15px;
+  color: var(--wow-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.wow-loc-stock {
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 재고 없음 · n개 부족 */
+.wow-loc-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
   font-size: 12px;
   font-weight: 700;
-  background: #dbeafe;
-  color: #1d4ed8;
+  white-space: nowrap;
 }
 
-.storage-wow-status.is-picked  { background: #dcfce7; color: #15803d; }
-.storage-wow-status.is-shipped { background: #f3f4f6; color: #4b5563; }
-
-.storage-wow-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-/* ── 요청보다 적게 담음 ── */
+/* [작업완료] 창 — 요청보다 적게 담은 합계 */
 .storage-wow-short {
-  color: #dc2626;
+  color: #b91c1c;
   font-weight: 700;
 }
 
-/* ── 박스 미정 ── */
-.storage-wow-unboxed {
-  margin-top: 20px;
+/* 담은 박스 코드 */
+.wow-picked-box {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.storage-wow-unboxed h3 {
-  margin: 0 0 8px;
-  font-size: 15px;
-  color: #374151;
+/* ============================================================
+   좁은 화면 — 상품 표는 카드 안에서 가로 스크롤
+   ============================================================ */
+@media (max-width: 900px) {
+  .wow-stagebar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .wow-stage:nth-child(4) {
+    border-left: 0;
+  }
+
+  .wow-stage:nth-child(n + 4) {
+    border-top: 1px solid #eef0f3;
+  }
+
+  .wow-box {
+    overflow-x: auto;
+  }
+
+  .wow-lines {
+    min-width: 720px;
+  }
 }

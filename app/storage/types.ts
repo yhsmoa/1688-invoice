@@ -116,7 +116,13 @@ export interface StorageRequest {
 // 와우출고 — 줄 1개 (ft_wow_items + 와우 박스 + 묶인 1688 박스)
 //   box_id NULL = 박스 미정 (예약만, 담을 수 없다)
 // ============================================================
+
+/** 단계 — 판정은 utils/wowStage.ts (신규 → 작업중 → 작업완료 → 서류준비 → 출고) */
+export type WowStage = 'new' | 'working' | 'done' | 'docs' | 'shipped';
+
 export interface WowLine extends StorageProductInfo {
+  /** 이 줄이 속한 박스의 단계 (박스 미정 줄은 'new') */
+  stage: WowStage;
   item_id: string;
   order_number: string;
   /** 로켓이 보낸 바코드 (상품 대표 행의 바코드와 같은 값을 trim 한 것) */
@@ -132,6 +138,14 @@ export interface WowLine extends StorageProductInfo {
   box_code: string | null;
   label_path: string | null;
   manifest_path: string | null;
+  /** [작업] 을 누른 시각 · 담당자 (신규면 null) */
+  work_started_at: string | null;
+  work_started_by: string | null;
+  /** [작업완료] 한 담당자 */
+  picked_by: string | null;
   /** 묶인 1688 박스의 포장 행이 전부 출고됨 */
   shipped: boolean;
+  /** 출고 시각 · 쉽먼트 번호 (출고 전이면 null) */
+  shipped_at: string | null;
+  shipment_no: string | null;
 }

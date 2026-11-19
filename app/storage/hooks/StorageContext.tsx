@@ -39,6 +39,8 @@ interface StorageContextValue {
   wow: Rows<WowLine>;
   /** 고객 쉽먼트 요청 — 미처리 + 24h 내 완료 */
   requests: StorageRequest[];
+  /** 와우출고 신규 박스 수 — 사업자 id → 수, '' = 전체 (사업자 탭 배지용, 탭 선택과 무관) */
+  wowNewCount: Record<string, number>;
   reloadAll: () => void;
 }
 
@@ -96,6 +98,23 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [ftUsers]
   );
 
+  // ── 와우출고 신규 박스 수 (박스 미정 줄은 박스가 아니라 세지 않는다) ──
+  const wowNewCount = useMemo(() => {
+    const boxesByUser = new Map<string, Set<string>>();
+    for (const l of wow.rows) {
+      if (l.stage !== 'new' || !l.box_id) continue;
+      const set = boxesByUser.get(l.user_id) ?? new Set<string>();
+      set.add(l.box_id);
+      boxesByUser.set(l.user_id, set);
+    }
+    const out: Record<string, number> = { '': 0 };
+    for (const [userId, set] of boxesByUser) {
+      out[userId] = set.size;
+      out[''] += set.size;
+    }
+    return out;
+  }, [wow.rows]);
+
   const value = useMemo<StorageContextValue>(() => {
     const inTab = <T extends { user_id: string }>(rows: T[]) => (tab ? rows.filter((r) => r.user_id === tab) : rows);
     return {
@@ -104,6 +123,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
       stock: { rows: inTab(stock.rows), loading: stock.loading, loadError: stock.loadError },
       wow: { rows: inTab(wow.rows), loading: wow.loading, loadError: wow.loadError },
       requests: inTab(requests.rows),
+      wowNewCount,
       reloadAll,
     };
   }, [
@@ -112,6 +132,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stock.rows, stock.loading, stock.loadError,
     wow.rows, wow.loading, wow.loadError,
     requests.rows,
+    wowNewCount,
     reloadAll,
   ]);
 

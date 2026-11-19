@@ -9,22 +9,27 @@ import { workerLabel } from '../../shipment-v2/hooks/useWorkers';
 import { daysSince } from '../utils/storageFormat';
 
 // ============================================================
-// StorageHeader — 제목 · 화면 탭 · 담당자 · 사업자 탭(전체 + 사업자별) · 요약 카드
+// StorageHeader — 제목 · 화면 탭 · 사업자 탭(전체 + 사업자별) · 담당자 · 요약 카드
 //
-//   요약 카드: [작업중 n건 · 미배치 n개] [재고 n위치 · n개] [30일 이상 n]
-//   위치 수는 "상품이 들어 있는 칸" 수가 아니라 서로 다른 위치 코드 수
+//   1줄: 제목 + 화면 탭 + 사업자 탭 (화면 탭 바로 옆) / 담당자 · 새로고침
+//   2줄: 요약 카드 [작업중 n건 · 미배치 n개] [재고 n위치 · n개] [30일 이상 n] [쉽먼트 요청 n]
+//     · 위치 수는 "상품이 들어 있는 칸" 수가 아니라 서로 다른 위치 코드 수
+//     · [와우출고] 화면에서는 카드를 그리지 않는다 — 그 자리에 단계 탭이 온다 (wow/Wow.tsx)
+//       대신 사업자 탭마다 와우출고 신규 박스 수를 붙인다 (0 이면 없음)
 // ============================================================
+
+const WOW_HREF = '/storage/wow';
 
 const TABS = [
   { href: '/storage/pending', key: 'storage.tabs.pending' },
   { href: '/storage/stock', key: 'storage.tabs.stock' },
-  { href: '/storage/wow', key: 'storage.tabs.wow' },
+  { href: WOW_HREF, key: 'storage.tabs.wow' },
 ] as const;
 
 const StorageHeader: React.FC = () => {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const { ftUsers, tab, setTab, workers, worker, setWorker, pending, stock, wow, requests, reloadAll } = useStorage();
+  const { ftUsers, tab, setTab, workers, worker, setWorker, pending, stock, wow, requests, wowNewCount, reloadAll } = useStorage();
 
   // ── 요약 수치 ──
   const summary = useMemo(() => {
@@ -42,12 +47,13 @@ const StorageHeader: React.FC = () => {
   }, [pending.rows, stock.rows, requests]);
 
   const loading = pending.loading || stock.loading || wow.loading;
+  const isWowPage = !!pathname?.startsWith(WOW_HREF);
   const userTabs = [{ id: '', label: t('storage.tabs.all'), title: '' },
     ...ftUsers.map((u) => ({ id: u.id, label: u.user_code, title: u.vender_name || u.full_name }))];
 
   return (
     <header className="storage-header">
-      {/* ── 1줄: 제목 + 화면 탭 / 담당자 · 새로고침 ── */}
+      {/* ── 1줄: 제목 + 화면 탭 + 사업자 탭 / 담당자 · 새로고침 ── */}
       <div className="storage-header-top">
         <div className="storage-header-title">
           <h1>{t('storage.title')}</h1>
@@ -60,6 +66,23 @@ const StorageHeader: React.FC = () => {
               >
                 {t(page.key)}
               </Link>
+            ))}
+          </nav>
+          <span className="storage-header-sep" aria-hidden="true" />
+          <nav className="storage-tabs storage-user-tabs">
+            {userTabs.map((u) => (
+              <button
+                key={u.id || 'all'}
+                type="button"
+                className={`storage-tab ${tab === u.id ? 'is-active' : ''}`}
+                title={u.title}
+                onClick={() => setTab(u.id)}
+              >
+                {u.label}
+                {isWowPage && (wowNewCount[u.id] ?? 0) > 0 && (
+                  <span className="storage-tab-count">{wowNewCount[u.id]}</span>
+                )}
+              </button>
             ))}
           </nav>
         </div>
@@ -80,40 +103,27 @@ const StorageHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 2줄: 사업자 탭 ── */}
-      <nav className="storage-tabs storage-user-tabs">
-        {userTabs.map((u) => (
-          <button
-            key={u.id || 'all'}
-            type="button"
-            className={`storage-tab ${tab === u.id ? 'is-active' : ''}`}
-            title={u.title}
-            onClick={() => setTab(u.id)}
-          >
-            {u.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* ── 3줄: 요약 카드 ── */}
-      <div className="storage-cards">
-        <div className="storage-card">
-          <span className="storage-card-label">{t('storage.tabs.pending')}</span>
-          <strong>{t('storage.summary.pending', { lines: summary.lines, qty: summary.unplaced })}</strong>
+      {/* ── 2줄: 요약 카드 ([와우출고] 화면은 단계 탭이 대신한다) ── */}
+      {!isWowPage && (
+        <div className="storage-cards">
+          <div className="storage-card">
+            <span className="storage-card-label">{t('storage.tabs.pending')}</span>
+            <strong>{t('storage.summary.pending', { lines: summary.lines, qty: summary.unplaced })}</strong>
+          </div>
+          <div className="storage-card">
+            <span className="storage-card-label">{t('storage.tabs.stock')}</span>
+            <strong>{t('storage.summary.stock', { locations: summary.locations, qty: summary.stockQty })}</strong>
+          </div>
+          <div className={`storage-card ${summary.aged > 0 ? 'is-warn' : ''}`}>
+            <span className="storage-card-label">{t('storage.summary.agedLabel', { days: AGED_DAYS })}</span>
+            <strong>{summary.aged}</strong>
+          </div>
+          <div className={`storage-card ${summary.requested > 0 ? 'is-request' : ''}`}>
+            <span className="storage-card-label">{t('storage.request.label')}</span>
+            <strong>{t('storage.summary.requests', { count: summary.requested })}</strong>
+          </div>
         </div>
-        <div className="storage-card">
-          <span className="storage-card-label">{t('storage.tabs.stock')}</span>
-          <strong>{t('storage.summary.stock', { locations: summary.locations, qty: summary.stockQty })}</strong>
-        </div>
-        <div className={`storage-card ${summary.aged > 0 ? 'is-warn' : ''}`}>
-          <span className="storage-card-label">{t('storage.summary.agedLabel', { days: AGED_DAYS })}</span>
-          <strong>{summary.aged}</strong>
-        </div>
-        <div className={`storage-card ${summary.requested > 0 ? 'is-request' : ''}`}>
-          <span className="storage-card-label">{t('storage.request.label')}</span>
-          <strong>{t('storage.summary.requests', { count: summary.requested })}</strong>
-        </div>
-      </div>
+      )}
     </header>
   );
 };

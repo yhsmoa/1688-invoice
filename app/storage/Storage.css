@@ -46,7 +46,8 @@
 .storage-header-title {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 10px 16px;
 }
 
 .storage-header-title h1 {
@@ -72,17 +73,39 @@
   text-decoration: none;
 }
 
-/* 사업자 탭 — 화면 탭과 같은 모양, 버튼 */
+/* 화면 탭 | 사업자 탭 구분선 */
+.storage-header-sep {
+  width: 1px;
+  height: 22px;
+  background: #d7dbe1;
+}
+
+/* 사업자 탭 — 화면 탭 바로 옆, 같은 모양의 버튼 */
 .storage-user-tabs {
   width: fit-content;
   flex-wrap: wrap;
-  margin-top: 10px;
 }
 
 .storage-user-tabs .storage-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: none;
   background: transparent;
   cursor: pointer;
+}
+
+/* 사업자 탭 배지 — [와우출고] 화면의 신규 박스 수 */
+.storage-tab-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }
 
 .storage-tab.is-active {
