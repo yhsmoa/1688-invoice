@@ -28,6 +28,7 @@ interface BoxRow {
   order_number: string;
   box_no: number;
   center: string | null;
+  arrival_date: string | null;
   box_size: string | null;
   box_info_id: string | null;
   label_path: string | null;
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
   try {
     const [boxes, items] = await Promise.all([
       fetchAll<BoxRow>('ft_wow_boxes',
-        'id, order_number, box_no, center, box_size, box_info_id, label_path, manifest_path, ' +
+        'id, order_number, box_no, center, arrival_date, box_size, box_info_id, label_path, manifest_path, ' +
         'work_started_at, work_started_by, picked_by', ['id'], filter),
       fetchAll<ItemRow>('ft_wow_items',
         'id, order_number, wow_box_id, barcode, product_id, qty, picked_qty, picked_at', ['id'], filter),
@@ -150,6 +151,7 @@ export async function GET(request: NextRequest) {
         box_id: b?.id ?? null,
         box_no: b?.box_no ?? null,
         center: b?.center ?? null,
+        arrival_date: b?.arrival_date ?? null,
         box_size: b?.box_size ?? null,
         box_code: b?.box_info_id ? codeById.get(b.box_info_id) ?? null : null,
         work_started_by: b?.work_started_by ?? null,

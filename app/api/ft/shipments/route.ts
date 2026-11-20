@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { fetchIn } from '../storage/storageShared';
+import { wowDocsReady } from '../../../storage/utils/wowStage';
 
 // ============================================================
 // GET /api/ft/shipments?user_id=X
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 // 출고 처리: ft_shipments 생성 → ft_box_info.shipment_id 업데이트
 //          → ft_fulfillments.shipment_no + shipment_id + shipment=true 업데이트
 //          → 출고된 포장 행의 미처리 이동요청(ft_move_requests) CANCELLED(note='shipped')
-//   와우출고 박스(supabase/storage/005_wow.sql)는 박스 통째로만, 일반 박스와 다른 출고번호로 (409)
+//   와우출고 박스(supabase/storage/005_wow.sql)는 [서류준비] 단계부터, 박스 통째로만, 일반 박스와 다른 출고번호로 (409)
 //
 // Body: {
 //   user_id: string,
@@ -177,13 +178,17 @@ export async function POST(request: NextRequest) {
 // ============================================================
 // 와우출고 박스 검사 — 행선지가 쿠팡 센터라 일반 박스와 한 출고번호에 섞지 않고,
 //   박스의 일부 행만 출고하면 와우 박스 출고 판정(포장 행 전부 shipment_id)이 어긋난다
+//   담기만 한 박스는 이번에 출고하지 않을 수도 있다 → 로켓이 서류 2종을 올린 [서류준비] 박스만 출고한다
 // ============================================================
 async function checkWowSelection(ids: string[]): Promise<string | null> {
   const rows = await fetchIn<{ id: string; box_info_id: string | null }>(
     'ft_fulfillment_outbounds', 'id, box_info_id', 'id', ids);
-  const wowBoxes = await fetchIn<{ box_info_id: string }>(
-    'ft_wow_boxes', 'box_info_id', 'box_info_id', rows.map((r) => r.box_info_id ?? ''));
+  const wowBoxes = await fetchIn<{ box_info_id: string; label_path: string | null; manifest_path: string | null }>(
+    'ft_wow_boxes', 'box_info_id, label_path, manifest_path', 'box_info_id', rows.map((r) => r.box_info_id ?? ''));
   if (wowBoxes.length === 0) return null;
+  if (!wowBoxes.every(wowDocsReady)) {
+    return '와우출고 박스는 서류준비 단계(부착문서 · 동봉문서 도착)부터 출고할 수 있습니다.';
+  }
 
   const wowIds = new Set(wowBoxes.map((w) => w.box_info_id));
   if (rows.some((r) => !r.box_info_id || !wowIds.has(r.box_info_id))) {

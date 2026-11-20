@@ -7,7 +7,7 @@ import type { StockRow, WowStage } from '../types';
 //   신규      담지 않았고 작업 시작 기록 없음
 //   작업중    담지 않았고 작업 시작 기록 있음           — [작업]
 //   작업완료  담았고 서류 2종이 아직 다 오지 않음        — [작업완료]
-//   서류준비  담았고 부착문서 · 동봉문서가 둘 다 도착     — 로켓이 올린다
+//   서류준비  담았고 부착문서 · 동봉문서가 둘 다 도착     — 로켓이 올린다. 이때부터 쉽먼트 V2 출고 대기 목록에 보인다
 //   출고      묶인 1688 박스의 포장 행이 전부 출고됨     — 쉽먼트 V2 에서 출고하면 자동
 // ============================================================
 
@@ -25,9 +25,13 @@ export interface WowStageInput {
   shipped: boolean;
 }
 
+/** 서류 2종(부착문서 · 동봉문서)이 다 도착했는가 — [서류준비] 판정이자 쉽먼트 V2 에서 출고할 수 있는 조건 */
+export const wowDocsReady = (b: Pick<WowStageInput, 'label_path' | 'manifest_path'>): boolean =>
+  !!b.label_path && !!b.manifest_path;
+
 export function wowStageOf(b: WowStageInput): WowStage {
   if (b.shipped) return 'shipped';
-  if (b.box_info_id) return b.label_path && b.manifest_path ? 'docs' : 'done';
+  if (b.box_info_id) return wowDocsReady(b) ? 'docs' : 'done';
   return b.work_started_at ? 'working' : 'new';
 }
 

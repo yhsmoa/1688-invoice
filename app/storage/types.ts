@@ -133,6 +133,8 @@ export interface WowLine extends StorageProductInfo {
   box_id: string | null;
   box_no: number | null;
   center: string | null;
+  /** 로켓 발주서의 입고예정일 'YYYY-MM-DD' (아직 받지 못했으면 null) */
+  arrival_date: string | null;
   box_size: string | null;
   box_info_id: string | null;
   box_code: string | null;

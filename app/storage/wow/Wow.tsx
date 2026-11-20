@@ -24,9 +24,12 @@ import './Wow.css';
 //     출고      쉽먼트 V2 에서 박스를 출고하면 자동 — 출고 후 WOW_SHIPPED_VISIBLE_DAYS 일 동안 보인다
 //   단계 판정은 utils/wowStage.ts 한 곳 (API 가 줄마다 계산해 준다)
 //   박스 미정: 배정만 되고 박스가 정해지지 않은 줄 — 예약은 되지만 작업할 수 없다 ([신규] 탭 아래)
+//   [전체 부착문서] · [전체 동봉문서] (표 바로 위): 지금 보이는 박스들의 서류를 박스 순서대로 한 PDF 로 받는다
 // ============================================================
 
 type BoxAction = 'start' | 'cancel' | 'unpack';
+type DocKind = 'label' | 'manifest';
+const DOC_KINDS: readonly DocKind[] = ['label', 'manifest'];
 
 /** 버튼을 누른 뒤 박스가 옮겨 가는 단계 (안내 문구용) */
 const NEXT_STAGE: Record<BoxAction, WowStage> = { start: 'working', cancel: 'new', unpack: 'working' };
@@ -39,6 +42,7 @@ const Wow: React.FC = () => {
   const [stage, setStage] = useState<WowStage>('new');
   const [pickBox, setPickBox] = useState<WowBox | null>(null);
   const [busyBox, setBusyBox] = useState('');
+  const [busyDoc, setBusyDoc] = useState<DocKind | ''>('');
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   // ── 박스별 묶음 (API 가 발주번호 · 박스번호 순으로 준다) + 박스 미정 줄 ──
@@ -61,6 +65,11 @@ const Wow: React.FC = () => {
     return c;
   }, [boxes]);
   const stageBoxes = useMemo(() => boxes.filter((b) => b.stage === stage), [boxes, stage]);
+  // ── 지금 보이는 박스 중 서류가 도착한 박스 (표 순서) ──
+  const docBoxIds = useMemo<Record<DocKind, string[]>>(() => ({
+    label: stageBoxes.filter((b) => b.lines[0].label_path).map((b) => b.id),
+    manifest: stageBoxes.filter((b) => b.lines[0].manifest_path).map((b) => b.id),
+  }), [stageBoxes]);
 
   const movedMessage = useCallback((box: WowBox, next: WowStage) => ({
     kind: 'ok' as const,
@@ -123,6 +132,34 @@ const Wow: React.FC = () => {
   }, [pickBox, movedMessage]);
 
   // ============================================================
+  // [전체 부착문서] · [전체 동봉문서] — 지금 보이는 박스들의 서류를 한 PDF 로 받는다
+  // ============================================================
+  const handleDownloadDocs = useCallback(async (kind: DocKind) => {
+    setBusyDoc(kind);
+    try {
+      const res = await fetch('/api/ft/storage/wow/docs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ box_ids: docBoxIds[kind], kind }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || t('storage.wow.error'));
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${t(`storage.wow.${kind}`)}_${t(`storage.wow.stage.${stage}`)}_${new Date().toLocaleDateString('sv-SE')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMessage(null);
+    } catch (err) {
+      console.error('와우출고 서류 받기 오류:', err);
+      playErrorSound();
+      setMessage({ kind: 'error', text: err instanceof Error ? err.message : t('storage.wow.error') });
+    } finally {
+      setBusyDoc('');
+    }
+  }, [docBoxIds, stage, t]);
+
+  // ============================================================
   // 렌더
   // ============================================================
   if (wow.loadError) return <div className="storage-empty is-error">{t('storage.loadError')}</div>;
@@ -137,6 +174,19 @@ const Wow: React.FC = () => {
       {message && <div className={`wow-message is-${message.kind}`} role="status">{message.text}</div>}
 
       {/* ── 이 단계의 박스 ── */}
+      {stageBoxes.length > 0 && (
+        <div className="wow-toolbar">
+          {DOC_KINDS.map((kind) => (
+            <button key={kind} type="button" className="wow-btn is-doc"
+              onClick={() => handleDownloadDocs(kind)}
+              disabled={busyDoc !== '' || docBoxIds[kind].length === 0}
+              title={t('storage.wow.allDocsHint', { count: docBoxIds[kind].length, total: stageBoxes.length })}>
+              {t('storage.wow.allDocs', { doc: t(`storage.wow.${kind}`) })}
+              <span className="wow-toolbar-count">{docBoxIds[kind].length}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {stageBoxes.length > 0 && (
         <WowTable
           boxes={stageBoxes}

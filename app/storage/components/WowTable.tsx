@@ -11,7 +11,7 @@ import ProductCell from './ProductCell';
 // WowTable — 와우출고 한 단계의 박스 목록 (클로드 디자인 캔버스 "와우출고 화면 디자인")
 //
 //   박스마다 카드 하나
-//     머리줄: 사업자 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 n개 | 담당(또는 출고) | 버튼 | 서류 2종
+//     머리줄: 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 n개 | 담당(또는 출고) | 버튼 | 서류 2종
 //       서류 버튼(부착문서 · 동봉문서)은 맨 오른쪽 — 첨부되면 활성(누르면 열림), 아직이면 비활성
 //       둘 다 첨부되면 작업완료 박스는 [서류준비] 단계로 넘어간다 (utils/wowStage.ts)
 //     상품 표: 상품 · 요청 · (작업 전) 꺼낼 위치 [위치 → 꺼낼 수량 / 재고]
@@ -44,6 +44,9 @@ interface WowTableProps {
 }
 
 const PICKED_STAGES: readonly WowStage[] = ['done', 'docs', 'shipped'];
+
+/** 입고예정일 'YYYY-MM-DD' → '11/23' */
+const shortDate = (ymd: string) => { const [, m, d] = ymd.split('-'); return `${Number(m)}/${Number(d)}`; };
 
 // ── 아이콘 (선 아이콘, 글자색을 따른다) ──
 const Icon: React.FC<{ d: string; size?: number; width?: number }> = ({ d, size = 13, width = 2 }) => (
@@ -176,6 +179,11 @@ const WowTable: React.FC<WowTableProps> = ({
             {/* ── 박스 머리줄 ── */}
             <header className="wow-box-head">
               {showUser && <span className="wow-user">{userCodeOf(head.user_id)}</span>}
+              {head.arrival_date && (
+                <span className="wow-arrival" title={head.arrival_date}>
+                  {t('storage.wow.arrival', { date: shortDate(head.arrival_date) })}
+                </span>
+              )}
               <strong className="wow-box-code">{head.order_number}-{head.box_no}</strong>
               {head.center && <span className="wow-box-meta"><Icon d={ICON.pin} />{head.center}</span>}
               {head.box_size && <span className="wow-box-meta"><Icon d={ICON.box} />{head.box_size}</span>}

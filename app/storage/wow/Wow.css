@@ -198,6 +198,18 @@
   margin-right: 0;
 }
 
+/* 입고예정일 라벨 — 발주번호 바로 앞 */
+.wow-arrival {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .wow-box-code {
   font-size: 16px;
   font-weight: 700;
@@ -302,6 +314,26 @@
 .wow-btn.is-start:hover:not(:disabled)     { background: #1e40af; }
 .wow-btn.is-complete                       { background: var(--wow-done); }
 .wow-btn.is-complete:hover:not(:disabled)  { background: #166534; }
+
+/* 표 바로 위 — [전체 부착문서] [전체 동봉문서] (서류 버튼과 같은 모양, 오른쪽 정렬) */
+.wow-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wow-toolbar-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(55, 48, 163, 0.12);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.wow-btn:disabled .wow-toolbar-count {
+  background: #f3f4f6;
+}
 
 /* 서류 버튼 — 버튼들 오른쪽 끝. 첨부되면 열기 링크(활성), 아직이면 비활성 */
 .wow-doc-sep {

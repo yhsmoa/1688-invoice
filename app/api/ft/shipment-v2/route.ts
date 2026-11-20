@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase';
 import { jsonResponse } from '../../../../lib/apiResponse';
 import { normalizeSizeCode, resolveScanSizeCode } from '../../../../lib/sizeCode';
 import { loadCustomsCategoryEnMap, toCustomsCategoryEn } from '../../../../lib/customsCategoryEn';
+import { wowDocsReady } from '../../../storage/utils/wowStage';
 
 // ============================================================
 // Supabase 기본 limit(1000) 우회 — 전체 데이터 조회 헬퍼
@@ -166,6 +167,7 @@ interface MoveRequestRow {
 // ============================================================
 // GET /api/ft/shipment-v2?user_id=X
 //   기본: ft_fulfillment_outbounds (PACKED, shipment_id IS NULL) → 미출고 목록
+//     와우출고 박스는 [서류준비](부착문서 · 동봉문서 도착)부터 올라온다 — 담기만 한 박스는 빠진다
 //   ?shipment_id=UUID → 특정 쉽먼트의 출고완료 목록 (shipment-complete-v2)
 //
 //   행 1개 = 포장 행 1건. 상품 정보는 둘 중 하나에서 온다.
@@ -202,11 +204,22 @@ export async function GET(request: NextRequest) {
       ffFilters.push({ column: 'shipment_id', op: 'is', value: null });
     }
 
-    const fulfillments = await fetchAll<OutboundRow>(
+    const packed = await fetchAll<OutboundRow>(
       'ft_fulfillment_outbounds',
       'id, box_code, box_info_id, order_item_id, manual_item_id, quantity, product_no, shipment_no',
       ffFilters
     );
+
+    // ── 1-a) 미출고 목록: 와우출고 박스는 서류 2종이 도착한 뒤에만 ──
+    //   담기(작업완료)는 출고 준비일 뿐 이번에 출고하지 않을 수도 있다 — 로켓이 서류를 등록해야 출고가 정해진다
+    //   (출고 API 도 같은 조건으로 막는다: /api/ft/shipments checkWowSelection)
+    let fulfillments = packed;
+    if (!shipmentId) {
+      const wowBoxes = await batchIn<{ id: string; box_info_id: string; label_path: string | null; manifest_path: string | null }>(
+        'ft_wow_boxes', 'id, box_info_id, label_path, manifest_path', 'box_info_id', uniq(packed.map((f) => f.box_info_id)));
+      const waiting = new Set(wowBoxes.filter((w) => !wowDocsReady(w)).map((w) => w.box_info_id));
+      if (waiting.size > 0) fulfillments = packed.filter((f) => !f.box_info_id || !waiting.has(f.box_info_id));
+    }
 
     if (fulfillments.length === 0) {
       return NextResponse.json({ success: true, data: [] });
