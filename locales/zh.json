@@ -1508,6 +1508,7 @@
         "working": "作业中",
         "done": "作业完成",
         "docs": "文件准备",
+        "ready": "出库准备",
         "shipped": "已出库"
       },
       "stageEmpty": "没有处于{{stage}}阶段的箱子。",
@@ -1515,7 +1516,8 @@
         "new": "采购单已到 · 作业前",
         "working": "按库位找货中",
         "done": "已装箱 · 等待文件",
-        "docs": "文件已到 · 可在 Shipment 出库",
+        "docs": "文件已到 · 待贴到箱上",
+        "ready": "文件已贴好 · 可在 Shipment 出库",
         "shipped": "最近 {{days}}天"
       },
       "boxUnit": "箱",
@@ -1550,7 +1552,7 @@
       "manifest": "随箱文件",
       "docWaiting": "{{doc}} 等待中",
       "allDocs": "全部{{doc}}",
-      "allDocsHint": "当前显示的 {{total}} 箱中，把已到文件的 {{count}} 箱合并为一个 PDF 下载。",
+      "allDocsHint": "{{total}} 箱中，把已到文件的 {{count}} 箱合并为一个 PDF 下载。（有勾选时只下载勾选的箱子）",
       "noStock": "无库存",
       "stockShort": "缺少 {{count}}件",
       "unboxed": "箱子未定",
@@ -1559,7 +1561,24 @@
       "boxHint": "只能选择从未装过商品的 X 箱子。",
       "shortConfirm": "有 {{count}}行装箱数量少于请求数量。将按已装数量确定，剩余的待出库会被释放。\n如果商品确实缺少，请在[库存]中修改数量。（不修改的话，下次分配会再次占用）\n继续吗？",
       "moved": "{{box}} 箱已移至[{{stage}}]阶段。",
-      "error": "WOW出库处理时发生错误。"
+      "error": "WOW出库处理时发生错误。",
+      "readyAt": "{{time}} 出库准备",
+      "ready": "出库准备完成",
+      "unready": "取消出库准备",
+      "readyHint": "把勾选的箱子移到[出库准备]。",
+      "readyConfirm": "把勾选的 {{count}} 箱移到[出库准备]吗？\n请只移交已贴好并放入文件的箱子。",
+      "unreadyConfirm": "取消 {{box}} 的出库准备并恢复为文件准备吗？",
+      "movedMany": "{{count}} 箱已移至[{{stage}}]阶段。",
+      "selectAll": "全选",
+      "selectBox": "选择 {{box}}",
+      "expand": "展开",
+      "collapse": "收起",
+      "expandAll": "全部展开",
+      "collapseAll": "全部收起",
+      "selectedDocs": "所选{{doc}}",
+      "courier": "快递Excel",
+      "courierHint": "下载勾选箱子的快递揽收 Excel。",
+      "courierFile": "로켓와우"
     }
   },
   "sellerInquiry": {

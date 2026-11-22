@@ -3,7 +3,7 @@ import { supabase } from '../../../../lib/supabase';
 import { jsonResponse } from '../../../../lib/apiResponse';
 import { normalizeSizeCode, resolveScanSizeCode } from '../../../../lib/sizeCode';
 import { loadCustomsCategoryEnMap, toCustomsCategoryEn } from '../../../../lib/customsCategoryEn';
-import { wowDocsReady } from '../../../storage/utils/wowStage';
+import { wowShippable } from '../../../storage/utils/wowStage';
 
 // ============================================================
 // Supabase 기본 limit(1000) 우회 — 전체 데이터 조회 헬퍼
@@ -210,14 +210,15 @@ export async function GET(request: NextRequest) {
       ffFilters
     );
 
-    // ── 1-a) 미출고 목록: 와우출고 박스는 서류 2종이 도착한 뒤에만 ──
-    //   담기(작업완료)는 출고 준비일 뿐 이번에 출고하지 않을 수도 있다 — 로켓이 서류를 등록해야 출고가 정해진다
+    // ── 1-a) 미출고 목록: 와우출고 박스는 [출고준비] 단계부터 ──
+    //   담기(작업완료)는 이번에 출고하지 않을 수도 있고, 서류가 도착해도 박스에 붙이기 전이다
+    //   — 와우출고 화면에서 [출고준비완료] 를 눌러야 대기 목록에 보인다
     //   (출고 API 도 같은 조건으로 막는다: /api/ft/shipments checkWowSelection)
     let fulfillments = packed;
     if (!shipmentId) {
-      const wowBoxes = await batchIn<{ id: string; box_info_id: string; label_path: string | null; manifest_path: string | null }>(
-        'ft_wow_boxes', 'id, box_info_id, label_path, manifest_path', 'box_info_id', uniq(packed.map((f) => f.box_info_id)));
-      const waiting = new Set(wowBoxes.filter((w) => !wowDocsReady(w)).map((w) => w.box_info_id));
+      const wowBoxes = await batchIn<{ id: string; box_info_id: string; ready_at: string | null }>(
+        'ft_wow_boxes', 'id, box_info_id, ready_at', 'box_info_id', uniq(packed.map((f) => f.box_info_id)));
+      const waiting = new Set(wowBoxes.filter((w) => !wowShippable(w)).map((w) => w.box_info_id));
       if (waiting.size > 0) fulfillments = packed.filter((f) => !f.box_info_id || !waiting.has(f.box_info_id));
     }
 

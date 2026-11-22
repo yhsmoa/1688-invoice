@@ -1513,6 +1513,7 @@
         "working": "작업중",
         "done": "작업완료",
         "docs": "서류준비",
+        "ready": "출고준비",
         "shipped": "출고"
       },
       "stageEmpty": "{{stage}} 단계의 박스가 없습니다.",
@@ -1520,7 +1521,8 @@
         "new": "발주서 도착 · 작업 전",
         "working": "위치를 보고 찾는 중",
         "done": "박스에 담음 · 서류 대기",
-        "docs": "서류 도착 · 쉽먼트에서 출고",
+        "docs": "서류 도착 · 박스에 붙일 차례",
+        "ready": "서류 부착 완료 · 쉽먼트에서 출고",
         "shipped": "최근 {{days}}일"
       },
       "boxUnit": "박스",
@@ -1555,7 +1557,7 @@
       "manifest": "동봉문서",
       "docWaiting": "{{doc}} 대기",
       "allDocs": "전체 {{doc}}",
-      "allDocsHint": "지금 보이는 {{total}}박스 중 서류가 도착한 {{count}}박스를 한 PDF 로 받습니다.",
+      "allDocsHint": "{{total}}박스 중 서류가 도착한 {{count}}박스를 한 PDF 로 받습니다. (체크한 박스가 있으면 그 박스만)",
       "noStock": "재고 없음",
       "stockShort": "{{count}}개 부족",
       "unboxed": "박스 미정",
@@ -1564,7 +1566,24 @@
       "boxHint": "상품을 담은 적 없는 X 박스만 고를 수 있습니다.",
       "shortConfirm": "요청보다 적게 담는 줄이 {{count}}개 있습니다. 담은 수량으로 확정되고 나머지 출고예정은 풀립니다.\n상품이 실제로 없다면 [재고]에서 수량을 고쳐 주세요. (고치지 않으면 다음 배정이 다시 잡습니다)\n계속할까요?",
       "moved": "{{box}} 박스를 [{{stage}}] 단계로 옮겼습니다.",
-      "error": "와우출고 처리 중 오류가 발생했습니다."
+      "error": "와우출고 처리 중 오류가 발생했습니다.",
+      "readyAt": "{{time}} 출고준비",
+      "ready": "출고준비완료",
+      "unready": "출고준비 취소",
+      "readyHint": "체크한 박스를 [출고준비] 로 넘깁니다.",
+      "readyConfirm": "체크한 {{count}}박스를 [출고준비] 로 넘길까요?\n서류를 붙이고 넣은 박스만 넘겨 주세요.",
+      "unreadyConfirm": "{{box}} 출고준비를 취소하고 서류준비로 되돌릴까요?",
+      "movedMany": "{{count}}박스를 [{{stage}}] 단계로 옮겼습니다.",
+      "selectAll": "전체 선택",
+      "selectBox": "{{box}} 선택",
+      "expand": "펼치기",
+      "collapse": "접기",
+      "expandAll": "모두 펼치기",
+      "collapseAll": "모두 접기",
+      "selectedDocs": "선택 {{doc}}",
+      "courier": "택배엑셀",
+      "courierHint": "체크한 박스의 택배 접수 엑셀을 받습니다.",
+      "courierFile": "로켓와우"
     }
   },
   "sellerInquiry": {

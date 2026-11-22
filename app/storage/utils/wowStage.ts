@@ -7,12 +7,14 @@ import type { StockRow, WowStage } from '../types';
 //   신규      담지 않았고 작업 시작 기록 없음
 //   작업중    담지 않았고 작업 시작 기록 있음           — [작업]
 //   작업완료  담았고 서류 2종이 아직 다 오지 않음        — [작업완료]
-//   서류준비  담았고 부착문서 · 동봉문서가 둘 다 도착     — 로켓이 올린다. 이때부터 쉽먼트 V2 출고 대기 목록에 보인다
+//   서류준비  담았고 부착문서 · 동봉문서가 둘 다 도착     — 로켓이 올린다. 박스에 서류를 붙이고 넣을 차례
+//   출고준비  서류준비 + 출고준비 기록 있음              — [출고준비완료]. 이때부터 쉽먼트 V2 출고 대기 목록에 보인다
 //   출고      묶인 1688 박스의 포장 행이 전부 출고됨     — 쉽먼트 V2 에서 출고하면 자동
+//   (출고준비 기록은 서류 2종이 있는 담은 박스에만 생긴다 — supabase/storage/008_wow_ready.sql 의 CHECK)
 // ============================================================
 
 /** 탭 순서 = 진행 순서 */
-export const WOW_STAGES: readonly WowStage[] = ['new', 'working', 'done', 'docs', 'shipped'];
+export const WOW_STAGES: readonly WowStage[] = ['new', 'working', 'done', 'docs', 'ready', 'shipped'];
 
 /** 출고한 박스를 [출고] 탭에 남겨 두는 기간 (일) — 지나면 목록에서 빠진다 */
 export const WOW_SHIPPED_VISIBLE_DAYS = 7;
@@ -22,16 +24,19 @@ export interface WowStageInput {
   work_started_at: string | null;
   label_path: string | null;
   manifest_path: string | null;
+  ready_at: string | null;
   shipped: boolean;
 }
 
-/** 서류 2종(부착문서 · 동봉문서)이 다 도착했는가 — [서류준비] 판정이자 쉽먼트 V2 에서 출고할 수 있는 조건 */
-export const wowDocsReady = (b: Pick<WowStageInput, 'label_path' | 'manifest_path'>): boolean =>
-  !!b.label_path && !!b.manifest_path;
+/** 쉽먼트 V2 에서 출고할 수 있는가 — [출고준비] 박스만 (대기 목록 · 출고 API 가 같은 조건을 쓴다) */
+export const wowShippable = (b: Pick<WowStageInput, 'ready_at'>): boolean => !!b.ready_at;
 
 export function wowStageOf(b: WowStageInput): WowStage {
   if (b.shipped) return 'shipped';
-  if (b.box_info_id) return wowDocsReady(b) ? 'docs' : 'done';
+  if (b.box_info_id) {
+    if (wowShippable(b)) return 'ready';
+    return b.label_path && b.manifest_path ? 'docs' : 'done';
+  }
   return b.work_started_at ? 'working' : 'new';
 }
 

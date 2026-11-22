@@ -47,7 +47,7 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   MOVE_INVALID_LOCATION: '옮길 위치를 입력해 주세요.',
   MOVE_SAME_LOCATION: '같은 위치로는 옮길 수 없습니다.',
   MOVE_INVALID_QTY: '옮길 수량이 위치 재고보다 많거나 올바르지 않습니다.',
-  // ── 와우출고 (supabase/storage/005_wow.sql · 006_wow_stage.sql) ──
+  // ── 와우출고 (supabase/storage/005_wow.sql · 006_wow_stage.sql · 008_wow_ready.sql) ──
   PICK_BOX_WOW: '와우출고 박스에는 [쉽먼트]로 담을 수 없습니다.',
   PICK_OVER_AVAILABLE: '와우출고 출고예정 수량은 꺼낼 수 없습니다. 잔여수량까지만 꺼내 주세요.',
   WOW_BOX_LOCKED: '와우출고 박스는 와우출고 화면에서만 담고 뺄 수 있습니다.',
@@ -55,12 +55,16 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   WOW_BOX_ALREADY_PICKED: '이미 작업완료한 박스입니다. 새로고침 후 확인하세요.',
   WOW_BOX_NOT_EMPTY: '상품을 담은 적 없는 미출고 X 박스만 고를 수 있습니다. (합배송 박스 제외)',
   WOW_BOX_NOT_PICKED: '아직 작업완료하지 않은 박스입니다. 새로고침 후 확인하세요.',
-  WOW_BOX_SHIPPED: '이미 출고된 박스는 작업완료를 취소할 수 없습니다.',
+  WOW_BOX_SHIPPED: '이미 출고된 박스는 되돌릴 수 없습니다.',
   WOW_PICK_OVER: '요청 수량보다 많이 담을 수 없습니다.',
   WOW_PICK_EMPTY: '담을 수량을 입력해 주세요.',
   WOW_INVALID_INPUT: '요청이 바뀌었습니다. 새로고침 후 다시 작업완료해 주세요.',
   WOW_WORK_ALREADY_STARTED: '이미 작업중인 박스입니다. 새로고침 후 확인하세요.',
   WOW_WORK_NOT_STARTED: '작업중인 박스가 아닙니다. 새로고침 후 확인하세요.',
+  WOW_DOCS_NOT_READY: '부착문서 · 동봉문서가 모두 도착한 박스만 출고준비할 수 있습니다. 새로고침 후 확인하세요.',
+  WOW_READY_ALREADY: '이미 출고준비된 박스가 있습니다. 새로고침 후 확인하세요.',
+  WOW_NOT_READY: '출고준비 단계가 아닌 박스가 있습니다. 새로고침 후 확인하세요.',
+  WOW_BOX_READY: '출고준비된 박스입니다. [출고준비 취소] 후 작업완료를 취소해 주세요.',
 };
 
 /** 와우 박스 보호 트리거(WOW_BOX_LOCKED) — 스캔 저장 · 포장 철회 · 박스 이동 라우트도 같은 문구 */

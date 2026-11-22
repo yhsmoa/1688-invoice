@@ -118,7 +118,7 @@ export interface StorageRequest {
 // ============================================================
 
 /** 단계 — 판정은 utils/wowStage.ts (신규 → 작업중 → 작업완료 → 서류준비 → 출고) */
-export type WowStage = 'new' | 'working' | 'done' | 'docs' | 'shipped';
+export type WowStage = 'new' | 'working' | 'done' | 'docs' | 'ready' | 'shipped';
 
 export interface WowLine extends StorageProductInfo {
   /** 이 줄이 속한 박스의 단계 (박스 미정 줄은 'new') */
@@ -145,6 +145,9 @@ export interface WowLine extends StorageProductInfo {
   work_started_by: string | null;
   /** [작업완료] 한 담당자 */
   picked_by: string | null;
+  /** [출고준비완료] 를 누른 시각 · 담당자 (출고준비 전이면 null) */
+  ready_at: string | null;
+  ready_by: string | null;
   /** 묶인 1688 박스의 포장 행이 전부 출고됨 */
   shipped: boolean;
   /** 출고 시각 · 쉽먼트 번호 (출고 전이면 null) */

@@ -23,11 +23,11 @@
 }
 
 /* ============================================================
-   단계 바 — 한 판 5칸
+   단계 바 — 한 판 6칸
    ============================================================ */
 .wow-stagebar {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   background: #ffffff;
   border: 1px solid #e3e6eb;
   border-radius: 14px;
@@ -183,6 +183,48 @@
   border-bottom: 1px solid #eef0f3;
 }
 
+/* 박스 목록의 머리줄 = 요약 줄. 누르면 상품 표가 펼쳐진다 (접혀 있으면 아래 선이 없다) */
+.wow-boxes .wow-box-head {
+  cursor: pointer;
+}
+
+.wow-boxes .wow-box:not(.is-open) .wow-box-head {
+  border-bottom: 0;
+}
+
+.wow-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--wow-accent);
+  cursor: pointer;
+}
+
+.wow-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0 -6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.wow-toggle:hover {
+  background: #eef0f3;
+}
+
+.wow-toggle[aria-expanded='true'] {
+  transform: rotate(90deg);
+}
+
 .wow-user {
   display: inline-block;
   margin-right: 6px;
@@ -315,23 +357,49 @@
 .wow-btn.is-complete                       { background: var(--wow-done); }
 .wow-btn.is-complete:hover:not(:disabled)  { background: #166534; }
 
-/* 표 바로 위 — [전체 부착문서] [전체 동봉문서] (서류 버튼과 같은 모양, 오른쪽 정렬) */
+/* 박스 목록 바로 위 — 왼쪽 [전체 선택] [모두 펼치기] · 오른쪽 [택배엑셀] [출고준비완료] [부착문서] [동봉문서] */
 .wow-toolbar {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.wow-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
+.wow-checkall {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 16px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 버튼 안의 대상 박스 수 */
 .wow-toolbar-count {
   min-width: 20px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(55, 48, 163, 0.12);
+  background: rgba(17, 24, 39, 0.07);
   font-size: 11.5px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-.wow-btn:disabled .wow-toolbar-count {
+.wow-btn.is-doc .wow-toolbar-count      { background: rgba(55, 48, 163, 0.12); }
+.wow-btn.is-complete .wow-toolbar-count { background: rgba(255, 255, 255, 0.25); }
+
+.wow-btn.is-doc:disabled .wow-toolbar-count {
   background: #f3f4f6;
 }
 

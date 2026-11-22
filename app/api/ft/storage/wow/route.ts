@@ -7,21 +7,27 @@ import { WOW_SHIPPED_VISIBLE_DAYS, wowStageOf } from '../../../../storage/utils/
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// /api/ft/storage/wow — 와우출고 (supabase/storage/005_wow.sql · 006_wow_stage.sql)
+// /api/ft/storage/wow — 와우출고 (supabase/storage/005_wow.sql · 006_wow_stage.sql · 008_wow_ready.sql)
 //
 //   GET [?user_id=] : 출고 전 줄 전부 + 출고한 지 WOW_SHIPPED_VISIBLE_DAYS 일 안 된 박스의 줄
 //     · 줄마다 단계(stage)를 계산해 내려준다 — 판정은 app/storage/utils/wowStage.ts 한 곳
 //     · 박스 출고 = 묶인 1688 박스의 포장 행이 전부 shipment_id 를 가짐 (ft_box_info.shipment_id 는 쓰지 않는다)
 //       출고 시각 = 그 쉽먼트들의 생성 시각 중 가장 늦은 것 (ft_wow_order_state 와 같은 기준)
-//   POST { action, user_id, wow_box_id, operator_name, … }
-//     start  : [작업]         신규 → 작업중        rpc ft_wow_work_start
-//     cancel : [작업 취소]    작업중 → 신규        rpc ft_wow_work_cancel
-//     pick   : [작업완료]     작업중 → 작업완료    rpc ft_wow_pick   + box_info_id, lines: [{ item_id, picks: [{ location_id, qty }] }]
-//     unpack : [작업완료 취소] 작업완료 → 작업중    rpc ft_wow_unpack (출고 전에만)
+//   POST { action, operator_name, … }
+//     박스 하나 — + user_id, wow_box_id
+//       start  : [작업]         신규 → 작업중        rpc ft_wow_work_start
+//       cancel : [작업 취소]    작업중 → 신규        rpc ft_wow_work_cancel
+//       pick   : [작업완료]     작업중 → 작업완료    rpc ft_wow_pick   + box_info_id, lines: [{ item_id, picks: [{ location_id, qty }] }]
+//       unpack : [작업완료 취소] 작업완료 → 작업중    rpc ft_wow_unpack (출고준비 · 출고 전에만)
+//     박스 여러 개 — + wow_box_ids (하나라도 안 맞으면 전부 거절)
+//       ready   : [출고준비완료] 서류준비 → 출고준비  rpc ft_wow_ready_set(true)
+//       unready : [출고준비 취소] 출고준비 → 서류준비  rpc ft_wow_ready_set(false) (출고 전에만)
 //     오류 코드는 storageShared 문구로 409
 // ============================================================
 
 const DAY_MS = 86_400_000;
+/** 한 번에 출고준비 처리할 수 있는 박스 수 */
+const MAX_READY_BOXES = 500;
 
 interface BoxRow {
   id: string;
@@ -36,6 +42,8 @@ interface BoxRow {
   work_started_at: string | null;
   work_started_by: string | null;
   picked_by: string | null;
+  ready_at: string | null;
+  ready_by: string | null;
 }
 
 interface ItemRow {
@@ -101,7 +109,7 @@ export async function GET(request: NextRequest) {
     const [boxes, items] = await Promise.all([
       fetchAll<BoxRow>('ft_wow_boxes',
         'id, order_number, box_no, center, arrival_date, box_size, box_info_id, label_path, manifest_path, ' +
-        'work_started_at, work_started_by, picked_by', ['id'], filter),
+        'work_started_at, work_started_by, picked_by, ready_at, ready_by', ['id'], filter),
       fetchAll<ItemRow>('ft_wow_items',
         'id, order_number, wow_box_id, barcode, product_id, qty, picked_qty, picked_at', ['id'], filter),
     ]);
@@ -136,6 +144,7 @@ export async function GET(request: NextRequest) {
         label_path: b?.label_path ?? null,
         manifest_path: b?.manifest_path ?? null,
         work_started_at: b?.work_started_at ?? null,
+        ready_at: b?.ready_at ?? null,
         shipped: ship.shipped,
       };
       data.push({
@@ -156,6 +165,7 @@ export async function GET(request: NextRequest) {
         box_code: b?.box_info_id ? codeById.get(b.box_info_id) ?? null : null,
         work_started_by: b?.work_started_by ?? null,
         picked_by: b?.picked_by ?? null,
+        ready_by: b?.ready_by ?? null,
         shipped_at: ship.shipped_at,
         shipment_no: ship.shipment_no,
       });
@@ -172,15 +182,21 @@ interface WowPickLine { item_id: string; picks: PickInput[] }
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, user_id, wow_box_id, box_info_id, lines, operator_name } = await request.json();
+    const { action, user_id, wow_box_id, wow_box_ids, box_info_id, lines, operator_name } = await request.json();
 
-    if (!user_id || !wow_box_id) return fail('user_id, wow_box_id 가 필요합니다.');
     if (!operator_name) return fail('담당자를 선택해 주세요.');
 
     const boxArgs = { p_user_id: user_id, p_wow_box_id: wow_box_id, p_operator_name: operator_name };
+    const isBulk = action === 'ready' || action === 'unready';
+    if (!isBulk && (!user_id || !wow_box_id)) return fail('user_id, wow_box_id 가 필요합니다.');
 
     let rpc;
-    if (action === 'start') {
+    if (isBulk) {
+      const ids = Array.isArray(wow_box_ids) ? wow_box_ids.filter((v): v is string => typeof v === 'string' && !!v) : [];
+      if (ids.length === 0) return fail('박스를 선택해 주세요.');
+      if (ids.length > MAX_READY_BOXES) return fail(`한 번에 ${MAX_READY_BOXES}박스까지 처리할 수 있습니다.`);
+      rpc = supabase.rpc('ft_wow_ready_set', { p_wow_box_ids: ids, p_ready: action === 'ready', p_operator_name: operator_name });
+    } else if (action === 'start') {
       rpc = supabase.rpc('ft_wow_work_start', boxArgs);
     } else if (action === 'cancel') {
       rpc = supabase.rpc('ft_wow_work_cancel', boxArgs);
@@ -201,7 +217,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'unpack') {
       rpc = supabase.rpc('ft_wow_unpack', boxArgs);
     } else {
-      return fail('action 은 start · cancel · pick · unpack 중 하나입니다.');
+      return fail('action 은 start · cancel · pick · unpack · ready · unready 중 하나입니다.');
     }
 
     const { data, error } = await rpc;

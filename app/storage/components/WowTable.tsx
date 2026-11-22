@@ -10,14 +10,16 @@ import ProductCell from './ProductCell';
 // ============================================================
 // WowTable — 와우출고 한 단계의 박스 목록 (클로드 디자인 캔버스 "와우출고 화면 디자인")
 //
-//   박스마다 카드 하나
-//     머리줄: 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 n개 | 담당(또는 출고) | 버튼 | 서류 2종
+//   박스마다 카드 하나 — 처음엔 머리줄(요약)만 보이고, 머리줄을 누르면 상품 표가 펼쳐진다
+//     머리줄: ☐ · 펼침 · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 n개 | 담당(또는 출고) | 버튼 | 서류 2종
+//       체크박스: 표 위 버튼(서류 받기 · 택배엑셀 · 출고준비완료)의 대상을 고른다 (Wow.tsx 가 들고 있다)
 //       서류 버튼(부착문서 · 동봉문서)은 맨 오른쪽 — 첨부되면 활성(누르면 열림), 아직이면 비활성
 //       둘 다 첨부되면 작업완료 박스는 [서류준비] 단계로 넘어간다 (utils/wowStage.ts)
 //     상품 표: 상품 · 요청 · (작업 전) 꺼낼 위치 [위치 → 꺼낼 수량 / 재고]
 //                           (작업완료 이후) 담음 · 담은 박스
 //   버튼
-//     신규 [작업] → 작업중 [작업 취소] [작업완료] → 작업완료 · 서류준비 [작업완료 취소]
+//     신규 [작업] → 작업중 [작업 취소] [작업완료] → 작업완료 [작업완료 취소]
+//     → 서류준비 [작업완료 취소] [출고준비완료] → 출고준비 [출고준비 취소]
 //     출고는 버튼이 없다 — 쉽먼트 V2 에서 출고하면 자동으로 넘어온다
 // ============================================================
 
@@ -37,13 +39,20 @@ interface WowTableProps {
   stockRows: StockRow[];
   /** 처리 중인 박스 — 그 박스의 버튼을 잠근다 */
   busyBoxId: string;
+  /** 체크한 박스 · 펼친 박스 (박스 id) */
+  checkedIds: ReadonlySet<string>;
+  expandedIds: ReadonlySet<string>;
+  onToggleCheck: (boxId: string) => void;
+  onToggleExpand: (boxId: string) => void;
   onStart: (box: WowBox) => void;
   onCancelStart: (box: WowBox) => void;
   onComplete: (box: WowBox) => void;
   onUncomplete: (box: WowBox) => void;
+  onReady: (box: WowBox) => void;
+  onUnready: (box: WowBox) => void;
 }
 
-const PICKED_STAGES: readonly WowStage[] = ['done', 'docs', 'shipped'];
+const PICKED_STAGES: readonly WowStage[] = ['done', 'docs', 'ready', 'shipped'];
 
 /** 입고예정일 'YYYY-MM-DD' → '11/23' */
 const shortDate = (ymd: string) => { const [, m, d] = ymd.split('-'); return `${Number(m)}/${Number(d)}`; };
@@ -64,10 +73,12 @@ const ICON = {
   check: 'm5 12 5 5L20 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',
   alert: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 8v5M12 16h.01',
+  chevron: 'm9 6 6 6-6 6',
 };
 
 const WowTable: React.FC<WowTableProps> = ({
-  boxes, stage, showUser, userCodeOf, stockRows, busyBoxId, onStart, onCancelStart, onComplete, onUncomplete,
+  boxes, stage, showUser, userCodeOf, stockRows, busyBoxId, checkedIds, expandedIds, onToggleCheck, onToggleExpand,
+  onStart, onCancelStart, onComplete, onUncomplete, onReady, onUnready,
 }) => {
   const { t } = useTranslation();
   const isPicked = PICKED_STAGES.includes(stage);
@@ -115,7 +126,7 @@ const WowTable: React.FC<WowTableProps> = ({
     );
   };
 
-  // ── 담당(작업 시작 → 작업완료한 사람) · 출고 ──
+  // ── 담당(작업 시작 → 작업완료 → 출고준비한 사람) · 출고 ──
   const renderWorker = (head: WowLine) => {
     if (stage === 'new') return null;
     if (stage === 'shipped') {
@@ -127,13 +138,17 @@ const WowTable: React.FC<WowTableProps> = ({
         </span>
       );
     }
-    const name = (isPicked ? head.picked_by : head.work_started_by) ?? '';
-    const time = formatDateTime(isPicked ? head.picked_at : head.work_started_at);
+    const [who, at, key] = stage === 'ready'
+      ? [head.ready_by, head.ready_at, 'storage.wow.readyAt']
+      : isPicked
+        ? [head.picked_by, head.picked_at, 'storage.wow.completedAt']
+        : [head.work_started_by, head.work_started_at, 'storage.wow.startedAt'];
+    const name = who ?? '';
     return (
       <span className="wow-worker">
         <span className="wow-worker-avatar" aria-hidden="true">{name.charAt(0)}</span>
         {name}
-        <span className="wow-muted">{t(isPicked ? 'storage.wow.completedAt' : 'storage.wow.startedAt', { time })}</span>
+        <span className="wow-muted">{t(key, { time: formatDateTime(at) })}</span>
       </span>
     );
   };
@@ -161,10 +176,24 @@ const WowTable: React.FC<WowTableProps> = ({
       );
     }
     if (stage === 'shipped') return null;
+    if (stage === 'ready') {
+      return (
+        <button type="button" className="wow-btn" onClick={() => onUnready(box)} disabled={busy}>
+          {t('storage.wow.unready')}
+        </button>
+      );
+    }
     return (
-      <button type="button" className="wow-btn" onClick={() => onUncomplete(box)} disabled={busy}>
-        {t('storage.wow.uncomplete')}
-      </button>
+      <>
+        <button type="button" className="wow-btn" onClick={() => onUncomplete(box)} disabled={busy}>
+          {t('storage.wow.uncomplete')}
+        </button>
+        {stage === 'docs' && (
+          <button type="button" className="wow-btn is-complete" onClick={() => onReady(box)} disabled={busy}>
+            <Icon d={ICON.check} size={14} width={2.6} />{t('storage.wow.ready')}
+          </button>
+        )}
+      </>
     );
   };
 
@@ -174,10 +203,21 @@ const WowTable: React.FC<WowTableProps> = ({
         const head = box.lines[0];
         const totalQty = box.lines.reduce((s, l) => s + l.qty, 0);
         const kinds = new Set(box.lines.map((l) => l.product_id)).size;
+        const open = expandedIds.has(box.id);
         return (
-          <section key={box.id} className="wow-box">
-            {/* ── 박스 머리줄 ── */}
-            <header className="wow-box-head">
+          <section key={box.id} className={`wow-box ${open ? 'is-open' : ''}`}>
+            {/* ── 박스 머리줄(요약) — 누르면 상품 표를 펼친다. 체크박스 · 버튼 · 링크는 제 할 일만 한다 ── */}
+            <header className="wow-box-head" onClick={(e) => {
+              if (!(e.target as HTMLElement).closest('button, a, input')) onToggleExpand(box.id);
+            }}>
+              <input type="checkbox" className="wow-check" checked={checkedIds.has(box.id)}
+                onChange={() => onToggleCheck(box.id)}
+                aria-label={t('storage.wow.selectBox', { box: `${head.order_number}-${head.box_no}` })} />
+              <button type="button" className="wow-toggle" aria-expanded={open}
+                aria-label={t(open ? 'storage.wow.collapse' : 'storage.wow.expand')}
+                onClick={() => onToggleExpand(box.id)}>
+                <Icon d={ICON.chevron} size={16} width={2.4} />
+              </button>
               {showUser && <span className="wow-user">{userCodeOf(head.user_id)}</span>}
               {head.arrival_date && (
                 <span className="wow-arrival" title={head.arrival_date}>
@@ -198,43 +238,45 @@ const WowTable: React.FC<WowTableProps> = ({
               </span>
             </header>
 
-            {/* ── 상품 표 ── */}
-            <table className={`wow-lines ${isPicked ? 'is-picked' : ''}`}>
-              <thead>
-                <tr>
-                  <th>{t('storage.col.product')}</th>
-                  <th className="col-qty">{t('storage.wow.requested')}</th>
-                  {!isPicked && (
-                    <th>
-                      {t('storage.wow.col.location')}
-                      <span className="wow-th-hint"> · {t('storage.wow.col.locationHint')}</span>
-                    </th>
-                  )}
-                  {isPicked && <th className="col-qty">{t('storage.wow.picked')}</th>}
-                  {isPicked && <th className="col-picked-box">{t('storage.wow.col.pickedBox')}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {box.lines.map((l) => {
-                  const short = l.picked_qty !== null && l.picked_qty < l.qty;
-                  return (
-                    <tr key={l.item_id}>
-                      <td><ProductCell info={l} /></td>
-                      <td className="col-qty">{l.qty}</td>
-                      {!isPicked && <td>{renderLocations(l)}</td>}
-                      {isPicked && (
-                        <td className={`col-qty ${short ? 'is-short' : 'is-full'}`}>{l.picked_qty ?? ''}</td>
-                      )}
-                      {isPicked && (
-                        <td className="col-picked-box">
-                          {head.box_code && <span className="wow-picked-box">{head.box_code}</span>}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {/* ── 상품 표 (펼쳤을 때만) ── */}
+            {open && (
+              <table className={`wow-lines ${isPicked ? 'is-picked' : ''}`}>
+                <thead>
+                  <tr>
+                    <th>{t('storage.col.product')}</th>
+                    <th className="col-qty">{t('storage.wow.requested')}</th>
+                    {!isPicked && (
+                      <th>
+                        {t('storage.wow.col.location')}
+                        <span className="wow-th-hint"> · {t('storage.wow.col.locationHint')}</span>
+                      </th>
+                    )}
+                    {isPicked && <th className="col-qty">{t('storage.wow.picked')}</th>}
+                    {isPicked && <th className="col-picked-box">{t('storage.wow.col.pickedBox')}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {box.lines.map((l) => {
+                    const short = l.picked_qty !== null && l.picked_qty < l.qty;
+                    return (
+                      <tr key={l.item_id}>
+                        <td><ProductCell info={l} /></td>
+                        <td className="col-qty">{l.qty}</td>
+                        {!isPicked && <td>{renderLocations(l)}</td>}
+                        {isPicked && (
+                          <td className={`col-qty ${short ? 'is-short' : 'is-full'}`}>{l.picked_qty ?? ''}</td>
+                        )}
+                        {isPicked && (
+                          <td className="col-picked-box">
+                            {head.box_code && <span className="wow-picked-box">{head.box_code}</span>}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </section>
         );
       })}
