@@ -1,0 +1,191 @@
+/* ============================================================ */
+/* 아래에서 올라오는 창 (ShortSheet · MemoSheet · ConfirmSheet · SizeSheet) */
+/*   모양은 카메라 실패 창(BarcodeCamera.css 의 .bc-sheet)과 같다   */
+/*   (공용 모양을 덮어쓰는 규칙은 .mob-xxx 를 창 안으로 좁혀 쓴다)  */
+/* ============================================================ */
+.mwow-sheet-back {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(23, 22, 26, 0.55);
+  overflow: hidden;
+}
+.mwow-sheet {
+  width: 100%;
+  max-width: 480px;
+  /* 화면보다 길어지면 창 안에서 넘긴다 (주소 표시줄이 보일 때 위가 잘리지 않게 부모 높이 기준) */
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: #fff;
+  color: #17161a;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+}
+.mwow-sheet h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.mwow-sheet-text {
+  margin: 6px 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #3f3e46;
+  white-space: pre-line;
+}
+
+/* ── 어느 카드인지 (위치 · 바코드 / 상품명) ── */
+.mwow-sheet-info {
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6b6a72;
+}
+.mwow-sheet-info b { color: #17161a; font-weight: 900; }
+.mwow-sheet-info-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 버튼 줄 ── */
+.mwow-sheet-row {
+  display: flex;
+  gap: 8px;
+}
+.mwow-sheet-row .mob-btn {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+}
+.mwow-sheet-row.is-confirm .mob-btn.accent { flex: 1.4; }
+.mwow-sheet-close {
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #6b6a72;
+  cursor: pointer;
+}
+
+/* ============================================================ */
+/* 부족 숫자판                                                    */
+/* ============================================================ */
+.mwow-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 58px;
+  border: 2px solid #b91c1c;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+.mwow-num.is-empty { color: #e5a3a3; font-size: 20px; }
+.mwow-num small {
+  font-size: 15px;
+  font-weight: 800;
+  color: #6b6a72;
+}
+.mwow-num.is-shake { animation: mwow-shake 0.25s; }
+@keyframes mwow-shake {
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+.mwow-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+.mwow-pad button {
+  height: 52px;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 12px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mwow-pad button:active { background: #eff6ff; }
+.mwow-pad button.is-fn {
+  background: #f8f8fa;
+  color: #6b6a72;
+  font-size: 16px;
+}
+.mwow-sheet-note {
+  min-height: 18px;
+  margin: 0 2px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #6b6a72;
+}
+
+/* ============================================================ */
+/* 박스 크기 변경 — 크기마다 큰 버튼, 지금 크기는 색으로 표시      */
+/* ============================================================ */
+.mwow-size-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mwow-size-grid button {
+  height: 60px;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 14px;
+  background: #fff;
+  color: #3f3e46;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.mwow-size-grid button:active { background: #f1f0f5; }
+.mwow-size-grid button.is-current {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.mwow-size-grid button:disabled { opacity: 0.45; }
+
+/* ============================================================ */
+/* 메모                                                          */
+/* ============================================================ */
+.mwow-memo-text {
+  width: 100%;
+  min-height: 110px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: #17161a;
+  outline: none;
+  resize: none;
+}
+.mwow-memo-text:focus { border-color: #2563eb; }

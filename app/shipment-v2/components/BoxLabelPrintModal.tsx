@@ -7,7 +7,8 @@ import type { ShipmentV2Row } from '../types';
 import { SHIPMENT_SIZE_CODES, getBoxType, type ShipmentSizeCode } from '../utils/shipmentCodes';
 
 // ============================================================
-// BoxLabelPrintModal — [박스라벨] 10×15 라벨 PDF (export-invoice/box-label 과 같은 출력물)
+// BoxLabelPrintModal — [마킹라벨] 10×15 라벨 PDF (export-invoice/box-label 과 같은 출력물)
+//   마킹라벨 = 상자에 붙이는 마킹번호(박스코드) 라벨. 화면 표현은 '마킹라벨' 로 통일 (예전 표현: 박스라벨)
 //
 //   출력 대상 박스
 //     · 체크된 행이 있으면 → 체크된 행이 담긴 박스
@@ -92,11 +93,11 @@ const BoxLabelPrintModal: React.FC<BoxLabelPrintModalProps> = ({ allRows, target
     try {
       downloadBoxLabelPdf(
         printBoxes.map((b) => ({ date, location: b.box_code, weight: b.size || '' })),
-        `박스라벨_${userCode || 'BOX'}_${date}.pdf`
+        `마킹라벨_${userCode || 'BOX'}_${date}.pdf`
       );
       onClose();
     } catch (err) {
-      console.error('박스 라벨 PDF 오류:', err);
+      console.error('마킹라벨 PDF 오류:', err);
       alert(t('shipmentV2.boxLabel.error'));
     } finally {
       setPrinting(false);

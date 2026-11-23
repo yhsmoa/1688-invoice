@@ -20,7 +20,7 @@ export interface MoveRequestInfo {
 export interface ShipmentV2Row {
   id: string;
   box_code: string;
-  /** ft_box_info.id — 사이즈 수정·박스라벨 기준 */
+  /** ft_box_info.id — 사이즈 수정·마킹라벨 기준 */
   box_info_id: string | null;
   /** ft_box_info.size ("60x50x40") */
   box_size: string | null;

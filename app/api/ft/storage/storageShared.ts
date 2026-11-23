@@ -28,7 +28,7 @@ export const serverError = (label: string, error: unknown) => {
 };
 
 // ============================================================
-// rpc 오류 코드 → 사용자 문구 (supabase/storage/001 ~ 006)
+// rpc 오류 코드 → 사용자 문구 (supabase/storage/001 ~ 010)
 // ============================================================
 const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   PUTAWAY_NOT_STOCK: '보관 상품의 입고 건이 아닙니다. (주문상태에서 보관 설정 확인)',
@@ -57,14 +57,31 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   WOW_BOX_NOT_PICKED: '아직 작업완료하지 않은 박스입니다. 새로고침 후 확인하세요.',
   WOW_BOX_SHIPPED: '이미 출고된 박스는 되돌릴 수 없습니다.',
   WOW_PICK_OVER: '요청 수량보다 많이 담을 수 없습니다.',
-  WOW_PICK_EMPTY: '담을 수량을 입력해 주세요.',
-  WOW_INVALID_INPUT: '요청이 바뀌었습니다. 새로고침 후 다시 작업완료해 주세요.',
+  WOW_PICK_EMPTY: '하나도 꺼내지 못한 박스는 작업완료할 수 없습니다.',
+  WOW_INVALID_INPUT: '요청이 바뀌었거나 올바르지 않습니다. 새로고침 후 다시 시도하세요.',
   WOW_WORK_ALREADY_STARTED: '이미 작업중인 박스입니다. 새로고침 후 확인하세요.',
   WOW_WORK_NOT_STARTED: '작업중인 박스가 아닙니다. 새로고침 후 확인하세요.',
   WOW_DOCS_NOT_READY: '부착문서 · 동봉문서가 모두 도착한 박스만 출고준비할 수 있습니다. 새로고침 후 확인하세요.',
   WOW_READY_ALREADY: '이미 출고준비된 박스가 있습니다. 새로고침 후 확인하세요.',
   WOW_NOT_READY: '출고준비 단계가 아닌 박스가 있습니다. 새로고침 후 확인하세요.',
   WOW_BOX_READY: '출고준비된 박스입니다. [출고준비 취소] 후 작업완료를 취소해 주세요.',
+  // ── 와우출고 모바일 작업 · 순서지정 · 합포장 (supabase/storage/010_wow_flow.sql) ──
+  //   문구를 찾을 때 코드가 들어 있는지로 보므로, 다른 코드를 품은 긴 코드를 먼저 둔다 (WOW_FIND_OVER_STOCK › WOW_FIND_OVER)
+  WOW_FIND_OVER_STOCK: '그 위치의 재고보다 많이 찾을 수 없습니다. 재고 수량을 먼저 확인해 주세요.',
+  WOW_FIND_OVER: '그 선반에 잡아 둔 수량보다 많이 찾을 수 없습니다. 고치려면 [취소] 후 다시 표시해 주세요.',
+  // ── 선반 배정 (supabase/storage/011_wow_alloc.sql) ──
+  STOCK_RESERVED_WOW: '그 선반의 수량은 와우출고 박스에 잡혀 있습니다. 잡히지 않은 수량까지만 꺼낼 수 있습니다. (작업중인 박스가 찾았다고 표시한 수량은 줄일 수 없습니다)',
+  WOW_FIND_INCOMPLETE: '아직 표시하지 않은 카드가 있습니다. 모든 카드를 [찾음] 또는 [부족] 으로 표시해 주세요.',
+  WOW_BOX_SEQUENCED: '순서지정된 박스입니다. [초기화] 로 순서를 지운 뒤 작업완료를 취소해 주세요.',
+  WOW_SEQ_NOT_READY: '서류준비 단계의 박스만 순서를 지정할 수 있습니다. 새로고침 후 확인하세요.',
+  WOW_SEQ_NOT_SET: '순서지정 단계가 아닌 박스가 있습니다. 새로고침 후 확인하세요.',
+  WOW_NOT_ATTACHED: '합포장을 이미 정했거나 부착완료 전인 박스가 있습니다. 새로고침 후 확인하세요.',
+  WOW_PACK_NOT_ATTACHED: '부착완료한 박스 중 아직 합포장을 정하지 않은 박스만 고를 수 있습니다. 새로고침 후 확인하세요.',
+  WOW_SIZE_LOCKED: '순서지정한 뒤에는 박스 크기를 바꿀 수 없습니다.',
+  WOW_PACK_HAS_CARTON: '이미 마킹번호가 붙은 박스는 마대에 담을 수 없습니다. [그대로 출고] 로 처리해 주세요.',
+  WOW_BAG_NOT_OPEN: '이미 출고준비된 마대이거나 없는 마대입니다. 새로고침 후 확인하세요.',
+  WOW_BAG_PARTIAL: '마대는 통째로 출고준비해야 합니다. 그 마대의 박스를 모두 선택해 주세요.',
+  WOW_NOT_PACKED: '마대 · 그대로 출고를 아직 정하지 않았거나 이미 출고준비된 박스가 있습니다. 새로고침 후 확인하세요.',
 };
 
 /** 와우 박스 보호 트리거(WOW_BOX_LOCKED) — 스캔 저장 · 포장 철회 · 박스 이동 라우트도 같은 문구 */
@@ -84,6 +101,16 @@ export function toStorageError(raw: string | undefined): { code: string; message
   return code
     ? { code, message: STORAGE_ERROR_MESSAGE[code] }
     : { code: 'UNKNOWN', message: text || '알 수 없는 오류' };
+}
+
+// ============================================================
+// 표기 헬퍼
+// ============================================================
+
+/** 전화번호에 하이픈 — 02-xxxx-xxxx · 0xx-xxx(x)-xxxx. 그 밖의 형식(대표번호 등)은 받은 그대로 */
+export function formatPhone(raw: string): string {
+  const m = /^(02|0\d{2})(\d{3,4})(\d{4})$/.exec(raw.replace(/\D/g, ''));
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : raw;
 }
 
 // ============================================================

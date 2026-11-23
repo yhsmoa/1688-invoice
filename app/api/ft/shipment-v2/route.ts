@@ -214,12 +214,21 @@ export async function GET(request: NextRequest) {
     //   담기(작업완료)는 이번에 출고하지 않을 수도 있고, 서류가 도착해도 박스에 붙이기 전이다
     //   — 와우출고 화면에서 [출고준비완료] 를 눌러야 대기 목록에 보인다
     //   (출고 API 도 같은 조건으로 막는다: /api/ft/shipments checkWowSelection)
+    //   · 마킹 상자가 있는 행: 그 상자에 묶인 와우 박스가 하나라도 출고준비 전이면 상자째 숨긴다 (마대는 통째로 나간다)
+    //   · 마킹 상자가 아직 없는 행: 와우 줄이 가리키는 포장 행이면 숨긴다 (작업완료 ~ 합포장 단계)
     let fulfillments = packed;
     if (!shipmentId) {
-      const wowBoxes = await batchIn<{ id: string; box_info_id: string; ready_at: string | null }>(
-        'ft_wow_boxes', 'id, box_info_id, ready_at', 'box_info_id', uniq(packed.map((f) => f.box_info_id)));
+      const [wowBoxes, looseWow] = await Promise.all([
+        batchIn<{ id: string; box_info_id: string; ready_at: string | null }>(
+          'ft_wow_boxes', 'id, box_info_id, ready_at', 'box_info_id', uniq(packed.map((f) => f.box_info_id))),
+        batchIn<{ id: string; outbound_id: string }>(
+          'ft_wow_items', 'id, outbound_id', 'outbound_id', packed.filter((f) => !f.box_info_id).map((f) => f.id)),
+      ]);
       const waiting = new Set(wowBoxes.filter((w) => !wowShippable(w)).map((w) => w.box_info_id));
-      if (waiting.size > 0) fulfillments = packed.filter((f) => !f.box_info_id || !waiting.has(f.box_info_id));
+      const loose = new Set(looseWow.map((i) => i.outbound_id));
+      if (waiting.size > 0 || loose.size > 0) {
+        fulfillments = packed.filter((f) => (f.box_info_id ? !waiting.has(f.box_info_id) : !loose.has(f.id)));
+      }
     }
 
     if (fulfillments.length === 0) {

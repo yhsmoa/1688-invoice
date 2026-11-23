@@ -12,7 +12,8 @@ import './Storage.css';
 //
 //   [작업중] /storage/pending : 보관 상품 입고분 → 위치 배치(PUTAWAY)
 //   [재고]   /storage/stock   : 위치별 재고 → 쉽먼트(PICK + PACKED) · 위치 이동
-//   [와우출고] /storage/wow   : 로켓 발주서 박스 — 신규 → 작업중 → 작업완료 → 서류준비 → 출고
+//   [와우출고] /storage/wow   : 로켓 발주서 박스 — 신규 → 작업중 → 작업완료 → 서류준비 → 순서지정 → 합포장 → 출고준비 → 출고
+//                              (작업은 모바일 /m/wow 에서 박스 라벨을 찍어 한다)
 //   사용자·담당자 선택과 두 목록은 StorageProvider 가 들고, 탭을 옮겨도 유지된다.
 //   설계: docs/PLAN_stock-type-S.md · DB: supabase/storage/001_storage.sql
 // ============================================================

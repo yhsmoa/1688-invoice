@@ -2,25 +2,25 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StockRow, WowLine, WowStage } from '../types';
+import type { WowLine, WowStage } from '../types';
 import { formatDateTime } from '../utils/storageFormat';
-import { planPicks, stockCellsOf } from '../utils/wowStage';
+import { WOW_PICKED_STAGES } from '../utils/wowStage';
 import ProductCell from './ProductCell';
 
 // ============================================================
 // WowTable — 와우출고 한 단계의 박스 목록 (클로드 디자인 캔버스 "와우출고 화면 디자인")
 //
 //   박스마다 카드 하나 — 처음엔 머리줄(요약)만 보이고, 머리줄을 누르면 상품 표가 펼쳐진다
-//     머리줄: ☐ · 펼침 · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 · 요청 n · 담음 n | 담당(또는 출고) | 버튼 | 서류 2종
+//     머리줄: ☐ · 펼침 · (순서) · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 · 요청 n · 담음 n
+//             · (라벨 출력됨 | 마대 n | 그대로 출고 | 마킹번호) | 담당(또는 출고) | 버튼 | 서류 2종
 //       요청 · 담음 = 그 박스 줄들의 합계 (담음은 작업완료 이후 — 요청보다 적으면 빨강, 같으면 초록)
-//       체크박스: 표 위 버튼(서류 받기 · 택배엑셀 · 출고준비완료)의 대상을 고른다 (Wow.tsx 가 들고 있다)
+//       체크박스: 표 위 버튼(라벨출력 · 서류 받기 · 택배엑셀 · 합포장 취소 · 출고준비완료 · 마킹라벨)의 대상을 고른다
 //       서류 버튼(부착문서 · 동봉문서)은 맨 오른쪽 — 첨부되면 활성(누르면 열림), 아직이면 비활성
-//       둘 다 첨부되면 작업완료 박스는 [서류준비] 단계로 넘어간다 (utils/wowStage.ts)
-//     상품 표: 상품 · 요청 · (작업 전) 꺼낼 위치 [위치 → 꺼낼 수량 / 재고]
-//                           (작업완료 이후) 담음 · 담은 박스
-//   버튼
-//     신규 [작업] → 작업중 [작업 취소] [작업완료] → 작업완료 [작업완료 취소]
-//     → 서류준비 [작업완료 취소] [출고준비완료] → 출고준비 [출고준비 취소]
+//     상품 표: 상품 · 요청 · (담기 전) 꺼낼 위치 [선반 → 잡아 둔 수량] — 저장된 선반 배정 (011_wow_alloc.sql)
+//                           모바일에서 표시한 선반은 ✓ 꺼낸 수량, 잡을 재고가 없는 몫은 "n개 부족"
+//                           (작업완료 이후) 담음 · 마킹번호
+//   줄의 버튼은 되돌리기만 있다 — 앞으로 가는 일은 모바일(작업) · 표 위 버튼(순서지정 · 합포장 · 출고준비)이 한다
+//     작업중 [작업 취소] · 작업완료/서류준비 [작업완료 취소] · 합포장(아직 정하지 않은 박스) [부착완료 취소] · 출고준비 [출고준비 취소]
 //     출고는 버튼이 없다 — 쉽먼트 V2 에서 출고하면 자동으로 넘어온다
 // ============================================================
 
@@ -36,8 +36,6 @@ interface WowTableProps {
   /** 전체 탭이면 사업자 배지를 보여준다 */
   showUser: boolean;
   userCodeOf: (userId: string) => string;
-  /** 위치 칸 계산용 재고 (상품 × 위치) */
-  stockRows: StockRow[];
   /** 처리 중인 박스 — 그 박스의 버튼을 잠근다 */
   busyBoxId: string;
   /** 체크한 박스 · 펼친 박스 (박스 id) */
@@ -45,15 +43,11 @@ interface WowTableProps {
   expandedIds: ReadonlySet<string>;
   onToggleCheck: (boxId: string) => void;
   onToggleExpand: (boxId: string) => void;
-  onStart: (box: WowBox) => void;
   onCancelStart: (box: WowBox) => void;
-  onComplete: (box: WowBox) => void;
   onUncomplete: (box: WowBox) => void;
-  onReady: (box: WowBox) => void;
+  onUnattach: (box: WowBox) => void;
   onUnready: (box: WowBox) => void;
 }
-
-const PICKED_STAGES: readonly WowStage[] = ['done', 'docs', 'ready', 'shipped'];
 
 /** 입고예정일 'YYYY-MM-DD' → '11/23' */
 const shortDate = (ymd: string) => { const [, m, d] = ymd.split('-'); return `${Number(m)}/${Number(d)}`; };
@@ -72,40 +66,42 @@ const ICON = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   truck: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2zM17 19.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z',
   check: 'm5 12 5 5L20 7',
+  tag: 'M3 12V4h8l10 10-8 8zM7.5 8.5h.01',
+  sack: 'M8 3h8l-2 4h-4zM10 7c-4 2-6 6-6 10a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4c0-4-2-8-6-10',
   arrow: 'M5 12h14M13 6l6 6-6 6',
   alert: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 8v5M12 16h.01',
   chevron: 'm9 6 6 6-6 6',
 };
 
 const WowTable: React.FC<WowTableProps> = ({
-  boxes, stage, showUser, userCodeOf, stockRows, busyBoxId, checkedIds, expandedIds, onToggleCheck, onToggleExpand,
-  onStart, onCancelStart, onComplete, onUncomplete, onReady, onUnready,
+  boxes, stage, showUser, userCodeOf, busyBoxId, checkedIds, expandedIds, onToggleCheck, onToggleExpand,
+  onCancelStart, onUncomplete, onUnattach, onUnready,
 }) => {
   const { t } = useTranslation();
-  const isPicked = PICKED_STAGES.includes(stage);
+  const isPicked = WOW_PICKED_STAGES.includes(stage);
 
-  // ── 꺼낼 위치: [위치 → 꺼낼 수량 / 재고] (먼저 배치된 순, 꺼낼 수량 0 인 위치는 흐리게) ──
+  // ── 꺼낼 위치: [선반 → 잡아 둔 수량] (표시한 선반은 ✓ 꺼낸 수량, 0 이면 흐리게 · 잡을 재고가 없는 몫은 부족) ──
   const renderLocations = (l: WowLine) => {
-    const cells = stockCellsOf(stockRows, l.product_id);
-    if (cells.length === 0) {
+    if (l.allocs.length === 0) {
       return (
         <span className="wow-loc-empty"><Icon d={ICON.alert} />{t('storage.wow.noStock')}</span>
       );
     }
-    const { plan, short } = planPicks(l.qty, cells);
     return (
       <div className="wow-locs">
-        {plan.map(({ cell, take }) => (
-          <span key={cell.location_id} className={`wow-loc ${take > 0 ? '' : 'is-spare'}`}>
-            <span className="wow-loc-code">{cell.location_code}</span>
-            <span className="wow-loc-arrow"><Icon d={ICON.arrow} size={12} width={2.4} /></span>
-            <strong>{take}</strong>
-            <span className="wow-loc-stock">/ {cell.qty}</span>
+        {l.allocs.map((a) => (a.location_code === null ? (
+          <span key="none" className="wow-loc-empty">
+            <Icon d={ICON.alert} />{t('storage.wow.stockShort', { count: a.plan_qty })}
           </span>
-        ))}
-        {short > 0 && (
-          <span className="wow-loc-empty"><Icon d={ICON.alert} />{t('storage.wow.stockShort', { count: short })}</span>
-        )}
+        ) : (
+          <span key={a.location_code} className={`wow-loc ${a.found_qty === 0 ? 'is-spare' : ''} ${a.found_qty !== null ? 'is-found' : ''}`}>
+            <span className="wow-loc-code">{a.location_code}</span>
+            <span className="wow-loc-arrow">
+              <Icon d={a.found_qty !== null ? ICON.check : ICON.arrow} size={12} width={2.4} />
+            </span>
+            <strong>{a.plan_qty}</strong>
+          </span>
+        )))}
       </div>
     );
   };
@@ -141,9 +137,15 @@ const WowTable: React.FC<WowTableProps> = ({
     }
     const [who, at, key] = stage === 'ready'
       ? [head.ready_by, head.ready_at, 'storage.wow.readyAt']
-      : isPicked
-        ? [head.picked_by, head.picked_at, 'storage.wow.completedAt']
-        : [head.work_started_by, head.work_started_at, 'storage.wow.startedAt'];
+      : stage === 'pack'
+        ? (head.packed_at
+          ? [head.packed_by, head.packed_at, 'storage.wow.packedAt']
+          : [head.attached_by, head.attached_at, 'storage.wow.attachedAt'])
+        : stage === 'seq'
+          ? [head.ship_seq_by, head.ship_seq_at, 'storage.wow.seqAt']
+          : isPicked
+            ? [head.picked_by, head.box_picked_at, 'storage.wow.completedAt']
+            : [head.work_started_by, head.work_started_at, 'storage.wow.startedAt'];
     const name = who ?? '';
     return (
       <span className="wow-worker">
@@ -154,29 +156,31 @@ const WowTable: React.FC<WowTableProps> = ({
     );
   };
 
-  // ── 버튼 ──
+  // ── 버튼 (되돌리기만) ──
   const renderActions = (box: WowBox) => {
     const busy = busyBoxId === box.id;
-    if (stage === 'new') {
+    if (stage === 'working') {
       return (
-        <button type="button" className="wow-btn is-start" onClick={() => onStart(box)} disabled={busy}>
-          {t('storage.wow.start')}
+        <button type="button" className="wow-btn" onClick={() => onCancelStart(box)} disabled={busy}>
+          {t('storage.wow.cancelStart')}
         </button>
       );
     }
-    if (stage === 'working') {
+    if (stage === 'done' || stage === 'docs') {
       return (
-        <>
-          <button type="button" className="wow-btn" onClick={() => onCancelStart(box)} disabled={busy}>
-            {t('storage.wow.cancelStart')}
-          </button>
-          <button type="button" className="wow-btn is-complete" onClick={() => onComplete(box)} disabled={busy}>
-            <Icon d={ICON.check} size={14} width={2.6} />{t('storage.wow.complete')}
-          </button>
-        </>
+        <button type="button" className="wow-btn" onClick={() => onUncomplete(box)} disabled={busy}>
+          {t('storage.wow.uncomplete')}
+        </button>
       );
     }
-    if (stage === 'shipped') return null;
+    // 합포장 탭: 마대 · 그대로 출고를 정하기 전에만 순서지정으로 되돌릴 수 있다 (정했으면 표 위 [합포장 취소] 부터)
+    if (stage === 'pack' && !box.lines[0].packed_at) {
+      return (
+        <button type="button" className="wow-btn" onClick={() => onUnattach(box)} disabled={busy}>
+          {t('storage.wow.unattach')}
+        </button>
+      );
+    }
     if (stage === 'ready') {
       return (
         <button type="button" className="wow-btn" onClick={() => onUnready(box)} disabled={busy}>
@@ -184,19 +188,28 @@ const WowTable: React.FC<WowTableProps> = ({
         </button>
       );
     }
-    return (
-      <>
-        <button type="button" className="wow-btn" onClick={() => onUncomplete(box)} disabled={busy}>
-          {t('storage.wow.uncomplete')}
-        </button>
-        {stage === 'docs' && (
-          <button type="button" className="wow-btn is-complete" onClick={() => onReady(box)} disabled={busy}>
-            <Icon d={ICON.check} size={14} width={2.6} />{t('storage.wow.ready')}
-          </button>
-        )}
-      </>
-    );
+    return null;
   };
+
+  // ── 단계 표시: 라벨 출력됨 · 마대 · 그대로 출고 · 마킹번호 ──
+  const renderMarks = (head: WowLine) => (
+    <>
+      {stage === 'new' && head.label_printed_at && (
+        <span className="wow-mark" title={formatDateTime(head.label_printed_at)}>
+          <Icon d={ICON.tag} />{t('storage.wow.labelPrinted')}
+        </span>
+      )}
+      {head.bag_no !== null && (
+        <span className="wow-mark is-bag"><Icon d={ICON.sack} />{t('storage.wow.bag', { no: head.bag_no })}</span>
+      )}
+      {stage === 'pack' && head.bag_no === null && (
+        <span className={`wow-mark ${head.packed_at ? '' : 'is-pending'}`}>
+          {t(head.packed_at ? 'storage.wow.keep' : 'storage.wow.packPending')}
+        </span>
+      )}
+      {head.box_code && <span className="wow-picked-box">{head.box_code}</span>}
+    </>
+  );
 
   return (
     <div className="wow-boxes">
@@ -220,6 +233,9 @@ const WowTable: React.FC<WowTableProps> = ({
                 onClick={() => onToggleExpand(box.id)}>
                 <Icon d={ICON.chevron} size={16} width={2.4} />
               </button>
+              {head.ship_seq !== null && stage !== 'shipped' && (
+                <span className="wow-seq-num" title={t('storage.wow.seqNo')}>{head.ship_seq}</span>
+              )}
               {showUser && <span className="wow-user">{userCodeOf(head.user_id)}</span>}
               {head.arrival_date && (
                 <span className="wow-arrival" title={head.arrival_date}>
@@ -238,11 +254,15 @@ const WowTable: React.FC<WowTableProps> = ({
                   </span>
                 )}
               </span>
+              {renderMarks(head)}
               {stage !== 'new' && <span className="wow-sep" aria-hidden="true" />}
               {renderWorker(head)}
               <span className="wow-box-actions">
                 {renderActions(box)}
-                {stage !== 'shipped' && <span className="wow-doc-sep" aria-hidden="true" />}
+                {(stage === 'working' || stage === 'done' || stage === 'docs' || stage === 'ready'
+                  || (stage === 'pack' && !head.packed_at)) && (
+                  <span className="wow-doc-sep" aria-hidden="true" />
+                )}
                 {renderDoc(box, 'label')}
                 {renderDoc(box, 'manifest')}
               </span>

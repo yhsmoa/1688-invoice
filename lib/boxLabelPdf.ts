@@ -6,7 +6,8 @@ import { jsPDF } from 'jspdf';
 //   1줄 날짜(YYMMDD) / 2줄 위치(박스코드) / 3줄 부피(박스 사이즈)
 //   사용처
 //     · app/export-invoice/box-label  — 통관 엑셀 '품목별' 시트에서 읽은 행
-//     · app/shipment-v2 [박스라벨]    — 쉽먼트 박스 목록 (ft_box_info.size)
+//     · app/shipment-v2 [마킹라벨]    — 쉽먼트 박스 목록 (ft_box_info.size)
+//     · app/storage/wow [마킹라벨]   — 와우출고 출고준비 탭 (마킹번호)
 //   레이아웃 값은 기존 box-label 페이지와 동일 (출력물이 바뀌지 않도록)
 // ============================================================
 

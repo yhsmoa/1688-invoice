@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { fail, serverError, fetchIn } from '../../storageShared';
+import { fail, serverError, fetchIn, formatPhone } from '../../storageShared';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +24,8 @@ interface BoxRow {
   box_no: number;
   center: string | null;
   box_size: string | null;
+  /** 작업자가 모바일에서 바꾼 크기 (없으면 로켓이 준 box_size) */
+  packed_box_size: string | null;
   order_box_total: number | null;
   center_phone: string | null;
   center_address: string | null;
@@ -45,14 +47,8 @@ const COLUMNS: readonly [string, number, (r: CourierRow) => string | number][] =
   ['주소', 52, ({ box }) => box.center_address ?? ''],
   ['수량(A타입)', 12, () => 1],
   ['상품명1', 47, ({ box, qty }) =>
-    `[${box.box_size ?? ''}] ${box.center ?? ''} - ${box.order_number} - ${box.box_no}번 (총 ${box.order_box_total}박스) - ${qty}개`],
+    `[${box.packed_box_size ?? box.box_size ?? ''}] ${box.center ?? ''} - ${box.order_number} - ${box.box_no}번 (총 ${box.order_box_total}박스) - ${qty}개`],
 ];
-
-/** 전화번호에 하이픈 — 02-xxxx-xxxx · 0xx-xxx(x)-xxxx. 그 밖의 형식(대표번호 등)은 받은 그대로 */
-function formatPhone(raw: string): string {
-  const m = /^(02|0\d{2})(\d{3,4})(\d{4})$/.exec(raw.replace(/\D/g, ''));
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : raw;
-}
 
 const THIN = { style: 'thin', color: { argb: 'FF000000' } } as const;
 
@@ -65,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     const [boxes, items] = await Promise.all([
       fetchIn<BoxRow>('ft_wow_boxes',
-        'id, order_number, box_no, center, box_size, order_box_total, center_phone, center_address', 'id', ids),
+        'id, order_number, box_no, center, box_size, packed_box_size, order_box_total, center_phone, center_address', 'id', ids),
       fetchIn<ItemRow>('ft_wow_items', 'wow_box_id, qty, picked_qty, picked_at', 'wow_box_id', ids),
     ]);
     const byId = new Map(boxes.map((b) => [b.id, b]));

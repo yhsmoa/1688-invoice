@@ -36,7 +36,7 @@ import './ShipmentV2.css';
 //
 //   [헤더]   제목 · 총 건수 · 처리 담당자 · 사용자
 //   [타입 바] 전체 / A / B / C / P / X / 이동요청      components/TypeBoardCards
-//   [액션]   품목 분류 · 엑셀 | 이동 · 합배송 | 생성 · 박스라벨 …… 저장 · 출고
+//   [액션]   품목 분류 · 엑셀 | 이동 · 합배송 | 생성 · 마킹라벨 …… 저장 · 출고
 //   [필터]   품목 / 사이즈 불일치                        components/SummaryFilterBar
 //   [표]     박스별 묶음, 페이지와 함께 스크롤           components/ShipmentTable
 //   디자인: 클로드 디자인 캔버스 "쉽먼트 V2 화면 디자인"
@@ -357,7 +357,7 @@ const ShipmentV2: React.FC = () => {
     closeAndRefetch();
   };
 
-  // ── 박스라벨 출력 대상: 체크 있으면 체크 행, 없으면 보이는 행 ──
+  // ── 마킹라벨 출력 대상: 체크 있으면 체크 행, 없으면 보이는 행 ──
   const labelTargetRows = useMemo(
     () => (checkedIds.size > 0 ? selectedRows : visibleIndices.map((i) => rows[i])),
     [checkedIds, selectedRows, visibleIndices, rows]
@@ -418,7 +418,7 @@ const ShipmentV2: React.FC = () => {
               <TypeBoardCards summary={boardSummary} board={board} onBoardChange={setBoard} />
             )}
 
-            {/* ── 액션 바: [품목 분류 · 엑셀] [이동 · 합배송] [생성 · 박스라벨]  ……  [저장] [출고] ── */}
+            {/* ── 액션 바: [품목 분류 · 엑셀] [이동 · 합배송] [생성 · 마킹라벨]  ……  [저장] [출고] ── */}
             <div className="sv2-toolbar">
               <div className="sv2-toolbar-group">
                 <div className="sv2-btn-group">

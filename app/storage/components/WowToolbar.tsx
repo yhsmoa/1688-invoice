@@ -8,14 +8,19 @@ import type { WowStage } from '../types';
 // WowToolbar — 와우출고 박스 목록 바로 위 한 줄
 //
 //   왼쪽  [☐ 전체 선택 n/m] [모두 펼치기 | 모두 접기]
-//   오른쪽 (서류준비 탭) [택배엑셀] [출고준비완료]  — 체크한 박스가 대상 (없으면 비활성)
-//          (모든 탭)     [전체|선택 부착문서] [전체|선택 동봉문서]
-//                        — 체크한 박스가 있으면 그 박스만, 없으면 지금 보이는 박스 전부
+//   오른쪽 — 단계마다 다르다. 대상 = 체크한 박스 (없으면 그 탭의 박스 전부 — 버튼 안의 숫자가 대상 수)
+//     신규      [라벨출력]                 박스 라벨(발주번호-박스번호). 체크가 없으면 아직 안 뽑은 박스만
+//     순서지정  [초기화] [순서지정] [택배엑셀] [부착완료]   순서지정은 서류준비 박스를 스캔하는 창을 연다
+//               부착완료 = 서류 · 운송장을 다 붙였다 → 합포장 탭으로 넘어간다 (순서 번호는 그대로)
+//     합포장    [합포장] [합포장 취소] [출고준비완료]  합포장은 이 탭에서 아직 정하지 않은 박스를 고르는 창을 연다
+//               취소는 체크한 박스만. 출고준비완료는 마대 · 그대로 출고를 정한 박스만
+//     출고준비  [마킹라벨]                  마킹번호 라벨 (쉽먼트 V2 의 [마킹라벨] 과 같은 출력물)
+//     신규가 아닌 탭  [전체|선택 부착문서] [전체|선택 동봉문서]  — 지금 보이는 순서대로 한 PDF
 // ============================================================
 
 export type WowDocKind = 'label' | 'manifest';
 /** 처리 중인 버튼 (한 번에 하나만 — 나머지 버튼도 잠근다) */
-export type WowTool = WowDocKind | 'courier' | 'ready';
+export type WowTool = WowDocKind | 'boxLabel' | 'seq' | 'seqClear' | 'courier' | 'attach' | 'pack' | 'packClear' | 'ready' | 'marking';
 
 export const WOW_DOC_KINDS: readonly WowDocKind[] = ['label', 'manifest'];
 
@@ -25,68 +30,109 @@ interface WowToolbarProps {
   total: number;
   checkedCount: number;
   allExpanded: boolean;
-  /** 서류 버튼 대상 박스 중 그 서류가 도착한 박스 수 */
-  docCounts: Record<WowDocKind, number>;
+  /** 버튼별 대상 박스 수 (0 이면 그 버튼은 잠긴다) */
+  counts: {
+    boxLabel: number;
+    /** [순서지정] 창에서 찍을 수 있는 박스 (서류준비 + 순서지정) */
+    seqCandidates: number;
+    /** [합포장] 창에서 고를 수 있는 박스 (합포장 탭에서 아직 정하지 않은 박스) */
+    packCandidates: number;
+    /** [합포장 취소] · [출고준비완료] 대상 (마대 · 그대로 출고를 정한 박스) */
+    packClear: number;
+    ready: number;
+    marking: number;
+    docs: Record<WowDocKind, number>;
+  };
   busy: WowTool | '';
   onToggleAll: () => void;
   onToggleExpandAll: () => void;
-  onDocs: (kind: WowDocKind) => void;
+  onBoxLabel: () => void;
+  onSeqOpen: () => void;
+  onSeqClear: () => void;
   onCourier: () => void;
+  onAttach: () => void;
+  onPackOpen: () => void;
+  onPackClear: () => void;
   onReady: () => void;
+  onMarking: () => void;
+  onDocs: (kind: WowDocKind) => void;
 }
 
 const WowToolbar: React.FC<WowToolbarProps> = ({
-  stage, total, checkedCount, allExpanded, docCounts, busy,
-  onToggleAll, onToggleExpandAll, onDocs, onCourier, onReady,
+  stage, total, checkedCount, allExpanded, counts, busy,
+  onToggleAll, onToggleExpandAll, onBoxLabel, onSeqOpen, onSeqClear, onCourier, onAttach, onPackOpen, onPackClear, onReady, onMarking, onDocs,
 }) => {
   const { t } = useTranslation();
   const allRef = useRef<HTMLInputElement>(null);
   const locked = busy !== '';
   const hasChecked = checkedCount > 0;
+  /** 체크한 박스가 있으면 그 박스, 없으면 탭의 박스 전부 */
+  const targetCount = hasChecked ? checkedCount : total;
 
   // 일부만 체크 = 가운데 줄 표시 (indeterminate 는 속성이 없어 DOM 에 직접 넣는다)
   useEffect(() => {
     if (allRef.current) allRef.current.indeterminate = hasChecked && checkedCount < total;
   }, [hasChecked, checkedCount, total]);
 
+  const button = (key: string, label: string, count: number | null, onClick: () => void, opts?: { primary?: boolean; hint?: string }) => (
+    <button key={key} type="button" className={`wow-btn ${opts?.primary ? 'is-complete' : ''}`} onClick={onClick}
+      disabled={locked || count === 0} title={opts?.hint}>
+      {label}
+      {count !== null && <span className="wow-toolbar-count">{count}</span>}
+    </button>
+  );
+
   return (
     <div className="wow-toolbar">
       <div className="wow-toolbar-group">
         <label className="wow-checkall">
           <input ref={allRef} type="checkbox" className="wow-check"
-            checked={total > 0 && checkedCount === total} onChange={onToggleAll} />
+            checked={total > 0 && checkedCount === total} onChange={onToggleAll} disabled={total === 0} />
           {t('storage.wow.selectAll')}
           <span className="wow-toolbar-count">{checkedCount} / {total}</span>
         </label>
-        <button type="button" className="wow-btn" onClick={onToggleExpandAll}>
+        <button type="button" className="wow-btn" onClick={onToggleExpandAll} disabled={total === 0}>
           {t(allExpanded ? 'storage.wow.collapseAll' : 'storage.wow.expandAll')}
         </button>
       </div>
 
       <div className="wow-toolbar-group">
-        {stage === 'docs' && (
+        {stage === 'new' && button('boxLabel', t('storage.wow.boxLabel'), counts.boxLabel, onBoxLabel,
+          { primary: true, hint: t('storage.wow.boxLabelHint') })}
+
+        {stage === 'seq' && (
           <>
-            <button type="button" className="wow-btn" onClick={onCourier}
-              disabled={locked || !hasChecked} title={t('storage.wow.courierHint')}>
-              {t('storage.wow.courier')}
-              <span className="wow-toolbar-count">{checkedCount}</span>
-            </button>
-            <button type="button" className="wow-btn is-complete" onClick={onReady}
-              disabled={locked || !hasChecked} title={t('storage.wow.readyHint')}>
-              {t('storage.wow.ready')}
-              <span className="wow-toolbar-count">{checkedCount}</span>
-            </button>
-            <span className="wow-doc-sep" aria-hidden="true" />
+            {button('seqClear', t('storage.wow.seqClear'), targetCount, onSeqClear, { hint: t('storage.wow.seqClearHint') })}
+            {button('seq', t('storage.wow.seqSet'), counts.seqCandidates, onSeqOpen, { hint: t('storage.wow.seqSetHint') })}
+            {button('courier', t('storage.wow.courier'), targetCount, onCourier, { hint: t('storage.wow.courierHint') })}
+            {button('attach', t('storage.wow.attach'), targetCount, onAttach, { primary: true, hint: t('storage.wow.attachHint') })}
           </>
         )}
-        {WOW_DOC_KINDS.map((kind) => (
-          <button key={kind} type="button" className="wow-btn is-doc" onClick={() => onDocs(kind)}
-            disabled={locked || docCounts[kind] === 0}
-            title={t('storage.wow.allDocsHint', { count: docCounts[kind], total: hasChecked ? checkedCount : total })}>
-            {t(hasChecked ? 'storage.wow.selectedDocs' : 'storage.wow.allDocs', { doc: t(`storage.wow.${kind}`) })}
-            <span className="wow-toolbar-count">{docCounts[kind]}</span>
-          </button>
-        ))}
+
+        {stage === 'pack' && (
+          <>
+            {button('pack', t('storage.wow.packSet'), counts.packCandidates, onPackOpen, { hint: t('storage.wow.packSetHint') })}
+            {button('packClear', t('storage.wow.packClear'), counts.packClear, onPackClear, { hint: t('storage.wow.packClearHint') })}
+            {button('ready', t('storage.wow.ready'), counts.ready, onReady, { primary: true, hint: t('storage.wow.readyHint') })}
+          </>
+        )}
+
+        {stage === 'ready' && button('marking', t('storage.wow.marking'), counts.marking, onMarking,
+          { primary: true, hint: t('storage.wow.markingHint') })}
+
+        {stage !== 'new' && (
+          <>
+            {(stage === 'seq' || stage === 'pack' || stage === 'ready') && <span className="wow-doc-sep" aria-hidden="true" />}
+            {WOW_DOC_KINDS.map((kind) => (
+              <button key={kind} type="button" className="wow-btn is-doc" onClick={() => onDocs(kind)}
+                disabled={locked || counts.docs[kind] === 0}
+                title={t('storage.wow.allDocsHint', { count: counts.docs[kind], total: targetCount })}>
+                {t(hasChecked ? 'storage.wow.selectedDocs' : 'storage.wow.allDocs', { doc: t(`storage.wow.${kind}`) })}
+                <span className="wow-toolbar-count">{counts.docs[kind]}</span>
+              </button>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

@@ -148,7 +148,11 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           },
           {
             route: '/api/ft/storage/wow',
-            tables: ['ft_wow_boxes', 'ft_wow_items', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_shipments', 'ft_storage_movements', 'ft_order_items'],
+            tables: ['ft_wow_boxes', 'ft_wow_items', 'ft_wow_bags', 'ft_box_info', 'ft_fulfillment_outbounds', 'ft_shipments', 'ft_storage_movements', 'ft_order_items'],
+          },
+          {
+            route: '/api/ft/storage/wow/work',
+            tables: ['ft_wow_boxes', 'ft_wow_items', 'ft_wow_finds', 'ft_storage_balance', 'ft_storage_locations', 'ft_storage_movements', 'ft_fulfillment_outbounds', 'ft_order_items'],
           },
           { route: '/api/ft/storage/wow/docs', tables: ['ft_wow_boxes'] },
           { route: '/api/ft/storage/move', tables: ['ft_storage_movements', 'ft_storage_locations'] },
@@ -158,7 +162,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
         ],
         external: ['Supabase Storage'],
-        note: '보관(arrival_route=STOCK) 상품 전용. 원장 ft_storage_movements 쓰기는 DB 함수(supabase/storage/001~006)로만. 와우출고는 단계(신규·작업중·작업완료·서류준비·출고)를 박스 기록에서 읽어 낸다(006). 서류는 Storage 버킷 wow-docs',
+        note: '보관(arrival_route=STOCK) 상품 전용. 원장 ft_storage_movements 쓰기는 DB 함수(supabase/storage/001~010)로만. 와우출고는 단계(신규·작업중·작업완료·서류준비·순서지정·합포장·출고준비·출고)를 박스 기록에서 읽어 낸다(010). 작업(찾음·부족·작업완료)은 모바일 /m/wow 에서 한다. 서류는 Storage 버킷 wow-docs',
       },
       {
         name: '쉽먼트',

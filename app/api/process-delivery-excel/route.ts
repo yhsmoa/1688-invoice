@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { fetchIn, formatPhone } from '../ft/storage/storageShared';
 
 // 사업자 코드 매핑
 const BUSINESS_CODE_MAP: Record<string, string> = {
@@ -19,6 +20,18 @@ const SPECIAL_LOCATION_INFO = {
 // 특수 위치를 사용하는 사업자
 const SPECIAL_LOCATION_BUSINESSES = ['아이엠몽', '설온'];
 
+// 진행방법 문구
+const METHOD_COURIER = '롯데택배 신용';
+const METHOD_YIWU_MERGE = '이우 합배송';
+const METHOD_DIRECT = '직접 처리';
+
+/** 와우출고 상자의 받는 곳 (쿠팡 물류센터) */
+interface WowRecipient {
+  center: string;
+  phone: string;
+  address: string;
+}
+
 interface BoxData {
   location: string;
   size: string;
@@ -26,7 +39,82 @@ interface BoxData {
   section: string;     // A, B, C, P, X
   number: number;      // 01, 02, ...
   businessCode: string; // BZ, BO, ...
+  wow: boolean;        // 와우출고 마킹 상자인가
+  recipient: WowRecipient | null; // 받는 곳이 하나인 와우출고 상자만 (그 밖은 null)
 }
+
+interface MarkingGroup {
+  marking: string;
+  count: number;
+  section: string;
+  businessName: string;
+  wow: boolean;
+  recipient: WowRecipient | null;
+}
+
+// ============================================================
+// 와우출고 상자의 받는 곳 조회
+//   마킹(상자 코드) → 출고 전 마킹 상자(ft_box_info) → 그 상자에 든 와우 박스(ft_wow_boxes)
+//     큰 박스는 와우 박스 하나, 마대는 여러 개 (supabase/storage/010_wow_flow.sql)
+//     · 받는 곳이 하나면 그 센터를 적는다
+//     · 한 마대에 센터가 여럿이면 받는 곳은 비우고 진행방법에 '직접 처리' 라고만 적는다
+//   · 상자 코드는 출고 후 다시 쓰이므로(BR-X-10 등) 출고 전(shipment_id 없음) 상자만 본다
+//     → 택배사 정리는 쉽먼트 출고 처리 전에 받아야 센터 정보가 들어간다
+//   · 센터 · 연락처 · 주소는 로켓이 채운다 (supabase/storage/009_wow_courier.sql)
+//   · 와우출고 상자인데 센터 · 주소가 빈 박스가 있거나, 같은 코드의 출고 전 상자가 둘 이상이면
+//     빈 칸 · 추측으로 내보내지 않고 알려 준다 (와우출고 [택배엑셀] 과 같은 기준)
+//   건수 (2026-11-23): ft_box_info 2,749 / ft_wow_boxes 62 → fetchIn (in 100개 단위 + range 루프)
+// ============================================================
+interface WowRecipientLookup {
+  recipients: Map<string, WowRecipient>;
+  /** 센터 · 주소를 아직 받지 못한 상자 코드 */
+  missing: string[];
+  /** 출고 전 와우출고 상자가 둘 이상인 상자 코드 */
+  duplicated: string[];
+  /** 와우출고 마킹 상자의 코드 (받는 곳이 비어 있어도 택배로 나간다) */
+  wowCodes: Set<string>;
+}
+
+async function loadWowRecipients(boxCodes: string[]): Promise<WowRecipientLookup> {
+  const boxInfos = await fetchIn<{ id: string; box_code: string; shipment_id: string | null }>(
+    'ft_box_info', 'id, box_code, shipment_id', 'box_code', boxCodes);
+  const codeByBoxId = new Map(boxInfos.filter((b) => !b.shipment_id).map((b) => [b.id, b.box_code]));
+
+  const wowBoxes = await fetchIn<{
+    box_info_id: string; center: string | null; center_phone: string | null; center_address: string | null;
+  }>('ft_wow_boxes', 'id, box_info_id, center, center_phone, center_address', 'box_info_id', [...codeByBoxId.keys()]);
+
+  // ── 마킹 상자(코드)별로 모은다 — 마대는 와우 박스 여러 개가 한 상자에 들어 있다 ──
+  const cartonIdsByCode = new Map<string, Set<string>>();
+  const recipientsByCode = new Map<string, WowRecipient[]>();
+  const missing = new Set<string>();
+  for (const wow of wowBoxes) {
+    const code = codeByBoxId.get(wow.box_info_id);
+    if (!code) continue;
+    cartonIdsByCode.set(code, (cartonIdsByCode.get(code) ?? new Set<string>()).add(wow.box_info_id));
+    const center = (wow.center ?? '').trim();
+    const address = (wow.center_address ?? '').trim();
+    if (!center || !address) {
+      missing.add(code);
+      continue;
+    }
+    const recipient = { center, phone: formatPhone((wow.center_phone ?? '').trim()), address };
+    const list = recipientsByCode.get(code) ?? [];
+    if (!list.some((r) => sameRecipient(r, recipient))) list.push(recipient);
+    recipientsByCode.set(code, list);
+  }
+
+  // 받는 곳이 하나인 상자만 채운다. 한 마대에 센터가 여럿이면 받는 곳은 비운다 (진행방법 '직접 처리')
+  const recipients = new Map<string, WowRecipient>();
+  for (const [code, list] of recipientsByCode) {
+    if (list.length === 1 && !missing.has(code)) recipients.set(code, list[0]);
+  }
+  const duplicated = [...cartonIdsByCode].filter(([, ids]) => ids.size > 1).map(([code]) => code);
+  return { recipients, wowCodes: new Set(cartonIdsByCode.keys()), missing: [...missing].sort(), duplicated: duplicated.sort() };
+}
+
+const sameRecipient = (a: WowRecipient | null, b: WowRecipient | null): boolean =>
+  a === b || (!!a && !!b && a.center === b.center && a.phone === b.phone && a.address === b.address);
 
 // 박스 위치 파싱 (예: BZ-A-01)
 function parseLocation(location: string): { prefix: string; section: string; number: number; businessCode: string } | null {
@@ -72,7 +160,8 @@ function formatNumberGroup(prefix: string, group: number[]): string {
 }
 
 // 박스 데이터를 마킹별로 그룹화
-function groupBoxesByMarking(boxes: BoxData[]): { marking: string; count: number; section: string; businessName: string }[] {
+//   번호가 이어지고 받는 곳이 같은 상자끼리 한 줄 (와우출고는 상자마다 센터가 달라 센터가 바뀌면 줄을 나눈다)
+function groupBoxesByMarking(boxes: BoxData[]): MarkingGroup[] {
   // prefix별로 그룹화
   const prefixGroups: Record<string, BoxData[]> = {};
 
@@ -83,23 +172,36 @@ function groupBoxesByMarking(boxes: BoxData[]): { marking: string; count: number
     prefixGroups[box.prefix].push(box);
   });
 
-  const result: { marking: string; count: number; section: string; businessName: string }[] = [];
+  const result: MarkingGroup[] = [];
 
   Object.entries(prefixGroups).forEach(([prefix, boxList]) => {
-    const numbers = boxList.map(b => b.number);
-    const groups = groupConsecutiveNumbers(numbers);
-    const businessCode = boxList[0].businessCode;
+    const sorted = [...boxList].sort((a, b) => a.number - b.number);
+    const businessCode = sorted[0].businessCode;
     const businessName = BUSINESS_CODE_MAP[businessCode] || businessCode;
-    const section = boxList[0].section;
+    const section = sorted[0].section;
 
-    groups.forEach(group => {
+    let run: BoxData[] = [];
+    const flushRun = () => {
+      if (run.length === 0) return;
       result.push({
-        marking: formatNumberGroup(prefix, group),
-        count: group.length,
+        marking: formatNumberGroup(prefix, run.map(b => b.number)),
+        count: run.length,
         section,
-        businessName
+        businessName,
+        wow: run[0].wow,
+        recipient: run[0].recipient
       });
+      run = [];
+    };
+
+    sorted.forEach(box => {
+      const prev = run[run.length - 1];
+      if (prev && (box.number !== prev.number + 1 || box.wow !== prev.wow || !sameRecipient(prev.recipient, box.recipient))) {
+        flushRun();
+      }
+      run.push(box);
     });
+    flushRun();
   });
 
   return result;
@@ -220,7 +322,9 @@ export async function POST(request: NextRequest) {
         prefix: parsed.prefix,
         section: parsed.section,
         number: parsed.number,
-        businessCode: parsed.businessCode
+        businessCode: parsed.businessCode,
+        wow: false,
+        recipient: null
       });
     });
 
@@ -231,6 +335,25 @@ export async function POST(request: NextRequest) {
     if (boxes.length === 0) {
       return NextResponse.json({ success: false, error: '유효한 박스 데이터가 없습니다.' }, { status: 400 });
     }
+
+    // ── 와우출고 상자: 받는 곳(센터 · 연락처 · 주소) 붙이기 ──
+    const wow = await loadWowRecipients(boxes.map(box => box.location));
+    if (wow.duplicated.length > 0) {
+      return NextResponse.json(
+        { success: false, error: `출고 전 와우출고 상자 중 코드가 같은 상자가 있어 받는 곳을 정할 수 없습니다: ${wow.duplicated.join(', ')}` },
+        { status: 409 }
+      );
+    }
+    if (wow.missing.length > 0) {
+      return NextResponse.json(
+        { success: false, error: `받는 곳(센터 · 주소) 정보가 아직 없는 와우출고 상자가 있습니다: ${wow.missing.join(', ')}. 로켓에서 정보를 다시 보내야 합니다.` },
+        { status: 409 }
+      );
+    }
+    boxes.forEach(box => {
+      box.wow = wow.wowCodes.has(box.location);
+      box.recipient = wow.recipients.get(box.location) ?? null;
+    });
 
     // 결과 워크북 생성
     const resultWorkbook = new ExcelJS.Workbook();
@@ -266,7 +389,7 @@ export async function POST(request: NextRequest) {
       { width: 8 },  // CTN
       { width: 12 }, // 받는사람
       { width: 15 }, // 연락처
-      { width: 30 }, // 주소
+      { width: 52 }, // 주소 (센터 주소가 길다 — 와우출고 택배엑셀과 같은 너비)
       { width: 15 }, // 진행방법
       { width: 12 }  // 출고번호건
     ];
@@ -283,18 +406,28 @@ export async function POST(request: NextRequest) {
       const isSpecialLocation = group.section === 'P' || group.section === 'X';
       const useSpecialInfo = isSpecialLocation && SPECIAL_LOCATION_BUSINESSES.includes(group.businessName);
 
-      // 섹션에 따라 진행방법 결정: X는 '이우 합배송', 나머지(A,B,C,P 등)는 '롯데택배 신용'
-      const deliveryMethod = group.section === 'X' ? '이우 합배송' : '롯데택배 신용';
+      // 받는 곳: 와우출고 상자는 센터, 그 밖의 P · X 상자는 사업자 고정 주소
+      const receiver = group.recipient
+        ? { name: group.recipient.center, phone: group.recipient.phone, address: group.recipient.address }
+        : useSpecialInfo
+          ? { name: group.businessName, phone: SPECIAL_LOCATION_INFO.phone, address: SPECIAL_LOCATION_INFO.address }
+          : { name: '', phone: '', address: '' };
+
+      // 진행방법: 와우출고 상자는 센터로 바로 보내므로 X 여도 택배 (한 마대에 센터가 여럿이면 '직접 처리'),
+      //           그 밖의 X 는 '이우 합배송', 나머지(A,B,C,P 등)는 택배
+      const deliveryMethod = group.wow
+        ? (group.recipient ? METHOD_COURIER : METHOD_DIRECT)
+        : (group.section === 'X' ? METHOD_YIWU_MERGE : METHOD_COURIER);
 
       row.values = [
-        group.businessName,                                    // A: 사업자명
-        group.marking,                                         // B: 마킹
-        group.count,                                           // C: CTN
-        useSpecialInfo ? group.businessName : '',             // D: 받는사람
-        useSpecialInfo ? SPECIAL_LOCATION_INFO.phone : '',    // E: 연락처
-        useSpecialInfo ? SPECIAL_LOCATION_INFO.address : '',  // F: 주소
-        deliveryMethod,                                        // G: 진행방법
-        ''                                                     // H: 출고번호건
+        group.businessName,   // A: 사업자명
+        group.marking,        // B: 마킹
+        group.count,          // C: CTN
+        receiver.name,        // D: 받는사람
+        receiver.phone,       // E: 연락처
+        receiver.address,     // F: 주소
+        deliveryMethod,       // G: 진행방법
+        ''                    // H: 출고번호건
       ];
 
       // 스타일 적용

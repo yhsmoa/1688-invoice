@@ -113,12 +113,22 @@ export interface StorageRequest {
 }
 
 // ============================================================
-// 와우출고 — 줄 1개 (ft_wow_items + 와우 박스 + 묶인 1688 박스)
+// 와우출고 — 줄 1개 (ft_wow_items + 와우 박스 + 마킹 상자)
 //   box_id NULL = 박스 미정 (예약만, 담을 수 없다)
 // ============================================================
 
-/** 단계 — 판정은 utils/wowStage.ts (신규 → 작업중 → 작업완료 → 서류준비 → 출고) */
-export type WowStage = 'new' | 'working' | 'done' | 'docs' | 'ready' | 'shipped';
+/** 단계 — 판정은 utils/wowStage.ts (신규 → 작업중 → 작업완료 → 서류준비 → 순서지정 → 합포장 → 출고준비 → 출고) */
+export type WowStage = 'new' | 'working' | 'done' | 'docs' | 'seq' | 'pack' | 'ready' | 'shipped';
+
+/** 선반 배정 한 줄 — 저장된 값 (ft_wow_finds · supabase/storage/011_wow_alloc.sql) */
+export interface WowAlloc {
+  /** null = 잡을 재고가 없는 몫 */
+  location_code: string | null;
+  /** 그 선반에 잡아 둔 수량 (표시한 뒤에는 꺼낸 수량) */
+  plan_qty: number;
+  /** 모바일에서 찾았다고 표시한 수량 (null = 아직) */
+  found_qty: number | null;
+}
 
 export interface WowLine extends StorageProductInfo {
   /** 이 줄이 속한 박스의 단계 (박스 미정 줄은 'new') */
@@ -130,27 +140,116 @@ export interface WowLine extends StorageProductInfo {
   qty: number;
   picked_qty: number | null;
   picked_at: string | null;
+  /** 꺼낼 선반 — 담지 않은 박스의 줄만 (담은 뒤 · 박스 미정 줄은 빈 배열) */
+  allocs: WowAlloc[];
   box_id: string | null;
   box_no: number | null;
   center: string | null;
   /** 로켓 발주서의 입고예정일 'YYYY-MM-DD' (아직 받지 못했으면 null) */
   arrival_date: string | null;
+  /** 박스 크기 — 작업자가 모바일에서 바꿨으면 그 값, 아니면 로켓이 준 값 */
   box_size: string | null;
+  /** 그 발주서의 박스 전체 수 (한국에서 보내는 박스 포함 — 박스 라벨 "n / 총") */
+  order_box_total: number | null;
+  /** 박스 라벨(발주번호-박스번호)을 뽑은 시각 (아직이면 null) */
+  label_printed_at: string | null;
+  /** 마킹 상자 (ft_box_info) — [출고준비완료] 때 정해진다. 마대면 여러 박스가 같은 값 */
   box_info_id: string | null;
+  /** 마킹번호 (BR-X-01 …) */
   box_code: string | null;
   label_path: string | null;
   manifest_path: string | null;
-  /** [작업] 을 누른 시각 · 담당자 (신규면 null) */
+  /** 작업 시작(모바일에서 박스 라벨을 찍음) 시각 · 담당자 (신규면 null) */
   work_started_at: string | null;
   work_started_by: string | null;
-  /** [작업완료] 한 담당자 */
+  /** [작업완료] 시각(박스) · 담당자 — 담지 않았으면 null */
+  box_picked_at: string | null;
   picked_by: string | null;
+  /** [순서지정] 으로 찍은 순서 · 시각 · 담당자 */
+  ship_seq: number | null;
+  ship_seq_at: string | null;
+  ship_seq_by: string | null;
+  /** [부착완료] 시각 · 담당자 — 서류를 다 붙여 합포장 단계로 넘어감 */
+  attached_at: string | null;
+  attached_by: string | null;
+  /** 합포장: 정한 시각 · 담당자 · 담긴 마대 (bag_id null + packed_at 있음 = 그대로 출고, packed_at null = 아직 정하지 않음) */
+  packed_at: string | null;
+  packed_by: string | null;
+  bag_id: string | null;
+  bag_no: number | null;
   /** [출고준비완료] 를 누른 시각 · 담당자 (출고준비 전이면 null) */
   ready_at: string | null;
   ready_by: string | null;
-  /** 묶인 1688 박스의 포장 행이 전부 출고됨 */
+  /** 이 박스의 포장 행이 전부 출고됨 */
   shipped: boolean;
   /** 출고 시각 · 쉽먼트 번호 (출고 전이면 null) */
   shipped_at: string | null;
   shipment_no: string | null;
+}
+
+// ============================================================
+// 와우출고 모바일 작업 (/m/wow ↔ /api/ft/storage/wow/work)
+//   카드 = (박스, 상품, 위치). 계산은 utils/wowWork.ts 한 곳
+// ============================================================
+
+/** 카드에 같이 보여 주는 그 상품의 다른 위치 */
+export interface WowWorkSpare {
+  location_code: string;
+  qty: number;
+}
+
+export interface WowWorkCard {
+  /** `${product_id}|${location_id ?? ''}` */
+  key: string;
+  product_id: string;
+  /** null = 재고 위치가 없는 몫 (찾을 수 없다 — 부족 0 으로만 표시) */
+  location_id: string | null;
+  location_code: string | null;
+  /** 이 카드의 몫 · 그 위치의 지금 재고
+   *   표시 전: 여기서 찾을 수량. 표시한 위치 카드: 그 위치에서 꺼낸 수량(= found_qty, 0 이면 "여기엔 없음").
+   *   위치 없는 카드: 부족 수량 */
+  plan_qty: number;
+  stock_qty: number;
+  /** 찾은 수량 (null = 아직 표시 안 함). 위치 없는 카드는 표시해도 0 */
+  found_qty: number | null;
+  found_by: string | null;
+  found_at: string | null;
+  memo: string | null;
+  memo_by: string | null;
+  memo_at: string | null;
+  /** 이 상품의 요청 수량(줄 전체) */
+  line_qty: number;
+  spares: WowWorkSpare[];
+  item_name: string | null;
+  option_name: string | null;
+  china_option1: string | null;
+  china_option2: string | null;
+  img_url: string | null;
+  barcode: string | null;
+  product_no: string | null;
+}
+
+/** 목록 한 줄 = 작업할 박스 (신규 · 작업중) */
+export interface WowWorkBox {
+  box_id: string;
+  user_id: string;
+  order_number: string;
+  box_no: number;
+  center: string | null;
+  arrival_date: string | null;
+  box_size: string | null;
+  stage: WowStage;
+  work_started_by: string | null;
+  /** 카드 수 · 그중 꺼냈다고 표시한 위치 카드 · 부족으로 표시한 카드(위치 없는 카드) */
+  cards: number;
+  found_cards: number;
+  short_cards: number;
+  /** 요청 수량 합 · 찾은 수량 합 */
+  qty: number;
+  found_qty: number;
+}
+
+export interface WowWorkDeck {
+  box: WowWorkBox;
+  cards: WowWorkCard[];
 }
