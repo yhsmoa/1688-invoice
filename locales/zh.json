@@ -1521,7 +1521,7 @@
         "shipped": "最近 {{days}}天"
       },
       "boxUnit": "箱",
-      "boxMeta": "商品 {{kinds}}种 · {{qty}}件",
+      "boxMeta": "商品 {{kinds}}种",
       "arrival": "预计入库 {{date}}",
       "startedAt": "{{time}} 开始",
       "completedAt": "{{time}} 作业完成",

@@ -1526,7 +1526,7 @@
         "shipped": "최근 {{days}}일"
       },
       "boxUnit": "박스",
-      "boxMeta": "상품 {{kinds}}종 · {{qty}}개",
+      "boxMeta": "상품 {{kinds}}종",
       "arrival": "입고예정 {{date}}",
       "startedAt": "{{time}} 시작",
       "completedAt": "{{time}} 작업완료",

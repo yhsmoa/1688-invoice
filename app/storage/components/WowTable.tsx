@@ -11,7 +11,8 @@ import ProductCell from './ProductCell';
 // WowTable — 와우출고 한 단계의 박스 목록 (클로드 디자인 캔버스 "와우출고 화면 디자인")
 //
 //   박스마다 카드 하나 — 처음엔 머리줄(요약)만 보이고, 머리줄을 누르면 상품 표가 펼쳐진다
-//     머리줄: ☐ · 펼침 · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 n개 | 담당(또는 출고) | 버튼 | 서류 2종
+//     머리줄: ☐ · 펼침 · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 · 요청 n · 담음 n | 담당(또는 출고) | 버튼 | 서류 2종
+//       요청 · 담음 = 그 박스 줄들의 합계 (담음은 작업완료 이후 — 요청보다 적으면 빨강, 같으면 초록)
 //       체크박스: 표 위 버튼(서류 받기 · 택배엑셀 · 출고준비완료)의 대상을 고른다 (Wow.tsx 가 들고 있다)
 //       서류 버튼(부착문서 · 동봉문서)은 맨 오른쪽 — 첨부되면 활성(누르면 열림), 아직이면 비활성
 //       둘 다 첨부되면 작업완료 박스는 [서류준비] 단계로 넘어간다 (utils/wowStage.ts)
@@ -202,6 +203,7 @@ const WowTable: React.FC<WowTableProps> = ({
       {boxes.map((box) => {
         const head = box.lines[0];
         const totalQty = box.lines.reduce((s, l) => s + l.qty, 0);
+        const pickedQty = box.lines.reduce((s, l) => s + (l.picked_qty ?? 0), 0);
         const kinds = new Set(box.lines.map((l) => l.product_id)).size;
         const open = expandedIds.has(box.id);
         return (
@@ -227,7 +229,15 @@ const WowTable: React.FC<WowTableProps> = ({
               <strong className="wow-box-code">{head.order_number}-{head.box_no}</strong>
               {head.center && <span className="wow-box-meta"><Icon d={ICON.pin} />{head.center}</span>}
               {head.box_size && <span className="wow-box-meta"><Icon d={ICON.box} />{head.box_size}</span>}
-              <span className="wow-muted">{t('storage.wow.boxMeta', { kinds, qty: totalQty })}</span>
+              <span className="wow-muted">{t('storage.wow.boxMeta', { kinds })}</span>
+              <span className="wow-totals">
+                <span>{t('storage.wow.requested')}<strong>{totalQty}</strong></span>
+                {isPicked && (
+                  <span className={pickedQty < totalQty ? 'is-short' : 'is-full'}>
+                    {t('storage.wow.picked')}<strong>{pickedQty}</strong>
+                  </span>
+                )}
+              </span>
               {stage !== 'new' && <span className="wow-sep" aria-hidden="true" />}
               {renderWorker(head)}
               <span className="wow-box-actions">
