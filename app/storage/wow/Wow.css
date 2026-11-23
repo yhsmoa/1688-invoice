@@ -240,12 +240,13 @@
   margin-right: 0;
 }
 
-/* 입고예정일 라벨 — 발주번호 바로 앞 */
+/* 입고예정일 라벨 — 발주번호 바로 앞 (색을 쓰지 않는다 — 회색 테두리만) */
 .wow-arrival {
-  padding: 2px 8px;
+  padding: 1px 8px;
+  border: 1px solid #e3e6eb;
   border-radius: 6px;
-  background: #fef3c7;
-  color: #92400e;
+  background: #ffffff;
+  color: #374151;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -639,10 +640,11 @@
   color: #9ca3af;
 }
 
+/* 마대 — 색 대신 굵은 글씨로만 구분한다 */
 .wow-mark.is-bag {
-  border-color: #fcd34d;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #111827;
 }
 
 /* ============================================================
