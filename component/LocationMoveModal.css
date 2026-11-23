@@ -1,150 +1,161 @@
-/* 모달 오버레이 - 투명하게 */
+/* ============================================================ */
+/* 위치 이동 모달 — 통관서류 작성 상자 칸 [이동]                  */
+/*   머리를 잡고 끌 수 있는 떠 있는 창 (뒤 화면은 그대로 누를 수 있다) */
+/*   색 · 모서리는 쉽먼트 V2 공용 모달과 같게 맞춘다               */
+/*   (component/ 공용 폴더라 페이지 색 토큰에 기대지 않고 값을 직접 쓴다) */
+/* ============================================================ */
+
+/* ── 오버레이 — 투명, 뒤 화면 클릭 통과 ── */
 .location-move-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 999;
   pointer-events: none;
 }
 
-/* 모달 */
 .location-move-modal {
   position: fixed;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
   width: 400px;
   z-index: 1000;
   pointer-events: auto;
+  overflow: hidden;
 }
 
-/* 모달 헤더 */
+/* ── 머리 (끌기 손잡이) ── */
 .location-move-modal-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #eef0f3;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #667eea;
-  color: white;
-  border-radius: 8px 8px 0 0;
+  background: #fbfbfc;
   user-select: none;
 }
 
 .location-move-modal-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .location-move-modal-close-btn {
   background: none;
   border: none;
-  color: white;
-  font-size: 20px;
+  color: #6b7280;
+  font-size: 16px;
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: 6px;
+  transition: background-color 0.12s, color 0.12s;
 }
 
 .location-move-modal-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background: #eef0f3;
+  color: #111827;
 }
 
-/* 모달 컨텐츠 */
+/* ── 내용: 현재 위치 → 이동할 위치 ── */
 .location-move-modal-content {
-  padding: 30px 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .location-move-current,
 .location-move-target {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .location-move-current label,
 .location-move-target label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
 }
 
 .location-move-current-value {
-  padding: 10px 12px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  padding: 8px 11px;
+  border: 1px solid #eef0f3;
+  border-radius: 8px;
+  background: #fbfbfc;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .location-move-arrow {
   text-align: center;
-  font-size: 24px;
-  color: #667eea;
-  font-weight: bold;
+  font-size: 18px;
+  line-height: 1;
+  color: #6b7280;
 }
 
 .location-move-select {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 8px 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
   font-size: 14px;
+  color: #111827;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .location-move-select:focus {
-  border-color: #667eea;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-/* 모달 푸터 */
+/* ── 바닥: [취소] [이동] ── */
 .location-move-modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #eee;
+  padding: 14px 20px;
+  border-top: 1px solid #eef0f3;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
 }
 
 .location-move-cancel-btn,
 .location-move-confirm-btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.12s;
 }
 
 .location-move-cancel-btn {
-  background-color: #f5f5f5;
-  color: #333;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-weight: 500;
 }
 
 .location-move-cancel-btn:hover {
-  background-color: #e0e0e0;
+  background: #f9fafb;
 }
 
 .location-move-confirm-btn {
-  background-color: #667eea;
-  color: white;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .location-move-confirm-btn:hover {
-  background-color: #5a67d8;
+  background: #1d4ed8;
 }

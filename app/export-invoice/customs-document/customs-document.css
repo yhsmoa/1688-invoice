@@ -1,617 +1,187 @@
-.customs-document-layout {
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
+/* ============================================================
+   통관서류 작성 페이지 스타일
+     · 틀 · 버튼 · 필터 패널 · 표 · 모달은 쉽먼트 V2 의 sv2-* / shipment-v2-* 를 그대로 쓴다
+       (app/shipment-v2/ShipmentV2.css — page.tsx 에서 함께 import, 색 토큰도 거기서)
+     · cd-* : 이 화면에만 있는 것 (검색 입력 · 이미지 칸 · 복사 · 올리기 상자 · 토스트)
+   ============================================================ */
+
+/* ============================================================ */
+/* 액션 바 · 필터 패널 보조                                       */
+/* ============================================================ */
+
+/* ── [↓ 엑셀 다운] — 단독 버튼 테두리를 채움색에 맞춘다 ── */
+.cd-page .sv2-btn--solo.sv2-btn--primary {
+  border-color: var(--sv2-blue);
+  border-radius: 10px;
 }
 
-.customs-document-main-content {
-  display: flex !important;
-  flex: 1 !important;
-  width: 100% !important;
+.cd-page .sv2-btn--solo.sv2-btn--primary:disabled {
+  border-color: #c7d2fe;
 }
 
-.customs-document-content {
-  flex: 1 !important;
-  padding: 20px;
-  background-color: #f5f5f5;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-  min-height: calc(100vh - 80px) !important;
-}
-
-.customs-document-container {
-  padding: 20px;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.customs-document-title {
-  color: #333;
-  font-size: 2rem;
-  margin-bottom: 30px;
-  margin-top: 0;
-}
-
-/* 컨트롤 섹션 */
-.customs-document-control-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.customs-document-left-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.customs-document-right-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* [불러오기] — 쉽먼트에서 한 번에 (구글 시트 등록 왼쪽) */
-.customs-document-load-btn {
-  background-color: #0f766e;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.customs-document-load-btn:hover {
-  background-color: #115e59;
-}
-
-.customs-document-google-sheet-btn {
-  background-color: #805ad5;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.customs-document-google-sheet-btn:hover {
-  background-color: #6b46c1;
-}
-
-.customs-document-excel-download-btn {
-  background-color: #3182ce;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.customs-document-excel-download-btn:hover {
-  background-color: #2c5aa0;
-}
-
-/* 검색 영역 */
-.customs-document-section {
-  margin-bottom: 20px;
-}
-
-.customs-document-board {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.customs-document-view-mode-container {
-  margin-bottom: 15px;
-}
-
-.customs-document-radio-group {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-.customs-document-radio-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #333;
-}
-
-.customs-document-radio-input {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.customs-document-form-container {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.customs-document-input {
-  flex: 3;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.customs-document-button {
+/* ── 검색 입력 ── */
+.cd-search-input {
   flex: 1;
-  padding: 10px 16px;
-  background-color: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.customs-document-button:hover {
-  background-color: #5a67d8;
-}
-
-/* 위치별 섹션 */
-.customs-document-location-section {
-  margin-bottom: 30px;
-}
-
-.customs-document-location-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding: 0 5px;
-}
-
-.customs-document-location-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.customs-document-location-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-.customs-document-location-count {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-}
-
-.customs-document-location-move-btn {
-  padding: 8px 16px;
-  background-color: #667eea;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.customs-document-location-move-btn:hover {
-  background-color: #5a67d8;
-}
-
-/* 테이블 */
-.customs-document-table-board {
-  background: white;
+  min-width: 200px;
+  max-width: 420px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #e1e5ea;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  background: var(--sv2-surface);
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--sv2-ink);
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
-.customs-document-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+.cd-search-input::placeholder {
+  color: var(--sv2-disabled);
 }
 
-/* 체크박스 열 */
-.customs-document-table th:nth-child(1),
-.customs-document-table td:nth-child(1) {
-  width: 50px;
-  padding: 4px !important;
+.cd-search-input:focus {
+  outline: none;
+  border-color: var(--sv2-blue);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+}
+
+/* ============================================================ */
+/* 표 보조 (components/CustomsTable)                              */
+/* ============================================================ */
+
+/* ── 이미지 칸 ── */
+.cd-th-image,
+.cd-cell-image {
+  width: 72px;
+}
+
+.cd-cell-image {
   text-align: center;
 }
 
-/* 이미지 열 */
-.customs-document-table th:nth-child(2),
-.customs-document-table td:nth-child(2) {
-  width: 100px;
-  text-align: center;
-  padding: 8px !important;
-}
-
-/* 위치 열 */
-.customs-document-table th:nth-child(3),
-.customs-document-table td:nth-child(3) {
-  width: 100px;
-  text-align: center;
-}
-
-/* 주문번호 & 바코드 열 */
-.customs-document-table th:nth-child(4),
-.customs-document-table td:nth-child(4) {
-  width: 180px;
-  text-align: left;
-}
-
-/* 상품명 열 */
-.customs-document-table th:nth-child(5),
-.customs-document-table td:nth-child(5) {
-  width: 370px;
-  text-align: left;
-}
-
-/* 옵션명 열 */
-.customs-document-table th:nth-child(6),
-.customs-document-table td:nth-child(6) {
-  width: 150px;
-  text-align: left;
-}
-
-/* 출고개수 열 */
-.customs-document-table th:nth-child(7),
-.customs-document-table td:nth-child(7) {
-  width: 80px;
-  text-align: center;
-}
-
-/* 입고개수 열 */
-.customs-document-table th:nth-child(8),
-.customs-document-table td:nth-child(8) {
-  width: 80px;
-  text-align: center;
-}
-
-/* 단가 열 */
-.customs-document-table th:nth-child(9),
-.customs-document-table td:nth-child(9) {
-  width: 100px;
-  text-align: right;
-}
-
-/* 품목 열 */
-.customs-document-table th:nth-child(10),
-.customs-document-table td:nth-child(10) {
-  width: 100px;
-  text-align: center;
-}
-
-/* 혼용률 열 */
-.customs-document-table th:nth-child(11),
-.customs-document-table td:nth-child(11) {
-  width: 150px;
-  text-align: left;
-}
-
-.customs-document-table th {
-  background-color: #f8f9fa;
-  padding: 16px;
-  text-align: left;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #e2e8f0;
-  white-space: nowrap;
-}
-
-.customs-document-table td {
-  padding: 16px;
-  border-bottom: 1px solid #d1d5db;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  word-break: break-all;
-}
-
-/* 상품 썸네일 */
-.customs-document-product-thumbnail {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  border: 1px solid #ddd;
-  background-color: #fff;
-  padding: 0;
-  cursor: pointer;
-  transition: transform 0.2s;
+.cd-thumb {
   display: block;
-  margin: 0;
-}
-
-.customs-document-product-thumbnail:hover {
-  transform: scale(1.05);
-}
-
-.customs-document-image-preview-container {
-  position: static;
-  margin: 0;
-  padding: 0;
-  display: inline-block;
-  line-height: 0;
-}
-
-.customs-document-no-image {
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f5f5;
-  color: #999;
-  font-size: 12px;
+  width: 52px;
+  height: 52px;
   margin: 0 auto;
-  border: 1px solid #ddd;
+  border: 1px solid var(--sv2-line);
+  border-radius: 8px;
+  background: var(--sv2-surface);
+  object-fit: contain;
 }
 
-.customs-document-image-cell {
-  cursor: default;
-  text-align: center;
-}
-
-.customs-document-order-barcode-cell {
+/* ── 주문번호 · 바코드 (한 칸에 두 줄) ── */
+.cd-cell-order {
+  white-space: nowrap;
   line-height: 1.5;
 }
 
-.customs-document-order-number {
-  margin-bottom: 2px;
+.cd-order-no {
+  font-weight: 600;
+  color: var(--sv2-ink);
 }
 
-.customs-document-barcode {
-
+.cd-barcode {
+  font-family: var(--sv2-mono);
+  font-size: 11.5px;
+  color: var(--sv2-muted);
 }
 
-.customs-document-cell {
+/* ── 누르면 복사되는 칸 ── */
+.cd-copy {
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
-.customs-document-cell:hover {
-  background-color: #f0f0f0;
+.sv2-row .cd-copy:hover {
+  background: #f1f4f8;
 }
 
-.customs-document-empty-data {
+/* ============================================================ */
+/* 택배사 정리 모달 — 올리기 상자 (components/DeliveryModal)       */
+/* ============================================================ */
+.cd-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 30px 16px;
+  border: 1.5px dashed #cbd2db;
+  border-radius: 12px;
+  background: var(--sv2-subtle);
   text-align: center;
-  color: #666;
-  font-style: italic;
-  padding: 40px 20px;
-}
-
-.customs-document-table-checkbox {
-  width: 16px;
-  height: 16px;
   cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
 }
 
+.cd-dropzone:hover,
+.cd-dropzone.is-over {
+  border-color: var(--sv2-blue);
+  background: #eff4ff;
+}
 
-/* 복사 완료 토스트 */
-.customs-document-copy-toast {
+.cd-dropzone-icon {
+  margin-bottom: 4px;
+  color: var(--sv2-muted);
+}
+
+.cd-dropzone.has-file .cd-dropzone-icon {
+  color: var(--sv2-green);
+}
+
+.cd-dropzone-text {
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sv2-ink);
+  word-break: break-all;
+}
+
+.cd-dropzone-hint {
+  font-size: 12px;
+  color: var(--sv2-muted);
+}
+
+/* ============================================================ */
+/* 공용 조각 — 스피너 · 복사 토스트                               */
+/* ============================================================ */
+
+/* ── 스피너 (버튼 글자색을 따른다) ── */
+@keyframes cd-spin {
+  to { transform: rotate(360deg); }
+}
+
+.cd-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: cd-spin 0.8s linear infinite;
+}
+
+/* ── 복사 완료 토스트 ── */
+@keyframes cd-toast-fade {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+}
+
+.cd-copy-toast {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
   z-index: 10000;
-  animation: fadeInOut 1.5s ease-in-out;
-}
-
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-  20% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  80% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-/* 스피너 스타일 */
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  vertical-align: middle;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* 택배사 정리 버튼 - 다른 버튼들과 동일한 스타일 */
-.customs-document-delivery-btn {
-  background-color: #38a169;
-  color: white;
   padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  border-radius: 10px;
+  background: rgba(17, 24, 39, 0.88);
+  color: #fff;
+  font-family: var(--sv2-font);
   font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.customs-document-delivery-btn:hover {
-  background-color: #2f855a;
-}
-
-/* 택배사 정리 모달 */
-.delivery-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.delivery-modal {
-  background: white;
-  border-radius: 12px;
-  width: 480px;
-  max-width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-
-.delivery-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.delivery-modal-title {
-  margin: 0;
-  font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
-}
-
-.delivery-modal-close-btn {
-  padding: 8px 16px;
-  background-color: #6b7280;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.delivery-modal-close-btn:hover {
-  background-color: #4b5563;
-}
-
-.delivery-modal-content {
-  padding: 24px;
-}
-
-.delivery-upload-box {
-  border: 2px dashed #d1d5db;
-  border-radius: 12px;
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: #f9fafb;
-  margin-bottom: 20px;
-}
-
-.delivery-upload-box:hover,
-.delivery-upload-box.drag-over {
-  border-color: #38a169;
-  background-color: #f0fff4;
-}
-
-.delivery-upload-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.delivery-upload-text {
-  font-size: 16px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.delivery-upload-hint {
-  font-size: 13px;
-  color: #9ca3af;
-}
-
-.delivery-download-btn {
-  width: 100%;
-  padding: 14px 20px;
-  background-color: #d1d5db;
-  color: #6b7280;
-  border: none;
-  border-radius: 8px;
-  cursor: not-allowed;
-  font-size: 15px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.delivery-download-btn.active {
-  background-color: #6366f1;
-  color: white;
-  cursor: pointer;
-}
-
-.delivery-download-btn.active:hover {
-  background-color: #4f46e5;
-}
-
-.delivery-download-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* 위치 머리 — 상자 사이즈 (엑셀 CBM 칸에 들어가는 값) */
-.customs-document-location-size {
-  font-size: 12px;
-  color: #475569;
-  background: #eef0f3;
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-variant-numeric: tabular-nums;
+  transform: translate(-50%, -50%);
+  animation: cd-toast-fade 1.5s ease-in-out;
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ShipmentV2Row } from '../types';
 import { getBoxType, type ShipmentSizeCode } from '../utils/shipmentCodes';
 import type { CustomsOption } from '../hooks/useCustomsOptions';
+import { useTopMenuHeight } from '../hooks/useTopMenuHeight';
 import BoxSizeEditor from './BoxSizeEditor';
 import type { CompletedRequest } from './MoveRequestButton';
 import ShipmentTableRow from './ShipmentTableRow';
@@ -21,7 +22,6 @@ import ShipmentTableRow from './ShipmentTableRow';
 //     (상단 메뉴 높이를 실제로 재서 CSS 변수로 넘긴다 — 메뉴 높이가 바뀌어도 맞음)
 // ============================================================
 const TOTAL_COLS = 12;
-const TOP_MENU_SELECTOR = '.topside-menu';
 
 interface ShipmentTableProps {
   rows: ShipmentV2Row[];
@@ -46,21 +46,6 @@ interface ShipmentTableProps {
 interface BoxGroup {
   boxCode: string;
   indices: number[];
-}
-
-/** 상단 메뉴(sticky) 높이 — 표 머리줄이 그 아래에 붙도록 */
-function useTopMenuHeight(): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const el = document.querySelector<HTMLElement>(TOP_MENU_SELECTOR);
-    if (!el) return;
-    const update = () => setHeight(el.offsetHeight);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return height;
 }
 
 const ShipmentTable: React.FC<ShipmentTableProps> = (props) => {

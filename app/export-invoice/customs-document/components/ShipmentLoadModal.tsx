@@ -97,7 +97,7 @@ const ShipmentLoadModal: React.FC<Props> = ({ isOpen, loading, onClose, onLoad }
           <span className="shipment-load-selected">선택 {checked.size}개</span>
           <button className="shipment-load-cancel" onClick={onClose} disabled={loading}>취소</button>
           <button className="shipment-load-submit" onClick={handleLoad} disabled={loading || checked.size === 0}>
-            {loading ? (<><span style={{ marginRight: 8 }}>불러오는 중...</span><span className="spinner" /></>) : '불러오기'}
+            {loading ? (<>불러오는 중... <span className="cd-spinner" /></>) : '불러오기'}
           </button>
         </div>
       </div>

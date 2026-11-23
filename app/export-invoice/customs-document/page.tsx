@@ -1,14 +1,18 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import TopsideMenu from '../../../component/TopsideMenu';
 import LeftsideMenu from '../../../component/LeftsideMenu';
 import GoogleSheetModal from '../../../component/GoogleSheetModal';
 import LocationMoveModal from '../../../component/LocationMoveModal';
 import ShipmentLoadModal from './components/ShipmentLoadModal';
+import DeliveryModal from './components/DeliveryModal';
+import CustomsTable, { type CustomsBoxGroup, type CustomsViewMode } from './components/CustomsTable';
 import { loadShipmentRows, isUnknownCategory, type VenderPick } from './utils/loadShipmentRows';
 import { customsItemKey } from '../../../lib/customsItemKey';
 import type { CustomsDocumentData } from './types';
+// 쉽먼트 V2 와 같은 디자인(sv2-* · 색 토큰)을 쓴다 — 이 화면만의 보조 규칙은 customs-document.css
+import '../../shipment-v2/ShipmentV2.css';
 import './customs-document.css';
 
 const CustomsDocument: React.FC = () => {
@@ -16,7 +20,7 @@ const CustomsDocument: React.FC = () => {
   const [orderData, setOrderData] = useState<CustomsDocumentData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [viewMode, setViewMode] = useState<string>('상품별');
+  const [viewMode, setViewMode] = useState<CustomsViewMode>('상품별');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showGoogleSheetModal, setShowGoogleSheetModal] = useState(false);
@@ -29,12 +33,8 @@ const CustomsDocument: React.FC = () => {
   const [showShipmentLoadModal, setShowShipmentLoadModal] = useState(false);
   const [isShipmentLoading, setIsShipmentLoading] = useState(false);
 
-  // 택배사 정리 모달 관련 상태
+  // 택배사 정리 모달 (파일 선택 · 처리 상태는 components/DeliveryModal 안에서)
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [deliveryExcelFile, setDeliveryExcelFile] = useState<File | null>(null);
-  const [isProcessingDelivery, setIsProcessingDelivery] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const deliveryFileInputRef = useRef<HTMLInputElement>(null);
 
   // ============================================================
   // 검색 — 지금 목록에서 상품명·옵션·바코드·주문번호·위치·품목으로 거른다 (빈 검색 = 전체)
@@ -108,10 +108,6 @@ const CustomsDocument: React.FC = () => {
     }
   };
 
-  const handleViewModeChange = (mode: string) => {
-    setViewMode(mode);
-  };
-
   const handleSelectAll = (checked: boolean, location: string) => {
     if (checked) {
       const locationData = groupedDataByLocation[location] || [];
@@ -126,6 +122,13 @@ const CustomsDocument: React.FC = () => {
     }
   };
 
+  // 표 머리줄 체크박스 — 지금 보이는 행 전체
+  const handleSelectAllVisible = (checked: boolean) => {
+    const newSelected = new Set(selectedRows);
+    filteredData.forEach(item => (checked ? newSelected.add(item.id) : newSelected.delete(item.id)));
+    setSelectedRows(newSelected);
+  };
+
   const handleSelectRow = (id: string, checked: boolean) => {
     const newSelected = new Set(selectedRows);
     if (checked) {
@@ -137,7 +140,7 @@ const CustomsDocument: React.FC = () => {
   };
 
 
-  const handleCopyToClipboard = (text: string, fieldName: string) => {
+  const handleCopyToClipboard = (text: string) => {
     if (!text || !text.trim()) return;
 
     // navigator.clipboard이 없는 경우 fallback
@@ -194,114 +197,6 @@ const CustomsDocument: React.FC = () => {
       alert('엑셀 다운로드 중 오류가 발생했습니다.');
     } finally {
       setIsExcelDownloading(false);
-    }
-  };
-
-  // 택배사 정리 모달 열기
-  const handleDeliveryModalOpen = () => {
-    setShowDeliveryModal(true);
-    setDeliveryExcelFile(null);
-    if (deliveryFileInputRef.current) {
-      deliveryFileInputRef.current.value = '';
-    }
-  };
-
-  // 택배사 정리 모달 닫기
-  const handleDeliveryModalClose = () => {
-    setShowDeliveryModal(false);
-    setDeliveryExcelFile(null);
-    if (deliveryFileInputRef.current) {
-      deliveryFileInputRef.current.value = '';
-    }
-  };
-
-  // 택배사 정리 엑셀 파일 선택
-  const handleDeliveryFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      validateAndSetDeliveryFile(file);
-      e.target.value = '';
-    }
-  };
-
-  // 파일 유효성 검사 및 설정
-  const validateAndSetDeliveryFile = (file: File) => {
-    const validExtensions = ['.xlsx', '.xls'];
-    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-
-    if (!validExtensions.includes(fileExtension)) {
-      alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
-      return;
-    }
-    setDeliveryExcelFile(file);
-  };
-
-  // 드래그앤드롭 핸들러
-  const handleDeliveryDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDeliveryDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDeliveryDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      validateAndSetDeliveryFile(file);
-    }
-  };
-
-  // 택배사 정리 엑셀 다운로드
-  const handleDeliveryExcelDownload = async () => {
-    if (!deliveryExcelFile) {
-      alert('엑셀 파일을 먼저 업로드해주세요.');
-      return;
-    }
-
-    setIsProcessingDelivery(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', deliveryExcelFile);
-
-      const response = await fetch('/api/process-delivery-excel', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '처리 중 오류가 발생했습니다.');
-      }
-
-      // Blob으로 변환하여 다운로드
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      a.download = `택배사정리_${timestamp}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      // 성공 후 모달 닫기
-      handleDeliveryModalClose();
-
-    } catch (error) {
-      console.error('택배사 정리 처리 오류:', error);
-      alert(error instanceof Error ? error.message : '택배사 정리 처리 중 오류가 발생했습니다.');
-    } finally {
-      setIsProcessingDelivery(false);
     }
   };
 
@@ -449,257 +344,129 @@ const CustomsDocument: React.FC = () => {
   // 사용 가능한 위치 목록
   const availableLocations = Object.keys(groupedDataByLocation);
 
-  return (
-    <div className="customs-document-layout">
-      <TopsideMenu />
-      <div className="customs-document-main-content">
-        <LeftsideMenu />
-        <main className="customs-document-content">
-          <div className="customs-document-container">
-            <h1 className="customs-document-title">통관서류 작성</h1>
+  // ── 표에 넘길 상자 묶음 + 헤더 요약 + 빈 상태 문구 ──
+  const boxGroups: CustomsBoxGroup[] = Object.entries(groupedDataByLocation).map(([location, items]) => ({
+    location,
+    items,
+    rows: processDataByViewMode(items),
+  }));
+  const totalBoxes = new Set(orderData.map(item => item.location || '미지정')).size;
+  const emptyMessage = filteredData.length > 0
+    ? null
+    : orderData.length === 0
+      ? '[불러오기] 또는 [구글 시트 등록]으로 데이터를 넣어주세요.'
+      : '검색 결과가 없습니다.';
 
-            <div className="customs-document-control-section">
-              <div className="customs-document-left-controls"></div>
-              <div className="customs-document-right-controls">
+  // ============================================================
+  // 렌더 — 쉽먼트 V2 와 같은 틀 (헤더 / 액션 바 / 필터 패널 / 표)
+  // ============================================================
+  return (
+    <div className="shipment-v2-layout">
+      <TopsideMenu />
+      <div className="shipment-v2-main-content">
+        <LeftsideMenu />
+        <main className="shipment-v2-content">
+          <div className="sv2-page cd-page">
+
+            {/* ── 헤더: 제목 / 상자 · 상품 건수 ── */}
+            <header className="sv2-header">
+              <div className="sv2-header-title">
+                <h1>통관서류 작성</h1>
+                <p>쉽먼트 V2 출고준비 목록이나 구글 시트 데이터를 상자별로 모아 통관 엑셀로 내려받습니다</p>
+              </div>
+              <div className="sv2-header-controls">
+                {orderData.length > 0 && (
+                  <span className="sv2-total">상자 {totalBoxes}개 · 상품 {orderData.length}건</span>
+                )}
+              </div>
+            </header>
+
+            {/* ── 액션 바: [불러오기 · 구글 시트 등록]  ……  [↓ 엑셀 다운] [택배사 정리] ── */}
+            <div className="sv2-toolbar">
+              <div className="sv2-toolbar-group">
+                <div className="sv2-btn-group">
+                  <button
+                    className="sv2-btn"
+                    onClick={() => setShowShipmentLoadModal(true)}
+                    title="쉽먼트 V2 의 지금 출고준비 목록을 사업자별로 불러옵니다"
+                  >
+                    불러오기
+                  </button>
+                  <button className="sv2-btn" onClick={handleGoogleSheetOpen}>
+                    구글 시트 등록
+                  </button>
+                </div>
+              </div>
+              <div className="sv2-toolbar-group">
                 <button
-                  className="customs-document-load-btn"
-                  onClick={() => setShowShipmentLoadModal(true)}
-                  title="쉽먼트 V2 의 지금 출고준비 목록을 사업자별로 불러옵니다"
-                >
-                  불러오기
-                </button>
-                <button className="customs-document-google-sheet-btn" onClick={handleGoogleSheetOpen}>
-                  구글 시트 등록
-                </button>
-                <button
-                  className="customs-document-excel-download-btn"
+                  className="sv2-btn sv2-btn--solo sv2-btn--primary"
                   onClick={handleExcelDownload}
                   disabled={isExcelDownloading}
-                  style={{ position: 'relative' }}
                 >
-                  {isExcelDownloading ? (
-                    <>
-                      <span style={{ marginRight: '8px' }}>다운로드 중...</span>
-                      <span className="spinner"></span>
-                    </>
-                  ) : (
-                    '↓ 엑셀 다운'
-                  )}
+                  {isExcelDownloading ? (<>다운로드 중... <span className="cd-spinner" /></>) : '↓ 엑셀 다운'}
                 </button>
-                <button
-                  className="customs-document-delivery-btn"
-                  onClick={handleDeliveryModalOpen}
-                >
+                <button className="sv2-btn sv2-btn--solo" onClick={() => setShowDeliveryModal(true)}>
                   택배사 정리
                 </button>
               </div>
             </div>
 
-            <div className="customs-document-section">
-              <div className="customs-document-board">
-                <div className="customs-document-view-mode-container">
-                  <div className="customs-document-radio-group">
-                    <label className="customs-document-radio-label">
-                      <input
-                        type="radio"
-                        name="customs-document-viewMode"
-                        value="상품별"
-                        checked={viewMode === '상품별'}
-                        onChange={(e) => handleViewModeChange(e.target.value)}
-                        className="customs-document-radio-input"
-                      />
-                      상품별
-                    </label>
-                    <label className="customs-document-radio-label">
-                      <input
-                        type="radio"
-                        name="customs-document-viewMode"
-                        value="품목별"
-                        checked={viewMode === '품목별'}
-                        onChange={(e) => handleViewModeChange(e.target.value)}
-                        className="customs-document-radio-input"
-                      />
-                      품목별
-                    </label>
-                  </div>
-                </div>
-
-                <div className="customs-document-form-container">
-                  <input
-                    type="text"
-                    placeholder="상품명, 옵션 등으로 검색하세요..."
-                    value={searchTerm}
-                    onChange={handleSearchInputChange}
-                    onKeyPress={handleSearchKeyPress}
-                    className="customs-document-input"
-                  />
-                  <button onClick={handleSearchClick} className="customs-document-button">
-                    검색
+            {/* ── 필터 패널: 보기 방식 / 검색 ── */}
+            <div className="sv2-filters">
+              <div className="sv2-filter-row">
+                <span className="sv2-filter-label">보기</span>
+                {(['상품별', '품목별'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`sv2-chip ${viewMode === mode ? 'is-active' : ''}`}
+                    onClick={() => setViewMode(mode)}
+                    aria-pressed={viewMode === mode}
+                  >
+                    {mode}
                   </button>
-                </div>
+                ))}
+              </div>
+              <div className="sv2-filters-divider" />
+              <div className="sv2-filter-row">
+                <span className="sv2-filter-label">검색</span>
+                <input
+                  type="text"
+                  placeholder="상품명, 옵션 등으로 검색하세요..."
+                  value={searchTerm}
+                  onChange={handleSearchInputChange}
+                  onKeyPress={handleSearchKeyPress}
+                  className="cd-search-input"
+                />
+                <button onClick={handleSearchClick} className="sv2-btn sv2-btn--solo sv2-btn--sm">
+                  검색
+                </button>
               </div>
             </div>
 
-            {filteredData.length === 0 ? (
-              <div className="customs-document-empty-data">
-                {orderData.length === 0 ? '[불러오기] 또는 [구글 시트 등록]으로 데이터를 넣어주세요.' : '검색 결과가 없습니다.'}
-              </div>
-            ) : (
-              Object.entries(groupedDataByLocation).map(([location, items]) => {
-                const processedItems = processDataByViewMode(items);
-                const isAllLocationSelected = processedItems.every(item => selectedRows.has(item.id));
-
-                return (
-                  <div key={location} className="customs-document-location-section">
-                    <div className="customs-document-location-info">
-                      <div className="customs-document-location-left">
-                        <h3 className="customs-document-location-title">위치: {location}</h3>
-                        {items.find(item => item.box_size) && (
-                          <span className="customs-document-location-size">{items.find(item => item.box_size)?.box_size}</span>
-                        )}
-                        <span className="customs-document-location-count">
-                          {viewMode === '품목별' ? `(${processedItems.length}개 품목)` : `(${items.length}건)`}
-                        </span>
-                      </div>
-                      {viewMode === '상품별' && (
-                        <button
-                          className="customs-document-location-move-btn"
-                          onClick={() => handleMoveClick(location)}
-                        >
-                          이동
-                        </button>
-                      )}
-                    </div>
-                    <div className="customs-document-table-board">
-                      <table className="customs-document-table">
-                        <thead>
-                          <tr>
-                            <th>
-                              <input
-                                type="checkbox"
-                                checked={isAllLocationSelected}
-                                onChange={(e) => handleSelectAll(e.target.checked, location)}
-                                className="customs-document-table-checkbox"
-                              />
-                            </th>
-                            <th>이미지</th>
-                            <th>위치</th>
-                            <th>주문번호 & 바코드</th>
-                            <th>상품명</th>
-                            <th>옵션명</th>
-                            <th>출고개수</th>
-                            <th>입고개수</th>
-                            <th>단가</th>
-                            <th>품목</th>
-                            <th>혼용률</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {processedItems.map((item) => (
-                            <tr key={item.id}>
-                              <td>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedRows.has(item.id)}
-                                  onChange={(e) => handleSelectRow(item.id, e.target.checked)}
-                                  className="customs-document-table-checkbox"
-                                />
-                              </td>
-                              <td className="customs-document-image-cell">
-                                {item.image && (
-                                  <img
-                                    src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
-                                    alt="상품 이미지"
-                                    className="customs-document-product-thumbnail"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                    }}
-                                  />
-                                )}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.location || '', '위치')}
-                                title="클릭하여 복사"
-                              >
-                                {item.location || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell customs-document-order-barcode-cell"
-                                onClick={() => handleCopyToClipboard(`${item.order_number || ''}\n${item.barcode || ''}`, '주문번호 & 바코드')}
-                                title="클릭하여 복사"
-                              >
-                                <div className="customs-document-order-number">{item.order_number || ''}</div>
-                                <div className="customs-document-barcode">{item.barcode || ''}</div>
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.product_name || '', '상품명')}
-                                title="클릭하여 복사"
-                              >
-                                {item.product_name || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.option_name || '', '옵션명')}
-                                title="클릭하여 복사"
-                              >
-                                {item.option_name || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.out_quantity || '', '출고개수')}
-                                title="클릭하여 복사"
-                              >
-                                {item.out_quantity || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.in_quantity || '', '입고개수')}
-                                title="클릭하여 복사"
-                              >
-                                {item.in_quantity || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.unit_price || '', '단가')}
-                                title="클릭하여 복사"
-                              >
-                                {item.unit_price || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.item_category || '', '품목')}
-                                title="클릭하여 복사"
-                              >
-                                {item.item_category || ''}
-                              </td>
-                              <td
-                                className="customs-document-cell"
-                                onClick={() => handleCopyToClipboard(item.blend_ratio || '', '혼용률')}
-                                title="클릭하여 복사"
-                              >
-                                {item.blend_ratio || ''}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            {/* ── 표 ── */}
+            <CustomsTable
+              groups={boxGroups}
+              viewMode={viewMode}
+              selectedRows={selectedRows}
+              emptyMessage={emptyMessage}
+              onToggleRow={handleSelectRow}
+              onToggleLocation={(location, checked) => handleSelectAll(checked, location)}
+              onToggleAll={handleSelectAllVisible}
+              onMoveClick={handleMoveClick}
+              onCopy={handleCopyToClipboard}
+            />
           </div>
         </main>
       </div>
 
       {showCopyToast && (
-        <div className="customs-document-copy-toast">
-          복사되었습니다!
-        </div>
+        <div className="cd-copy-toast" role="status">복사되었습니다!</div>
       )}
 
+      {/* ============================================================ */}
+      {/* 모달                                                          */}
+      {/* ============================================================ */}
       <GoogleSheetModal
         isOpen={showGoogleSheetModal}
         onClose={() => setShowGoogleSheetModal(false)}
@@ -723,61 +490,7 @@ const CustomsDocument: React.FC = () => {
         onMove={handleLocationMove}
       />
 
-      {/* 택배사 정리 모달 */}
-      {showDeliveryModal && (
-        <div className="delivery-modal-overlay" onClick={handleDeliveryModalClose}>
-          <div className="delivery-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="delivery-modal-header">
-              <h2 className="delivery-modal-title">택배사 정리</h2>
-              <button className="delivery-modal-close-btn" onClick={handleDeliveryModalClose}>
-                닫기
-              </button>
-            </div>
-
-            <div className="delivery-modal-content">
-              <div
-                className={`delivery-upload-box ${isDragging ? 'drag-over' : ''}`}
-                onClick={() => deliveryFileInputRef.current?.click()}
-                onDragOver={handleDeliveryDragOver}
-                onDragLeave={handleDeliveryDragLeave}
-                onDrop={handleDeliveryDrop}
-              >
-                <input
-                  ref={deliveryFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleDeliveryFileSelect}
-                  style={{ display: 'none' }}
-                />
-                <div className="delivery-upload-icon">
-                  {deliveryExcelFile ? '✅' : '📁'}
-                </div>
-                <div className="delivery-upload-text">
-                  {deliveryExcelFile ? deliveryExcelFile.name : '클릭하여 엑셀 파일을 선택하세요'}
-                </div>
-                <div className="delivery-upload-hint">
-                  {deliveryExcelFile ? '다른 파일을 선택하려면 클릭하세요' : '클릭 또는 드래그앤드롭으로 파일을 업로드하세요'}
-                </div>
-              </div>
-
-              <button
-                className={`delivery-download-btn ${deliveryExcelFile ? 'active' : ''}`}
-                onClick={handleDeliveryExcelDownload}
-                disabled={!deliveryExcelFile || isProcessingDelivery}
-              >
-                {isProcessingDelivery ? (
-                  <>
-                    <span style={{ marginRight: '8px' }}>처리 중...</span>
-                    <span className="spinner"></span>
-                  </>
-                ) : (
-                  '택배사 정리 엑셀 다운로드'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showDeliveryModal && <DeliveryModal onClose={() => setShowDeliveryModal(false)} />}
     </div>
   );
 };
