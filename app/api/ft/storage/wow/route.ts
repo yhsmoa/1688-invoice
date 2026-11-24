@@ -7,9 +7,10 @@ import { WOW_SHIPPED_VISIBLE_DAYS, wowStageOf } from '../../../../storage/utils/
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// /api/ft/storage/wow — 와우출고 (supabase/storage/005 ~ 010)
+// /api/ft/storage/wow — 와우출고 (supabase/storage/005 ~ 012)
 //
 //   GET [?user_id=] : 출고 전 줄 전부 + 출고한 지 WOW_SHIPPED_VISIBLE_DAYS 일 안 된 박스의 줄
+//     · 발주취소된 박스는 줄이 없어 목록에 나오지 않는다 (박스 행은 로켓이 그 박스를 뺄 때까지만 남는다)
 //     · 줄마다 단계(stage)를 계산해 내려준다 — 판정은 app/storage/utils/wowStage.ts 한 곳
 //     · 담지 않은 박스의 줄에는 꺼낼 선반(allocs)을 붙인다 — 저장된 선반 배정 그대로 (011_wow_alloc.sql)
 //     · 박스 출고 = 그 박스 줄들이 가리키는 포장 행(ft_wow_items.outbound_id)이 전부 shipment_id 를 가짐
@@ -30,6 +31,8 @@ export const dynamic = 'force-dynamic';
 //       pack_clear : [합포장 취소]     정한 것을 푼다          rpc ft_wow_pack_clear (합포장 단계에 남는다)
 //       ready      : [출고준비완료]    합포장 → 출고준비       rpc ft_wow_ready_pack (마킹번호를 붙인다)
 //       unready    : [출고준비 취소]   출고준비 → 합포장       rpc ft_wow_ready_set(false) (출고 전에만. 마킹번호는 그대로)
+//       drop       : [발주취소]       출고 전 어느 단계든      rpc ft_wow_cancel (012_wow_cancel.sql) → { count, to_putaway }
+//                    잡아 둔 선반이 풀리고, 이미 꺼낸 수량(to_putaway)은 재고 [작업중] 의 배치 대기로 돌아간다
 //     작업(신규 → 작업중 → 작업완료)은 모바일 화면이 한다: /api/ft/storage/wow/work
 //     오류 코드는 storageShared 문구로 409
 // ============================================================
@@ -256,7 +259,7 @@ export async function GET(request: NextRequest) {
 // POST — 단계 옮기기
 // ============================================================
 
-const BULK_ACTIONS = ['label_printed', 'seq', 'seq_clear', 'attach', 'attach_clear', 'pack', 'pack_clear', 'ready', 'unready'] as const;
+const BULK_ACTIONS = ['label_printed', 'seq', 'seq_clear', 'attach', 'attach_clear', 'pack', 'pack_clear', 'ready', 'unready', 'drop'] as const;
 type BulkAction = (typeof BULK_ACTIONS)[number];
 const isBulk = (action: unknown): action is BulkAction => BULK_ACTIONS.includes(action as BulkAction);
 
@@ -304,6 +307,7 @@ export async function POST(request: NextRequest) {
       }
       else if (action === 'pack_clear') rpc = supabase.rpc('ft_wow_pack_clear', args);
       else if (action === 'ready') rpc = supabase.rpc('ft_wow_ready_pack', args);
+      else if (action === 'drop') rpc = supabase.rpc('ft_wow_cancel', args);
       else rpc = supabase.rpc('ft_wow_ready_set', { ...args, p_ready: false });
     } else if (action === 'cancel' || action === 'unpack') {
       if (!user_id || !wow_box_id) return fail('user_id, wow_box_id 가 필요합니다.');

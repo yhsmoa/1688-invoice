@@ -67,15 +67,15 @@ const BoxList: React.FC<BoxListProps> = ({
   return (
     <main className="mob-body">
       {/* 담당자 */}
-      <div className="mwow-worker-row">
+      <div className="mob-worker-row">
         <span>{t('mobile.wow.worker.current')} <b>{operatorName}</b></span>
-        <button type="button" className="mwow-text-btn" onClick={onChangeWorker}>{t('mobile.wow.worker.change')}</button>
+        <button type="button" className="mob-text-btn" onClick={onChangeWorker}>{t('mobile.wow.worker.change')}</button>
       </div>
 
       {/* 입력 + 카메라 */}
-      <div className="mwow-scanrow">
+      <div className="mob-scanrow">
         <input
-          className="mob-input mwow-code-input"
+          className="mob-input mob-code-input"
           type="text"
           inputMode="numeric"
           autoComplete="off"
@@ -86,31 +86,31 @@ const BoxList: React.FC<BoxListProps> = ({
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSubmit(); } }}
         />
-        <button type="button" className="mwow-cam-btn" onClick={onOpenCamera} aria-label={t('mobile.wow.list.camera')}>
+        <button type="button" className="mob-cam-btn" onClick={onOpenCamera} aria-label={t('mobile.wow.list.camera')}>
           <span aria-hidden="true">📷</span>
         </button>
       </div>
       <button type="button" className="mob-btn accent" onClick={onSubmit}>{t('mobile.wow.list.go')} →</button>
-      <div className="mwow-hint">{t('mobile.wow.list.hint')}</div>
+      <div className="mob-hint">{t('mobile.wow.list.hint')}</div>
 
       {/* 목록 머리 — 요약 · 새로고침 · 다음 미처리 박스 */}
-      <div className="mwow-list-head">
-        <span className="mwow-list-sum">
+      <div className="mob-list-head">
+        <span className="mob-list-sum">
           {filter ? (
-            <span className="mwow-filter-chip">
+            <span className="mob-filter-chip">
               {t('mobile.wow.list.filtered', { filter, count: visible.length })}
               <button type="button" onClick={onClearFilter}>{t('mobile.wow.list.showAll')}</button>
             </span>
           ) : boxes ? (
             t('mobile.wow.list.summary', { boxes: visible.length, orders: orderCount, left })
           ) : null}
-          {refreshing && <span className="mwow-busy">{t('mobile.wow.list.refreshing')}</span>}
+          {refreshing && <span className="mob-busy">{t('mobile.wow.list.refreshing')}</span>}
         </span>
-        <span className="mwow-list-tools">
-          <button type="button" className="mwow-text-btn" onClick={onNextBox}>{t('mobile.wow.list.next')} ›</button>
+        <span className="mob-list-tools">
+          <button type="button" className="mob-text-btn" onClick={onNextBox}>{t('mobile.wow.list.next')} ›</button>
           <button
             type="button"
-            className="mwow-icon-btn"
+            className="mob-icon-btn"
             disabled={refreshing}
             onClick={onRefresh}
             aria-label={t('mobile.wow.list.refresh')}
@@ -122,8 +122,8 @@ const BoxList: React.FC<BoxListProps> = ({
       </div>
 
       {/* 박스 목록 */}
-      <div className="mwow-list">
-        {emptyText && <div className="mwow-empty">{emptyText}</div>}
+      <div className="mob-list">
+        {emptyText && <div className="mob-empty">{emptyText}</div>}
         {visible.map((b) => (
           <button
             key={b.box_id}

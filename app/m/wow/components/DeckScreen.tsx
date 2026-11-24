@@ -9,7 +9,7 @@ import { useDeckScroll } from '../hooks/useDeckScroll';
 import { firstUnmarked, formatMonthDay, hasLocation, nextUnmarked, summarize } from '../utils/cardState';
 import { boxLabel } from '../utils/orderCode';
 import { workErrorText } from '../utils/errorText';
-import { playOkSound, playShortSound } from '../utils/sound';
+import { playOkSound, playShortSound } from '../../utils/sound';
 import { isWowWorkError, type WowWorkError } from '../utils/wowWorkApi';
 import WorkCard from './WorkCard';
 import EndCard from './EndCard';

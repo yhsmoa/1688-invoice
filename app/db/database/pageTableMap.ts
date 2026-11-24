@@ -162,7 +162,7 @@ export const PAGE_TABLE_MAP: PageGroup[] = [
           { route: '/api/ft/box-info', tables: ['ft_box_info', 'ft_fulfillment_outbounds'] },
         ],
         external: ['Supabase Storage'],
-        note: '보관(arrival_route=STOCK) 상품 전용. 원장 ft_storage_movements 쓰기는 DB 함수(supabase/storage/001~010)로만. 와우출고는 단계(신규·작업중·작업완료·서류준비·순서지정·합포장·출고준비·출고)를 박스 기록에서 읽어 낸다(010). 작업(찾음·부족·작업완료)은 모바일 /m/wow 에서 한다. 서류는 Storage 버킷 wow-docs',
+        note: '보관(arrival_route=STOCK) 상품 전용. 원장 ft_storage_movements 쓰기는 DB 함수(supabase/storage/001~012)로만. 배치는 모바일 /m/putaway 에서도 한다(같은 API). 와우출고는 단계(신규·작업중·작업완료·서류준비·순서지정·합포장·출고준비·출고)를 박스 기록에서 읽어 낸다(010). 작업(찾음·부족·작업완료)은 모바일 /m/wow 에서 한다. [발주취소]는 박스를 없애고 꺼낸 상품을 배치 대기로 돌린다(012). 서류는 Storage 버킷 wow-docs',
       },
       {
         name: '쉽먼트',

@@ -183,3 +183,257 @@
 .mob-photos a { display: block; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #f1f0f5; }
 .mob-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mob-progress { font-size: 13px; font-weight: 700; color: #1d4ed8; }
+
+/* ============================================================ */
+/* 작업 화면 공용 (/m/wow · /m/putaway)                            */
+/*   담당자 선택 · 담당자 줄 · 작은 버튼 · 번호 입력 + 카메라 ·      */
+/*   목록 머리 · 빈 목록 · 아래에서 올라오는 창 · 잠깐 뜨는 안내     */
+/*   (위의 공용 모양을 덮어쓰는 규칙은 불러오는 순서에 기대지 않도록 */
+/*    .mob-xxx.mob-yyy 처럼 두 이름을 붙여 쓴다)                    */
+/* ============================================================ */
+
+/* ── 담당자 선택 (components/WorkerSelect) ── */
+.mob-hero h1 {
+  margin: 8px 0 0;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.mob-hero p {
+  margin: 6px 0 4px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #6b6a72;
+}
+.mob-input.mob-select {
+  width: 100%;
+  font-weight: 700;
+}
+
+/* ── 목록 위 담당자 줄 (담당자 이름 + [변경]) ── */
+.mob-worker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b6a72;
+}
+.mob-worker-row b {
+  margin-left: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #17161a;
+}
+
+/* ── 글자만 있는 작은 버튼 · 아이콘 버튼 ── */
+.mob-text-btn,
+.mob-icon-btn {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 6px 4px;
+  white-space: nowrap;
+}
+.mob-icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e4e3ea;
+  border-radius: 10px;
+  background: #fff;
+  color: #17161a;
+  font-size: 17px;
+}
+.mob-text-btn:disabled,
+.mob-icon-btn:disabled { opacity: 0.45; }
+
+/* ── 번호 입력 (크게) + 옆의 카메라 버튼 ── */
+.mob-scanrow {
+  display: flex;
+  gap: 8px;
+}
+.mob-input.mob-code-input {
+  flex: 1;
+  min-width: 0;
+  height: 58px;
+  border: 2px solid #17161a;
+  border-radius: 16px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  outline: none;
+}
+.mob-input.mob-code-input::placeholder {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #a1a0a8;
+}
+.mob-input.mob-code-input:focus { border-color: #2563eb; }
+.mob-cam-btn {
+  flex: none;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 16px;
+  background: #17161a;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mob-cam-btn:disabled { opacity: 0.45; }
+
+/* ── 입력 칸 아래 한 줄 안내 ── */
+.mob-hint {
+  margin-top: -4px;
+  padding: 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #6b6a72;
+}
+
+/* ── 목록 머리 (왼쪽 요약 · 오른쪽 도구) ── */
+.mob-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b6a72;
+}
+.mob-list-sum {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mob-list-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.mob-busy {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #a1a0a8;
+}
+.mob-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: #17161a;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.mob-filter-chip button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* ── 목록 (줄 사이 간격) · 빈 목록 안내 ── */
+.mob-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mob-empty {
+  padding: 36px 12px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #a1a0a8;
+}
+
+/* ── 아래에서 올라오는 창 — 모양은 카메라 실패 창(BarcodeCamera.css 의 .bc-sheet)과 같다 ── */
+.mob-sheet-back {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(23, 22, 26, 0.55);
+  overflow: hidden;
+}
+.mob-sheet {
+  width: 100%;
+  max-width: 480px;
+  /* 화면보다 길어지면 창 안에서 넘긴다 (주소 표시줄이 보일 때 위가 잘리지 않게 부모 높이 기준) */
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: #fff;
+  color: #17161a;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+}
+.mob-sheet h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.mob-sheet-close {
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #6b6a72;
+  cursor: pointer;
+}
+
+/* ── 잠깐 뜨는 안내 (hooks/useToast) — 아래 창(56) · 카메라(60) 보다 위 ── */
+.mob-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(100px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 70;
+  max-width: 90vw;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #17161a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-line;
+  box-shadow: 0 8px 24px rgba(23, 22, 26, 0.25);
+  pointer-events: none;
+  animation: mob-toast-in 0.2s ease-out;
+}
+@keyframes mob-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

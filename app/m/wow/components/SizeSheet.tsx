@@ -29,8 +29,8 @@ const SizeSheet: React.FC<SizeSheetProps> = ({ label, current, busy, onPick, onC
   const { t } = useTranslation();
 
   return (
-    <div className="mwow-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="mwow-sheet" role="dialog" aria-label={t('mobile.wow.size.title')}>
+    <div className="mob-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="mob-sheet" role="dialog" aria-label={t('mobile.wow.size.title')}>
         <h2>{t('mobile.wow.size.title')}</h2>
         <p className="mwow-sheet-info">
           <span><b>{label}</b> · {t('mobile.wow.size.current', { size: current ?? t('mobile.wow.size.none') })}</span>
@@ -50,7 +50,7 @@ const SizeSheet: React.FC<SizeSheetProps> = ({ label, current, busy, onPick, onC
           ))}
         </div>
 
-        <button type="button" className="mwow-sheet-close" onClick={onClose}>{t('mobile.wow.size.close')}</button>
+        <button type="button" className="mob-sheet-close" onClick={onClose}>{t('mobile.wow.size.close')}</button>
       </div>
     </div>
   );

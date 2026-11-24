@@ -1,0 +1,391 @@
+/* ============================================================ */
+/* /m/putaway — 재고 배치 (모바일)                                  */
+/*   공용 모양(머리 · 큰 버튼 · 입력 칸 · 담당자 선택 · 담당자 줄 ·  */
+/*   번호 입력 + 카메라 · 목록 머리 · 빈 목록 · 아래 창 · 안내)은    */
+/*   ../Mobile.css                                                */
+/*   이 파일 : 상품 사진 · 목록의 상품 줄 · 사업자 고르기 창 ·       */
+/*             배치 화면                                           */
+/*   색은 /m/wow 와 같은 무채색 + 실행 버튼의 파랑 하나만 쓴다       */
+/*   (공용 모양을 덮어쓰는 규칙은 불러오는 순서에 기대지 않도록      */
+/*    .mob-xxx.mput-xxx 처럼 두 이름을 붙여 쓴다)                   */
+/* ============================================================ */
+
+/* ============================================================ */
+/* 상품 사진 (components/ProductThumb)                             */
+/* ============================================================ */
+.mput-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #e4e3ea;
+  border-radius: 10px;
+  background: #fff;
+  object-fit: cover;
+}
+.mput-thumb.is-large {
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+}
+.mput-thumb.is-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f0f5;
+  color: #a1a0a8;
+  font-size: 12px;
+}
+
+/* ============================================================ */
+/* 목록 — 입력 칸 옆 [확인] · 상품 줄                              */
+/* ============================================================ */
+.mob-btn.mput-go {
+  flex: none;
+  height: 58px;
+  padding: 0 18px;
+  font-size: 16px;
+}
+.mput-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 14px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mput-row:active { background: #f1f0f5; }
+.mput-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mput-row-no,
+.mput-product-no {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+}
+.mput-row-no .mob-chip,
+.mput-product-no .mob-chip {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+.mput-row-name,
+.mput-row-opt {
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mput-row-name { font-weight: 600; color: #3f3e46; }
+.mput-row-opt { font-weight: 500; color: #6b6a72; }
+
+/* ── 줄 오른쪽 미배치 수량 ── */
+.mput-row-qty {
+  flex: none;
+  min-width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: #f1f0f5;
+}
+.mput-row-qty b {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.mput-row-qty small {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b6a72;
+  white-space: nowrap;
+}
+
+/* ============================================================ */
+/* 사업자 고르기 창 (components/UserChooseSheet)                   */
+/* ============================================================ */
+.mput-choose-text {
+  margin: 6px 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #6b6a72;
+}
+.mput-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.mput-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1.5px solid #17161a;
+  border-radius: 14px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mput-choice:active { background: #f1f0f5; }
+.mput-choice b {
+  flex: none;
+  min-width: 44px;
+  font-size: 22px;
+  font-weight: 900;
+}
+.mput-choice-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mput-choice-name,
+.mput-choice-opt {
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mput-choice-name { font-weight: 600; }
+.mput-choice-opt { color: #6b6a72; }
+.mput-choice-qty {
+  flex: none;
+  font-size: 13px;
+  font-weight: 800;
+  color: #3f3e46;
+  white-space: nowrap;
+}
+
+/* ============================================================ */
+/* 배치 화면 (components/PlaceScreen) — 머리 · 상품 · 미배치        */
+/* ============================================================ */
+.mob-back.mput-head-btn {
+  flex: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #17161a;
+  cursor: pointer;
+}
+.mob-back.mput-head-btn:disabled { opacity: 0.45; }
+
+.mob-card.mput-product {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+.mput-product-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mput-product-no { font-size: 18px; }
+.mput-product-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mput-product-opt {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #3f3e46;
+  word-break: break-word;
+}
+.mput-product-code {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #6b6a72;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 미배치 수량 (이 화면에서 가장 큰 숫자) ── */
+.mput-unplaced {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: #17161a;
+  color: #fff;
+}
+.mput-unplaced span {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.mput-unplaced b {
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ */
+/* 배치 화면 — 추천 위치 · 위치 입력                               */
+/* ============================================================ */
+.mput-none {
+  padding: 2px 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #a1a0a8;
+}
+.mput-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mput-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid #17161a;
+  border-radius: 12px;
+  background: #fff;
+  color: #17161a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 46px;
+  cursor: pointer;
+}
+.mput-chip small {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b6a72;
+}
+.mput-chip:active { background: #f1f0f5; }
+.mput-chip.is-on {
+  background: #17161a;
+  color: #fff;
+}
+.mput-chip.is-on small { color: rgba(255, 255, 255, 0.75); }
+.mput-chip:disabled { opacity: 0.45; }
+
+.mob-input.mput-loc-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+}
+.mob-input.mput-loc-input::placeholder {
+  font-family: inherit;
+  text-transform: none;
+}
+.mob-input.mput-loc-input:disabled { opacity: 0.45; }
+
+/* ============================================================ */
+/* 배치 화면 — 수량 ([−] 숫자 [+])                                 */
+/* ============================================================ */
+.mput-qty-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mput-qty {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.mput-step {
+  flex: none;
+  width: 72px;
+  height: 64px;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 16px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.mput-step:active { background: #f1f0f5; }
+.mput-step:disabled { opacity: 0.35; }
+.mput-qty-input {
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 2px solid #17161a;
+  border-radius: 16px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  font-size: 34px;
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.mput-qty-input:focus { border-color: #2563eb; }
+.mput-qty-input.is-bad { border-color: #b91c1c; color: #b91c1c; }
+.mput-qty-input:disabled { opacity: 0.45; }
+
+/* ============================================================ */
+/* 배치 화면 — 아래 [배치] 버튼 (화면 아래에 붙어 있다)             */
+/* ============================================================ */
+.mput-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  width: 100%;
+  max-width: 560px;
+  align-self: center;
+  box-sizing: border-box;
+  display: flex;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  background: #f4f4f6;
+  border-top: 1px solid #e4e3ea;
+}
+.mput-bottom .mob-btn {
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  padding: 0 12px;
+  font-size: 19px;
+  overflow: hidden;
+  white-space: nowrap;
+}

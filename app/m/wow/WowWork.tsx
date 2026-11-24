@@ -7,15 +7,16 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WowWorkBox } from '../../storage/types';
 import { playErrorSound } from '../../storage/utils/storageFormat';
 import { useWorkers } from '../../shipment-v2/hooks/useWorkers';
-import BarcodeCamera, { type BarcodeCameraLabels } from '../components/BarcodeCamera';
-import { useRememberedWorker } from './hooks/useRememberedWorker';
-import { useToast } from './hooks/useToast';
+import BarcodeCamera from '../components/BarcodeCamera';
+import WorkerSelect from '../components/WorkerSelect';
+import { useCamLabels } from '../hooks/useCamLabels';
+import { useRememberedWorker } from '../hooks/useRememberedWorker';
+import { useToast } from '../hooks/useToast';
+import { playOkSound } from '../utils/sound';
 import { useWowBoxes } from './hooks/useWowBoxes';
 import { isBoxMarked } from './utils/cardState';
 import { workErrorText } from './utils/errorText';
 import { boxLabel, filterOf, matchesFilter, parseOrderCode } from './utils/orderCode';
-import { playOkSound } from './utils/sound';
-import WorkerSelect from './components/WorkerSelect';
 import BoxList from './components/BoxList';
 import DeckScreen from './components/DeckScreen';
 import '../Mobile.css';
@@ -28,7 +29,7 @@ import './WowWork.css';
 //   서버: /api/ft/storage/wow/work (app/api/ft/storage/wow/work/route.ts)
 //
 //   화면은 주소를 바꾸지 않고 상태로 바꾼다.
-//     · 담당자가 없거나 [변경] 을 눌렀으면  → 담당자 선택 (components/WorkerSelect)
+//     · 담당자가 없거나 [변경] 을 눌렀으면  → 담당자 선택 (../components/WorkerSelect — 모바일 공용)
 //     · 연 박스가 있으면                    → 카드       (components/DeckScreen)
 //     · 그 밖에는                           → 목록       (components/BoxList)
 //   이 파일은 화면 전환 · 목록에서 박스 고르기만 맡는다. 카드 화면의 일은 DeckScreen 이 맡는다.
@@ -175,22 +176,7 @@ export default function WowWork() {
   // ============================================================
   // 카메라 문구 — 공용 문구(mobile.cam.*) + 이 화면의 "형식이 아님" 문구
   // ============================================================
-  const camLabels: BarcodeCameraLabels = useMemo(() => ({
-    close: t('mobile.cam.close'),
-    preparing: t('mobile.cam.preparing'),
-    align: t('mobile.cam.align'),
-    photoReading: t('mobile.cam.photoReading'),
-    photoFail: t('mobile.cam.photoFail'),
-    camFailTitle: t('mobile.cam.failTitle'),
-    photoScan: t('mobile.cam.photoScan'),
-    closeManual: t('mobile.cam.closeManual'),
-    permissionDenied: t('mobile.cam.permissionDenied'),
-    noCamera: t('mobile.cam.noCamera'),
-    cannotOpen: t('mobile.cam.cannotOpen'),
-    moduleFail: t('mobile.cam.moduleFail'),
-    continueHint: t('mobile.cam.continueHint'),
-    notMatched: t('mobile.wow.list.camNotMatched'),
-  }), [t]);
+  const camLabels = useCamLabels(t('mobile.wow.list.camNotMatched'));
 
   // ============================================================
   // 화면
@@ -259,7 +245,7 @@ export default function WowWork() {
       />
 
       {/* 잠깐 뜨는 안내 */}
-      {toastText && <div className="mwow-toast" role="status">{toastText}</div>}
+      {toastText && <div className="mob-toast" role="status">{toastText}</div>}
     </>
   );
 }

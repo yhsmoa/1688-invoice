@@ -37,8 +37,8 @@ const MemoSheet: React.FC<MemoSheetProps> = ({ card, busy, onSave, onClose, noti
   };
 
   return (
-    <div className="mwow-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="mwow-sheet" role="dialog" aria-label={title}>
+    <div className="mob-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="mob-sheet" role="dialog" aria-label={title}>
         <h2>{title}</h2>
         <SheetCardInfo card={card} />
 
@@ -59,7 +59,7 @@ const MemoSheet: React.FC<MemoSheetProps> = ({ card, busy, onSave, onClose, noti
             {t('mobile.wow.memoSheet.save')}
           </button>
         </div>
-        <button type="button" className="mwow-sheet-close" onClick={onClose}>{t('mobile.wow.memoSheet.close')}</button>
+        <button type="button" className="mob-sheet-close" onClick={onClose}>{t('mobile.wow.memoSheet.close')}</button>
       </div>
     </div>
   );

@@ -1,37 +1,8 @@
 /* ============================================================ */
-/* 아래에서 올라오는 창 (ShortSheet · MemoSheet · ConfirmSheet · SizeSheet) */
-/*   모양은 카메라 실패 창(BarcodeCamera.css 의 .bc-sheet)과 같다   */
+/* 아래에서 올라오는 창의 내용 (ShortSheet · MemoSheet · ConfirmSheet · SizeSheet) */
+/*   창 바탕 · 창 · 제목 · [닫기] 는 공용 — ../../Mobile.css 의 .mob-sheet-* */
 /*   (공용 모양을 덮어쓰는 규칙은 .mob-xxx 를 창 안으로 좁혀 쓴다)  */
 /* ============================================================ */
-.mwow-sheet-back {
-  position: fixed;
-  inset: 0;
-  z-index: 56;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(23, 22, 26, 0.55);
-  overflow: hidden;
-}
-.mwow-sheet {
-  width: 100%;
-  max-width: 480px;
-  /* 화면보다 길어지면 창 안에서 넘긴다 (주소 표시줄이 보일 때 위가 잘리지 않게 부모 높이 기준) */
-  max-height: calc(100% - 16px);
-  overflow-y: auto;
-  box-sizing: border-box;
-  padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
-  border-radius: 22px 22px 0 0;
-  background: #fff;
-  color: #17161a;
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
-}
-.mwow-sheet h2 {
-  margin: 0 0 4px;
-  font-size: 19px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
 .mwow-sheet-text {
   margin: 6px 0 16px;
   font-size: 15px;
@@ -68,18 +39,6 @@
   height: 56px;
 }
 .mwow-sheet-row.is-confirm .mob-btn.accent { flex: 1.4; }
-.mwow-sheet-close {
-  width: 100%;
-  height: 48px;
-  margin-top: 4px;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  color: #6b6a72;
-  cursor: pointer;
-}
 
 /* ============================================================ */
 /* 부족 숫자판                                                    */

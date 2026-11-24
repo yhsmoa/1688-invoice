@@ -424,7 +424,7 @@
   background: #f3f4f6;
 }
 
-/* 서류 버튼 — 버튼들 오른쪽 끝. 첨부되면 열기 링크(활성), 아직이면 비활성 */
+/* 버튼 묶음 사이 구분선 (단계 버튼 | 서류 버튼 | 발주취소) */
 .wow-doc-sep {
   width: 1px;
   height: 22px;
@@ -432,6 +432,7 @@
   background: #e5e7eb;
 }
 
+/* 서류 버튼 — 첨부되면 활성, 아직이면 비활성(점선) */
 .wow-btn.is-doc {
   border-color: #c7d2fe;
   background: #eef2ff;

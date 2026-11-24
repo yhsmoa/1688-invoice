@@ -56,6 +56,7 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   WOW_BOX_NOT_EMPTY: '상품을 담은 적 없는 미출고 X 박스만 고를 수 있습니다. (합배송 박스 제외)',
   WOW_BOX_NOT_PICKED: '아직 작업완료하지 않은 박스입니다. 새로고침 후 확인하세요.',
   WOW_BOX_SHIPPED: '이미 출고된 박스는 되돌릴 수 없습니다.',
+  WOW_BOX_CANCELLED: '발주취소된 박스입니다. 새로고침 후 확인하세요.',
   WOW_PICK_OVER: '요청 수량보다 많이 담을 수 없습니다.',
   WOW_PICK_EMPTY: '하나도 꺼내지 못한 박스는 작업완료할 수 없습니다.',
   WOW_INVALID_INPUT: '요청이 바뀌었거나 올바르지 않습니다. 새로고침 후 다시 시도하세요.',

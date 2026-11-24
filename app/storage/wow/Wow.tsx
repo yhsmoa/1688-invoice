@@ -31,13 +31,19 @@ import './Wow.css';
 //               정한 박스만 [출고준비완료] → 출고준비
 //     출고준비  마킹번호가 붙는다 → [마킹라벨]            [출고준비 취소] → 합포장. 쉽먼트 V2 출고 대기 목록에 보인다
 //     출고      쉽먼트 V2 에서 출고하면 자동 — 출고 후 WOW_SHIPPED_VISIBLE_DAYS 일 동안 보인다
-//   단계 판정은 utils/wowStage.ts 한 곳 (API 가 줄마다 계산해 준다) · DB: supabase/storage/010_wow_flow.sql
+//   출고 전 탭 어디서나
+//     [라벨출력]  박스 라벨을 다시 뽑는다 (신규가 아닌 탭은 체크한 박스만)
+//     [발주취소]  체크한 박스를 없앤다 — 잡아 둔 재고가 풀리고, 이미 꺼낸 상품은 재고 [작업중] 으로 돌아가 다시 배치한다
+//                 (꺼낸 선반으로 되돌리지 않는다 · supabase/storage/012_wow_cancel.sql). 되돌릴 수 없다
+//   단계 판정은 utils/wowStage.ts 한 곳 (API 가 줄마다 계산해 준다) · DB: supabase/storage/010_wow_flow.sql ~ 012_wow_cancel.sql
 //   박스는 요약 한 줄로 보이고 누르면 상품 표가 펼쳐진다. 체크한 박스가 표 위 버튼의 대상이다 (WowToolbar)
 //     — 체크가 없으면 그 탭의 박스 전부 ([합포장 취소] 만 체크한 박스가 꼭 있어야 한다)
 //   박스 미정: 배정만 되고 박스가 정해지지 않은 줄 — 예약은 되지만 작업할 수 없다 ([신규] 탭 아래)
 // ============================================================
 
 type Message = { kind: 'ok' | 'error'; text: string };
+/** 요청이 성공했을 때 띄울 문구 — 응답 값이 필요하면 함수로 준다 (없으면 띄우지 않는다) */
+type ActionDone = Message | ((json: Record<string, unknown>) => Message) | null;
 
 /** 표 위 버튼이 박스가 없어도 보여야 하는 탭 (다른 단계의 박스를 끌어오는 버튼이 있다) */
 const PULL_STAGES: readonly WowStage[] = ['seq', 'pack'];
@@ -136,10 +142,12 @@ const Wow: React.FC = () => {
   }, [byStage]);
 
   // ── 버튼별 대상 ──
-  //   라벨출력: 체크한 박스. 체크가 없으면 아직 뽑지 않은 박스만 (같은 라벨을 두 번 뽑지 않게)
-  const boxLabelTargets = useMemo(
-    () => (checkedBoxes.length > 0 ? checkedBoxes : stageBoxes.filter((b) => !b.lines[0].label_printed_at)),
-    [checkedBoxes, stageBoxes]);
+  //   라벨출력: 체크한 박스. 신규 탭은 체크가 없으면 아직 뽑지 않은 박스만 (같은 라벨을 두 번 뽑지 않게)
+  //            그 밖의 탭은 다시 뽑는 용도라 체크한 박스만
+  const boxLabelTargets = useMemo(() => {
+    if (checkedBoxes.length > 0) return checkedBoxes;
+    return stage === 'new' ? stageBoxes.filter((b) => !b.lines[0].label_printed_at) : [];
+  }, [checkedBoxes, stageBoxes, stage]);
   const docBoxIds = useMemo<Record<WowDocKind, string[]>>(() => ({
     label: targetBoxes.filter((b) => b.lines[0].label_path).map((b) => b.id),
     manifest: targetBoxes.filter((b) => b.lines[0].manifest_path).map((b) => b.id),
@@ -188,7 +196,7 @@ const Wow: React.FC = () => {
   // 단계를 옮기는 요청 — 성공하면 안내 문구, 실패하면 오류 문구. 어느 쪽이든 최신 상태로 다시 읽는다
   //   (다른 창 · 모바일에서 이미 단계가 바뀌었을 수 있다)
   // ============================================================
-  const runAction = useCallback(async (body: Record<string, unknown>, done: Message | null): Promise<boolean> => {
+  const runAction = useCallback(async (body: Record<string, unknown>, done: ActionDone): Promise<boolean> => {
     if (!worker) { setMessage({ kind: 'error', text: t('storage.needWorker') }); return false; }
     try {
       const res = await fetch('/api/ft/storage/wow', {
@@ -198,7 +206,7 @@ const Wow: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error || t('storage.wow.error'));
-      if (done) setMessage(done);
+      if (done) setMessage(typeof done === 'function' ? done(json) : done);
       reloadAll();
       return true;
     } catch (err) {
@@ -209,7 +217,7 @@ const Wow: React.FC = () => {
   }, [worker, reloadAll, fail, t]);
 
   /** 표 위 버튼 하나를 처리하는 동안 버튼들을 잠근다. 성공하면 체크를 비운다 */
-  const runTool = useCallback(async (tool: WowTool, body: Record<string, unknown>, done: Message | null) => {
+  const runTool = useCallback(async (tool: WowTool, body: Record<string, unknown>, done: ActionDone) => {
     setBusyTool(tool);
     const ok = await runAction(body, done);
     setBusyTool('');
@@ -308,6 +316,22 @@ const Wow: React.FC = () => {
   }, [readyTargets, runTool, movedMessage, t]);
 
   // ============================================================
+  // [발주취소] — 체크한 박스만. 되돌릴 수 없어 한 번 더 묻는다
+  //   응답의 to_putaway = 이미 꺼냈던 수량 → 재고 [작업중] 에서 다시 배치해야 한다고 알려 준다
+  // ============================================================
+  const handleDrop = useCallback(() => {
+    const count = checkedBoxes.length;
+    if (count === 0 || !window.confirm(t('storage.wow.dropConfirm', { count }))) return;
+    runTool('drop', { action: 'drop', wow_box_ids: checkedBoxes.map((b) => b.id) }, (json) => {
+      const back = Number(json.to_putaway) || 0;
+      return {
+        kind: 'ok',
+        text: back > 0 ? t('storage.wow.dropDoneBack', { count, qty: back }) : t('storage.wow.dropDone', { count }),
+      };
+    });
+  }, [checkedBoxes, runTool, t]);
+
+  // ============================================================
   // 파일 받기 — [부착문서] · [동봉문서] (한 PDF) · [택배엑셀] · [마킹라벨]
   // ============================================================
   const download = useCallback(async (tool: WowTool, url: string, body: unknown, filename: string) => {
@@ -379,6 +403,7 @@ const Wow: React.FC = () => {
             packClear: packClearTargets.length,
             ready: readyTargets.length,
             marking: markingCodes.length,
+            drop: checkedBoxes.length,
             docs: { label: docBoxIds.label.length, manifest: docBoxIds.manifest.length },
           }}
           busy={busyTool}
@@ -394,6 +419,7 @@ const Wow: React.FC = () => {
           onReady={handleReady}
           onMarking={handleMarking}
           onDocs={handleDownloadDocs}
+          onDrop={handleDrop}
         />
       )}
       {stageBoxes.length > 0 && (

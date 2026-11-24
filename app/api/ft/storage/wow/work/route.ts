@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 // /api/ft/storage/wow/work — 와우출고 모바일 작업 (/m/wow · supabase/storage/010_wow_flow.sql)
 //
 //   GET            : 작업할 박스 목록 (아직 담지 않은 박스 = 신규 · 작업중) — 진행(카드 수 · 찾은 수)과 함께
+//                    발주취소된 박스(cancelled_at · 012_wow_cancel.sql)는 빠진다. 열려 있던 박스가 취소되면 WOW_BOX_CANCELLED
 //   GET ?box_id=   : 그 박스의 카드 (상품 × 선반) = 저장된 선반 배정 (ft_wow_finds · 011_wow_alloc.sql).
 //                    화면에서 다시 계산하지 않는다 — app/storage/utils/wowWork.ts 는 상품 정보 · 선반 코드만 붙인다
 //   POST { action, box_id, operator_name, … }
@@ -41,21 +42,22 @@ interface BoxRow {
   work_started_at: string | null;
   work_started_by: string | null;
   picked_at: string | null;
+  cancelled_at: string | null;
 }
 
 const BOX_SELECT =
-  'id, user_id, order_number, box_no, center, arrival_date, box_size, packed_box_size, work_started_at, work_started_by, picked_at';
+  'id, user_id, order_number, box_no, center, arrival_date, box_size, packed_box_size, work_started_at, work_started_by, picked_at, cancelled_at';
 
 interface ItemRow { id: string; wow_box_id: string; product_id: string; qty: number }
 interface FindRow extends WorkFind { wow_box_id: string }
 interface BalanceRow { product_id: string; location_id: string; qty: number; first_putaway_at: string | null }
 
-// ── 아직 담지 않은 박스 (boxId 가 있으면 그 박스만 — 담았어도 준다. 부르는 쪽이 거른다) ──
+// ── 아직 담지 않은 박스 — 발주취소된 박스는 뺀다 (boxId 가 있으면 그 박스만 — 담았거나 취소됐어도 준다. 부르는 쪽이 거른다) ──
 async function loadBoxes(boxId: string | null): Promise<BoxRow[]> {
   const all: BoxRow[] = [];
   for (let from = 0; ; from += PAGE) {
     let q = supabase.from('ft_wow_boxes').select(BOX_SELECT);
-    q = boxId ? q.eq('id', boxId) : q.is('picked_at', null);
+    q = boxId ? q.eq('id', boxId) : q.is('picked_at', null).is('cancelled_at', null);
     const { data, error } = await q.order('id', { ascending: true }).range(from, from + PAGE - 1);
     if (error) throw error;
     all.push(...((data ?? []) as BoxRow[]));
@@ -147,6 +149,9 @@ export async function GET(request: NextRequest) {
     if (boxId) {
       const box = boxes[0];
       if (!box) return fail(toStorageError('WOW_BOX_NOT_FOUND').message, 404);
+      if (box.cancelled_at) {
+        return NextResponse.json({ success: false, code: 'WOW_BOX_CANCELLED', error: toStorageError('WOW_BOX_CANCELLED').message }, { status: 409 });
+      }
       if (box.picked_at) {
         return NextResponse.json({ success: false, code: 'WOW_BOX_ALREADY_PICKED', error: toStorageError('WOW_BOX_ALREADY_PICKED').message }, { status: 409 });
       }

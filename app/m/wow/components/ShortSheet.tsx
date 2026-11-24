@@ -56,8 +56,8 @@ const ShortSheet: React.FC<ShortSheetProps> = ({ card, onConfirm, onClose, notif
     key === 'clear' ? t('mobile.wow.shortSheet.clear') : key === 'back' ? '⌫' : key;
 
   return (
-    <div className="mwow-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="mwow-sheet" role="dialog" aria-label={t('mobile.wow.shortSheet.title')}>
+    <div className="mob-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="mob-sheet" role="dialog" aria-label={t('mobile.wow.shortSheet.title')}>
         <h2>{t('mobile.wow.shortSheet.title')}</h2>
         <SheetCardInfo card={card} />
 

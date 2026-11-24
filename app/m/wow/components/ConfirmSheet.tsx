@@ -18,8 +18,8 @@ interface ConfirmSheetProps {
 }
 
 const ConfirmSheet: React.FC<ConfirmSheetProps> = ({ title, text, yesLabel, noLabel, onYes, onNo }) => (
-  <div className="mwow-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onNo(); }}>
-    <div className="mwow-sheet" role="alertdialog" aria-label={title}>
+  <div className="mob-sheet-back" onClick={(e) => { if (e.target === e.currentTarget) onNo(); }}>
+    <div className="mob-sheet" role="alertdialog" aria-label={title}>
       <h2>{title}</h2>
       <p className="mwow-sheet-text">{text}</p>
       <div className="mwow-sheet-row is-confirm">

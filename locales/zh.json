@@ -47,7 +47,8 @@
     "v1Menu": "V1",
     "orderStats": "订单统计",
     "orderCancel": "订单取消",
-    "wowWork": "WOW出库作业"
+    "wowWork": "WOW出库作业",
+    "putawayWork": "库存上架"
   },
   "orderSearch": {
     "title": "订单查询",
@@ -1661,7 +1662,13 @@
       "unattachConfirm": "取消 {{box}} 的贴完并恢复为指定顺序吗？",
       "packPending": "未定装袋",
       "packDone": "已决定 {{count}} 箱的合并装袋。",
-      "packClearDone": "已解除 {{count}} 箱的合并装袋。"
+      "packClearDone": "已解除 {{count}} 箱的合并装袋。",
+      "boxLabelAgainHint": "重新打印勾选箱子的箱子标签（采购单号-箱号）。",
+      "drop": "取消采购单",
+      "dropHint": "取消勾选箱子的采购单。已预留的库存会被释放，已取出的商品会回到库存[待上架]，需要重新上架。",
+      "dropConfirm": "取消 {{count}} 箱的采购单吗？\n已预留的库存会被释放，已取出的商品会回到库存[待上架]。（需要重新上架）\n此操作无法撤销。",
+      "dropDone": "已取消 {{count}} 箱的采购单。",
+      "dropDoneBack": "已取消 {{count}} 箱的采购单。请在库存[待上架]中把已取出的 {{qty}} 件商品重新上架。"
     }
   },
   "sellerInquiry": {
@@ -1909,6 +1916,40 @@
         "none": "无尺寸",
         "close": "关闭",
         "changed": "尺寸 {{prev}} → {{size}} · 请重新打印箱标"
+      }
+    },
+    "putawayDesc": "拍订单号标签 → 输入库位 · 数量 → 上架",
+    "putaway": {
+      "list": {
+        "scan": "扫描订单号标签",
+        "inputPlaceholder": "输入订单号或搜索商品",
+        "inputLabel": "订单号或搜索词",
+        "go": "确认",
+        "hint": "扫描标签，或输入订单号后点[确认] · 也可以直接点下方列表中的商品",
+        "summary": "待上架 {{products}}种 · {{qty}}个",
+        "filtered": "搜索结果 {{count}}种",
+        "noMatch": "没有与“{{text}}”匹配的商品。",
+        "needInput": "请扫描或输入订单号。",
+        "notFound": "待上架列表中没有该订单号：{{code}}\n（已上架，或尚未入库）",
+        "camHint": "请对准订单号标签条码",
+        "camNotMatched": "读取值：{{value}} — 不是订单号标签。"
+      },
+      "choose": {
+        "title": "是哪个客户的商品？",
+        "desc": "多个客户都有订单号 {{code}}。请选择标签上的客户。"
+      },
+      "place": {
+        "locationPlaceholder": "扫描或输入库位标签",
+        "camera": "用相机拍库位标签",
+        "camHint": "请对准库位标签条码",
+        "camNotMatched": "读取值：{{value}} — 这是该商品的标签，请拍库位标签。",
+        "all": "全部 {{qty}}个",
+        "minus": "减少数量",
+        "plus": "增加数量",
+        "submit": "在 {{location}} 上架 {{qty}}个",
+        "needLocation": "请扫描或输入库位。",
+        "doneAll": "已在 {{location}} 上架 {{qty}}个 — 请扫描下一个标签。",
+        "unsure": "网络中断，无法确认是否已保存。\n请点[刷新]确认未上架数量后再操作。"
       }
     }
   }
