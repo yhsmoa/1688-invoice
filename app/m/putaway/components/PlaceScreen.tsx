@@ -240,14 +240,7 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
       <main className="mob-body">
         {/* 상품 */}
         <section className="mob-card mput-product">
-          {/* 사진 왼쪽 위 모서리의 동그라미 = 미배치 수량 */}
-          <span className="mput-thumb-wrap">
-            <ProductThumb url={head.img_url} large />
-            <span className="mput-unplaced-badge" aria-label={`${t('storage.col.unplaced')} ${max}`}>
-              <small aria-hidden="true">{t('storage.col.unplaced')}</small>
-              <b aria-hidden="true">{max}</b>
-            </span>
-          </span>
+          <ProductThumb url={head.img_url} large />
           <div className="mput-product-text">
             <div className="mput-product-no">
               {head.product_no ?? '-'}
@@ -258,6 +251,11 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
             {optionCn && <div className="mput-product-opt">{optionCn}</div>}
             {head.barcode && <div className="mput-product-code">{head.barcode}</div>}
           </div>
+          {/* 카드 오른쪽 아래 동그라미 = 미배치 수량 */}
+          <span className="mput-unplaced-badge" aria-label={`${t('storage.col.unplaced')} ${max}`}>
+            <small aria-hidden="true">{t('storage.col.unplaced')}</small>
+            <b aria-hidden="true">{max}</b>
+          </span>
         </section>
 
         {/* 추천 위치 — 있을 때만 */}

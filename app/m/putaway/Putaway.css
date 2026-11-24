@@ -202,7 +202,7 @@
 }
 
 /* ============================================================ */
-/* 배치 화면 — 머리 · 상품 (사진 모서리 동그라미 = 미배치)          */
+/* 배치 화면 — 머리 · 상품 (카드 오른쪽 아래 동그라미 = 미배치)    */
 /* ============================================================ */
 .mob-back.mput-head-btn {
   flex: none;
@@ -215,6 +215,7 @@
 .mob-back.mput-head-btn:disabled { opacity: 0.45; }
 
 .mob-card.mput-product {
+  position: relative;
   flex-direction: row;
   align-items: flex-start;
   gap: 12px;
@@ -242,16 +243,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 미배치 수량 — 사진 왼쪽 위 모서리에 걸친 동그라미 (수가 길면 옆으로 늘어난다) ── */
-.mput-thumb-wrap {
-  position: relative;
-  flex: none;
-  display: flex;
-}
+/* ── 미배치 수량 — 카드 오른쪽 아래 동그라미 (수가 길면 왼쪽으로 늘어난다) ── */
+/*    글의 마지막 줄은 동그라미 자리만큼 비워 겹치지 않게 한다 */
+.mput-product-text > :last-child { padding-right: 60px; }
 .mput-unplaced-badge {
   position: absolute;
-  top: -10px;
-  left: -10px;
+  right: 10px;
+  bottom: 10px;
   min-width: 52px;
   height: 52px;
   padding: 0 8px;
