@@ -249,13 +249,15 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
             </div>
             {optionKo && <div className="mput-product-opt">{optionKo}</div>}
             {optionCn && <div className="mput-product-opt">{optionCn}</div>}
-            {head.barcode && <div className="mput-product-code">{head.barcode}</div>}
+            {/* 맨 아래 줄 — 바코드 · 오른쪽 끝 동그라미 = 미배치 수량 (글자 위에 겹치지 않게 줄 안에 둔다) */}
+            <div className="mput-product-foot">
+              {head.barcode && <span className="mput-product-code">{head.barcode}</span>}
+              <span className="mput-unplaced-badge" aria-label={`${t('storage.col.unplaced')} ${max}`}>
+                <small aria-hidden="true">{t('storage.col.unplaced')}</small>
+                <b aria-hidden="true">{max}</b>
+              </span>
+            </div>
           </div>
-          {/* 카드 오른쪽 아래 동그라미 = 미배치 수량 */}
-          <span className="mput-unplaced-badge" aria-label={`${t('storage.col.unplaced')} ${max}`}>
-            <small aria-hidden="true">{t('storage.col.unplaced')}</small>
-            <b aria-hidden="true">{max}</b>
-          </span>
         </section>
 
         {/* 추천 위치 — 있을 때만 */}

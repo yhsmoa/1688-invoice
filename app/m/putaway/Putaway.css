@@ -202,7 +202,7 @@
 }
 
 /* ============================================================ */
-/* 배치 화면 — 머리 · 상품 (카드 오른쪽 아래 동그라미 = 미배치)    */
+/* 배치 화면 — 머리 · 상품 (맨 아래 줄 오른쪽 동그라미 = 미배치)   */
 /* ============================================================ */
 .mob-back.mput-head-btn {
   flex: none;
@@ -215,13 +215,13 @@
 .mob-back.mput-head-btn:disabled { opacity: 0.45; }
 
 .mob-card.mput-product {
-  position: relative;
   flex-direction: row;
   align-items: flex-start;
   gap: 12px;
 }
 .mput-product-text {
   flex: 1;
+  align-self: stretch;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -243,13 +243,24 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 미배치 수량 — 카드 오른쪽 아래 동그라미 (수가 길면 왼쪽으로 늘어난다) ── */
-/*    글의 마지막 줄은 동그라미 자리만큼 비워 겹치지 않게 한다 */
-.mput-product-text > :last-child { padding-right: 60px; }
+/* ── 맨 아래 줄 : 바코드(왼쪽) · 미배치 동그라미(오른쪽 끝) ── */
+.mput-product-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mput-product-foot .mput-product-code {
+  min-width: 0;
+  padding-bottom: 4px;
+  word-break: break-all;
+}
+
+/* ── 미배치 수량 동그라미 (수가 길면 옆으로 늘어난다) ── */
 .mput-unplaced-badge {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
+  flex: none;
+  margin-left: auto;
   min-width: 52px;
   height: 52px;
   padding: 0 8px;
@@ -258,11 +269,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 3px solid #fff;
   border-radius: 999px;
   background: #17161a;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(23, 22, 26, 0.25);
 }
 .mput-unplaced-badge small {
   font-size: 9px;
