@@ -11,6 +11,8 @@ import type { WowStage } from '../types';
 //   오른쪽 — 단계마다 다르다. 대상 = 체크한 박스 (없으면 그 탭의 박스 전부 — 버튼 안의 숫자가 대상 수)
 //     출고 전 탭 [라벨출력]                박스 라벨(발주번호-박스번호).
 //               신규 탭은 체크가 없으면 아직 안 뽑은 박스만, 그 밖의 탭은 체크한 박스만 (다시 뽑는 용도)
+//     서류준비  [바로 출고준비]            이미 마킹번호가 있는 박스(옛 방식으로 담은 박스)만 — 순서지정 · 합포장 없이 출고준비로.
+//               그런 박스가 이 탭에 있을 때만 보인다
 //     순서지정  [초기화] [순서지정] [택배엑셀] [부착완료]   순서지정은 서류준비 박스를 스캔하는 창을 연다
 //               부착완료 = 서류 · 운송장을 다 붙였다 → 합포장 탭으로 넘어간다 (순서 번호는 그대로)
 //     합포장    [합포장] [합포장 취소] [출고준비완료]  합포장은 이 탭에서 아직 정하지 않은 박스를 고르는 창을 연다
@@ -22,7 +24,7 @@ import type { WowStage } from '../types';
 
 export type WowDocKind = 'label' | 'manifest';
 /** 처리 중인 버튼 (한 번에 하나만 — 나머지 버튼도 잠근다) */
-export type WowTool = WowDocKind | 'boxLabel' | 'seq' | 'seqClear' | 'courier' | 'attach' | 'pack' | 'packClear' | 'ready' | 'marking' | 'drop';
+export type WowTool = WowDocKind | 'boxLabel' | 'readyDirect' | 'seq' | 'seqClear' | 'courier' | 'attach' | 'pack' | 'packClear' | 'ready' | 'marking' | 'drop';
 
 export const WOW_DOC_KINDS: readonly WowDocKind[] = ['label', 'manifest'];
 
@@ -35,6 +37,8 @@ interface WowToolbarProps {
   /** 버튼별 대상 박스 수 (0 이면 그 버튼은 잠긴다) */
   counts: {
     boxLabel: number;
+    /** [바로 출고준비] 대상 (이미 마킹번호가 있는 박스). null = 이 탭에 그런 박스가 없다 → 버튼을 보이지 않는다 */
+    readyDirect: number | null;
     /** [순서지정] 창에서 찍을 수 있는 박스 (서류준비 + 순서지정) */
     seqCandidates: number;
     /** [합포장] 창에서 고를 수 있는 박스 (합포장 탭에서 아직 정하지 않은 박스) */
@@ -51,6 +55,7 @@ interface WowToolbarProps {
   onToggleAll: () => void;
   onToggleExpandAll: () => void;
   onBoxLabel: () => void;
+  onReadyDirect: () => void;
   onSeqOpen: () => void;
   onSeqClear: () => void;
   onCourier: () => void;
@@ -65,7 +70,7 @@ interface WowToolbarProps {
 
 const WowToolbar: React.FC<WowToolbarProps> = ({
   stage, total, checkedCount, allExpanded, counts, busy,
-  onToggleAll, onToggleExpandAll, onBoxLabel, onSeqOpen, onSeqClear, onCourier, onAttach, onPackOpen, onPackClear, onReady, onMarking, onDocs, onDrop,
+  onToggleAll, onToggleExpandAll, onBoxLabel, onReadyDirect, onSeqOpen, onSeqClear, onCourier, onAttach, onPackOpen, onPackClear, onReady, onMarking, onDocs, onDrop,
 }) => {
   const { t } = useTranslation();
   const allRef = useRef<HTMLInputElement>(null);
@@ -107,6 +112,9 @@ const WowToolbar: React.FC<WowToolbarProps> = ({
         {beforeShip && button('boxLabel', t('storage.wow.boxLabel'), counts.boxLabel, onBoxLabel,
           { primary: stage === 'new', hint: t(stage === 'new' ? 'storage.wow.boxLabelHint' : 'storage.wow.boxLabelAgainHint') })}
 
+        {stage === 'docs' && counts.readyDirect !== null && button('readyDirect', t('storage.wow.readyDirect'), counts.readyDirect, onReadyDirect,
+          { primary: true, hint: t('storage.wow.readyDirectHint') })}
+
         {stage === 'seq' && (
           <>
             {button('seqClear', t('storage.wow.seqClear'), targetCount, onSeqClear, { hint: t('storage.wow.seqClearHint') })}
@@ -129,7 +137,7 @@ const WowToolbar: React.FC<WowToolbarProps> = ({
 
         {stage !== 'new' && (
           <>
-            {(stage === 'seq' || stage === 'pack' || stage === 'ready') && <span className="wow-doc-sep" aria-hidden="true" />}
+            {(stage === 'docs' || stage === 'seq' || stage === 'pack' || stage === 'ready') && <span className="wow-doc-sep" aria-hidden="true" />}
             {WOW_DOC_KINDS.map((kind) => (
               <button key={kind} type="button" className="wow-btn is-doc" onClick={() => onDocs(kind)}
                 disabled={locked || counts.docs[kind] === 0}

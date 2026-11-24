@@ -25,6 +25,7 @@ import './Wow.css';
 //     작업중    모바일(/m/wow)에서 박스 라벨을 찍음      카드마다 찾음 · 부족     [작업 취소] → 신규
 //     작업완료  모바일 [작업완료] (재고에서 빠짐)                                [작업완료 취소] → 작업중
 //     서류준비  작업완료 + 부착문서 · 동봉문서 도착       (로켓이 올리면 자동)
+//               [바로 출고준비] 이미 마킹번호가 있는 박스(옛 방식으로 담은 박스)는 순서지정 · 합포장 없이 출고준비로 보낸다
 //     순서지정  [순서지정] 박스 라벨을 실을 순서대로 스캔  그 순서로 [부착문서] [동봉문서] [택배엑셀]   [초기화] → 서류준비
 //               번호는 합포장 · 출고준비에 있는 박스 다음부터 이어진다 (1 ~ 4 가 있으면 5 부터)   [부착완료] → 합포장
 //     합포장    [합포장] 마대에 담기 · 그대로 출고 정하기  [합포장 취소] 정한 것을 푼다   [부착완료 취소] → 순서지정
@@ -152,6 +153,9 @@ const Wow: React.FC = () => {
     label: targetBoxes.filter((b) => b.lines[0].label_path).map((b) => b.id),
     manifest: targetBoxes.filter((b) => b.lines[0].manifest_path).map((b) => b.id),
   }), [targetBoxes]);
+  //   바로 출고준비: 이미 마킹번호가 있는 박스만 (옛 방식으로 담은 박스 — 마킹번호를 새로 받을 필요가 없다)
+  const hasCartonBoxes = useMemo(() => stageBoxes.some((b) => b.lines[0].box_info_id), [stageBoxes]);
+  const readyDirectTargets = useMemo(() => targetBoxes.filter((b) => b.lines[0].box_info_id), [targetBoxes]);
   //   마킹라벨: 마킹 상자 하나에 한 장 (마대는 박스가 여럿이어도 한 장)
   const markingCodes = useMemo(
     () => Array.from(new Set(targetBoxes.map((b) => b.lines[0].box_code).filter((c): c is string => !!c))).sort(),
@@ -310,6 +314,12 @@ const Wow: React.FC = () => {
       { kind: 'ok', text: t('storage.wow.packClearDone', { count: packClearTargets.length }) });
   }, [packClearTargets, runTool, t]);
 
+  // [바로 출고준비] — 서류준비 탭. 마킹번호는 지금 번호 그대로 쓴다. 되돌리기는 출고준비 탭의 [출고준비 취소] (서류준비로 돌아온다)
+  const handleReadyDirect = useCallback(() => {
+    if (!window.confirm(t('storage.wow.readyDirectConfirm', { count: readyDirectTargets.length }))) return;
+    runTool('readyDirect', { action: 'ready_direct', wow_box_ids: readyDirectTargets.map((b) => b.id) }, movedMessage(readyDirectTargets, 'ready'));
+  }, [readyDirectTargets, runTool, movedMessage, t]);
+
   const handleReady = useCallback(() => {
     if (!window.confirm(t('storage.wow.readyConfirm', { count: readyTargets.length }))) return;
     runTool('ready', { action: 'ready', wow_box_ids: readyTargets.map((b) => b.id) }, movedMessage(readyTargets, 'ready'));
@@ -398,6 +408,7 @@ const Wow: React.FC = () => {
           allExpanded={allExpanded}
           counts={{
             boxLabel: boxLabelTargets.length,
+            readyDirect: hasCartonBoxes ? readyDirectTargets.length : null,
             seqCandidates: seqCandidates.length,
             packCandidates: packCandidates.length,
             packClear: packClearTargets.length,
@@ -410,6 +421,7 @@ const Wow: React.FC = () => {
           onToggleAll={handleToggleAll}
           onToggleExpandAll={handleToggleExpandAll}
           onBoxLabel={handleBoxLabel}
+          onReadyDirect={handleReadyDirect}
           onSeqOpen={() => setModal('seq')}
           onSeqClear={handleSeqClear}
           onCourier={handleDownloadCourier}

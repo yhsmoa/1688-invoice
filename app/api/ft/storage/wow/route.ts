@@ -31,6 +31,9 @@ export const dynamic = 'force-dynamic';
 //       pack_clear : [합포장 취소]     정한 것을 푼다          rpc ft_wow_pack_clear (합포장 단계에 남는다)
 //       ready      : [출고준비완료]    합포장 → 출고준비       rpc ft_wow_ready_pack (마킹번호를 붙인다)
 //       unready    : [출고준비 취소]   출고준비 → 합포장       rpc ft_wow_ready_set(false) (출고 전에만. 마킹번호는 그대로)
+//       ready_direct : [바로 출고준비] 서류준비 → 출고준비     rpc ft_wow_ready_set(true)
+//                    이미 마킹번호가 있는 박스(옛 방식으로 담은 박스)만 — 순서지정 · 합포장을 거치지 않는다.
+//                    마킹번호가 없는 박스가 섞이면 전부 거절 (WOW_DOCS_NOT_READY)
 //       drop       : [발주취소]       출고 전 어느 단계든      rpc ft_wow_cancel (012_wow_cancel.sql) → { count, to_putaway }
 //                    잡아 둔 선반이 풀리고, 이미 꺼낸 수량(to_putaway)은 재고 [작업중] 의 배치 대기로 돌아간다
 //     작업(신규 → 작업중 → 작업완료)은 모바일 화면이 한다: /api/ft/storage/wow/work
@@ -259,7 +262,7 @@ export async function GET(request: NextRequest) {
 // POST — 단계 옮기기
 // ============================================================
 
-const BULK_ACTIONS = ['label_printed', 'seq', 'seq_clear', 'attach', 'attach_clear', 'pack', 'pack_clear', 'ready', 'unready', 'drop'] as const;
+const BULK_ACTIONS = ['label_printed', 'seq', 'seq_clear', 'attach', 'attach_clear', 'pack', 'pack_clear', 'ready', 'ready_direct', 'unready', 'drop'] as const;
 type BulkAction = (typeof BULK_ACTIONS)[number];
 const isBulk = (action: unknown): action is BulkAction => BULK_ACTIONS.includes(action as BulkAction);
 
@@ -307,6 +310,7 @@ export async function POST(request: NextRequest) {
       }
       else if (action === 'pack_clear') rpc = supabase.rpc('ft_wow_pack_clear', args);
       else if (action === 'ready') rpc = supabase.rpc('ft_wow_ready_pack', args);
+      else if (action === 'ready_direct') rpc = supabase.rpc('ft_wow_ready_set', { ...args, p_ready: true });
       else if (action === 'drop') rpc = supabase.rpc('ft_wow_cancel', args);
       else rpc = supabase.rpc('ft_wow_ready_set', { ...args, p_ready: false });
     } else if (action === 'cancel' || action === 'unpack') {

@@ -62,7 +62,7 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   WOW_INVALID_INPUT: '요청이 바뀌었거나 올바르지 않습니다. 새로고침 후 다시 시도하세요.',
   WOW_WORK_ALREADY_STARTED: '이미 작업중인 박스입니다. 새로고침 후 확인하세요.',
   WOW_WORK_NOT_STARTED: '작업중인 박스가 아닙니다. 새로고침 후 확인하세요.',
-  WOW_DOCS_NOT_READY: '부착문서 · 동봉문서가 모두 도착한 박스만 출고준비할 수 있습니다. 새로고침 후 확인하세요.',
+  WOW_DOCS_NOT_READY: '마킹번호가 있고 부착문서 · 동봉문서가 모두 도착한 박스만 바로 출고준비할 수 있습니다. 새로고침 후 확인하세요.',
   WOW_READY_ALREADY: '이미 출고준비된 박스가 있습니다. 새로고침 후 확인하세요.',
   WOW_NOT_READY: '출고준비 단계가 아닌 박스가 있습니다. 새로고침 후 확인하세요.',
   WOW_BOX_READY: '출고준비된 박스입니다. [출고준비 취소] 후 작업완료를 취소해 주세요.',
