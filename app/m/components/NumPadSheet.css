@@ -1,0 +1,91 @@
+/* ============================================================ */
+/* 숫자패드 (components/NumPadSheet) — 수량 입력                    */
+/*   창 모양은 ../Mobile.css 의 .mob-sheet-back · .mob-sheet        */
+/*   색은 /m 화면과 같은 무채색 + 확인 버튼의 파랑                   */
+/* ============================================================ */
+.mob-sheet.np-sheet {
+  max-width: 420px;
+}
+
+/* ── 제목 · 최대 ── */
+.np-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.np-head h2 { margin: 0; }
+.np-max {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b6a72;
+}
+
+/* ── 입력 값 ── */
+.np-display {
+  height: 64px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border: 2px solid #17161a;
+  border-radius: 16px;
+  font-size: 34px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #17161a;
+}
+/* 열자마자 보이는 지금 값 — 다음 숫자에 지워진다는 것을 옅게 알린다 */
+.np-display.is-fresh { color: #6b6a72; }
+.np-display.is-over {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+.np-over {
+  margin: 6px 2px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+/* ============================================================ */
+/* 키 (3 × 4)                                                    */
+/* ============================================================ */
+.np-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.np-key {
+  height: 60px;
+  border: 1.5px solid #e4e3ea;
+  border-radius: 14px;
+  background: #fff;
+  color: #17161a;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.np-key:active { background: #f1f0f5; }
+.np-key.is-fn {
+  background: #f4f4f6;
+  color: #6b6a72;
+  font-size: 22px;
+}
+
+/* ── [취소] [확인] ── */
+.np-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.np-btns .mob-btn {
+  flex: 1;
+  min-width: 0;
+}

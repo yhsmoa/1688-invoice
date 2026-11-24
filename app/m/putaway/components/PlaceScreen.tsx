@@ -9,13 +9,18 @@ import type { PendingProduct, ScanRequest } from '../types';
 import { isOwnLabel } from '../utils/pendingProducts';
 import { postPutaway } from '../utils/putawayApi';
 import ProductThumb from './ProductThumb';
+import NumPadSheet from '../../components/NumPadSheet';
 
 // ============================================================
 // PlaceScreen — 배치 화면 (상품 하나를 위치에 넣는다)
 //   PC 의 배치 창(app/storage/components/PutawayModal.tsx)과 같은 일을 한다
 //
-//   상품 · 미배치 수량 → 추천 위치(누르면 위치 칸에 들어간다) → 위치(카메라 · 직접 입력)
-//   → 수량(처음 값 = 미배치 전부, 1 ~ 미배치) → 아래 [배치]
+//   상품(+ 미배치 수량 동그라미) → 추천 위치(있을 때만, 누르면 위치 칸에 들어간다)
+//   → 위치(카메라 · 직접 입력) → 수량(처음 값 = 미배치 전부, 1 ~ 미배치) → 아래 [배치]
+//
+//   · 폰 화면이 작아 상품명은 빼고 번호 · 옵션 · 바코드만 보여 준다
+//   · 수량은 폰 키보드 대신 숫자패드 창(NumPadSheet)으로 입력한다
+//   · 화면 높이에 맞춘 틀 — 가운데만 넘기고 [배치] 는 늘 맨 아래 (Putaway.css 배치 화면 틀)
 //
 //   · 위치는 처음 쓰는 값이어도 서버가 새 위치로 등록한다 (PC 와 같다). 그래서 카메라로 읽은 값은
 //     위치 칸에 넣기만 하고, 저장은 작업자가 [배치] 버튼의 위치 · 수량을 보고 누른다
@@ -55,7 +60,8 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
   const { suggestions, reload: reloadSuggest } = useLocationSuggest(product.user_id, product.product_id);
 
   const [location, setLocation] = useState('');
-  const [qtyText, setQtyText] = useState(String(max));
+  const [qty, setQty] = useState(max);
+  const [numPadOpen, setNumPadOpen] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
   const lockRef = useRef(false);
   const mountedRef = useRef(false);
@@ -66,12 +72,11 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
   }, []);
 
   // ── 미배치가 바뀌면(배치 후 · 새로고침) 수량의 처음 값을 다시 맞춘다 ──
-  useEffect(() => { setQtyText(String(max)); }, [max]);
+  useEffect(() => { setQty(max); }, [max]);
 
   /** 서버가 위치를 대문자 · 앞뒤 공백 없이 등록하므로 화면도 같은 값으로 보여 준다 */
   const locationCode = location.trim().toUpperCase();
-  const qty = Number(qtyText);
-  const qtyValid = qtyText !== '' && Number.isInteger(qty) && qty >= 1 && qty <= max;
+  const qtyValid = Number.isInteger(qty) && qty >= 1 && qty <= max;
 
   const isHere = useCallback(
     (list: PendingProduct[]) => list.some((p) => p.product_id === product.product_id),
@@ -194,11 +199,8 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
     });
   }, [onScan, product, t]);
 
-  // ── [−] [+] — 1 ~ 미배치 사이에서만 움직인다 (잘못 적힌 값이면 가까운 끝에서 시작) ──
-  const stepQty = (delta: number) => {
-    const base = qtyValid ? qty : (delta > 0 ? 0 : max + 1);
-    setQtyText(String(Math.min(max, Math.max(1, base + delta))));
-  };
+  // ── [−] [+] — 1 ~ 미배치 사이에서만 움직인다 ──
+  const stepQty = (delta: number) => setQty((q) => Math.min(max, Math.max(1, q + delta)));
 
   // ============================================================
   // 화면
@@ -214,7 +216,7 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
     : t('storage.pending.place');
 
   return (
-    <div className="mob-page">
+    <div className="mob-page mput-place">
       {/* 머리 */}
       <header className="mob-head">
         <button type="button" className="mob-back mput-head-btn" disabled={saving} onClick={() => onExit()}>
@@ -238,35 +240,33 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
       <main className="mob-body">
         {/* 상품 */}
         <section className="mob-card mput-product">
-          <ProductThumb url={head.img_url} large />
+          {/* 사진 왼쪽 위 모서리의 동그라미 = 미배치 수량 */}
+          <span className="mput-thumb-wrap">
+            <ProductThumb url={head.img_url} large />
+            <span className="mput-unplaced-badge" aria-label={`${t('storage.col.unplaced')} ${max}`}>
+              <small aria-hidden="true">{t('storage.col.unplaced')}</small>
+              <b aria-hidden="true">{max}</b>
+            </span>
+          </span>
           <div className="mput-product-text">
             <div className="mput-product-no">
               {head.product_no ?? '-'}
               {userCode && <span className="mob-chip">{userCode}</span>}
               {isSet && <span className="mob-chip">SET {head.set_total}</span>}
             </div>
-            <div className="mput-product-name">{head.item_name ?? '-'}</div>
             {optionKo && <div className="mput-product-opt">{optionKo}</div>}
             {optionCn && <div className="mput-product-opt">{optionCn}</div>}
             {head.barcode && <div className="mput-product-code">{head.barcode}</div>}
           </div>
         </section>
 
-        {/* 미배치 */}
-        <div className="mput-unplaced">
-          <span>{t('storage.col.unplaced')}</span>
-          <b>{max}</b>
-        </div>
-
-        {/* 추천 위치 */}
-        <div className="mob-field">
-          <span>
-            {t('storage.putaway.suggest')}
-            {suggestReason && ` · ${t(`storage.putaway.reason.${suggestReason}`)}`}
-          </span>
-          {suggestions.length === 0 ? (
-            <div className="mput-none">{t('storage.putaway.noSuggest')}</div>
-          ) : (
+        {/* 추천 위치 — 있을 때만 */}
+        {suggestions.length > 0 && (
+          <div className="mob-field">
+            <span>
+              {t('storage.putaway.suggest')}
+              {suggestReason && ` · ${t(`storage.putaway.reason.${suggestReason}`)}`}
+            </span>
             <div className="mput-chips">
               {suggestions.map((s) => (
                 <button
@@ -281,8 +281,8 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 위치 */}
         <div className="mob-field">
@@ -317,7 +317,7 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
         <div className="mob-field">
           <span className="mput-qty-head">
             {t('storage.putaway.qty')}
-            <button type="button" className="mob-text-btn" disabled={saving} onClick={() => setQtyText(String(max))}>
+            <button type="button" className="mob-text-btn" disabled={saving} onClick={() => setQty(max)}>
               {t('mobile.putaway.place.all', { qty: max })}
             </button>
           </span>
@@ -331,20 +331,16 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
             >
               −
             </button>
-            <input
+            {/* 누르면 숫자패드 — 폰 키보드는 띄우지 않는다 */}
+            <button
+              type="button"
               className={`mput-qty-input${qtyValid ? '' : ' is-bad'}`}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              enterKeyHint="done"
-              value={qtyText}
               disabled={saving}
               aria-label={t('storage.putaway.qty')}
-              onChange={(e) => setQtyText(e.target.value.replace(/\D/g, ''))}
-              onFocus={(e) => e.target.select()}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-            />
+              onClick={() => setNumPadOpen(true)}
+            >
+              {qty}
+            </button>
             <button
               type="button"
               className="mput-step"
@@ -364,6 +360,16 @@ const PlaceScreen: React.FC<PlaceScreenProps> = ({
           {submitLabel}
         </button>
       </div>
+
+      {/* 수량 숫자패드 */}
+      {numPadOpen && (
+        <NumPadSheet
+          value={qty}
+          max={max}
+          onConfirm={(n) => { setQty(n); setNumPadOpen(false); }}
+          onClose={() => setNumPadOpen(false)}
+        />
+      )}
     </div>
   );
 };
