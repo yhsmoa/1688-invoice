@@ -18,6 +18,7 @@ import { getLocalPrinter } from '../../lib/localPrinterMap';
 
 import {
   SAMPLE_LABEL_DATA,
+  sampleLabelDataOf,
   createElement,
   textLinesHeightMm,
   accountFieldsToLabelData,
@@ -59,6 +60,26 @@ const MIN_SCALE = 3;
 const MAX_SCALE = 20;
 const TOAST_MS = 2600;
 
+/** 새 템플릿의 용지 — 종류별 기본 크기 · 용지 종류 · 해상도 */
+const NEW_TEMPLATE_PAPER: Record<LabelType, Pick<LabelTemplate, 'width_mm' | 'height_mm' | 'media' | 'dpi'>> = {
+  barcode: { width_mm: 40, height_mm: 30, media: 'gap', dpi: 203 },
+  // 케어라벨은 보통 틈 없는 리본 → 연속 용지. 틈 설정으로 나가면 프린터가 멈춘다
+  care: { width_mm: 30, height_mm: 40, media: 'continuous', dpi: 300 },
+  // 박스 라벨은 상품 스티커와 같은 용지(50×70 스티커 — 실제 인쇄 높이 67.5)
+  box: { width_mm: 50, height_mm: 67.5, media: 'gap', dpi: 203 },
+};
+
+/** 새 박스 라벨의 기본 배치 — 센터 · 입고예정일 / 발주번호-박스번호 / 바코드 / 순번 · 크기 / 종수 · 수량 */
+const newBoxLayout = (): LabelTemplate['layout'] => [
+  { ...createElement('text'), x_mm: 3, y_mm: 3, field: 'po_center', size_pt: 16, bold: true, max_w_mm: 28, h_mm: 8, v_align: 'middle' },
+  { ...createElement('text'), x_mm: 32, y_mm: 3, field: undefined, text: '({po_arrival_mmdd})', size_pt: 11, bold: true, align: 'right', max_w_mm: 15, h_mm: 8, v_align: 'middle' },
+  { ...createElement('text'), x_mm: 2, y_mm: 13, field: 'bx_order_box', size_pt: 20, bold: true, align: 'center', max_w_mm: 46, h_mm: 10, v_align: 'middle' },
+  { ...createElement('barcode'), x_mm: 2, y_mm: 25, field: 'bx_order_box', h_mm: 18, narrow: 2, wide: 2, human_readable: false, align: 'center', max_w_mm: 46 },
+  { ...createElement('text'), x_mm: 3, y_mm: 46, field: 'bx_seq', size_pt: 18, bold: true, max_w_mm: 22, h_mm: 9, v_align: 'middle' },
+  { ...createElement('text'), x_mm: 25, y_mm: 46, field: 'bx_size', size_pt: 18, bold: true, align: 'right', max_w_mm: 22, h_mm: 9, v_align: 'middle' },
+  { ...createElement('text'), x_mm: 2, y_mm: 58, field: undefined, text: '{bx_item_count}종 · {bx_qty}개', size_pt: 10, align: 'center', max_w_mm: 46, h_mm: 6, v_align: 'middle' },
+];
+
 /** 새 템플릿 기본값 — 종류별로 실무에서 바로 쓸 만한 배치를 넣어 둔다 (name 은 현재 언어로) */
 const newTemplate = (labelType: LabelType, name: string): LabelTemplate => ({
   id: '',
@@ -69,14 +90,12 @@ const newTemplate = (labelType: LabelType, name: string): LabelTemplate => ({
   audiences: ['adult'],
   label_type: labelType,
   printer_lang: 'TSPL2',
-  width_mm: labelType === 'care' ? 30 : 40,
-  height_mm: labelType === 'care' ? 40 : 30,
+  ...NEW_TEMPLATE_PAPER[labelType],
   gap_mm: 2,
-  // 케어라벨은 보통 틈 없는 리본 → 연속 용지. 틈 설정으로 나가면 프린터가 멈춘다
-  media: labelType === 'care' ? 'continuous' : 'gap',
-  dpi: labelType === 'care' ? 300 : 203,
   layout:
-    labelType === 'care'
+    labelType === 'box'
+      ? newBoxLayout()
+      : labelType === 'care'
       ? [
           // 케어라벨 — 긴 한글(상품명·소재)은 자동 줄바꿈으로 여러 줄 표기
           {
@@ -163,6 +182,17 @@ const LabelSettings: React.FC = () => {
   //    지정된 사업자 배열이 실제로 바뀔 때만 갱신 — 요소를 옮기는 등 다른 편집으로
   //    draft 가 바뀔 때마다 사용자가 손으로 고친 계정 필드값을 덮어쓰지 않기 위해
   //    "내용"(userIdsKey) 을 의존성으로 쓴다 (배열 참조가 아니라).
+  // ── 미리보기 값의 종류 — 박스 라벨을 열면 박스 샘플, 상품 라벨을 열면 상품 샘플 (계정 정보는 그대로 둔다)
+  //    상품 라벨끼리(바코드 ↔ 케어) 옮길 때는 대입해 둔 주문 값을 지우지 않는다
+  const sampleKind: LabelType | null = draft ? (draft.label_type === 'box' ? 'box' : 'barcode') : null;
+  useEffect(() => {
+    if (!sampleKind) return;
+    setSampleData((prev) => ({
+      ...sampleLabelDataOf(sampleKind),
+      ...Object.fromEntries(Object.entries(prev).filter(([key]) => key.startsWith('acc_'))),
+    }));
+  }, [sampleKind]);
+
   const assignedUserIds = draft?.user_ids;
   const userIdsKey = assignedUserIds && assignedUserIds.length > 0 ? assignedUserIds.join(',') : '';
   useEffect(() => {

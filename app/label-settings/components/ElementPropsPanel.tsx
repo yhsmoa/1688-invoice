@@ -3,8 +3,8 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PRODUCT_FIELDS,
   ACCOUNT_FIELDS,
+  dataFieldsOf,
   LABEL_FONTS,
   DEFAULT_FONT,
   DEFAULT_LINE_GAP,
@@ -119,6 +119,9 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
   const P = (key: string, params?: Record<string, unknown>) => t(`labelSettings.props.${key}`, params);
   const fieldName = (key: string, fallback: string) =>
     t(`labelSettings.fields.${key}`, { defaultValue: fallback });
+  // 바인딩할 수 있는 데이터 필드 — 박스 라벨은 박스 값, 그 밖은 상품 값 (계정 정보는 공통)
+  const dataFields = dataFieldsOf(template.label_type);
+  const dataGroupKey = template.label_type === 'box' ? 'groupBox' : 'groupProduct';
 
   const textRef = useRef<HTMLTextAreaElement>(null);
   const patch = (p: ElementPatch, key?: string) => onPatch(el.id, p, { key });
@@ -215,8 +218,8 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                 value={el.field ?? ''}
                 onChange={(e) => patch({ field: e.target.value })}
               >
-                <optgroup label={P('groupProduct')}>
-                  {PRODUCT_FIELDS.map((f) => (
+                <optgroup label={P(dataGroupKey)}>
+                  {dataFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {fieldName(f.key, f.label)}
                     </option>
@@ -254,8 +257,8 @@ const ElementPropsPanel: React.FC<Props> = ({ el, template, data, warning, onPat
                   }}
                 >
                   <option value="">{P('pickField')}</option>
-                  <optgroup label={P('groupProduct')}>
-                    {PRODUCT_FIELDS.map((f) => (
+                  <optgroup label={P(dataGroupKey)}>
+                    {dataFields.map((f) => (
                       <option key={f.key} value={f.key}>
                         {fieldName(f.key, f.label)} — {`{${f.key}}`}
                       </option>

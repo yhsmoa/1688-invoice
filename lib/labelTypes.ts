@@ -9,7 +9,12 @@
 //    기존에 저장된 템플릿이 그대로 열리도록 유지한다.
 // ============================================================
 
-export type LabelType = 'care' | 'barcode';
+/**
+ * 라벨 종류
+ *   barcode : 상품 라벨 스티커 (상품입고)      care : 케어라벨 (상품입고)
+ *   box     : 박스 라벨 (와우출고 [라벨출력] — 발주번호-박스번호). 상품이 아니라 박스 하나의 값을 찍는다 (BOX_FIELDS)
+ */
+export type LabelType = 'care' | 'barcode' | 'box';
 
 /**
  * 라벨 대상 — 상품의 권장연령 유무로 갈린다.
@@ -425,6 +430,32 @@ export const ACCOUNT_FIELDS: { key: string; label: string }[] = [
   { key: 'acc_address', label: '주소' },
 ];
 
+/**
+ * 편집기 필드 드롭다운 — 박스 라벨(label_type = 'box')에 찍는 값.
+ * 와우출고 박스 하나의 값이다 (app/storage/utils/printWowBoxLabels.ts 의 toBoxLabelData 가 채운다).
+ * 이름은 로켓(immongRK_scan) 박스 라벨의 필드와 같다 — po_ = 발주서, bx_ = 박스.
+ *   · bx_order_box 는 바코드에 넣는 값이다: 모바일 작업(/m/wow) · [순서지정] 이 이 값을 찍는다
+ */
+export const BOX_FIELDS: { key: string; label: string }[] = [
+  { key: 'bx_order_box', label: '발주번호-박스번호 (바코드 값)' },
+  { key: 'bx_order_box_date', label: '발주번호-박스번호 (입고예정 MMDD)' },
+  { key: 'po_order_number', label: '발주번호' },
+  { key: 'bx_no', label: '박스번호' },
+  { key: 'bx_seq', label: '박스 순번 (n/총)' },
+  { key: 'po_box_count', label: '발주서 총 박스 수' },
+  { key: 'bx_size', label: '박스 크기' },
+  { key: 'po_center', label: '물류센터' },
+  { key: 'po_arrival_date', label: '입고예정일 (YYYY-MM-DD)' },
+  { key: 'po_arrival_mmdd', label: '입고예정일 (MMDD)' },
+  { key: 'bx_qty', label: '박스 수량 합계' },
+  { key: 'bx_item_count', label: '박스 상품 종수' },
+];
+
+/** 그 종류의 라벨에 찍는 "데이터" 필드 — 상품 라벨은 상품 필드, 박스 라벨은 박스 필드 (계정 정보는 공통) */
+export function dataFieldsOf(labelType: LabelType): { key: string; label: string }[] {
+  return labelType === 'box' ? BOX_FIELDS : PRODUCT_FIELDS;
+}
+
 /** 바인딩 드롭다운에 그룹으로 같이 보여줄 전체 필드 (상품 + 계정) */
 export const ALL_BINDABLE_FIELDS = [
   { group: '상품 데이터', fields: PRODUCT_FIELDS },
@@ -512,6 +543,36 @@ export const SAMPLE_LABEL_DATA: LabelData = {
   acc_address: '서울시 강남구 테헤란로 1',
 };
 
+/** 미리보기/테스트출력용 샘플 값 — 박스 라벨 (박스 값 + 계정 정보) */
+export const SAMPLE_BOX_LABEL_DATA: LabelData = {
+  bx_order_box: '148124410-2',
+  bx_order_box_date: '148124410-2 (1127)',
+  po_order_number: '148124410',
+  bx_no: 2,
+  bx_seq: '2/5',
+  po_box_count: 5,
+  bx_size: '극소',
+  po_center: '대구3',
+  po_arrival_date: '2026-11-27',
+  po_arrival_mmdd: '1127',
+  bx_qty: 12,
+  bx_item_count: 3,
+  acc_vender_name: SAMPLE_LABEL_DATA.acc_vender_name,
+  acc_full_name: SAMPLE_LABEL_DATA.acc_full_name,
+  acc_username: SAMPLE_LABEL_DATA.acc_username,
+  acc_brand: SAMPLE_LABEL_DATA.acc_brand,
+  acc_user_code: SAMPLE_LABEL_DATA.acc_user_code,
+  acc_master_account: SAMPLE_LABEL_DATA.acc_master_account,
+  acc_phone: SAMPLE_LABEL_DATA.acc_phone,
+  acc_email: SAMPLE_LABEL_DATA.acc_email,
+  acc_address: SAMPLE_LABEL_DATA.acc_address,
+};
+
+/** 그 종류의 라벨 미리보기에 쓰는 기본 샘플 값 */
+export function sampleLabelDataOf(labelType: LabelType): LabelData {
+  return labelType === 'box' ? SAMPLE_BOX_LABEL_DATA : SAMPLE_LABEL_DATA;
+}
+
 // ============================================================
 // 글꼴
 //
@@ -573,6 +634,7 @@ export function elementCaption(el: LabelElement): string {
     if (el.field) {
       return (
         PRODUCT_FIELDS.find((f) => f.key === el.field)?.label ??
+        BOX_FIELDS.find((f) => f.key === el.field)?.label ??
         ACCOUNT_FIELDS.find((f) => f.key === el.field)?.label ??
         el.field
       );

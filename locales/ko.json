@@ -896,7 +896,8 @@
     },
     "newName": {
       "barcode": "새 바코드 라벨",
-      "care": "새 케어라벨"
+      "care": "새 케어라벨",
+      "box": "새 박스 라벨"
     },
     "empty": {
       "pickTemplate": "왼쪽에서 템플릿을 선택하거나 새로 만드세요.",
@@ -922,11 +923,13 @@
     },
     "types": {
       "barcode": "바코드 감열지",
-      "care": "케어라벨"
+      "care": "케어라벨",
+      "box": "박스 라벨"
     },
     "typeShort": {
       "barcode": "바코드",
-      "care": "케어"
+      "care": "케어",
+      "box": "박스"
     },
     "list": {
       "allTypes": "전체 종류",
@@ -939,7 +942,8 @@
       "default": "기본",
       "noDescription": "설명 없음",
       "assignedUser": "지정 사용자",
-      "nUsers": "{{n}}명 전용"
+      "nUsers": "{{n}}명 전용",
+      "newBox": "+ 박스 라벨"
     },
     "info": {
       "name": "템플릿 이름",
@@ -1007,7 +1011,8 @@
       "reset": "기본값",
       "hint": "긴 상품명을 넣어 보고 영역 크기를 잡으세요. 테스트 출력도 이 값으로 나갑니다.",
       "accountTitle": "계정 정보 (미리보기용)",
-      "accountHint": "이 템플릿에 특정 사업자가 지정돼 있으면 그 사업자의 실제 값으로 자동 채워집니다. 공용 템플릿이거나 다른 값으로 테스트하고 싶으면 여기서 직접 고치세요. 실제 인쇄는 항상 그 자리에서 선택된 사업자의 진짜 값을 씁니다."
+      "accountHint": "이 템플릿에 특정 사업자가 지정돼 있으면 그 사업자의 실제 값으로 자동 채워집니다. 공용 템플릿이거나 다른 값으로 테스트하고 싶으면 여기서 직접 고치세요. 실제 인쇄는 항상 그 자리에서 선택된 사업자의 진짜 값을 씁니다.",
+      "boxHint": "박스 라벨은 박스 하나의 값을 찍습니다 (와우출고 [라벨출력]). 값을 고쳐 보며 영역 크기를 잡으세요. 테스트 출력도 이 값으로 나갑니다."
     },
     "fields": {
       "brand": "브랜드",
@@ -1060,7 +1065,19 @@
       "acc_master_account": "마스터 계정 (묶음 그룹)",
       "acc_phone": "전화번호",
       "acc_email": "이메일",
-      "acc_address": "주소"
+      "acc_address": "주소",
+      "bx_order_box": "발주번호-박스번호 (바코드 값)",
+      "bx_order_box_date": "발주번호-박스번호 (입고예정 MMDD)",
+      "po_order_number": "발주번호",
+      "bx_no": "박스번호",
+      "bx_seq": "박스 순번 (n/총)",
+      "po_box_count": "발주서 총 박스 수",
+      "bx_size": "박스 크기",
+      "po_center": "물류센터",
+      "po_arrival_date": "입고예정일 (YYYY-MM-DD)",
+      "po_arrival_mmdd": "입고예정일 (MMDD)",
+      "bx_qty": "박스 수량 합계",
+      "bx_item_count": "박스 상품 종수"
     },
     "printer": {
       "title": "프린터 (이 PC 전용)",
@@ -1214,7 +1231,8 @@
       "boxTitle": "박스",
       "lineTitle": "선",
       "thickness": "선 두께 (mm)",
-      "filled": "안쪽 채우기"
+      "filled": "안쪽 채우기",
+      "groupBox": "박스 데이터"
     },
     "symbologyHint": {
       "128": "영문/숫자/기호 전부 가능",
@@ -1590,9 +1608,8 @@
       "courierHint": "택배 접수 엑셀을 지금 보이는 순서대로 받습니다. (체크한 박스가 없으면 이 탭의 박스 전부)",
       "courierFile": "로켓와우",
       "boxLabel": "라벨출력",
-      "boxLabelHint": "박스 라벨(발주번호-박스번호)을 인쇄합니다. 체크한 박스가 없으면 아직 뽑지 않은 박스만 인쇄합니다.",
-      "boxLabelSummary": "상품 {{kinds}}종 · {{qty}}개",
-      "boxLabelDone": "박스 라벨 {{count}}장을 인쇄 창으로 보냈습니다.",
+      "boxLabelHint": "박스 라벨(발주번호-박스번호)을 [라벨 설정]의 '박스 라벨' 템플릿으로 바로 인쇄합니다. 체크한 박스가 없으면 아직 뽑지 않은 박스만 인쇄합니다.",
+      "boxLabelDone": "박스 라벨 {{count}}장을 인쇄했습니다.",
       "labelPrinted": "라벨 출력됨",
       "seqSet": "순서지정",
       "seqSetHint": "서류준비 박스의 라벨을 실을 순서대로 찍습니다. 번호는 합포장 · 출고준비에 있는 박스 다음부터 이어집니다.",

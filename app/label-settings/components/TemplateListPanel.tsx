@@ -19,7 +19,7 @@ import { userLabel, type FtUser } from '../hooks/useLabelSettingsData';
 // ============================================================
 
 /** 라벨 종류 키 — 이름은 t(`labelSettings.types.${key}`) */
-export const LABEL_TYPE_KEYS: LabelType[] = ['barcode', 'care'];
+export const LABEL_TYPE_KEYS: LabelType[] = ['barcode', 'care', 'box'];
 
 /** 대상 표기 "성인·키즈" 를 현재 언어로 */
 export function useAudiencesLabel() {
@@ -105,6 +105,9 @@ const TemplateListPanel: React.FC<Props> = ({
         </button>
         <button className="ls-btn-sm" onClick={() => onCreate('care')}>
           {t('labelSettings.list.newCare')}
+        </button>
+        <button className="ls-btn-sm" onClick={() => onCreate('box')}>
+          {t('labelSettings.list.newBox')}
         </button>
       </div>
 

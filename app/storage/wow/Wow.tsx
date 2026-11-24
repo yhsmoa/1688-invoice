@@ -12,7 +12,7 @@ import WowTable, { type WowBox } from '../components/WowTable';
 import WowToolbar, { type WowDocKind, type WowTool } from '../components/WowToolbar';
 import type { WowLine, WowStage } from '../types';
 import { playErrorSound } from '../utils/storageFormat';
-import { printWowBoxLabels, type WowBoxLabel } from '../utils/wowBoxLabel';
+import { printWowBoxLabels } from '../utils/printWowBoxLabels';
 import { WOW_STAGES } from '../utils/wowStage';
 import './Wow.css';
 
@@ -20,7 +20,8 @@ import './Wow.css';
 // [와우출고] — 로켓 발주서의 위해 창고 박스(발주번호-박스번호)에 담을 상품 · 수량
 //
 //   단계 탭 [신규] › [작업중] › [작업완료] › [서류준비] › [순서지정] › [합포장] › [출고준비] › [출고]
-//     신규      로켓 발주서가 도착                      [라벨출력] 박스 라벨(발주번호-박스번호 · 50×70)
+//     신규      로켓 발주서가 도착                      [라벨출력] 박스 라벨(발주번호-박스번호)
+//               — [라벨 설정] 의 '박스 라벨' 템플릿을 QZ Tray 로 바로 인쇄 (상품입고의 라벨 출력과 같은 방식)
 //     작업중    모바일(/m/wow)에서 박스 라벨을 찍음      카드마다 찾음 · 부족     [작업 취소] → 신규
 //     작업완료  모바일 [작업완료] (재고에서 빠짐)                                [작업완료 취소] → 작업중
 //     서류준비  작업완료 + 부착문서 · 동봉문서 도착       (로켓이 올리면 자동)
@@ -42,13 +43,6 @@ type Message = { kind: 'ok' | 'error'; text: string };
 const PULL_STAGES: readonly WowStage[] = ['seq', 'pack'];
 
 const boxLabel = (box: WowBox) => `${box.lines[0].order_number}-${box.lines[0].box_no}`;
-
-/** 입고예정일 'YYYY-MM-DD' → '11/26' */
-const shortDate = (ymd: string | null) => {
-  if (!ymd) return '';
-  const [, m, d] = ymd.split('-');
-  return `${Number(m)}/${Number(d)}`;
-};
 
 /** 파일 이름용 시각 'YYYYMMDDHHmm' (이 PC 시각) */
 const fileStamp = () => {
@@ -252,32 +246,24 @@ const Wow: React.FC = () => {
   }, [runBox, t]);
 
   // ============================================================
-  // [라벨출력] — 박스 라벨(발주번호-박스번호 · 50×70mm)을 인쇄하고 뽑은 시각을 남긴다
+  // [라벨출력] — 박스 라벨(발주번호-박스번호)을 QZ Tray 로 인쇄하고 뽑은 시각을 남긴다
+  //   양식 · 프린터는 [라벨 설정] 의 '박스 라벨' 템플릿이 정한다 (utils/printWowBoxLabels.ts)
+  //   인쇄하지 못하면(템플릿 없음 · 프린터 미지정 · QZ Tray 미실행) 뽑은 시각을 남기지 않는다
   // ============================================================
   const handleBoxLabel = useCallback(async () => {
     if (!worker) { setMessage({ kind: 'error', text: t('storage.needWorker') }); return; }
-    const labels: WowBoxLabel[] = boxLabelTargets.map((b) => {
-      const head = b.lines[0];
-      const qty = b.lines.reduce((s, l) => s + l.qty, 0);
-      const kinds = new Set(b.lines.map((l) => l.product_id)).size;
-      return {
-        code: boxLabel(b),
-        center: head.center ?? '',
-        arrival: shortDate(head.arrival_date),
-        seq: head.order_box_total ? `${head.box_no} / ${head.order_box_total}` : String(head.box_no),
-        size: head.box_size ?? '',
-        summary: t('storage.wow.boxLabelSummary', { kinds, qty }),
-      };
-    });
+    setBusyTool('boxLabel');
+    let printed = 0;
     try {
-      printWowBoxLabels(labels);
+      printed = await printWowBoxLabels(boxLabelTargets, ftUsers);
     } catch (err) {
       fail(err, '와우출고 박스 라벨 오류:');
+      setBusyTool('');
       return;
     }
     await runTool('boxLabel', { action: 'label_printed', wow_box_ids: boxLabelTargets.map((b) => b.id) },
-      { kind: 'ok', text: t('storage.wow.boxLabelDone', { count: labels.length }) });
-  }, [worker, boxLabelTargets, runTool, fail, t]);
+      { kind: 'ok', text: t('storage.wow.boxLabelDone', { count: printed }) });
+  }, [worker, boxLabelTargets, ftUsers, runTool, fail, t]);
 
   // ============================================================
   // [순서지정] · [초기화] · [합포장] · [합포장 취소] · [출고준비완료]

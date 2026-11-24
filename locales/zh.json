@@ -891,7 +891,8 @@
     },
     "newName": {
       "barcode": "新条码标签",
-      "care": "新洗唛"
+      "care": "新洗唛",
+      "box": "新箱子标签"
     },
     "empty": {
       "pickTemplate": "请在左侧选择模板或新建。",
@@ -917,11 +918,13 @@
     },
     "types": {
       "barcode": "条码热敏标签",
-      "care": "洗唛"
+      "care": "洗唛",
+      "box": "箱子标签"
     },
     "typeShort": {
       "barcode": "条码",
-      "care": "洗唛"
+      "care": "洗唛",
+      "box": "箱子"
     },
     "list": {
       "allTypes": "全部类型",
@@ -934,7 +937,8 @@
       "default": "默认",
       "noDescription": "无说明",
       "assignedUser": "指定用户",
-      "nUsers": "{{n}} 位专用"
+      "nUsers": "{{n}} 位专用",
+      "newBox": "+ 箱子标签"
     },
     "info": {
       "name": "模板名称",
@@ -1002,7 +1006,8 @@
       "reset": "默认值",
       "hint": "试着填入较长的商品名来确定区域大小。测试打印也使用这些值。",
       "accountTitle": "账户信息（预览用）",
-      "accountHint": "如果模板指定了商家，会自动填入该商家的真实值。公用模板或想用其他值测试时，在这里直接修改。实际打印始终使用当时所选商家的真实值。"
+      "accountHint": "如果模板指定了商家，会自动填入该商家的真实值。公用模板或想用其他值测试时，在这里直接修改。实际打印始终使用当时所选商家的真实值。",
+      "boxHint": "箱子标签打印的是一个箱子的数据（WOW出库的[打印标签]）。可以修改数值来调整区域大小，测试打印也使用这些数值。"
     },
     "fields": {
       "brand": "品牌",
@@ -1055,7 +1060,19 @@
       "acc_master_account": "主账户（分组）",
       "acc_phone": "电话",
       "acc_email": "邮箱",
-      "acc_address": "地址"
+      "acc_address": "地址",
+      "bx_order_box": "采购单号-箱号（条码值）",
+      "bx_order_box_date": "采购单号-箱号（预计入库 MMDD）",
+      "po_order_number": "采购单号",
+      "bx_no": "箱号",
+      "bx_seq": "箱子序号（n/总数）",
+      "po_box_count": "采购单总箱数",
+      "bx_size": "箱子尺寸",
+      "po_center": "物流中心",
+      "po_arrival_date": "预计入库日（YYYY-MM-DD）",
+      "po_arrival_mmdd": "预计入库日（MMDD）",
+      "bx_qty": "箱内数量合计",
+      "bx_item_count": "箱内商品种数"
     },
     "printer": {
       "title": "打印机（仅本机）",
@@ -1209,7 +1226,8 @@
       "boxTitle": "方框",
       "lineTitle": "线",
       "thickness": "线宽 (mm)",
-      "filled": "内部填充"
+      "filled": "内部填充",
+      "groupBox": "箱子数据"
     },
     "symbologyHint": {
       "128": "字母/数字/符号都可以",
@@ -1585,9 +1603,8 @@
       "courierHint": "按当前显示顺序下载快递揽收 Excel。（未勾选时为本页全部箱子）",
       "courierFile": "로켓와우",
       "boxLabel": "打印标签",
-      "boxLabelHint": "打印箱子标签（采购单号-箱号）。未勾选时只打印还没打印过的箱子。",
-      "boxLabelSummary": "商品 {{kinds}} 种 · {{qty}} 件",
-      "boxLabelDone": "已把 {{count}} 张箱子标签发送到打印窗口。",
+      "boxLabelHint": "用[标签设置]里的“箱子标签”模板直接打印箱子标签（采购单号-箱号）。未勾选时只打印还没打印过的箱子。",
+      "boxLabelDone": "已打印 {{count}} 张箱子标签。",
       "labelPrinted": "标签已打印",
       "seqSet": "指定顺序",
       "seqSetHint": "按装车顺序扫描文件准备箱子的标签。编号接在合并装袋 · 出库准备中的箱子之后。",

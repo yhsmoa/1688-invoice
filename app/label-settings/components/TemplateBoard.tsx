@@ -8,6 +8,7 @@ import type { FtUser } from '../hooks/useLabelSettingsData';
 import TemplateListPanel from './TemplateListPanel';
 import TemplateInfoPanel from './TemplateInfoPanel';
 import SampleDataPanel from './SampleDataPanel';
+import BoxSampleDataPanel from './BoxSampleDataPanel';
 import LocalPrinterPanel from './LocalPrinterPanel';
 
 // ============================================================
@@ -120,7 +121,12 @@ const TemplateBoard: React.FC<Props> = ({
 
         {tab === 'sample' &&
           (draft ? (
-            <SampleDataPanel data={sampleData} onChange={onSampleDataChange} />
+            // 박스 라벨은 주문이 아니라 박스 값을 찍는다 → 주문 검색 없는 전용 입력
+            draft.label_type === 'box' ? (
+              <BoxSampleDataPanel data={sampleData} onChange={onSampleDataChange} />
+            ) : (
+              <SampleDataPanel data={sampleData} onChange={onSampleDataChange} />
+            )
           ) : (
             <div className="ls-empty">{t('labelSettings.board.needPickSample')}</div>
           ))}
