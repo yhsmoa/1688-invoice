@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { SHIPMENT_WORK_MESSAGE } from '../../../../lib/shipmentWork';
 import type { StorageProductInfo } from '../../../storage/types';
 
 // ============================================================
@@ -57,6 +58,8 @@ const STORAGE_ERROR_MESSAGE: Record<string, string> = {
   WOW_BOX_NOT_PICKED: '아직 작업완료하지 않은 박스입니다. 새로고침 후 확인하세요.',
   WOW_BOX_SHIPPED: '이미 출고된 박스는 되돌릴 수 없습니다.',
   WOW_BOX_CANCELLED: '발주취소된 박스입니다. 새로고침 후 확인하세요.',
+  // ── 쉽먼트 작업 중 (supabase/shipment/004_shipment_work.sql) — 재고 [쉽먼트] · 와우출고 출고준비 / 취소 / 발주취소 ──
+  SHIPMENT_WORK_LOCKED: SHIPMENT_WORK_MESSAGE.SHIPMENT_WORK_LOCKED,
   WOW_PICK_OVER: '요청 수량보다 많이 담을 수 없습니다.',
   WOW_PICK_EMPTY: '하나도 꺼내지 못한 박스는 작업완료할 수 없습니다.',
   WOW_INVALID_INPUT: '요청이 바뀌었거나 올바르지 않습니다. 새로고침 후 다시 시도하세요.',

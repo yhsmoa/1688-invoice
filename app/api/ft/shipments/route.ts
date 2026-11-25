@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { fetchIn } from '../storage/storageShared';
+import { requireShipmentWork, toShipmentWorkError } from '../../../../lib/shipmentWork';
 import { wowShippable } from '../../../storage/utils/wowStage';
 
 // ============================================================
@@ -47,7 +48,9 @@ export async function GET(request: NextRequest) {
 // 출고 처리: ft_shipments 생성 → ft_box_info.shipment_id 업데이트
 //          → ft_fulfillments.shipment_no + shipment_id + shipment=true 업데이트
 //          → 출고된 포장 행의 미처리 이동요청(ft_move_requests) CANCELLED(note='shipped')
+//          → 쉽먼트 작업 끝내기 (ft_shipment_works · SHIPPED) — 그 사업자의 박스에 다시 담을 수 있다
 //   와우출고 박스(supabase/storage/005_wow.sql)는 [서류준비] 단계부터, 박스 통째로만, 일반 박스와 다른 출고번호로 (409)
+//   쉽먼트 작업 중([작업시작] 을 누른 상태)일 때만 출고할 수 있다 (409 · supabase/shipment/004_shipment_work.sql)
 //
 // Body: {
 //   user_id: string,
@@ -55,12 +58,15 @@ export async function GET(request: NextRequest) {
 //   date: string,               // yyyy-mm-dd
 //   fulfillment_ids: string[],  // 체크된 ft_fulfillments.id 목록
 //   box_codes: string[],        // 체크된 행의 고유 box_code 목록
+//   operator_name?: string,     // 처리 담당자 (작업을 끝낸 사람으로 남는다)
 // }
+// Response: { success, shipment_id, shipment_no, updated_fulfillments, updated_boxes, work_ended }
+//   work_ended=false 는 출고는 됐지만 쉽먼트 작업을 끝내지 못한 것 — 화면이 [작업취소] 로 풀라고 알린다
 // ============================================================
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, shipment_no, date, fulfillment_ids, box_codes } = body;
+    const { user_id, shipment_no, date, fulfillment_ids, box_codes, operator_name } = body;
 
     if (!user_id || !shipment_no) {
       return NextResponse.json(
@@ -74,6 +80,11 @@ export async function POST(request: NextRequest) {
         { success: false, error: '출고할 항목이 없습니다.' },
         { status: 400 }
       );
+    }
+
+    const workError = await requireShipmentWork(user_id);
+    if (workError) {
+      return NextResponse.json({ success: false, error: workError }, { status: 409 });
     }
 
     const wowError = await checkWowSelection(fulfillment_ids);
@@ -155,12 +166,25 @@ export async function POST(request: NextRequest) {
       if (reqErr) console.error('ft_move_requests 출고 정리 오류:', reqErr);
     }
 
+    // ── 5단계: 쉽먼트 작업 끝내기 — 그 사업자의 박스에 다시 담을 수 있다 ──
+    //   출고 자체는 이미 끝났으므로 실패해도 되돌리지 않는다. 화면이 work_ended=false 를 보고 [작업취소] 로 풀게 안내한다.
+    //   (그 사이 다른 창에서 이미 끝낸 경우는 끝난 것으로 본다)
+    const { error: workErr } = await supabase.rpc('ft_shipment_work_end', {
+      p_user_id: user_id,
+      p_kind: 'SHIPPED',
+      p_operator_name: typeof operator_name === 'string' ? operator_name : null,
+      p_shipment_id: shipmentId,
+    });
+    const workEnded = !workErr || toShipmentWorkError(workErr.message)?.code === 'SHIPMENT_WORK_NOT_STARTED';
+    if (!workEnded) console.error('쉽먼트 작업 끝내기 오류:', workErr);
+
     return NextResponse.json({
       success: true,
       shipment_id: shipmentId,
       shipment_no,
       updated_fulfillments: updateCount,
       updated_boxes: box_codes?.length || 0,
+      work_ended: workEnded,
     });
   } catch (error) {
     console.error('출고 처리 오류:', error);

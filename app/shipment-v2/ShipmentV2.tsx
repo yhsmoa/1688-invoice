@@ -17,6 +17,7 @@ import SummaryFilterBar from './components/SummaryFilterBar';
 import TypeBoardCards from './components/TypeBoardCards';
 import { useCustomsOptions } from './hooks/useCustomsOptions';
 import { useShipmentRows } from './hooks/useShipmentRows';
+import { useShipmentWork } from './hooks/useShipmentWork';
 import { useWorkers, workerLabel } from './hooks/useWorkers';
 import type { ShipmentV2Row } from './types';
 import { summarizeBoard } from './utils/boardSummary';
@@ -29,6 +30,7 @@ import {
   type RowFilter,
 } from './utils/rowFilter';
 import { getShipmentError } from './utils/shipmentCodes';
+import { formatDateTime } from '../storage/utils/storageFormat';
 import './ShipmentV2.css';
 
 // ============================================================
@@ -36,7 +38,8 @@ import './ShipmentV2.css';
 //
 //   [헤더]   제목 · 총 건수 · 처리 담당자 · 사용자
 //   [타입 바] 전체 / A / B / C / P / X / 이동요청      components/TypeBoardCards
-//   [액션]   품목 분류 · 엑셀 | 이동 · 합배송 | 생성 · 마킹라벨 …… 저장 · 출고
+//   [액션]   작업시작(작업취소) | 품목 분류 · 엑셀 | 이동 · 합배송 | 생성 · 마킹라벨 …… 저장 · 출고
+//   [작업]   작업시작 전 안내 / 작업 중 표시 한 줄
 //   [필터]   품목 / 사이즈 불일치                        components/SummaryFilterBar
 //   [표]     박스별 묶음, 페이지와 함께 스크롤           components/ShipmentTable
 //   디자인: 클로드 디자인 캔버스 "쉽먼트 V2 화면 디자인"
@@ -44,6 +47,11 @@ import './ShipmentV2.css';
 //   필터는 카드(보드) AND 칩. 편집은 원본 rows 인덱스 기준, 체크는 행 id(포장 행 id) 기준 —
 //   재조회(품목 분류·저장) 뒤에도 같은 행이 체크된 채로 남고, 사라진 행은 빠진다.
 //   필터로 숨겨진 행도 체크에서 빠진다 (숨은 행이 이동·출고되지 않도록).
+//
+//   쉽먼트 작업 (supabase/shipment/004_shipment_work.sql · hooks/useShipmentWork.ts)
+//     [작업시작] 을 눌러야 액션 버튼 · 표 편집이 켜진다. 작업 중에는 이 사용자의 박스에 담거나 뺄 수 없다
+//     (상품출고 V2 · 재고 [쉽먼트] · 와우출고 출고준비) → 엑셀 · 마킹라벨을 뽑은 뒤 목록이 바뀌지 않는다.
+//     끝내는 길은 [작업취소] 와 [출고] 둘뿐 — 출고를 빠뜨리면 다음에 담는 사람이 막혀서 알게 된다.
 // ============================================================
 
 type ModalKind = 'move' | 'merge' | 'ship' | 'manual' | 'boxLabel' | null;
@@ -75,6 +83,11 @@ const ShipmentV2: React.FC = () => {
   const selectedUser = useMemo(() => ftUsers.find((u) => u.id === selectedUserId), [ftUsers, selectedUserId]);
   /** 새 박스 코드 접두어 (상품출고 V2 와 동일하게 대문자) */
   const selectedUserCode = (selectedUser?.user_code || '').toUpperCase();
+
+  // ── 쉽먼트 작업 — 작업 중일 때만 액션 버튼 · 표 편집이 켜진다 ──
+  const { work, loaded: workLoaded, busy: workBusy, reload: reloadWork, start: startWork, cancel: cancelWork } =
+    useShipmentWork(selectedUserId);
+  const working = !!work;
 
   // ============================================================
   // 사용자 변경
@@ -334,6 +347,30 @@ const ShipmentV2: React.FC = () => {
   }, [rows, refetch, t]);
 
   // ============================================================
+  // 쉽먼트 작업 — [작업시작] · [작업취소]
+  //   시작하면 이 사용자의 출고 대기 목록이 얼어 붙는다 (담는 쪽은 DB 가 막는다)
+  //   저장하지 않은 품목 변경이 있으면 끝내기 전에 저장부터 — 작업이 끝나면 [저장] 도 잠긴다
+  // ============================================================
+  const handleWorkStart = useCallback(async () => {
+    if (!selectedWorker) { alert(t('shipmentV2.worker.required')); return; }
+    if (!window.confirm(t('shipmentV2.work.startConfirm'))) return;
+    const error = await startWork(selectedWorker, t('shipmentV2.work.error'));
+    if (error) alert(error);
+    // 시작 직전에 저장된 담기까지 보이도록 목록을 다시 받는다
+    refetch();
+  }, [selectedWorker, startWork, refetch, t]);
+
+  const handleWorkCancel = useCallback(async () => {
+    if (!selectedWorker) { alert(t('shipmentV2.worker.required')); return; }
+    if (dirtyCategories.size > 0) { alert(t('shipmentV2.work.saveFirst')); return; }
+    if (!window.confirm(t('shipmentV2.work.cancelConfirm'))) return;
+    const error = await cancelWork(selectedWorker, t('shipmentV2.work.error'));
+    if (error) alert(error);
+    setModal(null);
+    setCheckedIds(new Set());
+  }, [selectedWorker, dirtyCategories, cancelWork, t]);
+
+  // ============================================================
   // 모달 열기 / 완료 처리
   // ============================================================
   const openMove = () => {
@@ -342,7 +379,15 @@ const ShipmentV2: React.FC = () => {
   };
   const openShip = () => {
     if (checkedIds.size === 0) { alert('출고할 항목을 선택해주세요.'); return; }
+    if (dirtyCategories.size > 0) { alert(t('shipmentV2.work.saveFirst')); return; }
     setModal('ship');
+  };
+
+  /** 출고 후 — 서버가 쉽먼트 작업도 끝낸다. 끝내지 못했으면(workEnded=false) [작업취소] 로 풀라고 알린다 */
+  const handleShipped = (workEnded: boolean) => {
+    closeAndRefetch();
+    reloadWork();
+    if (!workEnded) alert(t('shipmentV2.work.notEnded'));
   };
 
   /** 이동·합배송·출고·생성 후 — 분할로 행 id 가 바뀌므로 체크 해제 + 재조회 */
@@ -418,34 +463,48 @@ const ShipmentV2: React.FC = () => {
               <TypeBoardCards summary={boardSummary} board={board} onBoardChange={setBoard} />
             )}
 
-            {/* ── 액션 바: [품목 분류 · 엑셀] [이동 · 합배송] [생성 · 마킹라벨]  ……  [저장] [출고] ── */}
+            {/* ── 액션 바: [작업시작|작업취소] [품목 분류 · 엑셀] [이동 · 합배송] [생성 · 마킹라벨]  ……  [저장] [출고] ── */}
+            {/*    작업시작 전에는 [작업시작] 만 눌린다 */}
             <div className="sv2-toolbar">
               <div className="sv2-toolbar-group">
+                {working ? (
+                  <button className="sv2-btn sv2-btn--solo sv2-btn--danger" onClick={handleWorkCancel} disabled={workBusy}>
+                    {t('shipmentV2.work.cancel')}
+                  </button>
+                ) : (
+                  <button
+                    className="sv2-btn sv2-btn--solo"
+                    onClick={handleWorkStart}
+                    disabled={!hasUser || !workLoaded || workBusy}
+                  >
+                    {t('shipmentV2.work.start')}
+                  </button>
+                )}
                 <div className="sv2-btn-group">
-                  <button className="sv2-btn" onClick={handleClassifyProducts} disabled={isClassifying || rows.length === 0}>
+                  <button className="sv2-btn" onClick={handleClassifyProducts} disabled={!working || isClassifying || rows.length === 0}>
                     {isClassifying ? t('shipmentV2.buttons.classifying') : t('shipmentV2.buttons.classify')}
                   </button>
-                  <button className="sv2-btn" onClick={handleExcelDownload} disabled={rows.length === 0}>
+                  <button className="sv2-btn" onClick={handleExcelDownload} disabled={!working || rows.length === 0}>
                     {t('shipmentV2.buttons.excel')}
                   </button>
                 </div>
                 <div className="sv2-btn-group">
-                  <button className="sv2-btn" onClick={openMove} disabled={checkedIds.size === 0}>
+                  <button className="sv2-btn" onClick={openMove} disabled={!working || checkedIds.size === 0}>
                     {t('shipmentV2.buttons.move')}
                     {checkedIds.size > 0 && <span className="sv2-btn-count">{checkedIds.size}</span>}
                   </button>
-                  <button className="sv2-btn" onClick={() => setModal('merge')} disabled={!hasUser}>
+                  <button className="sv2-btn" onClick={() => setModal('merge')} disabled={!working}>
                     {t('shipmentV2.buttons.merge')}
                   </button>
                 </div>
                 <div className="sv2-btn-group">
-                  <button className="sv2-btn" onClick={() => setModal('manual')} disabled={!hasUser}>
+                  <button className="sv2-btn" onClick={() => setModal('manual')} disabled={!working}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                       <path d="M12 5v14M5 12h14" />
                     </svg>
                     {t('shipmentV2.buttons.create')}
                   </button>
-                  <button className="sv2-btn" onClick={() => setModal('boxLabel')} disabled={rows.length === 0}>
+                  <button className="sv2-btn" onClick={() => setModal('boxLabel')} disabled={!working || rows.length === 0}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z" />
                     </svg>
@@ -457,15 +516,24 @@ const ShipmentV2: React.FC = () => {
                 <button
                   className={`sv2-btn sv2-btn--solo ${dirtyCategories.size > 0 ? 'sv2-btn--success' : ''}`}
                   onClick={handleSaveAll}
-                  disabled={dirtyCategories.size === 0}
+                  disabled={!working || dirtyCategories.size === 0}
                 >
                   {t('shipmentV2.buttons.save')}{dirtyCategories.size > 0 ? ` ${dirtyCategories.size}` : ''}
                 </button>
-                <button className="sv2-btn sv2-btn--solo sv2-btn--danger" onClick={openShip} disabled={checkedIds.size === 0}>
+                <button className="sv2-btn sv2-btn--solo sv2-btn--primary" onClick={openShip} disabled={!working || checkedIds.size === 0}>
                   {t('shipmentV2.buttons.ship')}{checkedIds.size > 0 ? ` ${checkedIds.size}` : ''}
                 </button>
               </div>
             </div>
+
+            {/* ── 쉽먼트 작업 상태 한 줄: 작업시작 전 안내 / 작업 중 (누가 · 언제 시작) ── */}
+            {hasUser && workLoaded && (
+              <p className={`sv2-work-status ${working ? 'is-working' : ''}`} role="status">
+                {work
+                  ? t('shipmentV2.work.working', { name: work.started_by, time: formatDateTime(work.started_at) })
+                  : t('shipmentV2.work.idle')}
+              </p>
+            )}
 
             {/* ── 필터 패널: 품목 / 사이즈 불일치 (타입 바 필터 적용된 행 기준) ── */}
             {rows.length > 0 && (
@@ -489,6 +557,7 @@ const ShipmentV2: React.FC = () => {
               loading={loading}
               loadError={loadError}
               hasUser={hasUser}
+              readOnly={!working}
               onToggleCheck={toggleCheck}
               onToggleAll={toggleAll}
               onPackageClick={handlePackageClick}
@@ -521,8 +590,9 @@ const ShipmentV2: React.FC = () => {
           userId={selectedUserId}
           userCode={selectedUser?.user_code || ''}
           rows={selectedRows}
+          operatorName={selectedWorker}
           onClose={() => setModal(null)}
-          onShipped={closeAndRefetch}
+          onShipped={handleShipped}
         />
       )}
       {modal === 'manual' && (

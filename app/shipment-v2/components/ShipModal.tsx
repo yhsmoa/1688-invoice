@@ -9,21 +9,24 @@ import type { ShipmentV2Row } from '../types';
 //   쉽먼트 번호 = 'SH' + user_code + 6자리 숫자
 //   저장: POST /api/ft/shipments { user_id, shipment_no, date, fulfillment_ids, box_codes }
 //     → 출고된 행의 미처리 이동요청은 서버가 CANCELLED(shipped) 로 닫는다
+//     → 쉽먼트 작업도 서버가 끝낸다 (응답 work_ended — 끝내지 못했으면 false)
 // ============================================================
 interface ShipModalProps {
   userId: string;
   userCode: string;
   /** 체크된 행 */
   rows: ShipmentV2Row[];
+  /** 처리 담당자 — 쉽먼트 작업을 끝낸 사람으로 남는다 */
+  operatorName: string;
   onClose: () => void;
-  /** 출고 성공 — 부모가 체크 해제 + 재조회 */
-  onShipped: () => void;
+  /** 출고 성공 — 부모가 체크 해제 + 재조회. workEnded = 쉽먼트 작업까지 끝났는가 */
+  onShipped: (workEnded: boolean) => void;
 }
 
 const SHIP_INPUT_LENGTH = 6;
 const SHIP_INPUT_PATTERN = /^\d{6}$/;
 
-const ShipModal: React.FC<ShipModalProps> = ({ userId, userCode, rows, onClose, onShipped }) => {
+const ShipModal: React.FC<ShipModalProps> = ({ userId, userCode, rows, operatorName, onClose, onShipped }) => {
   const [shipInput, setShipInput] = useState('');
   const [isShipping, setIsShipping] = useState(false);
 
@@ -53,13 +56,14 @@ const ShipModal: React.FC<ShipModalProps> = ({ userId, userCode, rows, onClose, 
           date: new Date().toISOString().slice(0, 10),
           fulfillment_ids: fulfillmentIds,
           box_codes: boxCodes,
+          operator_name: operatorName || null,
         }),
       });
       const json = await res.json();
 
       if (json.success) {
         alert(`출고 완료: ${shipmentNo}\n(${json.updated_fulfillments}건 처리)`);
-        onShipped();
+        onShipped(json.work_ended !== false);
       } else {
         alert('출고 실패: ' + (json.error || ''));
       }

@@ -2166,3 +2166,38 @@
   background: #cbd5e1;
   cursor: not-allowed;
 }
+
+/* ============================================================ */
+/* 쉽먼트 작업 중 안내 (이 사용자의 박스에 담을 수 없다)          */
+/* ============================================================ */
+.v2-export-work-lock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f3f4f6;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.v2-export-work-lock-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.v2-export-work-lock-btn:hover {
+  background: #f9fafb;
+}

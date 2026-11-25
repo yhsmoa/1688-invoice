@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { jsonResponse } from '../../../../lib/apiResponse';
 import { WOW_BOX_LOCKED_MESSAGE } from '../storage/storageShared';
+import { toShipmentWorkError } from '../../../../lib/shipmentWork';
 
 // ============================================================
 // 공통 상수 — 테이블 분리 기준
@@ -40,6 +41,8 @@ const OUTBOUND_TABLE = 'ft_fulfillment_outbounds';
 //   · PACKED 철회: 재고에서 꺼내 담은 행(PICK 링크)이면 ft_storage_unpick_outbound 가
 //       행 삭제 + 꺼냈던 위치로 UNPACK 을 한 트랜잭션으로 처리한다.
 //       링크 없는 행(분할 이동으로 생긴 행 등)은 일반 삭제 → 그 수량은 [작업중]에 다시 나타난다.
+//
+// 쉽먼트 작업 중인 사업자의 포장 행은 철회할 수 없다 (출고 대기 목록이 얼어 있다 — supabase/shipment/004_shipment_work.sql) → 409
 // ============================================================
 export async function DELETE(request: NextRequest) {
   try {
@@ -188,6 +191,10 @@ export async function DELETE(request: NextRequest) {
         }
         if ((unpickErr.message ?? '').includes('WOW_BOX_LOCKED')) {
           return NextResponse.json({ success: false, error: WOW_BOX_LOCKED_MESSAGE }, { status: 409 });
+        }
+        const workLocked = toShipmentWorkError(unpickErr.message);
+        if (workLocked) {
+          return NextResponse.json({ success: false, error: workLocked.message }, { status: 409 });
         }
         throw unpickErr;
       }
@@ -341,6 +348,10 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error('ft_fulfillments DELETE 오류:', error);
+    const workLocked = toShipmentWorkError(error);
+    if (workLocked) {
+      return NextResponse.json({ success: false, error: workLocked.message }, { status: 409 });
+    }
     return NextResponse.json(
       {
         success: false,
@@ -534,7 +545,7 @@ export async function POST(request: NextRequest) {
 
     const insertOutbound = async () => {
       if (outboundRows.length === 0) return;
-      // 와우출고 박스에 스캔하면 트리거가 WOW_BOX_LOCKED 로 거절 → 아래 catch 에서 409
+      // 와우출고 박스에 스캔하면 트리거가 WOW_BOX_LOCKED 로, 쉽먼트 작업 중인 사업자면 SHIPMENT_WORK_LOCKED 로 거절 → 아래 catch 에서 409
       const { error } = await supabase.from(OUTBOUND_TABLE).insert(outboundRows);
       if (error) { console.error('ft_fulfillment_outbounds insert 오류:', error); throw error; }
     };
@@ -553,6 +564,10 @@ export async function POST(request: NextRequest) {
     console.error('ft_fulfillments 저장 오류:', error);
     if (String((error as Record<string, unknown>)?.message ?? '').includes('WOW_BOX_LOCKED')) {
       return NextResponse.json({ success: false, error: WOW_BOX_LOCKED_MESSAGE }, { status: 409 });
+    }
+    const workLocked = toShipmentWorkError(error);
+    if (workLocked) {
+      return NextResponse.json({ success: false, error: workLocked.message }, { status: 409 });
     }
     return NextResponse.json(
       {

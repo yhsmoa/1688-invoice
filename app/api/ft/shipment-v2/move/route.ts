@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { WOW_BOX_LOCKED_MESSAGE } from '../../storage/storageShared';
+import { requireShipmentWork } from '../../../../../lib/shipmentWork';
 
 // ============================================================
 // POST /api/ft/shipment-v2/move
@@ -92,6 +93,10 @@ export async function POST(request: NextRequest) {
     if (new Set(parsed.map((m) => m.id)).size !== parsed.length) {
       return fail('같은 항목이 중복으로 포함되어 있습니다.');
     }
+
+    // ── 쉽먼트 작업 중([작업시작] 을 누른 상태)일 때만 옮길 수 있다 (supabase/shipment/004_shipment_work.sql) ──
+    const workError = await requireShipmentWork(user_id);
+    if (workError) return fail(workError, 409);
 
     // ── 2) 대상 박스 사전 검증 (행 처리 전에 명확한 안내) — 최종 검증은 rpc 가 잠금과 함께 다시 수행 ──
     const { data: box, error: boxErr } = await supabase

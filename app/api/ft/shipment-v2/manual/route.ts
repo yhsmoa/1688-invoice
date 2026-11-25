@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { requireShipmentWork } from '../../../../../lib/shipmentWork';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +68,10 @@ export async function POST(request: NextRequest) {
       }
       price = priceRaw;
     }
+
+    // ── 쉽먼트 작업 중([작업시작] 을 누른 상태)일 때만 만들 수 있다 (supabase/shipment/004_shipment_work.sql) ──
+    const workError = await requireShipmentWork(userId);
+    if (workError) return fail(workError, 409);
 
     // ── 2) DB 함수 (한 트랜잭션) ──
     const { data, error } = await supabase.rpc('ft_shipment_manual_create', {

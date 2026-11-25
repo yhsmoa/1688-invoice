@@ -7,6 +7,8 @@ import LeftsideMenu from '../../component/LeftsideMenu';
 import { useSaveContext } from '../../contexts/SaveContext';
 import { useFtUsers, type FtOrderItem } from '../import-product-v2/hooks/useFtData';
 import { resolveScanSizeCode, isStockRoute } from '../../lib/sizeCode';
+import { useShipmentWork } from '../shipment-v2/hooks/useShipmentWork';
+import { formatDateTime } from '../storage/utils/storageFormat';
 import './ExportProduct.css';
 
 // ============================================================
@@ -169,6 +171,11 @@ const ExportProduct: React.FC = () => {
 
   // Ref for barcode input
   const barcodeInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ── 쉽먼트 작업 중인 사업자의 박스에는 담을 수 없다 (supabase/shipment/004_shipment_work.sql) ──
+  //   막는 것은 DB 다. 여기서는 스캔하기 전에 알 수 있게 상태를 보여 주고 스캔 · 저장을 잠근다
+  const { work: shipmentWork, reload: reloadShipmentWork } = useShipmentWork(selectedFtUserId);
+  const packingLocked = !!shipmentWork;
   const quantityInputRef = React.useRef<HTMLInputElement>(null);
   const boardBarcodeInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -1013,11 +1020,13 @@ const ExportProduct: React.FC = () => {
     } catch (err) {
       console.error('fulfillment 저장 오류:', err);
       alert(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.');
+      // 그 사이 쉽먼트 작업이 시작돼 거절됐을 수 있다 → 안내를 띄우도록 상태를 다시 받는다 (스캔 기록은 그대로 둔다)
+      reloadShipmentWork();
     } finally {
       setIsSavingFulfillment(false);
       savingLockRef.current = false;
     }
-  }, [selectedOperator, selectedFtUserId, scanHistory, exportItems, setHasUnsavedChanges, fetchExportData]);
+  }, [selectedOperator, selectedFtUserId, scanHistory, exportItems, setHasUnsavedChanges, fetchExportData, reloadShipmentWork]);
 
   // ============================================================
   // 박스 관리 핸들러
@@ -1543,8 +1552,8 @@ const ExportProduct: React.FC = () => {
     }
   };
 
-  // 박스번호 + 크기 둘 다 입력돼야 보드 활성화 가능
-  const canActivateBoards = selectedBox.trim() !== '' && selectedSize.trim() !== '';
+  // 박스번호 + 크기 둘 다 입력돼야 보드 활성화 가능 (쉽먼트 작업 중인 사업자면 잠근다)
+  const canActivateBoards = selectedBox.trim() !== '' && selectedSize.trim() !== '' && !packingLocked;
 
   return (
     <div className="v2-export-layout">
@@ -1601,6 +1610,23 @@ const ExportProduct: React.FC = () => {
             </div>
 
             {/* ============================================================ */}
+            {/* 쉽먼트 작업 중 안내 — 이 사용자의 박스에 담을 수 없다      */}
+            {/* ============================================================ */}
+            {shipmentWork && (
+              <div className="v2-export-work-lock" role="status">
+                <span>
+                  {t('exportProduct.shipmentWork.locked', {
+                    name: shipmentWork.started_by,
+                    time: formatDateTime(shipmentWork.started_at),
+                  })}
+                </span>
+                <button type="button" className="v2-export-work-lock-btn" onClick={() => { reloadShipmentWork(); }}>
+                  {t('exportProduct.shipmentWork.recheck')}
+                </button>
+              </div>
+            )}
+
+            {/* ============================================================ */}
             {/* 박스 액션 버튼 (세로 배치) + 선택된 박스 표시              */}
             {/* ============================================================ */}
             <div className="v2-export-box-action-col">
@@ -1617,7 +1643,7 @@ const ExportProduct: React.FC = () => {
               <button
                 className={`v2-export-box-action-btn v2-export-box-action-btn--save ${hasUnsavedChanges ? 'has-changes' : ''}`}
                 onClick={handleFulfillmentSave}
-                disabled={!selectedOperator || !selectedFtUserId || isSavingFulfillment}
+                disabled={!selectedOperator || !selectedFtUserId || isSavingFulfillment || packingLocked}
               >
                 {isSavingFulfillment ? '저장 중...' : `저장${hasUnsavedChanges ? ' !' : ''}`}
               </button>

@@ -62,6 +62,13 @@ export interface BoxInfoItem {
   no?: string | null;
 }
 
+/** GET /api/ft/shipment-work 응답 — 지금 열려 있는 쉽먼트 작업 (없으면 null) */
+export interface ShipmentWorkInfo {
+  id: string;
+  started_at: string;
+  started_by: string;
+}
+
 /** GET /api/hr/workers 응답 행 — 처리 담당자 드롭다운 */
 export interface Worker {
   id: string;

@@ -34,6 +34,8 @@ interface ShipmentTableProps {
   loading: boolean;
   loadError: boolean;
   hasUser: boolean;
+  /** 쉽먼트 작업시작 전 — 표 안의 체크 · 편집(품목 · 박스 크기 · 이동요청 처리)을 통째로 잠근다 */
+  readOnly: boolean;
   onToggleCheck: (rowId: string) => void;
   onToggleAll: () => void;
   onPackageClick: (boxCode: string) => void;
@@ -83,6 +85,8 @@ const ShipmentTable: React.FC<ShipmentTableProps> = (props) => {
 
   return (
     <div className="sv2-table-wrap" style={{ ['--sv2-sticky-top' as string]: `${topOffset}px` }}>
+      {/* fieldset disabled = 안의 입력 · 버튼을 한 번에 잠그는 표준 방법 */}
+      <fieldset className="sv2-table-lock" disabled={props.readOnly}>
       <table className="sv2-table">
         <thead>
           <tr>
@@ -175,6 +179,7 @@ const ShipmentTable: React.FC<ShipmentTableProps> = (props) => {
           })
         )}
       </table>
+      </fieldset>
     </div>
   );
 };
