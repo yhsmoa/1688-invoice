@@ -4,24 +4,29 @@ import JSZip from 'jszip';
 import ExcelJS from 'exceljs';
 import {
   EMU_PER_PX, INVOICE_CELLS, INVOICE_COL_COUNT, INVOICE_COL_WIDTHS, INVOICE_FONT_FAMILY, INVOICE_NUM_FMT,
-  INVOICE_ROW_COUNT, INVOICE_ROW_HEIGHTS, INVOICE_STAMP, INVOICE_UNIT_PRICE,
-  excelDateSerial, makeInvoiceNo, mergeInvoiceFont, rangeBorders, specRange,
-  type CellBorders, type InvoiceCellSpec, type InvoiceFont, type InvoiceInput,
+  INVOICE_ROW_COUNT, INVOICE_ROW_HEIGHTS, INVOICE_SIGN_LABEL, INVOICE_STAMPS, INVOICE_STAMP_KEYS, INVOICE_UNIT_PRICE,
+  excelDateSerial, makeInvoiceNo, mergeInvoiceFont, parseRef, rangeBorders, specRange,
+  type CellBorders, type InvoiceCellSpec, type InvoiceFont, type InvoiceInput, type InvoiceStampKey,
 } from './tradeInvoice';
 
 // ============================================================
 // tradeInvoiceServer — PROFORMA INVOICE 엑셀 생성 (서버 전용)
 //
 //   [excel]  buildTemplateInvoice — 원본 템플릿 xlsx 를 zip 수준에서 열어
-//            값이 들어갈 셀(K4·K5·G17·K17·K22·E26·B35)의 XML 만 바꾼다.
-//            서식·병합·도장 이미지·두 번째 시트 등 나머지는 바이트 그대로 보존.
+//            값이 들어갈 셀(K4·K5·G17·K17·K22·E26·B35)의 XML 만 바꾸고,
+//            서명 문구(B42·H42)와 수입자 도장 이미지를 더한다.
+//            서식·병합·수출자 도장 이미지·두 번째 시트 등 나머지는 바이트 그대로 보존.
 //   [EXCEL2] buildInvoiceV2 — lib/tradeInvoice 스펙으로 exceljs 가 새로 그린 개정본.
 //            병합·테두리·글꼴을 정리했고 문구·이미지는 원본과 동일하게 담는다.
 // ============================================================
 
 const ASSET_DIR = path.join(process.cwd(), 'assets', 'trade-invoice');
 const TEMPLATE_PATH = path.join(ASSET_DIR, 'proforma-invoice-template.xlsx');
-const STAMP_PATH = path.join(ASSET_DIR, 'stamp.png');
+/** 도장 이미지 파일 (모두 PNG) — 회사·개인 인감이라 public/ 에 두지 않는다 */
+const STAMP_FILE: Record<InvoiceStampKey, string> = {
+  seller: 'stamp.png',
+  buyer: 'stamp-buyer.png',
+};
 
 /** 템플릿 안의 인보이스 시트 (workbook.xml 의 첫 번째 시트) */
 const TEMPLATE_SHEET_XML = 'xl/worksheets/sheet1.xml';
@@ -33,10 +38,14 @@ async function readTemplate(): Promise<Buffer> {
   return templateCache;
 }
 
-let stampCache: Buffer | null = null;
-export async function readStampImage(): Promise<Buffer> {
-  if (!stampCache) stampCache = await fs.readFile(STAMP_PATH);
-  return stampCache;
+const stampCache = new Map<InvoiceStampKey, Buffer>();
+export async function readStampImage(key: InvoiceStampKey): Promise<Buffer> {
+  let png = stampCache.get(key);
+  if (!png) {
+    png = await fs.readFile(path.join(ASSET_DIR, STAMP_FILE[key]));
+    stampCache.set(key, png);
+  }
+  return png;
 }
 
 // ============================================================
@@ -59,6 +68,84 @@ function replaceCell(xml: string, ref: string, build: (styleAttr: string) => str
   return xml.slice(0, m.index) + build(styleAttr) + xml.slice(m.index + m[0].length);
 }
 
+/** 셀을 바꾸되, 행에 그 셀이 없으면 열 순서에 맞는 자리에 새로 넣는다 (행은 템플릿에 있어야 한다) */
+function upsertCell(xml: string, ref: string, build: (styleAttr: string) => string): string {
+  if (new RegExp(`<c r="${ref}"[ />]`).test(xml)) return replaceCell(xml, ref, build);
+
+  const { row, col } = parseRef(ref);
+  const rowMatch = new RegExp(`(<row r="${row}"[^>]*>)([\\s\\S]*?)</row>`).exec(xml);
+  if (!rowMatch) throw new Error(`템플릿에 ${row}행이 없습니다.`);
+  const cellsStart = rowMatch.index + rowMatch[1].length;
+  // 오른쪽에 있는 첫 셀 앞 — 없으면 행 끝
+  let insertAt = cellsStart + rowMatch[2].length;
+  for (const m of rowMatch[2].matchAll(/<c r="([A-Z]+)\d+"/g)) {
+    if (parseRef(`${m[1]}${row}`).col > col) {
+      insertAt = cellsStart + (m.index ?? 0);
+      break;
+    }
+  }
+  return xml.slice(0, insertAt) + build('') + xml.slice(insertAt);
+}
+
+const inlineStr = (ref: string, styleAttr: string, text: string) =>
+  `<c r="${ref}"${styleAttr} t="inlineStr"><is><t>${escapeXml(text)}</t></is></c>`;
+
+// ── 템플릿의 서명 자리 ──
+/** 인보이스 시트의 drawing (수출자 도장이 들어 있다) */
+const TEMPLATE_DRAWING_XML = 'xl/drawings/drawing1.xml';
+const TEMPLATE_DRAWING_RELS = 'xl/drawings/_rels/drawing1.xml.rels';
+/** 수출자 문구 셀 — 템플릿은 병합 없이 H42 한 칸 (굵게·오른쪽 정렬) */
+const TEMPLATE_SELLER_LABEL_REF = 'H42';
+/** 수입자 문구 셀 — 템플릿에 없던 칸이라 서식을 지정한다 */
+const TEMPLATE_BUYER_LABEL_REF = 'B42';
+/** styles.xml cellXfs 3번 = Century Gothic 11 굵게·왼쪽 정렬·테두리 없음 (수출자 문구와 같은 글꼴) */
+const TEMPLATE_BOLD_LEFT_STYLE = 3;
+const IMAGE_REL_TYPE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+
+/**
+ * 템플릿 drawing 에 수입자 도장을 더한다 (수출자 도장은 템플릿에 이미 들어 있다).
+ *   위치·크기는 미리보기·EXCEL2 와 같은 INVOICE_STAMPS.buyer
+ */
+async function addBuyerStamp(zip: JSZip): Promise<void> {
+  const drawingFile = zip.file(TEMPLATE_DRAWING_XML);
+  const relsFile = zip.file(TEMPLATE_DRAWING_RELS);
+  if (!drawingFile || !relsFile) throw new Error('템플릿에 도장 그림 영역이 없습니다.');
+  const drawing = await drawingFile.async('string');
+  const rels = await relsFile.async('string');
+  if (!drawing.includes('</xdr:wsDr>') || !rels.includes('</Relationships>')) {
+    throw new Error('템플릿 도장 그림 영역의 형식이 예상과 다릅니다.');
+  }
+
+  // 이미 쓰인 번호와 겹치지 않게 다음 번호를 쓴다
+  const nextNo = (xml: string, re: RegExp) => Math.max(0, ...Array.from(xml.matchAll(re), (m) => Number(m[1]))) + 1;
+  const relId = `rId${nextNo(rels, /Id="rId(\d+)"/g)}`;
+  const shapeId = nextNo(drawing, /<xdr:cNvPr id="(\d+)"/g);
+
+  const media = `media/${STAMP_FILE.buyer}`;
+  zip.file(`xl/${media}`, await readStampImage('buyer'));
+  zip.file(TEMPLATE_DRAWING_RELS, rels.replace(
+    '</Relationships>',
+    `<Relationship Id="${relId}" Type="${IMAGE_REL_TYPE}" Target="../${media}"/></Relationships>`,
+  ));
+
+  const s = INVOICE_STAMPS.buyer;
+  const cx = s.widthPx * EMU_PER_PX;
+  const cy = s.heightPx * EMU_PER_PX;
+  const anchor =
+    '<xdr:oneCellAnchor>'
+    + `<xdr:from><xdr:col>${s.col - 1}</xdr:col><xdr:colOff>${s.colOffsetPx * EMU_PER_PX}</xdr:colOff>`
+    + `<xdr:row>${s.row - 1}</xdr:row><xdr:rowOff>${s.rowOffsetPx * EMU_PER_PX}</xdr:rowOff></xdr:from>`
+    + `<xdr:ext cx="${cx}" cy="${cy}"/>`
+    + `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${shapeId}" name="Buyer Stamp"/>`
+    + '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+    + `<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${relId}"/>`
+    + '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+    + `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>`
+    + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'
+    + '<xdr:clientData/></xdr:oneCellAnchor>';
+  zip.file(TEMPLATE_DRAWING_XML, drawing.replace('</xdr:wsDr>', `${anchor}</xdr:wsDr>`));
+}
+
 export async function buildTemplateInvoice(input: InvoiceInput): Promise<Buffer> {
   const zip = await JSZip.loadAsync(await readTemplate());
   const sheetFile = zip.file(TEMPLATE_SHEET_XML);
@@ -79,7 +166,13 @@ export async function buildTemplateInvoice(input: InvoiceInput): Promise<Buffer>
   xml = replaceCell(xml, 'K22', (s) => `<c r="K22"${s}><f>SUM(K17:K21)</f><v>${amount}</v></c>`);
   xml = replaceCell(xml, 'E26', (s) => `<c r="E26"${s}><f>K22</f><v>${amount}</v></c>`);
   xml = replaceCell(xml, 'B35', (s) => `<c r="B35"${s}><f>K5</f><v>${serial}</v></c>`);
+  // 서명 문구 — 수출자(오른쪽)는 있던 칸의 문구만 바꾸고, 수입자(왼쪽)는 새 칸
+  xml = replaceCell(xml, TEMPLATE_SELLER_LABEL_REF, (s) => inlineStr(TEMPLATE_SELLER_LABEL_REF, s, INVOICE_SIGN_LABEL.seller));
+  xml = upsertCell(xml, TEMPLATE_BUYER_LABEL_REF, () =>
+    inlineStr(TEMPLATE_BUYER_LABEL_REF, ` s="${TEMPLATE_BOLD_LEFT_STYLE}"`, INVOICE_SIGN_LABEL.buyer));
   zip.file(TEMPLATE_SHEET_XML, xml);
+
+  await addBuyerStamp(zip);
 
   // calcChain 은 K5 를 수식 셀로 알고 있어 그대로 두면 엑셀이 복구 메시지를 띄운다.
   // 지우면 엑셀이 열 때 다시 만든다. (관계·콘텐츠 타입 항목도 함께 제거)
@@ -228,14 +321,17 @@ export async function buildInvoiceV2(input: InvoiceInput): Promise<Buffer> {
     }
   }
 
-  // ── 도장 이미지 (원본과 같은 위치·크기) ──
+  // ── 도장 이미지 2개 (수출자는 원본과 같은 위치·크기) ──
   //    exceljs 의 소수 col/row 는 EMU 환산이 부정확하므로 네이티브 앵커(셀 + EMU 오프셋)로 넣는다
-  const stampId = wb.addImage({ buffer: await readStampImage(), extension: 'png' });
-  ws.addImage(stampId, {
-    tl: nativeAnchor(INVOICE_STAMP.col - 1, INVOICE_STAMP.colOffsetPx, INVOICE_STAMP.row - 1, INVOICE_STAMP.rowOffsetPx),
-    ext: { width: INVOICE_STAMP.widthPx, height: INVOICE_STAMP.heightPx },
-    editAs: 'oneCell',
-  });
+  for (const key of INVOICE_STAMP_KEYS) {
+    const s = INVOICE_STAMPS[key];
+    const stampId = wb.addImage({ buffer: await readStampImage(key), extension: 'png' });
+    ws.addImage(stampId, {
+      tl: nativeAnchor(s.col - 1, s.colOffsetPx, s.row - 1, s.rowOffsetPx),
+      ext: { width: s.widthPx, height: s.heightPx },
+      editAs: 'oneCell',
+    });
+  }
 
   // ── 두 번째 시트: 원본의 다른 회사 도장 이미지 보존 ──
   const extra = wb.addWorksheet(EXTRA_SHEET_NAME, { views: [{ showGridLines: false }], properties: { defaultRowHeight: 13.5 } });

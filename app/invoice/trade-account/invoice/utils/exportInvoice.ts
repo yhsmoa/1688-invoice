@@ -1,5 +1,7 @@
 import { dbAccessHeaders } from '../../../../../component/DbAccessGate';
-import { INVOICE_PRINT_SCALE, invoiceFileBase, type InvoiceInput } from '../../../../../lib/tradeInvoice';
+import {
+  INVOICE_PRINT_SCALE, INVOICE_STAMP_KEYS, invoiceFileBase, type InvoiceInput, type InvoiceStampKey,
+} from '../../../../../lib/tradeInvoice';
 
 // ============================================================
 // exportInvoice — 인보이스 저장 helper (클라이언트)
@@ -32,11 +34,30 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
-// ── 도장 이미지 ──
-export async function fetchStampObjectUrl(): Promise<string> {
-  const res = await fetch('/api/trade-invoice/stamp', { headers: dbAccessHeaders() });
+// ── 도장 이미지 (수출자·수입자) ──
+export type InvoiceStampUrls = Record<InvoiceStampKey, string>;
+
+async function fetchStampObjectUrl(key: InvoiceStampKey): Promise<string> {
+  const res = await fetch(`/api/trade-invoice/stamp?who=${key}`, { headers: dbAccessHeaders() });
   if (!res.ok) throw new Error(await readError(res, '도장 이미지를 불러오지 못했습니다.'));
   return URL.createObjectURL(await res.blob());
+}
+
+/** 도장 2개를 함께 받는다 — 하나라도 실패하면 받은 것도 해제하고 실패로 돌린다 (도장이 빠진 인보이스를 저장하지 않도록) */
+export async function fetchStampObjectUrls(): Promise<InvoiceStampUrls> {
+  const results = await Promise.allSettled(INVOICE_STAMP_KEYS.map(fetchStampObjectUrl));
+  const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failed) {
+    results.forEach((r) => { if (r.status === 'fulfilled') URL.revokeObjectURL(r.value); });
+    throw failed.reason;
+  }
+  return Object.fromEntries(
+    INVOICE_STAMP_KEYS.map((key, i) => [key, (results[i] as PromiseFulfilledResult<string>).value]),
+  ) as InvoiceStampUrls;
+}
+
+export function revokeStampObjectUrls(urls: InvoiceStampUrls): void {
+  INVOICE_STAMP_KEYS.forEach((key) => URL.revokeObjectURL(urls[key]));
 }
 
 // ── 엑셀 (원본 템플릿 / 개정본) ──

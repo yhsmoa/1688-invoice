@@ -3,9 +3,9 @@
 import React, { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
 import {
   INVOICE_CELLS, INVOICE_COL_COUNT, INVOICE_COL_WIDTHS, INVOICE_FONT_FAMILY, INVOICE_ROW_COUNT,
-  INVOICE_ROW_HEIGHTS, INVOICE_STAMP, SYNTHETIC_BOLD_FAMILIES, SYNTHETIC_BOLD_STROKE_EM, colWidthPx,
+  INVOICE_ROW_HEIGHTS, INVOICE_STAMPS, INVOICE_STAMP_KEYS, SYNTHETIC_BOLD_FAMILIES, SYNTHETIC_BOLD_STROKE_EM, colWidthPx,
   isValidInvoiceAmount, mergeInvoiceFont, rangeBorders, resolveCellDisplay, rowHeightPx, specRange,
-  type BorderStyle, type InvoiceCellSpec, type InvoiceFont, type InvoiceInput,
+  type BorderStyle, type InvoiceCellSpec, type InvoiceFont, type InvoiceInput, type InvoiceStampKey,
 } from '../../../../../lib/tradeInvoice';
 
 // ============================================================
@@ -20,8 +20,8 @@ import {
 
 interface InvoicePreviewProps {
   input: InvoiceInput;
-  /** 도장 이미지 object URL (로딩 전엔 null) */
-  stampUrl: string | null;
+  /** 도장 이미지 object URL — 수출자·수입자 (로딩 전엔 null) */
+  stampUrls: Record<InvoiceStampKey, string> | null;
 }
 
 const BORDER_CSS: Record<BorderStyle, string> = {
@@ -72,7 +72,7 @@ function fontCss(font: InvoiceFont): React.CSSProperties {
   };
 }
 
-const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(function InvoicePreview({ input, stampUrl }, ref) {
+const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(function InvoicePreview({ input, stampUrls }, ref) {
   const sheetRef = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => sheetRef.current as HTMLDivElement);
 
@@ -111,9 +111,16 @@ const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(function 
     return { masters, covered };
   }, []);
 
-  // ── 도장 위치 (원본 앵커: I열 + 34px, 40행 + 11px) — 시트 바깥 여유만큼 밀어 표 좌표와 맞춘다 ──
-  const stampLeft = SHEET_BLEED_PX + colPx.slice(0, INVOICE_STAMP.col - 1).reduce((a, b) => a + b, 0) + INVOICE_STAMP.colOffsetPx;
-  const stampTop = SHEET_BLEED_PX + rowPx.slice(0, INVOICE_STAMP.row - 1).reduce((a, b) => a + b, 0) + INVOICE_STAMP.rowOffsetPx;
+  // ── 도장 위치 (셀 앵커 + px 오프셋) — 시트 바깥 여유만큼 밀어 표 좌표와 맞춘다 ──
+  const stampBox = (key: InvoiceStampKey): React.CSSProperties => {
+    const s = INVOICE_STAMPS[key];
+    return {
+      left: SHEET_BLEED_PX + colPx.slice(0, s.col - 1).reduce((a, b) => a + b, 0) + s.colOffsetPx,
+      top: SHEET_BLEED_PX + rowPx.slice(0, s.row - 1).reduce((a, b) => a + b, 0) + s.rowOffsetPx,
+      width: s.widthPx,
+      height: s.heightPx,
+    };
+  };
 
   const hasAmount = isValidInvoiceAmount(input.amount);
 
@@ -201,15 +208,10 @@ const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(function 
           })}
         </tbody>
       </table>
-      {stampUrl && (
+      {stampUrls && INVOICE_STAMP_KEYS.map((key) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          className="inv-stamp"
-          src={stampUrl}
-          alt=""
-          style={{ left: stampLeft, top: stampTop, width: INVOICE_STAMP.widthPx, height: INVOICE_STAMP.heightPx }}
-        />
-      )}
+        <img key={key} className="inv-stamp" src={stampUrls[key]} alt="" style={stampBox(key)} />
+      ))}
     </div>
   );
 });

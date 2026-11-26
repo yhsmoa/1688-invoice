@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardDbRoute } from '../../../../lib/dbAccess';
+import { isInvoiceStampKey } from '../../../../lib/tradeInvoice';
 import { readStampImage } from '../../../../lib/tradeInvoiceServer';
 
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// GET /api/trade-invoice/stamp
-//   인보이스 도장 이미지 (assets/trade-invoice/stamp.png)
-//   회사 인감이므로 public/ 에 두지 않고 DB 관리 접근 코드로 보호한다.
-//   미리보기·JPG·PDF 가 쓰고, EXCEL2 는 서버에서 직접 읽는다.
+// GET /api/trade-invoice/stamp?who=seller|buyer
+//   인보이스 도장 이미지 (assets/trade-invoice/) — seller = 수출자(기본), buyer = 수입자
+//   인감이므로 public/ 에 두지 않고 DB 관리 접근 코드로 보호한다.
+//   미리보기·JPG·PDF 가 쓰고, 엑셀은 서버에서 직접 읽는다.
 // ============================================================
 export async function GET(request: NextRequest) {
   const denied = await guardDbRoute(request);
   if (denied) return denied;
+
+  const who = new URL(request.url).searchParams.get('who') ?? 'seller';
+  if (!isInvoiceStampKey(who)) {
+    return NextResponse.json({ success: false, error: 'who 는 seller 또는 buyer 여야 합니다.' }, { status: 400 });
+  }
   try {
-    const png = await readStampImage();
+    const png = await readStampImage(who);
     return new NextResponse(png, {
       status: 200,
       headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=3600' },

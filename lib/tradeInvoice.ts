@@ -121,12 +121,37 @@ export const INVOICE_PRINT_SCALE = 0.85;
 /** 1px = 9525 EMU (엑셀 drawing 좌표 단위) */
 export const EMU_PER_PX = 9525;
 
-/** 도장 이미지 위치 — 원본 drawing 앵커 (I40 에서 오른쪽 34px·아래 11px, 330×168px) */
-export const INVOICE_STAMP = {
-  col: 9, colOffsetPx: 34,
-  row: 40, rowOffsetPx: 11,
-  widthPx: 330, heightPx: 168,
-} as const;
+// ============================================================
+// 서명 — 도장 2개와 그 옆 문구
+//   seller : 수출자(SHIPPER / EXPORTER) = 인보이스 발행인 — 오른쪽
+//   buyer  : 수입자(BUYER / IMPORTER)   = 내용을 확인한 송금인 — 왼쪽
+// ============================================================
+
+export type InvoiceStampKey = 'seller' | 'buyer';
+export const INVOICE_STAMP_KEYS: readonly InvoiceStampKey[] = ['seller', 'buyer'];
+
+export const isInvoiceStampKey = (v: unknown): v is InvoiceStampKey =>
+  typeof v === 'string' && (INVOICE_STAMP_KEYS as readonly string[]).includes(v);
+
+/** 도장 옆 문구 — 발행인은 Issued By, 확인한 쪽은 Accepted By */
+export const INVOICE_SIGN_LABEL: Record<InvoiceStampKey, string> = {
+  seller: 'Issued By',
+  buyer: 'Accepted By',
+};
+
+/** 도장 이미지 위치 — 셀 앵커(1 기준 col·row) + px 오프셋 + 크기 */
+export interface InvoiceStampSpec {
+  col: number; colOffsetPx: number;
+  row: number; rowOffsetPx: number;
+  widthPx: number; heightPx: number;
+}
+
+export const INVOICE_STAMPS: Record<InvoiceStampKey, InvoiceStampSpec> = {
+  // 원본 drawing 앵커 (I40 에서 오른쪽 34px·아래 11px, 330×168px)
+  seller: { col: 9, colOffsetPx: 34, row: 40, rowOffsetPx: 11, widthPx: 330, heightPx: 168 },
+  // 'Accepted By' 오른쪽 (E40 에서 오른쪽 12px·아래 20px) — 문구와 도장 사이 간격을 수출자 쪽과 맞춘다
+  buyer: { col: 5, colOffsetPx: 12, row: 40, rowOffsetPx: 20, widthPx: 100, heightPx: 100 },
+};
 
 // ============================================================
 // 테두리 — 선 목록으로 정의하고 셀별 테두리는 계산한다
@@ -377,8 +402,9 @@ export const INVOICE_CELLS: InvoiceCellSpec[] = [
   { ref: 'I38', to: 'N38', text: 'TOWN, LINGANG ECONOMIC DEVELOPMENT ZONE, LINYI CITY,', font: { size: 9 } },
   { ref: 'I39', to: 'N39', text: 'SHANDONG PROVINCE , CHINA', font: { size: 9 } },
 
-  // ── 서명 (도장 이미지는 I40~M48 에 겹침) ──
-  { ref: 'G42', to: 'H42', text: 'Confirmed By', font: B, align: 'right' },
+  // ── 서명 (도장 이미지는 INVOICE_STAMPS 위치에 겹침 — 수입자 E40~, 수출자 I40~M48) ──
+  { ref: 'B42', to: 'E42', text: INVOICE_SIGN_LABEL.buyer, font: B },
+  { ref: 'G42', to: 'H42', text: INVOICE_SIGN_LABEL.seller, font: B, align: 'right' },
 
   // ── 인쇄 영역 밖: 한글 주의사항 (엑셀에만) ──
   { ref: 'B49', text: '1) 달러 송금하셔야 합니다. 중국돈 RMB 송금하시면 안됩니다.', font: { family: 'korean', size: 10 } },

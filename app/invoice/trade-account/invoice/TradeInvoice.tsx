@@ -7,7 +7,8 @@ import LeftsideMenu from '../../../../component/LeftsideMenu';
 import { INVOICE_AMOUNT_MAX, fmtInvoiceDate, isValidInvoiceAmount, makeInvoiceNo, type InvoiceInput } from '../../../../lib/tradeInvoice';
 import InvoicePreview from './components/InvoicePreview';
 import {
-  downloadInvoiceExcel, downloadInvoiceJpg, downloadInvoicePdf, fetchStampObjectUrl, type InvoiceExportKind,
+  downloadInvoiceExcel, downloadInvoiceJpg, downloadInvoicePdf, fetchStampObjectUrls, revokeStampObjectUrls,
+  type InvoiceExportKind, type InvoiceStampUrls,
 } from './utils/exportInvoice';
 import './TradeInvoice.css';
 
@@ -33,32 +34,32 @@ const TradeInvoice: React.FC = () => {
   const [amountText, setAmountText] = useState('');
   // 날짜는 마운트 후 설정 (SSR 과 클라이언트 날짜가 달라 hydration 이 어긋나는 것을 피함)
   const [date, setDate] = useState<string | null>(null);
-  const [stampUrl, setStampUrl] = useState<string | null>(null);
+  const [stampUrls, setStampUrls] = useState<InvoiceStampUrls | null>(null);
   const [busy, setBusy] = useState<InvoiceExportKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setDate(localToday()); }, []);
 
-  // ── 도장 이미지 (접근 코드 헤더 필요 → object URL) ──
+  // ── 도장 이미지 2개 — 수출자·수입자 (접근 코드 헤더 필요 → object URL) ──
   useEffect(() => {
     let cancelled = false;
-    let url: string | null = null;
-    fetchStampObjectUrl()
+    let urls: InvoiceStampUrls | null = null;
+    fetchStampObjectUrls()
       .then((u) => {
-        if (cancelled) { URL.revokeObjectURL(u); return; }
-        url = u;
-        setStampUrl(u);
+        if (cancelled) { revokeStampObjectUrls(u); return; }
+        urls = u;
+        setStampUrls(u);
       })
       .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : '도장 이미지를 불러오지 못했습니다.'); });
     return () => {
       cancelled = true;
-      if (url) URL.revokeObjectURL(url);
+      if (urls) revokeStampObjectUrls(urls);
     };
   }, []);
 
   const amount = amountText ? Number(amountText) : 0;
-  const canExport = isValidInvoiceAmount(amount) && !!date && !!stampUrl && !busy;
+  const canExport = isValidInvoiceAmount(amount) && !!date && !!stampUrls && !busy;
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, '').replace(/^0+/, '');
@@ -152,7 +153,7 @@ const TradeInvoice: React.FC = () => {
           {/* ── 미리보기 (A1:N48) ── */}
           <div className="ti-preview-wrap">
             {date ? (
-              <InvoicePreview ref={sheetRef} input={{ amount, date }} stampUrl={stampUrl} />
+              <InvoicePreview ref={sheetRef} input={{ amount, date }} stampUrls={stampUrls} />
             ) : (
               <div className="ti-preview-loading">미리보기 준비 중...</div>
             )}
