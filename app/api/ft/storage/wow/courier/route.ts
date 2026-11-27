@@ -9,8 +9,11 @@ export const dynamic = 'force-dynamic';
 //   body { box_ids: string[] } → 택배 접수 엑셀 (.xlsx). 박스 하나 = 한 행, 받은 순서(화면 순서)대로
 //
 //   받는사람 = 쿠팡 물류센터 · 전화번호1 · 주소 = 그 센터의 연락처 · 주소 · 수량(A타입) = 1
-//   상품명1 = "[크기] 센터 - 발주번호 - N번 (총 M박스) - 수량개"
+//   상품명1 = "●순서 [크기] 센터 - 발주번호 - N번 (총 M박스) - 수량개"
 //     로켓 CJ 엑셀의 발주번호 열과 같은 형식 (immongRK_scan cjRef.js formatCjRef — 바꾸면 같이 바꾼다)
+//     맨 앞 "●순서" = 순서지정 번호 (순서가 없는 박스는 붙이지 않는다). 운송장에 찍혀 부착문서 · 동봉문서의 순서 배지와 짝을 맞춘다.
+//       로켓의 읽기(parseCjRef)는 8자리 이상 숫자(발주번호) 뒤의 박스번호만 보므로 앞에 붙여도 그대로 읽힌다.
+//       검은 동그라미 안의 숫자 글자(❶ …)는 20 까지만 있고 택배사 인쇄에서 깨질 수 있어, 어디서나 찍히는 ● + 숫자로 쓴다
 //     수량 = 그 박스에 담은 수량 (담기 전이면 요청 수량)
 //   센터 연락처 · 주소 · 총 박스 수는 로켓이 박스에 채워 둔다 (supabase/storage/009_wow_courier.sql)
 //     — 아직 받지 못한 박스가 하나라도 있으면 빈 칸으로 내보내지 않고 409 로 알린다
@@ -29,7 +32,12 @@ interface BoxRow {
   order_box_total: number | null;
   center_phone: string | null;
   center_address: string | null;
+  /** 순서지정 번호 (순서지정 전이면 null) */
+  ship_seq: number | null;
 }
+
+/** 상품명 맨 앞의 순서 표시 — "●17 " (순서가 없으면 빈 글) */
+const seqMark = (seq: number | null) => (seq === null ? '' : `●${seq} `);
 
 interface ItemRow {
   wow_box_id: string;
@@ -47,7 +55,7 @@ const COLUMNS: readonly [string, number, (r: CourierRow) => string | number][] =
   ['주소', 52, ({ box }) => box.center_address ?? ''],
   ['수량(A타입)', 12, () => 1],
   ['상품명1', 47, ({ box, qty }) =>
-    `[${box.packed_box_size ?? box.box_size ?? ''}] ${box.center ?? ''} - ${box.order_number} - ${box.box_no}번 (총 ${box.order_box_total}박스) - ${qty}개`],
+    `${seqMark(box.ship_seq)}[${box.packed_box_size ?? box.box_size ?? ''}] ${box.center ?? ''} - ${box.order_number} - ${box.box_no}번 (총 ${box.order_box_total}박스) - ${qty}개`],
 ];
 
 const THIN = { style: 'thin', color: { argb: 'FF000000' } } as const;
@@ -61,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     const [boxes, items] = await Promise.all([
       fetchIn<BoxRow>('ft_wow_boxes',
-        'id, order_number, box_no, center, box_size, packed_box_size, order_box_total, center_phone, center_address', 'id', ids),
+        'id, order_number, box_no, center, box_size, packed_box_size, order_box_total, center_phone, center_address, ship_seq', 'id', ids),
       fetchIn<ItemRow>('ft_wow_items', 'wow_box_id, qty, picked_qty, picked_at', 'wow_box_id', ids),
     ]);
     const byId = new Map(boxes.map((b) => [b.id, b]));

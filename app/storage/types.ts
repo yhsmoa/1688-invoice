@@ -172,7 +172,7 @@ export interface WowLine extends StorageProductInfo {
   /** [부착완료] 시각 · 담당자 — 서류를 다 붙여 합포장 단계로 넘어감 */
   attached_at: string | null;
   attached_by: string | null;
-  /** 합포장: 정한 시각 · 담당자 · 담긴 마대 (bag_id null + packed_at 있음 = 그대로 출고, packed_at null = 아직 정하지 않음) */
+  /** 합포장: 정한 시각 · 담당자 · 담긴 마대 (packed_at null = 마대에 담지 않았고 마킹번호도 없음, bag_id null + packed_at 있음 = 박스 그대로 마킹번호가 붙음) */
   packed_at: string | null;
   packed_by: string | null;
   bag_id: string | null;

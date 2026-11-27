@@ -28,7 +28,8 @@ import './Wow.css';
 //               [바로 출고준비] 이미 마킹번호가 있는 박스(옛 방식으로 담은 박스)는 순서지정 · 합포장 없이 출고준비로 보낸다
 //     순서지정  [순서지정] 박스 라벨을 실을 순서대로 스캔  그 순서로 [부착문서] [동봉문서] [택배엑셀]   [초기화] → 서류준비
 //               번호는 합포장 · 출고준비에 있는 박스 다음부터 이어진다 (1 ~ 4 가 있으면 5 부터)   [부착완료] → 합포장
-//     합포장    [합포장] 마대에 담기 · 그대로 출고 정하기  [합포장 취소] 정한 것을 푼다   [부착완료 취소] → 순서지정
+//     합포장    [합포장] 마대에 같이 담을 박스 고르기      [합포장 취소] 마대에서 뺀다     [부착완료 취소] → 순서지정
+//               마대에 담지 않은 박스는 따로 정하지 않는다 — [출고준비완료] 때 박스 그대로 나간다 (014_wow_pack_auto.sql)
 //               정한 박스만 [출고준비완료] → 출고준비
 //     출고준비  마킹번호가 붙는다 → [마킹라벨]            [출고준비 취소] → 합포장. 쉽먼트 V2 출고 대기 목록에 보인다
 //     출고      쉽먼트 V2 에서 출고하면 자동 — 출고 후 WOW_SHIPPED_VISIBLE_DAYS 일 동안 보인다
@@ -127,7 +128,9 @@ const Wow: React.FC = () => {
 
   // ── [순서지정] 창에서 찍을 수 있는 박스 · [합포장] 창에서 고를 수 있는 박스(아직 정하지 않음) · 더 담을 수 있는 마대 ──
   const seqCandidates = useMemo(() => [...byStage.docs, ...byStage.seq], [byStage]);
-  const packCandidates = useMemo(() => byStage.pack.filter((b) => !b.lines[0].packed_at), [byStage]);
+  //   이미 마킹번호가 붙은 박스(옛 방식으로 담은 박스 · 출고준비를 취소한 박스)는 마대에 담을 수 없다
+  const packCandidates = useMemo(
+    () => byStage.pack.filter((b) => !b.lines[0].packed_at && !b.lines[0].box_info_id), [byStage]);
   const openBags = useMemo<WowOpenBag[]>(() => {
     const map = new Map<string, WowOpenBag>();
     for (const b of byStage.pack) {
@@ -299,13 +302,13 @@ const Wow: React.FC = () => {
     'pack', { action: 'pack', wow_box_ids: boxIds, bag: target },
     { kind: 'ok', text: t('storage.wow.packDone', { count: boxIds.length }) }), [runTool, t]);
 
-  // [합포장 취소] · [출고준비완료] 는 마대 · 그대로 출고를 정한 박스만 대상이다
+  // [합포장 취소] 는 마대에 담았거나 마킹번호가 붙은 박스만 대상이다 (체크한 박스 중)
   const packClearTargets = useMemo(() => checkedBoxes.filter((b) => b.lines[0].packed_at), [checkedBoxes]);
-  // 마대는 통째로 넘긴다 — 대상 박스가 든 마대의 나머지 박스도 같이 넘긴다
+  // [출고준비완료] — 대상 박스 전부. 마대는 통째로 넘긴다 (대상 박스가 든 마대의 나머지 박스도 같이)
+  //   마대에 담지 않은 박스는 박스 그대로 나간다 (박스 하나 = 마킹번호 하나)
   const readyTargets = useMemo(() => {
-    const decided = targetBoxes.filter((b) => b.lines[0].packed_at);
-    const bagIds = new Set(decided.map((b) => b.lines[0].bag_id).filter(Boolean));
-    return stageBoxes.filter((b) => decided.includes(b) || (b.lines[0].bag_id && bagIds.has(b.lines[0].bag_id)));
+    const bagIds = new Set(targetBoxes.map((b) => b.lines[0].bag_id).filter(Boolean));
+    return stageBoxes.filter((b) => targetBoxes.includes(b) || (b.lines[0].bag_id && bagIds.has(b.lines[0].bag_id)));
   }, [targetBoxes, stageBoxes]);
 
   const handlePackClear = useCallback(() => {
@@ -321,7 +324,11 @@ const Wow: React.FC = () => {
   }, [readyDirectTargets, runTool, movedMessage, t]);
 
   const handleReady = useCallback(() => {
-    if (!window.confirm(t('storage.wow.readyConfirm', { count: readyTargets.length }))) return;
+    // 마대에 담지 않은 박스 수를 같이 알려 준다 — 마대에 담을 박스가 남았으면 여기서 멈추게
+    const loose = readyTargets.filter((b) => !b.lines[0].bag_id).length;
+    const question = t('storage.wow.readyConfirm', { count: readyTargets.length })
+      + (loose > 0 ? t('storage.wow.readyConfirmLoose', { count: loose }) : '');
+    if (!window.confirm(question)) return;
     runTool('ready', { action: 'ready', wow_box_ids: readyTargets.map((b) => b.id) }, movedMessage(readyTargets, 'ready'));
   }, [readyTargets, runTool, movedMessage, t]);
 

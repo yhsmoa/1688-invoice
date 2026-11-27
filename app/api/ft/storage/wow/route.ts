@@ -26,8 +26,9 @@ export const dynamic = 'force-dynamic';
 //                    번호는 합포장 · 출고준비에 있는 출고 전 박스의 가장 큰 번호 다음부터 이어진다
 //       seq_clear  : [초기화]         순서지정 → 서류준비     rpc ft_wow_seq_clear
 //       attach     : [부착완료]       순서지정 → 합포장       rpc ft_wow_attach_set(true)
-//       attach_clear : [부착완료 취소] 합포장 → 순서지정      rpc ft_wow_attach_set(false) (마대 · 그대로 출고를 정하기 전에만)
-//       pack       : [합포장]         마대 · 그대로 출고 정함  rpc ft_wow_pack_set + bag: 'new' | 마대 id | null(그대로 출고)
+//       attach_clear : [부착완료 취소] 합포장 → 순서지정      rpc ft_wow_attach_set(false) (마대에 담거나 마킹번호가 붙기 전에만)
+//       pack       : [합포장]         마대에 담는다            rpc ft_wow_pack_set + bag: 'new' | 마대 id
+//                    마대에 담지 않는 박스는 보내지 않는다 — [출고준비완료] 가 박스 그대로 넘긴다 (014_wow_pack_auto.sql)
 //       pack_clear : [합포장 취소]     정한 것을 푼다          rpc ft_wow_pack_clear (합포장 단계에 남는다)
 //       ready      : [출고준비완료]    합포장 → 출고준비       rpc ft_wow_ready_pack (마킹번호를 붙인다)
 //       unready    : [출고준비 취소]   출고준비 → 합포장       rpc ft_wow_ready_set(false) (출고 전에만. 마킹번호는 그대로)
@@ -301,10 +302,10 @@ export async function POST(request: NextRequest) {
         rpc = supabase.rpc('ft_wow_attach_set', { ...args, p_attached: action === 'attach' });
       }
       else if (action === 'pack') {
-        if (bag !== null && bag !== undefined && typeof bag !== 'string') return fail('bag 은 new · 마대 id · null 중 하나입니다.');
+        if (typeof bag !== 'string' || !bag) return fail('bag 은 new 또는 마대 id 입니다.');
         rpc = supabase.rpc('ft_wow_pack_set', {
           ...args,
-          p_bag_id: bag && bag !== 'new' ? bag : null,
+          p_bag_id: bag !== 'new' ? bag : null,
           p_new_bag: bag === 'new',
         });
       }

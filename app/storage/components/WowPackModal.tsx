@@ -6,16 +6,17 @@ import { playErrorSound } from '../utils/storageFormat';
 import type { WowBox } from './WowTable';
 
 // ============================================================
-// WowPackModal — [합포장] : 부착완료한 박스(합포장 탭에서 아직 정하지 않은 박스)를 마대에 담거나 그대로 출고로 정한다
+// WowPackModal — [합포장] : 부착완료한 박스 중 마대에 같이 담을 박스를 고른다
 //
-//   담을 곳  [새 마대] · [마대 n] (출고준비 전 마대) · [그대로 출고] (큰 박스 — 박스 하나가 마킹 상자 하나)
+//   담을 곳  [새 마대] · [마대 n] (출고준비 전 마대)
 //   담을 박스 체크하거나, 박스 라벨 바코드(발주번호-박스번호)를 찍으면 체크된다
-//   · 이미 마킹번호가 붙은 박스(옛 방식으로 담은 박스)는 마대에 담을 수 없다 → [그대로 출고] 만
-//   저장하면 그 박스에 마대 번호(또는 그대로 출고)가 붙는다. 마킹번호는 [출고준비완료] 때 붙는다
+//   저장하면 그 박스에 마대 번호가 붙는다. 마킹번호는 [출고준비완료] 때 마대 하나에 하나만 붙는다
+//   마대에 담지 않는 박스는 고르지 않는다 — [출고준비완료] 때 박스 그대로 나간다 (supabase/storage/014_wow_pack_auto.sql)
+//   이미 마킹번호가 붙은 박스는 마대에 담을 수 없어 목록에 나오지 않는다 (부르는 쪽이 거른다)
 // ============================================================
 
-/** 담을 곳 — 'new' = 새 마대, null = 그대로 출고, 그 밖 = 마대 id */
-export type WowPackTarget = 'new' | string | null;
+/** 담을 곳 — 'new' = 새 마대, 그 밖 = 마대 id */
+export type WowPackTarget = string;
 
 export interface WowOpenBag {
   id: string;
@@ -25,7 +26,7 @@ export interface WowOpenBag {
 }
 
 interface WowPackModalProps {
-  /** 합포장할 수 있는 박스 (부착완료했고 아직 정하지 않은 박스, 순서대로) */
+  /** 마대에 담을 수 있는 박스 (부착완료했고 마대 · 마킹번호가 아직 없는 박스, 순서대로) */
   candidates: WowBox[];
   /** 더 담을 수 있는 마대 (출고준비 전) */
   openBags: WowOpenBag[];
@@ -35,11 +36,10 @@ interface WowPackModalProps {
 }
 
 const LABEL_RE = /^(\d+)-(\d+)$/;
-const KEEP = '__keep__';
 
 const WowPackModal: React.FC<WowPackModalProps> = ({ candidates, openBags, onSave, onClose }) => {
   const { t } = useTranslation();
-  const [target, setTarget] = useState<string>('new');
+  const [target, setTarget] = useState<WowPackTarget>('new');
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -76,14 +76,11 @@ const WowPackModal: React.FC<WowPackModalProps> = ({ candidates, openBags, onSav
   }, [byLabel, t]);
 
   const pickedBoxes = candidates.filter((b) => picked.has(b.id));
-  const intoBag = target !== KEEP;
-  // 마킹번호가 이미 있는 박스는 마대에 담지 못한다
-  const blocked = intoBag ? pickedBoxes.filter((b) => b.lines[0].box_code) : [];
 
   const handleSave = async () => {
-    if (pickedBoxes.length === 0 || blocked.length > 0 || saving) return;
+    if (pickedBoxes.length === 0 || saving) return;
     setSaving(true);
-    const ok = await onSave(pickedBoxes.map((b) => b.id), target === KEEP ? null : target);
+    const ok = await onSave(pickedBoxes.map((b) => b.id), target);
     setSaving(false);
     if (ok) onClose();
   };
@@ -114,12 +111,8 @@ const WowPackModal: React.FC<WowPackModalProps> = ({ candidates, openBags, onSav
                 <span className="wow-toolbar-count">{g.count}</span>
               </button>
             ))}
-            <button type="button" className={`wow-pack-target ${target === KEEP ? 'is-on' : ''}`}
-              onClick={() => setTarget(KEEP)} disabled={saving}>
-              {t('storage.wow.pack.keep')}
-            </button>
           </div>
-          <div className="wow-muted">{t(intoBag ? 'storage.wow.pack.bagHint' : 'storage.wow.pack.keepHint')}</div>
+          <div className="wow-muted">{t('storage.wow.pack.bagHint')}</div>
         </div>
 
         {/* ── 담을 박스: 스캔 또는 체크 ── */}
@@ -148,23 +141,17 @@ const WowPackModal: React.FC<WowPackModalProps> = ({ candidates, openBags, onSav
                 <span className="wow-seq-num">{head.ship_seq}</span>
                 <strong>{head.order_number}-{head.box_no}</strong>
                 <span className="wow-muted">{[head.center, head.box_size].filter(Boolean).join(' · ')}</span>
-                {head.box_code && <span className="wow-picked-box">{head.box_code}</span>}
               </label>
             );
           })}
         </div>
 
-        {blocked.length > 0 && (
-          <div className="storage-message is-error">
-            {t('storage.wow.pack.hasCarton', { boxes: blocked.map((b) => `${b.lines[0].order_number}-${b.lines[0].box_no}`).join(', ') })}
-          </div>
-        )}
         {error && <div className="storage-message is-error">{error}</div>}
 
         <div className="storage-modal-actions">
           <button type="button" className="storage-btn" onClick={onClose} disabled={saving}>{t('storage.close')}</button>
           <button type="button" className="storage-btn storage-btn--primary" onClick={handleSave}
-            disabled={saving || pickedBoxes.length === 0 || blocked.length > 0}>
+            disabled={saving || pickedBoxes.length === 0}>
             {saving ? t('storage.saving') : t('storage.wow.pack.save', { count: pickedBoxes.length })}
           </button>
         </div>

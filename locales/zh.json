@@ -1557,7 +1557,7 @@
         "ready": "唛头标签 · 可在 Shipment 出库",
         "shipped": "最近 {{days}}天",
         "seq": "正在贴文件 · 快递单",
-        "pack": "已贴完 · 麻袋 / 原箱出库"
+        "pack": "已贴完 · 装麻袋"
       },
       "boxUnit": "箱",
       "boxMeta": "商品 {{kinds}}种",
@@ -1604,7 +1604,7 @@
       "readyAt": "{{time}} 出库准备",
       "ready": "出库准备完成",
       "unready": "取消出库准备",
-      "readyHint": "把已决定麻袋 · 原箱出库的箱子移到[出库准备]并分配唛头号。麻袋整袋一起移交。",
+      "readyHint": "把箱子移到[出库准备]并分配唛头号。麻袋整袋一起移交，没装进麻袋的箱子每箱各有一个唛头号。（未勾选时为本页全部箱子）",
       "readyConfirm": "把 {{count}} 箱移到[出库准备]吗？\n会按装车顺序分配唛头号，并显示在 Shipment V2 的待出库列表中。",
       "unreadyConfirm": "取消 {{box}} 的出库准备吗？（唛头号保持不变）",
       "movedMany": "{{count}} 箱已移至[{{stage}}]阶段。",
@@ -1646,25 +1646,21 @@
         "duplicate": "已经扫过：{{code}}"
       },
       "packSet": "合并装袋",
-      "packSetHint": "把还没决定的箱子装进麻袋，或定为原箱出库。",
+      "packSetHint": "选择要装进同一个麻袋的箱子。没选的箱子在[出库准备完成]时按原箱出库。",
       "packClear": "取消合并装袋",
-      "packClearHint": "解除勾选箱子的麻袋 · 原箱出库。（已有的唛头号也会被解除）",
-      "packClearConfirm": "解除 {{count}} 箱的麻袋 · 原箱出库吗？\n如果已有唛头号，会被解除。",
+      "packClearHint": "把勾选的箱子从麻袋里取出。（已有的唛头号也会被解除）",
+      "packClearConfirm": "把 {{count}} 箱从麻袋里取出吗？\n如果已有唛头号，会被解除。",
       "packedAt": "{{time}} 合并装袋",
       "bag": "麻袋 {{no}}",
-      "keep": "原箱出库",
       "pack": {
         "title": "合并装袋",
-        "candidates": "待决定的箱子 {{count}} 个",
+        "candidates": "可以装袋的箱子 {{count}} 个",
         "target": "装到哪里",
         "newBag": "新麻袋",
-        "keep": "原箱出库",
-        "bagHint": "选中的箱子装进同一个麻袋。一个麻袋只有一个唛头号。",
-        "keepHint": "大箱子原箱出库。每个箱子各有一个唛头号。",
+        "bagHint": "选中的箱子装进同一个麻袋。一个麻袋只有一个唛头号。不装麻袋的箱子不用选。",
         "placeholder": "扫描箱子标签条码即可勾选（采购单号-箱号）",
-        "empty": "没有待决定合并装袋的箱子。请先在指定顺序页点击[贴完]。",
-        "notSeq": "不是可以决定合并装袋的箱子：{{code}}",
-        "hasCarton": "已有唛头号的箱子不能装进麻袋（请用[原箱出库]）：{{boxes}}",
+        "empty": "没有可以装进麻袋的箱子。请先在指定顺序页点击[贴完]。",
+        "notSeq": "不是可以装进麻袋的箱子：{{code}}",
         "save": "装入 ({{count}})"
       },
       "marking": "唛头标签",
@@ -1675,9 +1671,8 @@
       "attachedAt": "{{time}} 贴完",
       "unattach": "取消贴完",
       "unattachConfirm": "取消 {{box}} 的贴完并恢复为指定顺序吗？",
-      "packPending": "未定装袋",
-      "packDone": "已决定 {{count}} 箱的合并装袋。",
-      "packClearDone": "已解除 {{count}} 箱的合并装袋。",
+      "packDone": "已把 {{count}} 箱装进麻袋。",
+      "packClearDone": "已把 {{count}} 箱从麻袋里取出。",
       "boxLabelAgainHint": "重新打印勾选箱子的箱子标签（采购单号-箱号）。",
       "drop": "取消采购单",
       "dropHint": "取消勾选箱子的采购单。已预留的库存会被释放，已取出的商品会回到库存[待上架]，需要重新上架。",
@@ -1686,7 +1681,8 @@
       "dropDoneBack": "已取消 {{count}} 箱的采购单。请在库存[待上架]中把已取出的 {{qty}} 件商品重新上架。",
       "readyDirect": "直接出库准备",
       "readyDirectHint": "把已有唛头号的箱子不经过指定顺序 · 合并装袋，直接移到[出库准备]。（未勾选时为本页全部已有唛头号的箱子）",
-      "readyDirectConfirm": "把已有唛头号的 {{count}} 箱直接移到[出库准备]吗？\n唛头号保持现在的号码，并显示在 Shipment V2 的待出库列表中。"
+      "readyDirectConfirm": "把已有唛头号的 {{count}} 箱直接移到[出库准备]吗？\n唛头号保持现在的号码，并显示在 Shipment V2 的待出库列表中。",
+      "readyConfirmLoose": "\n\n没装进麻袋的 {{count}} 箱，每箱各分配一个唛头号。\n（如果还有要装进麻袋的箱子，请点[取消]，先做[合并装袋]）"
     }
   },
   "sellerInquiry": {

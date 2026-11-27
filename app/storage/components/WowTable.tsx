@@ -12,7 +12,7 @@ import ProductCell from './ProductCell';
 //
 //   박스마다 카드 하나 — 처음엔 머리줄(요약)만 보이고, 머리줄을 누르면 상품 표가 펼쳐진다
 //     머리줄: ☐ · 펼침 · (순서) · 사업자 · 입고예정일 · 발주번호-박스 · 센터 · 박스 크기 · 상품 n종 · 요청 n · 담음 n
-//             · (라벨 출력됨 | 마대 n | 그대로 출고 | 마킹번호) | 담당(또는 출고) | 버튼 | 서류 2종
+//             · (라벨 출력됨 | 마대 n | 마킹번호) | 담당(또는 출고) | 버튼 | 서류 2종
 //       요청 · 담음 = 그 박스 줄들의 합계 (담음은 작업완료 이후 — 요청보다 적으면 빨강, 같으면 초록)
 //       체크박스: 표 위 버튼(라벨출력 · 서류 받기 · 택배엑셀 · 합포장 취소 · 출고준비완료 · 마킹라벨)의 대상을 고른다
 //       서류 버튼(부착문서 · 동봉문서)은 맨 오른쪽 — 첨부되면 활성(누르면 열림), 아직이면 비활성
@@ -173,7 +173,7 @@ const WowTable: React.FC<WowTableProps> = ({
         </button>
       );
     }
-    // 합포장 탭: 마대 · 그대로 출고를 정하기 전에만 순서지정으로 되돌릴 수 있다 (정했으면 표 위 [합포장 취소] 부터)
+    // 합포장 탭: 마대에 담거나 마킹번호가 붙기 전에만 순서지정으로 되돌릴 수 있다 (그 뒤에는 표 위 [합포장 취소] 부터)
     if (stage === 'pack' && !box.lines[0].packed_at) {
       return (
         <button type="button" className="wow-btn" onClick={() => onUnattach(box)} disabled={busy}>
@@ -191,7 +191,7 @@ const WowTable: React.FC<WowTableProps> = ({
     return null;
   };
 
-  // ── 단계 표시: 라벨 출력됨 · 마대 · 그대로 출고 · 마킹번호 ──
+  // ── 단계 표시: 라벨 출력됨 · 마대 · 마킹번호 (마대에 담지 않은 박스는 표시가 없다 — 박스 그대로 나간다) ──
   const renderMarks = (head: WowLine) => (
     <>
       {stage === 'new' && head.label_printed_at && (
@@ -201,11 +201,6 @@ const WowTable: React.FC<WowTableProps> = ({
       )}
       {head.bag_no !== null && (
         <span className="wow-mark is-bag"><Icon d={ICON.sack} />{t('storage.wow.bag', { no: head.bag_no })}</span>
-      )}
-      {stage === 'pack' && head.bag_no === null && (
-        <span className={`wow-mark ${head.packed_at ? '' : 'is-pending'}`}>
-          {t(head.packed_at ? 'storage.wow.keep' : 'storage.wow.packPending')}
-        </span>
       )}
       {head.box_code && <span className="wow-picked-box">{head.box_code}</span>}
     </>
