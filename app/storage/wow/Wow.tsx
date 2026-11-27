@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { downloadBoxLabelPdf, todayYYMMDD } from '../../../lib/boxLabelPdf';
+import { downloadMarkingLabelPdf, todayYYMMDD } from '../../../lib/boxLabelPdf';
 import { useStorage } from '../hooks/StorageContext';
 import ProductCell from '../components/ProductCell';
 import WowPackModal, { type WowOpenBag, type WowPackTarget } from '../components/WowPackModal';
@@ -13,6 +13,7 @@ import WowToolbar, { type WowDocKind, type WowTool } from '../components/WowTool
 import type { WowLine, WowStage } from '../types';
 import { playErrorSound } from '../utils/storageFormat';
 import { printWowBoxLabels } from '../utils/printWowBoxLabels';
+import { toMarkingEntries } from '../utils/wowMarkingLabels';
 import { WOW_STAGES } from '../utils/wowStage';
 import './Wow.css';
 
@@ -160,9 +161,9 @@ const Wow: React.FC = () => {
   const hasCartonBoxes = useMemo(() => stageBoxes.some((b) => b.lines[0].box_info_id), [stageBoxes]);
   const readyDirectTargets = useMemo(() => targetBoxes.filter((b) => b.lines[0].box_info_id), [targetBoxes]);
   //   마킹라벨: 마킹 상자 하나에 한 장 (마대는 박스가 여럿이어도 한 장)
-  const markingCodes = useMemo(
-    () => Array.from(new Set(targetBoxes.map((b) => b.lines[0].box_code).filter((c): c is string => !!c))).sort(),
-    [targetBoxes]);
+  //   한 장 = 날짜 / 마킹번호 / 발주번호-박스번호(마대면 "마대1") / 센터(마대면 "마대해체") — utils/wowMarkingLabels.ts
+  const markingBoxes = useMemo(() => targetBoxes.map((b) => b.lines[0]), [targetBoxes]);
+  const markingCount = useMemo(() => new Set(markingBoxes.map((b) => b.box_code).filter(Boolean)).size, [markingBoxes]);
 
   const fail = useCallback((err: unknown, label: string) => {
     console.error(label, err);
@@ -377,19 +378,23 @@ const Wow: React.FC = () => {
     return download('courier', '/api/ft/storage/wow/courier', { box_ids: targetBoxes.map((b) => b.id) }, `${name}.xlsx`);
   }, [download, targetBoxes, ftUsers, t]);
 
-  // 쉽먼트 V2 의 [마킹라벨] 과 같은 출력물 (10×15, 날짜 / 마킹번호 / 크기) — 크기는 쉽먼트 V2 에서 넣는다
-  const handleMarking = useCallback(() => {
+  // 쉽먼트 V2 의 [마킹라벨] 과 같은 용지(10×15)에 4줄 — 날짜 / (순서) 마킹번호 / 발주번호-박스번호 / 센터
+  //   마대는 3줄 "마대1" · 4줄 "마대해체" (utils/wowMarkingLabels.ts · lib/boxLabelPdf.ts downloadMarkingLabelPdf)
+  const handleMarking = useCallback(async () => {
     const date = todayYYMMDD();
-    const userCodes = new Set(targetBoxes.map((b) => userCodeOf(b.lines[0].user_id)));
+    const userCodes = new Set(markingBoxes.map((b) => userCodeOf(b.user_id)));
+    setBusyTool('marking');
     try {
-      downloadBoxLabelPdf(
-        markingCodes.map((code) => ({ date, location: code, weight: '' })),
+      await downloadMarkingLabelPdf(
+        toMarkingEntries(markingBoxes, date),
         `${t('storage.wow.marking')}_${userCodes.size === 1 ? Array.from(userCodes)[0] : 'BOX'}_${date}.pdf`);
       setMessage(null);
     } catch (err) {
       fail(err, '와우출고 마킹라벨 오류:');
+    } finally {
+      setBusyTool('');
     }
-  }, [targetBoxes, markingCodes, userCodeOf, fail, t]);
+  }, [markingBoxes, userCodeOf, fail, t]);
 
   // ============================================================
   // 렌더
@@ -420,7 +425,7 @@ const Wow: React.FC = () => {
             packCandidates: packCandidates.length,
             packClear: packClearTargets.length,
             ready: readyTargets.length,
-            marking: markingCodes.length,
+            marking: markingCount,
             drop: checkedBoxes.length,
             docs: { label: docBoxIds.label.length, manifest: docBoxIds.manifest.length },
           }}
