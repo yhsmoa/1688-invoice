@@ -5,7 +5,7 @@ import { fail, serverError, fetchIn, formatPhone } from '../../storageShared';
 export const dynamic = 'force-dynamic';
 
 // ============================================================
-// POST /api/ft/storage/wow/courier — [택배엑셀] (와우출고 [서류준비] 탭)
+// POST /api/ft/storage/wow/courier — [택배엑셀] (와우출고 [순서지정] · [출고준비] 탭)
 //   body { box_ids: string[] } → 택배 접수 엑셀 (.xlsx). 박스 하나 = 한 행, 받은 순서(화면 순서)대로
 //
 //   받는사람 = 쿠팡 물류센터 · 전화번호1 · 주소 = 그 센터의 연락처 · 주소 · 수량(A타입) = 1
